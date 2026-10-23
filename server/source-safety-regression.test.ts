@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 function readRoutesSource(): string {
-  return fs.readFileSync(path.join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
+  return fs.readFileSync(path.join(process.cwd(), "server", "routes-oauth.ts"), "utf8").replace(/\r\n/g, "\n");
 }
 
 function readPdfParserSource(): string {
@@ -957,7 +957,7 @@ describe("source safety regression guards", () => {
     const ga4Start = routesSource.indexOf('app.post("/api/ga4/transfer-connection"');
     const ga4End = routesSource.indexOf("// Transfer Google Sheets connection", ga4Start);
     const metaStart = routesSource.indexOf('app.post("/api/meta/transfer-connection"');
-    const metaEnd = routesSource.indexOf("/**\n   * Get Meta analytics data", metaStart);
+    const metaEnd = routesSource.indexOf("/**\n   * Explicit test-mode Instagram", metaStart);
     const sheetsStart = routesSource.indexOf('app.post("/api/google-sheets/transfer-connection"');
     const sheetsEnd = routesSource.indexOf("// Transfer LinkedIn connection", sheetsStart);
     const linkedInStart = routesSource.indexOf('app.post("/api/linkedin/transfer-connection"');
@@ -972,19 +972,19 @@ describe("source safety regression guards", () => {
     for (const route of routes) {
       expect(route).toContain("ensureCampaignAccess(req as any, res as any, fromCampaignId)");
       expect(route).toContain("ensureCampaignAccess(req as any, res as any, toCampaignId)");
-      expect(route.indexOf("ensureCampaignAccess(req as any, res as any, fromCampaignId)")).toBeLessThan(route.indexOf("storage.create"));
-      expect(route.indexOf("ensureCampaignAccess(req as any, res as any, toCampaignId)")).toBeLessThan(route.indexOf("storage.create"));
+      expect(route.indexOf("ensureCampaignAccess(req as any, res as any, fromCampaignId)")).toBeLessThan(route.indexOf("storage.transferCampaignConnection"));
+      expect(route.indexOf("ensureCampaignAccess(req as any, res as any, toCampaignId)")).toBeLessThan(route.indexOf("storage.transferCampaignConnection"));
     }
   });
 
-  it("legacy Google Sheets transfer deletes the source connection by connection ID, not campaign ID", () => {
+  it("legacy Google Sheets transfer delegates to the atomic row move without deleting connections", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.post("/api/google-sheets/transfer-connection"');
     const routeEnd = routesSource.indexOf("// Transfer LinkedIn connection", routeStart);
     const route = routesSource.slice(routeStart, routeEnd);
 
-    expect(route).toContain("storage.deleteGoogleSheetsConnection(existingConnection.id)");
-    expect(route).not.toContain("storage.deleteGoogleSheetsConnection(fromCampaignId)");
+    expect(route).toContain("storage.transferCampaignConnection(fromCampaignId, toCampaignId, okFrom.ownerId!, 'google_sheets')");
+    expect(route).not.toContain("storage.deleteGoogleSheetsConnection");
   });
 
   it("LinkedIn revenue cleanup only clears HubSpot pipeline config for LinkedIn-scoped HubSpot mappings", () => {

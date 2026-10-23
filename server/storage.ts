@@ -2,7 +2,7 @@ import { type Client, type InsertClient, type Campaign, type InsertCampaign, typ
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
 import { randomUUID, createHash } from "crypto";
-import { ga4RefreshWork, type GA4RefreshWork, type GA4InitialImportStatus } from "@shared/schema";
+import { ga4RefreshWork, ga4ConnectionLifecycleEvents, type GA4RefreshWork, type GA4InitialImportStatus } from "@shared/schema";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -230,6 +230,7 @@ export interface IStorage {
   createPerformanceData(data: InsertPerformanceData, ownerId?: string): Promise<PerformanceData>;
 
   // GA4 Connections
+  transferCampaignConnection(fromCampaignId: string, toCampaignId: string, ownerId: string, platform: "ga4" | "google_sheets" | "linkedin" | "meta"): Promise<{ connectionId: string } | undefined>;
   getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean }): Promise<GA4Connection[]>;
   getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined>;
   getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
@@ -1050,6 +1051,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   // GA4 Connection methods
+  async transferCampaignConnection(fromCampaignId: string, toCampaignId: string, ownerId: string, platform: "ga4" | "google_sheets" | "linkedin" | "meta"): Promise<{ connectionId: string } | undefined> {
+    const conflict = (message: string): never => { throw Object.assign(new Error(message), { code: "CONNECTION_TRANSFER_CONFLICT" }); };
+    if (!fromCampaignId || !toCampaignId || fromCampaignId === toCampaignId || !ownerId) conflict("Distinct owned campaigns required");
+    const table = { ga4: ga4Connections, google_sheets: googleSheetsConnections, linkedin: linkedinConnections, meta: metaConnections }[platform];
+    if (!table) conflict("Unsupported connection transfer");
+    return this.writeGA4RefreshInputChange([fromCampaignId, toCampaignId], async (tx: any) => {
+      const parents = await tx.select().from(campaigns).where(inArray(campaigns.id, [fromCampaignId, toCampaignId]));
+      if (parents.length !== 2 || parents.some((parent: any) => parent.ownerId !== ownerId || parent.status !== "draft")) conflict("Connection transfers require two owned draft campaigns");
+      const from = parents.find((parent: any) => parent.id === fromCampaignId), to = parents.find((parent: any) => parent.id === toCampaignId);
+      if (!from.clientId || from.clientId !== to.clientId) conflict("Connection transfers must stay within the same client");
+      const [client] = await tx.select({ id: clients.id }).from(clients).where(and(eq(clients.id, from.clientId), eq(clients.ownerId, ownerId)));
+      if (!client) conflict("Client unavailable");
+      if (["currency", "reportingTimeZone", "startDate", "endDate", "ga4CampaignFilter", "conversionValue", "platform"]
+        .some(key => String(from[key] ?? "") !== String(to[key] ?? ""))) conflict("Campaign currency, dates and source scope must match before transfer");
+      if (parents.some((parent: any) => Number(parent.spend) !== 0 || parent.impressions !== 0 || parent.clicks !== 0)) conflict("Campaign already has analytics; reconnect through its source setup instead");
+      const connections: any[] = await tx.select().from(table).where(inArray(table.campaignId, [fromCampaignId, toCampaignId])).orderBy(table.id).for("update");
+      if (connections.some(row => row.campaignId === toCampaignId)) conflict("Destination already has a connection");
+      const source = connections.filter(row => row.campaignId === fromCampaignId);
+      const active = source.filter(row => row.isActive !== false);
+      if (!active.length) return undefined;
+      if ((["linkedin", "meta"].includes(platform) && source.length !== 1) || active.filter(row => row.isPrimary).length > 1) conflict("Ambiguous source connections");
+      // These retained endpoints move setup, not live analytics or financial sources.
+      for (const dependent of [ga4DailyMetrics, ga4OverviewSnapshots, ga4RefreshWork, metricSnapshots,
+        revenueSources, revenueRecords, spendSources, spendRecords, kpis, metaKpis, benchmarks, metaBenchmarks,
+        linkedinReports, metaReports, kpiReports, reportSnapshots, notifications, conversionEvents, inboundWebhookReceipts,
+        linkedinDailyMetrics, metaDailyMetrics, googleAdsDailyMetrics, ga4GoogleAdsSpendDailyMetrics,
+        instagramDailyMetrics, tiktokDailyMetrics, customIntegrationMetrics, abTests, touchpoints, attributionResults, attributionInsights]) {
+        const [existing] = await tx.select({ id: dependent.id }).from(dependent).where(inArray(dependent.campaignId, [fromCampaignId, toCampaignId])).limit(1);
+        if (existing) conflict("Campaign has dependent data or work; reconnect through its source setup instead");
+      }
+      const sessions = await tx.select().from(linkedinImportSessions).where(inArray(linkedinImportSessions.campaignId, [fromCampaignId, toCampaignId])).for("update");
+      if (sessions.some((session: any) => platform !== "linkedin" || session.campaignId === toCampaignId || session.adAccountId !== source[0].adAccountId)) conflict("Campaign has incompatible import sessions");
+      if (platform === "linkedin") await tx.update(linkedinImportSessions).set({ campaignId: toCampaignId }).where(eq(linkedinImportSessions.campaignId, fromCampaignId));
+      // Move original rows: retain every selected property/tab, credential, mapping, cache and timestamp.
+      const moved = await tx.update(table).set({ campaignId: toCampaignId }).where(and(eq(table.campaignId, fromCampaignId), inArray(table.id, source.map(row => row.id)))).returning({ id: table.id });
+      if (moved.length !== source.length) conflict("Connection changed during transfer");
+      if (platform === "ga4") await tx.insert(ga4ConnectionLifecycleEvents).values(source.map(row => ({ connectionId: row.id, subjectCampaignId: fromCampaignId, propertyId: row.propertyId, action: "transfer", actor: "application", reason: `Transferred to campaign ${toCampaignId}` })));
+      return { connectionId: (active.find(row => row.isPrimary) || active[0]).id };
+    }, 5_000);
+  }
+
   async getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean }): Promise<GA4Connection[]> {
     const rows = await db
       .select()

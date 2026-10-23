@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-23T14:20:33.747Z",
+  "manifestFiles": 6,
+  "manifestMatches": true,
+  "documentationChecker": "PASS: 10 documents, 130 findings, 120 open, 10 deferred, 0 closed, 1038 local links, 12 inbound links",
+  "diffCheck": "PASS",
+  "commitAndPush": "Not performed"
+}

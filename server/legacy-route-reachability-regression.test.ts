@@ -80,9 +80,13 @@ describe("legacy route reachability inventory", () => {
     for (const routePath of retainedRoutes) {
       expect(client).not.toContain(routePath);
       expect(routes).toContain(routePath);
+      const start = routes.indexOf(`app.post("${routePath}"`);
+      const handler = routes.slice(start, routes.indexOf("\n  });", start));
+      expect(handler).toContain("ensureCampaignAccess(req as any, res as any, fromCampaignId)");
+      expect(handler).toContain("ensureCampaignAccess(req as any, res as any, toCampaignId)");
+      expect(handler).not.toContain("fromCampaignId !== 'temp-campaign-setup'");
     }
     expect(routes).toContain("ensureCampaignAccess(req as any, res as any, fromCampaignId)");
     expect(routes).toContain("ensureCampaignAccess(req as any, res as any, toCampaignId)");
-    expect(routes).toContain("fromCampaignId !== 'temp-campaign-setup'");
   });
 });

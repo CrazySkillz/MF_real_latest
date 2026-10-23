@@ -1,0 +1,166 @@
+{
+  "at": "2026-10-23T14:17:20.862Z",
+  "baseHead": "62ec590bb61b383ea5479cddc26289771a8d976f",
+  "scope": [
+    "V1-069"
+  ],
+  "state": "VERIFIED LOCALLY within documented setup-transfer boundaries; uncommitted; release acceptance OPEN; V1 NO-GO",
+  "baseline": {
+    "total": 45,
+    "passed": 10,
+    "failed": 35,
+    "skipped": 0
+  },
+  "newTransferTests": {
+    "total": 121,
+    "passed": 121,
+    "failed": 0,
+    "skipped": 0,
+    "registeredHandlerTests": 45,
+    "realPostgresTests": 76
+  },
+  "expanded": {
+    "total": 300,
+    "passed": 295,
+    "failed": 5,
+    "skipped": 0
+  },
+  "baseNeighborComparison": {
+    "total": 88,
+    "passed": 83,
+    "failed": 5,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "id": "B4-TEST-d6f30a50b0",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Sheets main platform feeds Campaign DeepDive aggregate without raw sheet revenue/spend rows",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "reason": "Expected single-name import differs from the combined import containing buildGoogleSheetsPlatformSourceForAggregate. Remaining assertions did not execute; scoped aggregate behavior still needs acceptance.",
+      "firstFailure": "AssertionError: expected 'import type { Express } from \"express…' to contain 'import { buildGoogleSheetsPlatformSou…'",
+      "finding": "V1-012",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI gate remains blocked. Map the test to current behavior and execute every intended assertion before acceptance.",
+      "reproducedAgainstBase": true,
+      "currentEvidence": "verified.json",
+      "baseEvidence": "baseline-neighbors.json"
+    },
+    {
+      "id": "B4-TEST-1830eb645f",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Sheets KPIs use source-backed mapped metrics without blocking explicit sheet financial columns",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "reason": "Expected inline /roas|return on/i test is absent after shared metric resolution changes. Later assertions did not execute; goal/financial correctness is not waived.",
+      "firstFailure": "AssertionError: expected 'import { useQuery, useQueries, useMut…' to contain '/roas|return on/i.test(key)'",
+      "finding": "V1-012",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI gate remains blocked. Map the test to current behavior and execute every intended assertion before acceptance.",
+      "reproducedAgainstBase": true,
+      "currentEvidence": "verified.json",
+      "baseEvidence": "baseline-neighbors.json"
+    },
+    {
+      "id": "B4-TEST-bd45a0cac4",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Sheets Reports follow the GA4 Reports template with source-backed output guards",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "reason": "Expected inline source platform-context expression is absent from the selected current helper. Later assertions did not execute; report financial scope remains an acceptance requirement.",
+      "firstFailure": "AssertionError: expected 'import { formatConversionCredit } fro…' to contain 'String(source?.platformContext || \"\")…'",
+      "finding": "V1-012",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI gate remains blocked. Map the test to current behavior and execute every intended assertion before acceptance.",
+      "reproducedAgainstBase": true,
+      "currentEvidence": "verified.json",
+      "baseEvidence": "baseline-neighbors.json"
+    },
+    {
+      "id": "TEST-6f00d61d48",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "reason": "Expected direct deleteGoogleAdsDailyMetrics call differs from current storage cleanup. Exact disconnect atomicity and boundary behavior remain open; this fix does not change disconnect.",
+      "firstFailure": "AssertionError: expected 'app.post(\"/api/google-ads/:campaignId…' to contain 'storage.deleteGoogleAdsDailyMetrics(c…'",
+      "finding": "V1-012",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI gate remains blocked. Map the test to current behavior and execute every intended assertion before acceptance.",
+      "reproducedAgainstBase": true,
+      "currentEvidence": "verified.json",
+      "baseEvidence": "baseline-neighbors.json"
+    },
+    {
+      "id": "TEST-c8a51eca27",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "reason": "Assertion expects a bare return; current scheduler returns a structured non-refreshed outcome. Later assertions did not execute; scheduler acceptance is not waived.",
+      "firstFailure": "AssertionError: expected 'export async function refreshGoogleAd…' to contain 'if (isSpendOnly && isTestMode) return;'",
+      "finding": "V1-012",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI gate remains blocked. Map the test to current behavior and execute every intended assertion before acceptance.",
+      "reproducedAgainstBase": true,
+      "currentEvidence": "verified.json",
+      "baseEvidence": "baseline-neighbors.json"
+    }
+  ],
+  "intermediate": [
+    {
+      "evidence": "routes.log",
+      "classification": "ENVIRONMENT",
+      "detail": "Sandbox blocked esbuild spawn (EPERM); safe-runner escalation succeeded, 45/45 routes passed."
+    },
+    {
+      "evidence": "candidate-typecheck.log",
+      "classification": "IMPLEMENTATION_ERROR_CORRECTED",
+      "detail": "Missing ga4ConnectionLifecycleEvents import; corrected and typecheck/server build passed."
+    },
+    {
+      "evidence": "postgres.json",
+      "classification": "FIXTURE_SETUP_ERROR_CORRECTED",
+      "detail": "A/B test fixture inherited schema confidence_level numeric(3,2) default 95.00, which overflows. Explicit 0.95 lets the transfer dependency boundary execute. Production schema compatibility/default correctness is not established by this override; SCHEMA-AB-CONFIDENCE remains an open V1-012 schema/test gate."
+    },
+    {
+      "evidence": "neighbors.json",
+      "classification": "RELATED_TEST_CONTRACT_CORRECTED",
+      "detail": "Legacy reachability assertion demanded a removed temp-campaign ownership exemption. Per-route assertions now require both access checks and no exemption, including unchanged Custom transfer."
+    },
+    {
+      "evidence": "final.json",
+      "classification": "WINDOWS_LINE_ENDING_TEST_BOUNDARY_CORRECTED",
+      "detail": "Seven Instagram assertions sliced past route boundaries because CRLF prevented LF comment matches. Normalize route-source newlines before slicing. Those seven assertions now execute their intended blocks and pass; no Instagram runtime code changed."
+    }
+  ],
+  "validation": {
+    "typescript": "verified-typecheck.log",
+    "serverBuild": "final-server-build.log",
+    "frontend": "No frontend changes or current transfer UI caller; no browser transfer instruction or UI acceptance claim",
+    "isolation": "Credentials removed by runner; DATABASE_URL empty; only explicit localhost test URLs; external network blocked; no production/Ptomo/provider access",
+    "cleanup": "fixture-cleanup.json"
+  },
+  "boundaries": {
+    "routes": [
+      "/api/ga4/transfer-connection",
+      "/api/google-sheets/transfer-connection",
+      "/api/linkedin/transfer-connection",
+      "/api/meta/transfer-connection"
+    ],
+    "source": "All original connection rows/IDs/credentials/settings/cache/timestamps retained; LinkedIn same-account session IDs and metric/ad children retained.",
+    "allowed": "Two distinct existing draft campaigns with same owner and owned client, currency, dates, timezone, GA4 filter, conversion value and platform; destination has no connection of the transferred family; neither parent has guarded dependent data/work or nonzero campaign figures.",
+    "atomic": "Existing input-change transaction locks parents in sorted order, then connection rows; five-second lock timeout; rollback on any move/audit failure. No clone/delete. Existing GA4 input invalidation retained.",
+    "status": "400 invalid IDs, 404 missing source, 409 incompatible/occupied scope, 500 database failure; existing success fields retained. Meta missing source now 404 rather than misleading success.",
+    "concurrency": "Competing transfer transactions/retries, queued GA4-work rejection and stale Sheets complete-cache publication are proven locally. Not certification of every unrelated provider writer."
+  },
+  "remaining": [
+    "Commit/push/deployed revision and authenticated retained-route acceptance using isolated campaigns, never destructive probes against Ptomo.",
+    "Real provider credential continuation, selected resource/permission/quota/date/attribution semantics and full downstream natural refresh remain unverified.",
+    "LinkedIn/Meta native schedulers and already-running import writers require independent stale-scope/concurrency acceptance or effective exclusion before release. Existing schedulers enumerate stored connections, and this change does not retrofit every deferred-provider writer. No provider-functional certification.",
+    "No historical source-loss recovery: omitted/deleted original values cannot be recreated without exact source evidence; no cleanup was run.",
+    "Five current packet failures remain OPEN under V1-012. No full-suite/CI count reduction inferred; historical 179 failures unchanged.",
+    "SCHEMA-AB-CONFIDENCE: shared/schema.ts confidence_level default 95.00 is incompatible with declared numeric(3,2); deployed schema/required A/B scope remains unverified under V1-012."
+  ]
+}

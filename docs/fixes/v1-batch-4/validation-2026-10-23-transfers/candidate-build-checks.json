@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-23T14:05:25.878Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 2,
+      "error": null,
+      "log": "candidate-typecheck.log"
+    }
+  ]
+}

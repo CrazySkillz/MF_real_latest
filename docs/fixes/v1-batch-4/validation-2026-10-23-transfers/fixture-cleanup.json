@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-23T14:15:58.953Z",
+  "database": "127.0.0.1:55444/ga4_alignment_test",
+  "leftoverSchemas": [],
+  "otherClientConnections": [],
+  "advisoryLocks": 0,
+  "shutdownExitCode": 0,
+  "shutdownOutput": "waiting for server to shut down.... done\r\nserver stopped\r\n",
+  "error": null
+}

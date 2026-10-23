@@ -6,7 +6,33 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Twenty-three corrections are VERIFIED LOCALLY within their stated boundaries. V1-068 Manual Spend is corrected, locally checked and **committed in `ddbddffd`** on base `2af808b1`; deployment verification is pending. One implementation finding remains: transfer safeguards V1-069. The earlier 22 corrections are deployed: the latest five standalone Sheets corrections in `221382da` and seven Custom Integration corrections in `2af808b1`; public checks pass, with authenticated/provider acceptance open. All 24 release acceptances remain OPEN. Dated checkpoints below preserve earlier counts; this current status supersedes them.
+**IMPLEMENTATION CHECKPOINT COMPLETE; RELEASE ACCEPTANCE OPEN.** All 24 corrections are VERIFIED LOCALLY within their documented boundaries. The final transfer correction V1-069 is uncommitted on base `62ec590b`; no push or deployment occurred for it. Earlier corrections retain their recorded deployment/acceptance status. All 24 release acceptances remain OPEN: authenticated/provider, downstream, historical-data and operational evidence is still required. Dated checkpoints below preserve earlier counts; this current status supersedes them.
+
+## Transfer safeguards correction checkpoint, October 23
+
+**V1-069 VERIFIED LOCALLY; release acceptance OPEN.** Uncommitted candidate on `62ec590bb61b383ea5479cddc26289771a8d976f`. [Exact runtime/test hashes](validation-2026-10-23-transfers/candidate-manifest.json), [validation and every failure classification](validation-2026-10-23-transfers/assessment.json). Only runtime files `server/routes-oauth.ts` and `server/storage.ts` changed. No schema, migration, environment, dependency, scheduler or frontend changes; no production/Ptomo/provider access or cleanup.
+
+**Root cause and actual path.** Retained POST handlers at `routes-oauth.ts:24770` (Meta), `32440` (GA4), `32462` (Sheets) and `32484` (LinkedIn) copied selected fields and then deleted originals outside one transaction. Same-campaign requests could destroy connections; Sheets omitted tab/purpose/method/mapping/cache, GA4 forced OAuth and copied only one selected property while deleting all originals, and LinkedIn session moves could partially commit. Meta had the same unsafe copy/delete pattern, although the original finding named only three families. Current frontend source has no caller for these routes. Their comments describe a historical temporary-campaign setup flow; the current wizard connects the draft directly. No new transfer page or deferred-provider feature is enabled.
+
+**Correction and compatibility.** Each handler validates two distinct string IDs and requires access to both campaigns before calling `storage.transferCampaignConnection` (`storage.ts:1054`). The existing input-change transaction locks both parents in stable order, with a five-second lock timeout, then checks current ownership and connection rows. Transfers are limited to two **draft campaigns in the same owned client**, with equal currency, reporting timezone, start/end dates, GA4 campaign filter, conversion value and platform. Occupied destinations, ambiguous source selections, nonzero campaign figures and guarded existing analytics, financial sources/records, goals, reports, notifications, attribution rows or refresh work are rejected. These retained routes cannot be used as live-campaign migration APIs. Same-owner cross-client moves are also rejected; service-account owner/client/resource scope is not broadened.
+
+Original rows move by changing only `campaignId`: all property/tab selections, IDs, encrypted credentials, auth methods, mappings, cached data and timestamps survive. All GA4/Sheets rows, including secondary/inactive rows alongside an active source, are retained. Matching LinkedIn import sessions move in the same transaction; metric/ad children retain their session references. GA4 lifecycle history receives a transfer event; an audit-write failure rolls back the move. Existing source/financial totals are not copied, recalculated or deleted. Current source/display reads follow the moved campaign ID; retained timestamps are not evidence of a new provider refresh.
+
+**Outcomes/recovery.** Invalid/same IDs return 400, missing sources 404, incompatible/occupied scope 409, and database failures 500 with `success:false`. Existing success messages/fields are preserved; GA4 returns the original connection ID. Meta now reports missing sources as 404 instead of false success. Failed transactions leave both campaigns unchanged. A retry after a completed move rejects the occupied destination instead of overwriting it. No historical lost values are reconstructed, no old rows are cleaned up, and no automatic migration runs at deployment.
+
+| Boundary | Current proof and limit |
+|---|---|
+| Request/access | 45 actual registered-handler tests cover four routes, invalid/same IDs, both access guards, success/404/409/500 and absence of clone/delete fallbacks. Frontend scan confirms no UI caller. |
+| Persistence/lifecycle | 76 real PostgreSQL cases cover exact metadata/credential preservation, multi-property/tab moves, inactive rows, owner/client/configuration conflicts, both sides of 30 dependent-data/work boundaries, session/child preservation, competing requests, retries and rollback on connection/audit failure. Fixture tables derive columns from current schema; this is not deployed migration certification. |
+| Refresh/downstream | Queued GA4 work prevents transfer; existing GA4 input invalidation checks pass. Late complete-cache Sheets publication using the old campaign is rejected without changing the new campaign. No live analytics/snapshot/report migration is allowed. The unchanged Custom transfer tests pass. |
+| Remaining concurrency gate | LinkedIn/Meta schedulers enumerate stored connections, and some native import writers are not guarded by this transaction. Already-running provider writers require independent stale-scope acceptance or effective exclusion before release. This correction does not certify or extend deferred-provider functional work. |
+| Deployment/provider/UI | Uncommitted; not pushed/deployed. Real credentials, permissions, provider refresh and full downstream UI/report acceptance remain unverified. Use isolated authenticated API fixtures after deployment; there is no current transfer UI to ask the user to operate. |
+
+**Validation result.** All **121 new transfer checks pass** (45 handler + 76 PostgreSQL). [Expanded packet](validation-2026-10-23-transfers/verified.json): **300 total / 295 passed / five failed / zero skipped**. The five failures are individually retained under V1-012 and reproduce against committed route source in the [baseline comparison](validation-2026-10-23-transfers/baseline-neighbors.json); they are not waived. They concern Sheets aggregate/KPI/report source assertions and Google Ads disconnect/scheduler assertions. Historical full-suite counts are not recalculated from this packet. [TypeScript](validation-2026-10-23-transfers/verified-build-checks.json) and [server build](validation-2026-10-23-transfers/final-build-checks.json) pass. The [isolated database is clean and stopped](validation-2026-10-23-transfers/fixture-cleanup.json).
+
+Intermediate failures are preserved and explained in the assessment: missing import corrected; isolated compiler permission retry; invalid A/B confidence fixture corrected; obsolete temporary-campaign exemption assertion replaced by per-route access checks; Windows CRLF route slicing normalized so seven neighboring Instagram checks execute their intended blocks and pass. The A/B fixture also exposes an unverified schema/default issue, `SCHEMA-AB-CONFIDENCE`, retained under V1-012 rather than silently declared safe.
+
+**Remaining Batch 4 work:** commit/push and verify this deployed candidate, then close required authenticated/provider/lifecycle/downstream and historical-data acceptance across all 24 findings. Further defects discovered by those gates require correction. The local implementation checkpoint is complete; Batch 4 and V1 release certification are not complete.
 
 ## Manual Spend correction checkpoint, October 23
 
@@ -29,7 +55,7 @@ The retained form sends the entered text intact for server validation. Manual am
 
 **Validation:** [final packet](validation-2026-10-23-manual-spend/verified.json) records **257 tests: 245 passed, 12 failed, zero skipped**. All **70 new Manual Spend tests pass**, including nine PostgreSQL cases and five actual form-handler cases (not a browser test). The 12 broader failures are individually classified and remain OPEN under V1-012; no failure is waived. Related structural checks were updated only after tracing current currency/source identity, atomic persistence and the optional refresh argument; failed earlier packets remain retained. The initial sandbox compiler failure and one incorrect Google Ads fixture field are also recorded. [TypeScript/client/server builds](validation-2026-10-23-manual-spend/candidate-build-checks.json) pass; [final TypeScript check](validation-2026-10-23-manual-spend/final-build-checks.json) passes after the last test edits. [Fixture cleanup](validation-2026-10-23-manual-spend/fixture-cleanup.json) proves no leftover schemas, clients or advisory locks and successful cluster shutdown.
 
-**UI and deployment limits:** the new-source Manual card is hidden (`AddSpendWizardModal.tsx:1867`); the retained edit form and API still require these safeguards. The separate Revenue wizard contains a spend caller, but `manualSpendAmount` has no input/setter beyond reset in current code. No new Manual UI was enabled and no unconfirmed UI validation instructions are required from the user. Authenticated deployed/browser validation and complete Batch 4 acceptance remain OPEN. Production, Ptomo and providers were not accessed or changed for this correction. **Next implementation: V1-069 only.**
+**UI and deployment limits:** the new-source Manual card is hidden (`AddSpendWizardModal.tsx:1867`); the retained edit form and API still require these safeguards. The separate Revenue wizard contains a spend caller, but `manualSpendAmount` has no input/setter beyond reset in current code. No new Manual UI was enabled and no unconfirmed UI validation instructions are required from the user. Authenticated deployed/browser validation and complete Batch 4 acceptance remain OPEN. Production, Ptomo and providers were not accessed or changed for this correction. This dated checkpoint preceded the transfer correction above.
 
 **Commit checkpoint:** `ff5b1752d695511fb116bced861574942c9b11cd` contains the seven corrections, their tests and audit evidence (72 files). All 11 runtime/test files match the validated compatibility manifest. [Commit evidence](validation-2026-10-23-custom-integration/commit-checkpoint.json). Public deployment verification passes at `2af808b1`; authenticated/provider and release acceptance remain open. Historical validation packets retain their original pre-commit status.
 
@@ -344,11 +370,11 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 |---|---|
 | Retained cross-source transfer safeguards | V1-069 (V1-068 now locally verified above) |
 
-**Remaining implementation work: V1-069, followed by Batch 4 acceptance.** The Manual Spend correction is now locally verified above; the earlier 22 corrections retain their stated evidence. Acceptance includes the required deployed/provider, lifecycle and downstream checks for all 24 Batch 4 findings; local fixes alone do not complete the batch.
+**Remaining work: commit/push the locally verified V1-069 correction, then complete Batch 4 acceptance.** All 24 corrections have local evidence above. Acceptance includes required deployed/provider, lifecycle, concurrency, historical-data and downstream checks; any defects found there still require correction. Local fixes alone do not complete the batch.
 
 **Execution method requested October 23:** finish related fixes within each group with fewer handoffs. Reuse isolated fixtures and traced paths; validate each changed behavior and its neighbors, then run the shared regression/build checks at the coherent group checkpoint. Repeat checks only for subsequent changes, failures or unresolved concerns. Update this record and the finding checklist as each item progresses. Consolidate reviewable commits/deployment checkpoints where dependencies permit; do not require a live refresh wait for independent local work or waive any required acceptance gate. No additional source exclusions or runtime changes accompany this scheduling clarification.
 
-The earlier Sheets and Custom Integration implementation groups are locally verified and deployed, with their authenticated/provider acceptance open. Manual Spend V1-068 is locally verified and committed in `ddbddffd`; deployment verification is pending. The next implementation is transfers V1-069. All 24 release acceptances stay OPEN. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The earlier Sheets and Custom Integration implementation groups are locally verified and deployed, with their authenticated/provider acceptance open. Manual Spend V1-068 is locally verified and committed in `ddbddffd`; deployment verification is pending. V1-069 is now locally verified in the transfer checkpoint above; its commit/push and deployed acceptance remain pending. All 24 release acceptances stay OPEN. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -384,7 +410,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-066](#v1-066) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-067](#v1-067) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-068](#v1-068) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-069](#v1-069) | P1 | OPEN | OPEN |
+| [V1-069](#v1-069) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-070](#v1-070) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-071](#v1-071) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-072](#v1-072) | P1 | VERIFIED LOCALLY | OPEN |
@@ -525,7 +551,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 ### V1-069
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
 
@@ -533,7 +559,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 `routes-oauth.ts:33549,33626,33665`: GA4 and LinkedIn same-campaign transfer deletes newly copied and original connections but reports success. Sheets copy omits tab/purpose/auth-method/service-account/mappings/cache; GA4 forces access_token method. Three exact handler fixtures prove deletion/omissions. No current frontend caller found; retained API remains reachable.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** See the [transfer safeguards checkpoint](#transfer-safeguards-correction-checkpoint-october-23): all four retained routes now reject same/invalid IDs and delegate to one atomic original-row move with owned compatible-draft and dependency guards. All 121 new checks pass; expanded packet 295 pass / five classified OPEN failures / zero skips. TypeScript/server build pass. Uncommitted on base `62ec590b`; no push, deployment or production/Ptomo/provider access. Deployed/provider/late-writer/downstream and historical-data acceptance remain OPEN.
 
 ### V1-070
 

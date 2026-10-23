@@ -24769,40 +24769,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/meta/transfer-connection", async (req, res) => {
     try {
-      const { fromCampaignId, toCampaignId } = req.body;
-      console.log(`[Meta Transfer] Transferring connection from ${fromCampaignId} to ${toCampaignId}`);
-
+      const parsed = z.object({ fromCampaignId: z.string().trim().min(1), toCampaignId: z.string().trim().min(1) }).safeParse(req.body);
+      if (!parsed.success || parsed.data.fromCampaignId === parsed.data.toCampaignId) {
+        return res.status(400).json({ success: false, error: 'Two distinct campaign IDs are required' });
+      }
+      const { fromCampaignId, toCampaignId } = parsed.data;
       const okFrom = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
       if (!okFrom) return;
       const okTo = await ensureCampaignAccess(req as any, res as any, toCampaignId);
       if (!okTo) return;
-
-      const tempConnection = await storage.getMetaConnection(fromCampaignId);
-
-      if (!tempConnection) {
-        console.log(`[Meta Transfer] No connection found for ${fromCampaignId}`);
-        return res.json({ success: true, message: 'No connection to transfer' });
-      }
-
-      // Create new connection for real campaign
-      await storage.createMetaConnection({
-        campaignId: toCampaignId,
-        adAccountId: tempConnection.adAccountId,
-        adAccountName: tempConnection.adAccountName,
-        accessToken: tempConnection.accessToken,
-        refreshToken: tempConnection.refreshToken,
-        method: tempConnection.method,
-        expiresAt: tempConnection.expiresAt,
-      });
-
-      // Delete temporary connection
-      await storage.deleteMetaConnection(fromCampaignId);
-
-      console.log(`[Meta Transfer] Connection transferred successfully`);
+      const transferred = await storage.transferCampaignConnection(fromCampaignId, toCampaignId, okFrom.ownerId!, 'meta');
+      if (!transferred) return res.status(404).json({ success: false, error: 'No Meta connection found for source campaign' });
       res.json({ success: true, message: 'Meta connection transferred' });
     } catch (error: any) {
       console.error('[Meta Transfer] Error:', error);
-      res.status(500).json({ error: error.message || 'Failed to transfer connection' });
+      const conflict = error?.code === 'CONNECTION_TRANSFER_CONFLICT' || error?.message === 'GA4_REFRESH_TARGET_SCOPE_CHANGED';
+      res.status(conflict ? 409 : 500).json({ success: false, error: conflict ? 'Campaigns are not eligible for this connection transfer' : 'Failed to transfer Meta connection' });
     }
   });
 
@@ -32457,173 +32439,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Transfer GA4 connection from temp campaign to real campaign
   app.post("/api/ga4/transfer-connection", async (req, res) => {
     try {
-      const { fromCampaignId, toCampaignId } = req.body;
-
-      console.log(`[GA4 Transfer] Transferring connection from ${fromCampaignId} to ${toCampaignId}`);
-
-      if (!fromCampaignId || !toCampaignId) {
-        return res.status(400).json({
-          success: false,
-          error: "Both fromCampaignId and toCampaignId are required"
-        });
+      const parsed = z.object({ fromCampaignId: z.string().trim().min(1), toCampaignId: z.string().trim().min(1) }).safeParse(req.body);
+      if (!parsed.success || parsed.data.fromCampaignId === parsed.data.toCampaignId) {
+        return res.status(400).json({ success: false, error: 'Two distinct campaign IDs are required' });
       }
-
+      const { fromCampaignId, toCampaignId } = parsed.data;
       const okFrom = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
       if (!okFrom) return;
       const okTo = await ensureCampaignAccess(req as any, res as any, toCampaignId);
       if (!okTo) return;
-
-      // Get existing connections from temp campaign
-      const existingConnections = await storage.getGA4Connections(fromCampaignId);
-      console.log(`[GA4 Transfer] Found ${existingConnections.length} connections for ${fromCampaignId}`);
-
-      if (existingConnections.length === 0) {
-        console.log(`[GA4 Transfer] No connections found for ${fromCampaignId}`);
-        return res.status(404).json({
-          success: false,
-          error: "No GA4 connection found for source campaign"
-        });
-      }
-
-      // Get the primary connection or the first one
-      const existingConnection = existingConnections.find(c => c.isPrimary) || existingConnections[0];
-      console.log(`[GA4 Transfer] Using connection ${existingConnection.id} (isPrimary: ${existingConnection.isPrimary})`);
-
-      // Create new connection for target campaign
-      const newConnection = await storage.createGA4Connection({
-        campaignId: toCampaignId,
-        propertyId: existingConnection.propertyId,
-        accessToken: existingConnection.accessToken,
-        refreshToken: existingConnection.refreshToken,
-        method: 'access_token',
-        propertyName: existingConnection.propertyName,
-        serviceAccountKey: existingConnection.serviceAccountKey,
-        isPrimary: true,
-        isActive: true,
-        clientId: existingConnection.clientId,
-        clientSecret: existingConnection.clientSecret,
-        lookbackDays: existingConnection.lookbackDays,
-        importStartDate: existingConnection.importStartDate,
-        expiresAt: existingConnection.expiresAt
-      });
-
-      await storage.setPrimaryGA4Connection(toCampaignId, newConnection.id);
-      console.log(`[GA4 Transfer] Created new connection ${newConnection.id} for ${toCampaignId} (isPrimary: ${newConnection.isPrimary}, isActive: ${newConnection.isActive})`);
-
-      // Delete temp connections
-      const tempConnections = await storage.getGA4Connections(fromCampaignId);
-      for (const conn of tempConnections) {
-        await storage.deleteGA4Connection(conn.id);
-        console.log(`[GA4 Transfer] Deleted temp connection ${conn.id}`);
-      }
-
-      res.json({
-        success: true,
-        message: 'GA4 connection transferred successfully',
-        connectionId: newConnection.id
-      });
-    } catch (error) {
+      const transferred = await storage.transferCampaignConnection(fromCampaignId, toCampaignId, okFrom.ownerId!, 'ga4');
+      if (!transferred) return res.status(404).json({ success: false, error: 'No GA4 connection found for source campaign' });
+      res.json({ success: true, message: 'GA4 connection transferred successfully', connectionId: transferred.connectionId });
+    } catch (error: any) {
       console.error('[GA4 Transfer] Error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to transfer GA4 connection'
-      });
+      const conflict = error?.code === 'CONNECTION_TRANSFER_CONFLICT' || error?.message === 'GA4_REFRESH_TARGET_SCOPE_CHANGED';
+      res.status(conflict ? 409 : 500).json({ success: false, error: conflict ? 'Campaigns are not eligible for this connection transfer' : 'Failed to transfer GA4 connection' });
     }
   });
 
   // Transfer Google Sheets connection
   app.post("/api/google-sheets/transfer-connection", async (req, res) => {
     try {
-      const { fromCampaignId, toCampaignId } = req.body;
-      console.log(`[Sheets Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
-
+      const parsed = z.object({ fromCampaignId: z.string().trim().min(1), toCampaignId: z.string().trim().min(1) }).safeParse(req.body);
+      if (!parsed.success || parsed.data.fromCampaignId === parsed.data.toCampaignId) {
+        return res.status(400).json({ success: false, error: 'Two distinct campaign IDs are required' });
+      }
+      const { fromCampaignId, toCampaignId } = parsed.data;
       const okFrom = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
       if (!okFrom) return;
       const okTo = await ensureCampaignAccess(req as any, res as any, toCampaignId);
       if (!okTo) return;
-
-      const existingConnection = await storage.getGoogleSheetsConnection(fromCampaignId);
-
-      if (!existingConnection) {
-        return res.status(404).json({
-          success: false,
-          error: "No Google Sheets connection found"
-        });
-      }
-
-      await storage.createGoogleSheetsConnection({
-        campaignId: toCampaignId,
-        spreadsheetId: existingConnection.spreadsheetId,
-        spreadsheetName: existingConnection.spreadsheetName,
-        accessToken: existingConnection.accessToken,
-        refreshToken: existingConnection.refreshToken,
-        clientId: existingConnection.clientId,
-        clientSecret: existingConnection.clientSecret,
-        expiresAt: existingConnection.expiresAt
-      });
-
-      await storage.deleteGoogleSheetsConnection(existingConnection.id);
-      console.log(`[Sheets Transfer] Transfer complete`);
-
+      const transferred = await storage.transferCampaignConnection(fromCampaignId, toCampaignId, okFrom.ownerId!, 'google_sheets');
+      if (!transferred) return res.status(404).json({ success: false, error: 'No Google Sheets connection found for source campaign' });
       res.json({ success: true, message: 'Google Sheets connection transferred' });
-    } catch (error) {
-      console.error('[Sheets Transfer] Error:', error);
-      res.status(500).json({ success: false, error: 'Transfer failed' });
+    } catch (error: any) {
+      console.error('[Google Sheets Transfer] Error:', error);
+      const conflict = error?.code === 'CONNECTION_TRANSFER_CONFLICT' || error?.message === 'GA4_REFRESH_TARGET_SCOPE_CHANGED';
+      res.status(conflict ? 409 : 500).json({ success: false, error: conflict ? 'Campaigns are not eligible for this connection transfer' : 'Failed to transfer Google Sheets connection' });
     }
   });
 
   // Transfer LinkedIn connection
   app.post("/api/linkedin/transfer-connection", async (req, res) => {
     try {
-      const { fromCampaignId, toCampaignId } = req.body;
-      console.log(`[LinkedIn Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
-
+      const parsed = z.object({ fromCampaignId: z.string().trim().min(1), toCampaignId: z.string().trim().min(1) }).safeParse(req.body);
+      if (!parsed.success || parsed.data.fromCampaignId === parsed.data.toCampaignId) {
+        return res.status(400).json({ success: false, error: 'Two distinct campaign IDs are required' });
+      }
+      const { fromCampaignId, toCampaignId } = parsed.data;
       const okFrom = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
       if (!okFrom) return;
       const okTo = await ensureCampaignAccess(req as any, res as any, toCampaignId);
       if (!okTo) return;
-
-      const existingConnection = await storage.getLinkedInConnection(fromCampaignId);
-
-      if (!existingConnection) {
-        return res.status(404).json({
-          success: false,
-          error: "No LinkedIn connection found"
-        });
-      }
-
-      // Transfer the connection
-      await storage.createLinkedInConnection({
-        campaignId: toCampaignId,
-        adAccountId: existingConnection.adAccountId,
-        adAccountName: existingConnection.adAccountName,
-        accessToken: existingConnection.accessToken,
-        refreshToken: existingConnection.refreshToken,
-        clientId: existingConnection.clientId,
-        clientSecret: existingConnection.clientSecret,
-        method: existingConnection.method,
-        expiresAt: existingConnection.expiresAt
-      });
-
-      // Transfer import sessions
-      const importSessions = await storage.getCampaignLinkedInImportSessions(fromCampaignId);
-      console.log(`[LinkedIn Transfer] Found ${importSessions?.length || 0} import sessions to transfer`);
-
-      if (importSessions && importSessions.length > 0) {
-        for (const session of importSessions) {
-          // Update the session's campaignId
-          await storage.updateLinkedInImportSession(session.id, { campaignId: toCampaignId });
-          console.log(`[LinkedIn Transfer] Transferred session ${session.id} to campaign ${toCampaignId}`);
-        }
-      }
-
-      await storage.deleteLinkedInConnection(fromCampaignId);
-      console.log(`[LinkedIn Transfer] Transfer complete`);
-
+      const transferred = await storage.transferCampaignConnection(fromCampaignId, toCampaignId, okFrom.ownerId!, 'linkedin');
+      if (!transferred) return res.status(404).json({ success: false, error: 'No LinkedIn connection found for source campaign' });
       res.json({ success: true, message: 'LinkedIn connection and import sessions transferred' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[LinkedIn Transfer] Error:', error);
-      res.status(500).json({ success: false, error: 'Transfer failed' });
+      const conflict = error?.code === 'CONNECTION_TRANSFER_CONFLICT' || error?.message === 'GA4_REFRESH_TARGET_SCOPE_CHANGED';
+      res.status(conflict ? 409 : 500).json({ success: false, error: conflict ? 'Campaigns are not eligible for this connection transfer' : 'Failed to transfer LinkedIn connection' });
     }
   });
 

@@ -525,6 +525,30 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(saved.has("campaign-b")).toBe(false);
     expect(campaigns[0].status).toBe("active");
   });
+  it.each(["getGA4Connections", "getGA4OverviewSnapshot", "getFinancialDailyComparisonData"] as const)("isolates a startup %s failure and repairs the next campaign", async method => {
+    mocks.storage.getRevenueSources.mockResolvedValue([]); mocks.storage.getSpendSources.mockResolvedValue([]);
+    mocks.storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [] });
+    mocks.storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [] });
+    mocks.totals.mockImplementation(async () => ({ ...totals(), revenue: 500, spend: 0 }));
+    await refreshAllGA4DailyMetrics();
+    const original = structuredClone(overviews.get("campaign-a"));
+    mocks.storage.getLatestGA4DailyMetric.mockImplementation(async id => daily.get(id)?.at(-1));
+    mocks.storage.getFinancialDailyComparisonData.mockResolvedValue({ current: null, previous: null });
+    const lookup = mocks.storage[method].getMockImplementation()!;
+    mocks.storage[method].mockImplementation(async (...args: any[]) => {
+      if (args[0] === "campaign-a") throw new Error("SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED");
+      return lookup(...args);
+    });
+    expect(await backfillMissingGA4OverviewSnapshots()).toEqual(["campaign-b"]);
+    expect(saved.get("campaign-b")).toMatchObject({ inputs: {
+      revenue: { available: true, value: "500.00" }, spend: { available: false, value: null },
+    } });
+    expect(saved.has("campaign-a")).toBe(false);
+    expect(overviews.get("campaign-a")).toEqual(original);
+    expect(getGA4DailySchedulerStatus().lastSnapshotBootstrapFailures).toEqual([
+      { campaignIdHash: expect.stringMatching(/^[a-f0-9]{12}$/), reason: "discovery: SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" },
+    ]);
+  });
   it("does not mark startup recovery complete when the campaign alert stage fails", async () => {
     campaigns = campaigns.slice(0, 1);
     await runGA4DailyRefreshPipelineForCampaignNow("campaign-a");

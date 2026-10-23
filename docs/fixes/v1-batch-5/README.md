@@ -1,5 +1,7 @@
 # Batch 5: CRM and commerce Revenue
 
+**October 23 recovery follow-up:** `c056ad50` is live, but the test campaign still lacks its financial snapshot. [Per-campaign startup discovery isolation](../v1-batch-3/README.md#startup-recovery-isolation-follow-up-october-23) corrects an exception that can stop recovery before reaching healthy campaigns. All **289 targeted checks pass**; TypeScript/server build pass. Deployment and exact campaign recovery remain pending; no release gate is closed.
+
 [Release index](../../V1_RELEASE_READINESS.md) · [Finding checklist](../../audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md)
 
 This is the detailed home for this batch's assigned findings. Read the required repository references first, then the release index, checklist and this record. Documentation records evidence; verify actual current code before changing behavior. Original audit paths and line numbers describe the recorded baseline, not an assertion that the defect remains unchanged.

@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-23T19:34:17.507Z",
+  "status": 200,
+  "ga4": {
+    "started": true,
+    "timerScheduled": true,
+    "inProgress": false,
+    "config": {
+      "reportingTimeZone": "Europe/Amsterdam",
+      "hour": 8,
+      "hours": [
+        8,
+        14,
+        20
+      ],
+      "minute": 0,
+      "runOnStartup": false
+    },
+    "startedAt": "2026-10-23T19:31:24.932Z",
+    "stoppedAt": null,
+    "nextRunAt": "2026-10-24T06:00:00.000Z",
+    "nextDataThroughDate": "2026-10-23",
+    "lastRunStartedAt": null,
+    "lastRunFinishedAt": null,
+    "lastRunTrigger": null,
+    "lastRunStatus": "idle",
+    "lastSkippedAt": null,
+    "lastErrorTime": null,
+    "lastError": null,
+    "totalRuns": 0,
+    "totalStartupRuns": 0,
+    "totalScheduledRuns": 0,
+    "totalManualRuns": 0,
+    "totalSnapshotBootstrapRuns": 0,
+    "totalSkippedRuns": 0,
+    "lastRecomputeRecordedAt": null,
+    "lastRecomputeEvidence": null,
+    "lastExecutiveSummarySnapshotRequestedAt": null,
+    "lastExecutiveSummarySnapshotRequestFailures": [],
+    "lastAlignedRefreshFailures": [],
+    "alignedRefreshCampaigns": [
+      {
+        "campaignIdHash": "55d083f55e0c",
+        "reportingDate": "2026-10-22",
+        "completedAt": "2026-10-23T18:11:46.070Z"
+      }
+    ],
+    "lastSnapshotBootstrapFailures": []
+  },
+  "financial": {
+    "mode": "gated_write",
+    "snapshotWritesEnabled": true,
+    "financialSourceEvidenceCampaigns": 0,
+    "ga4DailyEvidenceCampaigns": 0,
+    "observedCampaigns": 0,
+    "readyCampaigns": 0,
+    "blockedCampaigns": 0,
+    "writtenCampaigns": 0,
+    "writeFailedCampaigns": 0,
+    "blockingReasons": {},
+    "latestEvaluatedAt": null
+  }
+}

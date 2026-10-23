@@ -1,0 +1,74 @@
+{
+  "at": "2026-10-23T19:38:27.301Z",
+  "baseHead": "c056ad50983b5326eeaf36e4554f50e3b10a9244",
+  "finding": "V1-011-F1",
+  "status": "VERIFIED LOCALLY; live recovery still unproven",
+  "rootCause": "backfillMissingGA4OverviewSnapshots awaited each campaign connection/snapshot discovery outside its per-campaign failure boundary. A lookup failure rejected the whole discovery before queued healthy campaigns ran.",
+  "liveEvidence": {
+    "revision": "c056ad50983b5326eeaf36e4554f50e3b10a9244",
+    "missingFinancialSnapshot": "postdeploy-recovery.json",
+    "idleStartup": "postdeploy-scheduler.json",
+    "orderedConnections": "postdeploy-access-boundary.json",
+    "qualification": "Pre-fix live scheduler reported zero attempts. Earlier service-account campaigns lack saved resource grants. The exact live thrown message was not exposed by the old discovery catch; isolated connection, Overview and financial lookup failures reproduce the abort."
+  },
+  "correction": "Catch discovery errors per campaign, record the hashed campaign failure and continue healthy candidates. No access bypass, forced snapshot, credential or source change.",
+  "before": {
+    "failed": 3,
+    "passed": 0,
+    "filtered": 167
+  },
+  "validation": {
+    "total": 289,
+    "passed": 289,
+    "failed": 0,
+    "skipped": 0
+  },
+  "testFiles": [
+    {
+      "file": "financial-daily-snapshot-writer.test.ts",
+      "passed": 48,
+      "failed": 0
+    },
+    {
+      "file": "financial-snapshot-saved-ga4.test.ts",
+      "passed": 48,
+      "failed": 0
+    },
+    {
+      "file": "ga4-initial-import-route.test.ts",
+      "passed": 22,
+      "failed": 0
+    },
+    {
+      "file": "ga4-publication-browser.test.ts",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "file": "ga4-refresh-pipeline-source-failure.test.ts",
+      "passed": 170,
+      "failed": 0
+    }
+  ],
+  "builds": "../../v1-batch-5/validation-2026-10-23/initial-recovery-isolation-build-checks.json",
+  "results": "../../v1-batch-5/validation-2026-10-23/initial-recovery-isolation-fixed.json",
+  "beforeResults": "../../v1-batch-5/validation-2026-10-23/initial-recovery-isolation-before.json",
+  "productionMutations": 0,
+  "providerCalls": 0,
+  "manifest": [
+    {
+      "file": "server/ga4-daily-scheduler.ts",
+      "sha256": "e20ee67aa65b6a602d1391601768d08650fc78782016287f0fcc18d4668a2040"
+    },
+    {
+      "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+      "sha256": "13ad63c6e046e59d3eda20249f0cb77edfea0f04c5ac2d8c156d6e26797f3275"
+    }
+  ],
+  "remaining": [
+    "Deployed exact fixture recovery and UI acceptance",
+    "Fresh deployed initial import",
+    "Existing whole-app failures and release gates"
+  ],
+  "releaseDecision": "NO-GO"
+}

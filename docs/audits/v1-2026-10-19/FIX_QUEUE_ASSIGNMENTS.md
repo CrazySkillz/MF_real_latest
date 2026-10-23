@@ -1,5 +1,7 @@
 # Finding-by-finding fix queue
 
+**October 23 recovery follow-up:** `c056ad50` is live, but the test campaign still lacks its financial snapshot. [Per-campaign startup discovery isolation](../../fixes/v1-batch-3/README.md#startup-recovery-isolation-follow-up-october-23) corrects an exception that can stop recovery before reaching healthy campaigns. All **289 targeted checks pass**; TypeScript/server build pass. Deployment and exact campaign recovery remain pending; no release gate is closed.
+
 [Release index](../../V1_RELEASE_READINESS.md) · [Batch progress](../../V1_RELEASE_READINESS.md#fix-counts-and-progress-tracking)
 
 This is the master checklist: every stable finding appears once, with severity, primary batch, scope, fix status and release acceptance. Click a finding for its only detailed record. The index owns the overall release decision; batch records own root causes, changes, evidence and remaining acceptance.

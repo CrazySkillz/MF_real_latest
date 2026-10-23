@@ -1115,6 +1115,7 @@ export async function backfillMissingGA4OverviewSnapshots(
         ? campaignFilter.length > 0
         : Boolean(String(campaignFilter || "").trim());
       if (!campaignId || !hasCampaignFilter) continue;
+      try {
       const connections = await storage.getGA4Connections(campaignId);
       const activeConnections = connections.filter((connection: any) =>
         connection?.isActive !== false && String(connection?.propertyId || "").trim()
@@ -1168,6 +1169,13 @@ export async function backfillMissingGA4OverviewSnapshots(
         }
       }
       if (needsBootstrap) campaignIds.push(campaignId);
+      } catch (error: any) {
+        ga4DailySchedulerStatus.lastSnapshotBootstrapFailures.push({
+          campaignIdHash: hashEvidenceIds([campaignId])[0],
+          reason: `discovery: ${String(error?.message || error || "GA4 snapshot discovery failed")}`.slice(0, 300),
+        });
+        console.warn(`[GA4 Daily] Daily publication discovery failed for campaign ${campaignId}:`, error?.message || error);
+      }
     }
 
     // A concurrent refresh may have completed or invalidated the candidates during discovery.

@@ -1,0 +1,58 @@
+{
+  "implementationCommit": "ddbddffd1148ea75fbbf34f065e9260197ede184",
+  "baseCommit": "2af808b148537ce755b2566586c1a69f199cc86c",
+  "changedFiles": 40,
+  "candidateFiles": [
+    {
+      "file": "server/routes-oauth.ts",
+      "testedWorkingSha256": "f2736aad3d1063f3594f27d0bb5457a665af165e32148cd8eade2265c236c8d6",
+      "committedBlobSha256": "f2736aad3d1063f3594f27d0bb5457a665af165e32148cd8eade2265c236c8d6",
+      "matchesTestedCandidateAfterLineEndingNormalization": true
+    },
+    {
+      "file": "client/src/components/AddSpendWizardModal.tsx",
+      "testedWorkingSha256": "d9279ae248487dd313a35d569729f113ca79750bb4b0a3a1483e30cc5aff59cb",
+      "committedBlobSha256": "f3c37e80f964d2e833f919dccb629283b0190f2b677594e1de421cbf220e83c6",
+      "matchesTestedCandidateAfterLineEndingNormalization": true
+    },
+    {
+      "file": "server/v1-batch4-manual-spend.test.ts",
+      "testedWorkingSha256": "bd40f12ba1b0f9045ad0c96f7fdb770b130357807c974779d6a7e4b06aa3ac64",
+      "committedBlobSha256": "bd40f12ba1b0f9045ad0c96f7fdb770b130357807c974779d6a7e4b06aa3ac64",
+      "matchesTestedCandidateAfterLineEndingNormalization": true
+    },
+    {
+      "file": "server/ga4-google-ads-spend-pipeline-regression.test.ts",
+      "testedWorkingSha256": "92814effaa099a12e652eb3a9cfdad782ba89c22f7658741a88bb48b68e00a7c",
+      "committedBlobSha256": "b732128289ed2a23a2d44f3ff8f299287d37466239a442bc96683e0529dd7555",
+      "matchesTestedCandidateAfterLineEndingNormalization": true
+    },
+    {
+      "file": "server/ga4-source-lifecycle-recompute-regression.test.ts",
+      "testedWorkingSha256": "41cf3d345e6ad93c8dd87d70dab601d8d1aaba2355833f614b146deef5fcbcd2",
+      "committedBlobSha256": "e2e7e69bca7f8ff32b8e96e1713fbe1cdff3557669eea0fe75ddf1fdb3e5d432",
+      "matchesTestedCandidateAfterLineEndingNormalization": true
+    },
+    {
+      "file": "server/google-ads-spend-lifecycle-downstream.test.ts",
+      "testedWorkingSha256": "90cd10b27c719d16b77d3c856f2f7e89c56d66da1ebf3ed08e4a429322cfe1cc",
+      "committedBlobSha256": "1258b02cef3b58f29261e8efed983c9b75e2d43eca326a0d8a9934a50404c484",
+      "matchesTestedCandidateAfterLineEndingNormalization": true
+    },
+    {
+      "file": "server/instagram-connected-platforms-regression.test.ts",
+      "testedWorkingSha256": "e088434904c23114ec2d614c58947177119371f464fcd655cc092d1c810a2dac",
+      "committedBlobSha256": "511b89dd2312f432dd8f49a9aa07a41b36dad1143b6fa718592f0a2c9f44c598",
+      "matchesTestedCandidateAfterLineEndingNormalization": true
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "testedWorkingSha256": "9a6564f9e60c3fa6199c12b99e2eb76947d28c191cc88c8ff6f12686109cc0a7",
+      "committedBlobSha256": "9a6564f9e60c3fa6199c12b99e2eb76947d28c191cc88c8ff6f12686109cc0a7",
+      "matchesTestedCandidateAfterLineEndingNormalization": true
+    }
+  ],
+  "deploymentStatus": "PENDING VERIFICATION",
+  "validation": "70/70 Manual Spend checks pass; broader packet 245 pass / 12 open failures / 0 skipped; TypeScript and client/server builds pass.",
+  "releaseAcceptance": "OPEN; V1 NO-GO"
+}

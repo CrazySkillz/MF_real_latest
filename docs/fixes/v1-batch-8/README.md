@@ -10,7 +10,7 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 8 status
 
-**New initial-publication gate, October 23:** [V1-011-F1](../v1-batch-3/README.md#initial-financial-publication-follow-up-october-23) is corrected locally after a user-created campaign exposed missing financial publication. Initial snapshot, activation and completion now share one transaction. Latest related results: **533 passed / one OPEN assertion / zero skipped**; TypeScript/server build pass. The local change has not been committed or deployed. Exact existing-campaign recovery and a fresh deployed initial import are required before continuing Batch 5 provider acceptance; no whole-app gate is closed.
+**New initial-publication gate, October 23:** [V1-011-F1](../v1-batch-3/README.md#initial-financial-publication-follow-up-october-23) is corrected locally after a user-created campaign exposed missing financial publication. Initial snapshot, activation and completion now share one transaction. Latest related results: **533 passed / one OPEN assertion / zero skipped**; TypeScript/server build pass. The correction, tests and evidence are committed in `1f0dfb3d`; deployment verification is pending. Exact existing-campaign recovery and a fresh deployed initial import are required before continuing Batch 5 provider acceptance; no whole-app gate is closed.
 
 **OPEN. V1 remains NO-GO.** All eight assigned release-gate findings remain open. Some bounded checks pass; none certifies the full application.
 

@@ -1,0 +1,184 @@
+{
+  "at": "2026-10-23T19:27:00.902Z",
+  "finding": "V1-011-F1",
+  "implementationCommit": "1f0dfb3d1f575fbe1cc30824c371155e70964dce",
+  "baseHead": "714689994fc55438b47d5386d1d104057c0c28d3",
+  "commitFiles": [
+    "docs/V1_RELEASE_READINESS.md",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+    "docs/fixes/v1-batch-3/README.md",
+    "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/assessment.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/cleanup.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/commit-preflight.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/diagnosis.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/read-only-diagnosis.cjs",
+    "docs/fixes/v1-batch-5/README.md",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/deployment-health-2026-10-23.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-assessment.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-build-checks.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-corrected.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-corrected.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-diagnostic.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-diagnostic.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-final-build-checks.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-final-typecheck.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-first.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-first.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-modeled.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-modeled.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-neighbors.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-neighbors.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/ga4-browser-typecheck.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-before.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-before.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-build-checks.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-final-build-checks.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-final-typecheck.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-fixed.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-fixed.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-recovery.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-recovery.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-related.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-related.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-server-build.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/initial-financial-typecheck.log",
+    "docs/fixes/v1-batch-8/README.md",
+    "server/ga4-initial-import-postgres.test.ts",
+    "server/ga4-publication-browser.test.ts",
+    "server/ga4-refresh-pipeline-source-failure.test.ts",
+    "server/storage.ts",
+    "server/v1-batch5-ga4-browser.test.ts"
+  ],
+  "validatedCandidateMatches": true,
+  "lineEndings": "Git blobs compared with validated working files after CRLF/LF normalization; raw hashes retained.",
+  "manifest": [
+    {
+      "file": "server/storage.ts",
+      "sha256": "b422ba041878cafba053224dadb8a24d4289550257286a1d3f67c7058eb67b36",
+      "gitBlob": "14a3ce7cb6468bd7779cc3008547138cd82ad26c"
+    },
+    {
+      "file": "server/ga4-initial-import-postgres.test.ts",
+      "sha256": "3307a14492a525cce4dc32d28ae85c9ceae8bb7ffe83eff9f67ebb260398a6ff",
+      "gitBlob": "641e924a2c7394bd9983261aa97f7f678278de78"
+    },
+    {
+      "file": "server/ga4-publication-browser.test.ts",
+      "sha256": "6084b057ba273f5bd69b6647bd6eebd236f0a68361647ecfb5ba9c49929101ab",
+      "gitBlob": "185eddf35a36b4f6359b7f2599ee035b02a53a76"
+    },
+    {
+      "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+      "sha256": "4dd0ec9cb8291ddf4925f560cfd5a4a70213915113d0de79bb4f4649e4daead6",
+      "gitBlob": "c8381c6a7666d4a98851cae81e95c75d2c124021"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "9d5925937a11ef504691af3254d5b893ef56258c805fc4a6b9e41431519a103c",
+      "gitBlob": "d253683f33c965b6a9b6e51506351fb2b7a6b5dc"
+    },
+    {
+      "file": "shared/schema.ts",
+      "sha256": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96",
+      "gitBlob": "f4ab3c295358569fcdcb8c1fbe0cf1dcc8b91848"
+    }
+  ],
+  "additionalBrowserTest": {
+    "file": "server/v1-batch5-ga4-browser.test.ts",
+    "sha256": "71372cb97dee82cd09681fb790312cc300d6afcd88c066aeb081e3a33adc0f8a"
+  },
+  "validation": {
+    "total": 534,
+    "passed": 533,
+    "failed": 1,
+    "skipped": 0,
+    "realPostgresFiles": {
+      "ga4-initial-import-postgres.test.ts": 34,
+      "ga4-derived-publication-postgres.test.ts": 186
+    },
+    "finalByFile": [
+      {
+        "file": "financial-daily-snapshot-contract.test.ts",
+        "total": 7,
+        "passed": 7,
+        "failed": 0
+      },
+      {
+        "file": "financial-daily-snapshot-observation.test.ts",
+        "total": 5,
+        "passed": 4,
+        "failed": 1
+      },
+      {
+        "file": "financial-daily-snapshot-readiness.test.ts",
+        "total": 6,
+        "passed": 6,
+        "failed": 0
+      },
+      {
+        "file": "financial-daily-snapshot-writer.test.ts",
+        "total": 48,
+        "passed": 48,
+        "failed": 0
+      },
+      {
+        "file": "financial-snapshot-saved-ga4.test.ts",
+        "total": 48,
+        "passed": 48,
+        "failed": 0
+      },
+      {
+        "file": "ga4-derived-publication-postgres.test.ts",
+        "total": 186,
+        "passed": 186,
+        "failed": 0
+      },
+      {
+        "file": "ga4-initial-import-postgres.test.ts",
+        "total": 34,
+        "passed": 34,
+        "failed": 0
+      },
+      {
+        "file": "ga4-initial-import-route.test.ts",
+        "total": 22,
+        "passed": 22,
+        "failed": 0
+      },
+      {
+        "file": "ga4-publication-browser.test.ts",
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "file": "ga4-refresh-pipeline-source-failure.test.ts",
+        "total": 167,
+        "passed": 167,
+        "failed": 0
+      },
+      {
+        "file": "v1-batch5-ga4-browser.test.ts",
+        "total": 10,
+        "passed": 10,
+        "failed": 0
+      }
+    ],
+    "sourceRuns": [
+      "../../v1-batch-5/validation-2026-10-23/initial-financial-related.json",
+      "../../v1-batch-5/validation-2026-10-23/initial-financial-recovery.json"
+    ]
+  },
+  "releaseAcceptance": "OPEN",
+  "releaseDecision": "NO-GO",
+  "deploymentVerification": "PENDING; last independently verified runtime 714689994fc55438b47d5386d1d104057c0c28d3",
+  "productionMutationDuringCommit": false,
+  "schemaOrEnvironmentChanges": false,
+  "remainingChecks": [
+    "Exact test campaign recovery after deployment",
+    "Fresh initial import on deployed correction",
+    "Existing TEST-559d5113b7 and whole-app unresolved test gates",
+    "Batch 5 real-provider acceptance"
+  ],
+  "historicalEvidence": "Original dated pre-commit assessments retained; this checkpoint owns implementation delivery status."
+}

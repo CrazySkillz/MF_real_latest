@@ -1,0 +1,76 @@
+{
+  "at": "2026-10-23T21:06:54.317714+00:00",
+  "baseCommit": "9364b8894415a343616875bb1c224a75fc481d58",
+  "remoteMainBeforePush": "9364b8894415a343616875bb1c224a75fc481d58",
+  "requestedAction": "Commit and push completed HubSpot save correction, tests and audit evidence.",
+  "commitTitle": "fix(hubspot): preserve publication version during post-save recompute",
+  "validatedFileSha256": {
+    "server/routes-oauth.ts": "ede76a1cf97bcad0b417981464c8f8f85b55273575606e8b7f7f54c403e6cf42",
+    "server/v1-batch5-provider-contract.test.ts": "1b13344b607e87cb004238896cdab8a8b4afb34ad6f960edcf4ed71f460e6973",
+    "server/ga4-source-lifecycle-recompute-regression.test.ts": "2eeaafaeafb45a110ed91a05ab1ac5887ae7a5a0cd6e8d8345d1d9ae345653b3"
+  },
+  "tests": {
+    "passed": 311,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": "hubspot-save-publication-after.json"
+  },
+  "typecheck": "PASS",
+  "serverBuild": "PASS",
+  "runtimeChangesSinceValidation": false,
+  "migrationRequired": false,
+  "environmentChangeRequired": false,
+  "productionWritesDuringPublicationPreparation": false,
+  "files": [
+    "server/routes-oauth.ts",
+    "server/ga4-source-lifecycle-recompute-regression.test.ts",
+    "server/v1-batch5-provider-contract.test.ts",
+    "docs/V1_RELEASE_READINESS.md",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+    "docs/fixes/v1-batch-5/README.md",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-deployed-ui.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-after.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-after.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-assessment.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-before.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-before.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-build-checks.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-cleanup.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-cleanup.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-diagnosis.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-diagnosis.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-server-build.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-typecheck.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-commit-preflight.json"
+  ],
+  "fileSha256": {
+    "server/routes-oauth.ts": "ede76a1cf97bcad0b417981464c8f8f85b55273575606e8b7f7f54c403e6cf42",
+    "server/ga4-source-lifecycle-recompute-regression.test.ts": "2eeaafaeafb45a110ed91a05ab1ac5887ae7a5a0cd6e8d8345d1d9ae345653b3",
+    "server/v1-batch5-provider-contract.test.ts": "1b13344b607e87cb004238896cdab8a8b4afb34ad6f960edcf4ed71f460e6973",
+    "docs/V1_RELEASE_READINESS.md": "895f500f17d1c5fb5e6be9bc774a6e334a7b2bdf7c790450a4ad9c97b65e0693",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md": "0c34a94c0a555c3ec7277996bd5c2a04a6d327a943b0e86dc7f673bad4214f53",
+    "docs/fixes/v1-batch-5/README.md": "5431cc90af6c9a87ba857d06e6b57051506ede426b0c501b74089b03eefce0cf",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-deployed-ui.json": "23a63f97482fd5391d54d4da615f58719aaa15a27f5ac7bea1cce1fc05d5eaea",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-after.json": "0b09e3732e10360723396fe1854954063a02ef4832ebe9a67a522d4bda412c62",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-after.log": "63c1e752e79b00fb191f0313833cce62de210eb1377ffa1ba938499017464108",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-assessment.json": "1acd9f73c55a1a87b6224879ab7f8a4b7fc25a5d62973602a88aba02c589e951",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-before.json": "e31e00cc638b1112e4eca2a99840922aea56475b7369c8516cb7f3734d6a38e7",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-before.log": "18b444e944cfee05a8c1c0d6e429bd7797c72ac27758f34f0e077a2d945af7f0",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-build-checks.json": "75ea6c0b00da7ede4b0d2940de872dcf6aca7b581cdbf578bb75c2edea86119e",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-cleanup.cjs": "6bf98744dbd1adf55e7689168ffd09b0987fc8d13ab42f256e8f58f9ccfbc988",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-cleanup.json": "ba6da63c7ccd15ffb54d0ed707f6f16c31023af01acaf44830bc3dfc42491aa7",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-diagnosis.cjs": "ad0bcb8de301695d30eabde3498c3154a245c2f2f573f4b63b6843733f306760",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-diagnosis.json": "4dad185bd446a90454bd30ce8f7d9afde209763bb3eb9750b8ee86ae66bcf575",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-server-build.log": "e0e3b1e5ee71b6a9f9dbaed1446f84cc5fdd4916b6ada38be158016758afe7e2",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-save-publication-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "logFormattingOnly": {
+    "files": [],
+    "change": "Removed surplus EOF blank lines for Git whitespace checks; diagnostic content unchanged."
+  },
+  "remaining": [
+    "Deployment and authenticated save response verification.",
+    "Separate V1-109-F2 pipeline-currency and preview-failure validation.",
+    "Existing V1-012 failures and whole-release gates."
+  ]
+}

@@ -59,7 +59,7 @@ export async function runHubspotSave(pages: any[], options: any = {}) {
     app: { post: (...args: any[]) => { handler = args.at(-1); } }, importRateLimiter() {}, requireCampaignAccessParamId() {},
     getInternalGA4RefreshWriteInput: () => ({}), ensureCampaignAccess: async () => true,
     sendBadRequest: () => { throw Error('Invalid fixture request'); }, getHubspotAccessTokenForCampaign: async () => ({ accessToken: 'fixture' }),
-    fetch: fetchFixture, fetchWithTimeout: fetchFixture, googleAdsCampaignIdFromValueOrMapping: () => null, recomputeCampaignDerivedValues: async () => {},
+    fetch: fetchFixture, fetchWithTimeout: fetchFixture, googleAdsCampaignIdFromValueOrMapping: () => null, recomputeCampaignDerivedValues: options.recompute ?? (async () => {}),
     storage: options.storage ?? { getCampaign: async () => ({ id: 'fixture', currency: 'USD' }), getHubspotConnection: async () => ({ id: 'fixture-connection' }), getSalesforceConnection: async () => ({ id: 'fixture-connection' }), getRevenueSources: async () => [], replaceGa4HubspotRevenueSourceWithRecords: async (...args: any[]) => { writes.push(args); return { id: 'fixture-source' }; }, replaceGa4SalesforceRevenueSourceWithRecords: async (...args: any[]) => { writes.push(args); return { id: 'fixture-source' }; } },
     console: { error() {}, warn() {} },
   };
@@ -193,7 +193,7 @@ describe('Batch 5 Salesforce legacy pipeline currency recovery', () => {
 
 if (testUrl && (new URL(testUrl).hostname !== '127.0.0.1' || new URL(testUrl).pathname !== '/ga4_alignment_test' || process.env.DATABASE_URL)) throw Error('Requires isolated local PostgreSQL');
 describe.skipIf(!testUrl)('Batch 5 real PostgreSQL preservation and replacement', () => {
-  const tables = [schema.clients, schema.campaigns, schema.ga4RefreshWork, schema.hubspotConnections, schema.salesforceConnections, schema.revenueSources, schema.revenueRecords];
+  const tables = [schema.clients, schema.campaigns, schema.ga4RefreshWork, schema.hubspotConnections, schema.salesforceConnections, schema.revenueSources, schema.revenueRecords, schema.metricSnapshots];
   const namespace = `batch5_${randomUUID().replace(/-/g, '')}`;
   const storage = new DatabaseStorage();
   let admin: Pool, pool: Pool, created = false;
@@ -229,6 +229,42 @@ describe.skipIf(!testUrl)('Batch 5 real PostgreSQL preservation and replacement'
         await seed(schema.revenueRecords, { id: `${provider}-${id}-row`, campaignId: id, revenueSourceId: `${provider}-${id}`, sourceType: provider, currency: 'USD', revenue: '100.00', date: '2026-10-18' });
       }
     }
+  });
+  it.each(['add', 'edit'])('HubSpot %s completes its actual post-save recompute after prior GA4 publication', async mode => {
+    await pool.query("UPDATE campaigns SET currency='EUR' WHERE id='fixture'");
+    await seed(schema.ga4RefreshWork, { id: 'completed', campaignId: 'fixture', ownerId: 'owner', status: 'completed',
+      reportingDate: '2026-10-22', dueAt: new Date('2026-10-23T06:00:00Z'), completedAt: new Date('2026-10-23T06:10:00Z'), scope: {} });
+    for (const id of ['fixture', 'neighbor']) await seed(schema.metricSnapshots, { id: `executive-${id}`, campaignId: id,
+      snapshotType: 'executive_summary_daily', reportingDate: '2026-10-22', metrics: {}, notes: 'ga4_aligned_refresh_v1:2026-10-22:fixture' });
+    const jobs = vi.fn().mockResolvedValue({ campaignsProcessed: 1, campaignIdsFailed: [], campaignIdsSkipped: [],
+      kpiIdsSkipped: [], kpiIdsFailed: [], benchmarkIdsSkipped: [], benchmarkIdsFailed: [], alertReconciliationFailures: [] });
+    const env: any = { storage, getReportingDateWindow: () => ({ endDate: '2026-10-22' }), runGA4DailyKPIAndBenchmarkJobs: jobs,
+      refreshCampaignCurrentValuesForCampaign: vi.fn().mockResolvedValue({}), isGA4RevenuePlatformContext: () => true,
+      GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS: 15000, setTimeout, clearTimeout, console: { warn() {} } };
+    env.recomputeGA4KPIAndBenchmarkValues = bind(named.get('recomputeGA4KPIAndBenchmarkValues')!, env, 'return recomputeGA4KPIAndBenchmarkValues');
+    const recompute = bind(named.get('recomputeCampaignDerivedValues')!, env, 'return recomputeCampaignDerivedValues');
+    const body = { ...(mode === 'edit' ? { sourceId: 'hubspot-fixture' } : {}), pipelineEnabled: true, pipelineStageId: 'open-stage', pipelineStageLabel: 'Contract Sent' };
+    const run = () => runHubspotSave([page([]), page([200, 3000].map((amount, index) => ({ id: `open-${index}`,
+      properties: { campaign: 'selected', amount: String(amount), dealstage: 'open-stage', hs_currency: 'EUR' } })))], { storage, recompute, body });
+    const before = await snapshot();
+    const { res } = await run();
+    expect(res.statusCode, JSON.stringify(res.payload)).toBe(200);
+    expect(res.payload).toMatchObject({ success: true, totalRevenue: 0 });
+    const version = await storage.getGA4PublicationVersion('fixture');
+    expect(version).not.toBeNull();
+    expect(jobs).toHaveBeenCalledWith({ campaignId: 'fixture', useSavedOverview: true, publicationVersion: { campaignId: 'fixture', version } });
+    const after = await snapshot();
+    const selected = after.revenue_sources.filter((row: any) => row.campaign_id === 'fixture' && row.source_type === 'hubspot');
+    expect(selected).toHaveLength(mode === 'add' ? 2 : 1);
+    const saved = selected.find((row: any) => JSON.parse(row.mapping_config).pipelineEnabled);
+    expect(JSON.parse(saved.mapping_config)).toMatchObject({ lastTotalRevenue: 0, pipelineTotalToDate: 3200, pipelineCurrency: 'EUR' });
+    expect(after.revenue_records.filter((row: any) => row.revenue_source_id === saved.id).map((row: any) => Number(row.revenue))).toEqual([0]);
+    expect(after.metric_snapshots.find((row: any) => row.id === 'executive-fixture').notes).toBeNull();
+    for (const table of ['revenue_sources', 'revenue_records', 'metric_snapshots'])
+      expect(after[table].filter((row: any) => row.campaign_id === 'neighbor')).toEqual(before[table].filter((row: any) => row.campaign_id === 'neighbor'));
+    // An unchanged retry of the same selection reuses the saved source.
+    const retried = await run(); expect(retried.res.statusCode, JSON.stringify(retried.res.payload)).toBe(200);
+    expect((await snapshot()).revenue_sources.map((row: any) => row.id)).toEqual(after.revenue_sources.map((row: any) => row.id));
   });
   it.each([
     { soapOk: false }, { soapThrows: true }, { soap: '<organizationMultiCurrency>true</organizationMultiCurrency><orgDefaultCurrencyIsoCode>USD</orgDefaultCurrencyIsoCode>' },

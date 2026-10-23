@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-23T20:42:41.071Z",
+  "finding": "V1-109-F1",
+  "publicDeployment": {
+    "url": "https://marketforensics.onrender.com/api/health",
+    "httpStatus": 200,
+    "ok": true,
+    "commit": "9364b8894415a343616875bb1c224a75fc481d58"
+  },
+  "uiEvidence": {
+    "source": "User-provided screenshot in this conversation after the currency correction was pushed",
+    "campaignContext": "V1 Batch 5 Test from the ongoing user validation; campaign name is not visible inside this modal",
+    "page": "HubSpot revenue / Save / Review Settings",
+    "campaignCurrency": "EUR",
+    "confirmedRevenue": "EUR 0.00",
+    "pipelineProxy": "EUR 3,200.00",
+    "pipelineStage": "Contract Sent",
+    "selectedValue": "yesop_prospecting",
+    "campaignIdentifierField": "Deal Name",
+    "revenueField": "Amount",
+    "dateField": "Close Date",
+    "importRevenueButtonVisible": true
+  },
+  "result": "PASS for deployed revision and user-observed EUR review display only",
+  "nextCheck": "User imports this isolated test configuration, then compares the Overview Revenue and Pipeline Proxy cards and source details.",
+  "limits": [
+    "No import/save completion is shown",
+    "No post-save publication, source-modal total, notification or refresh acceptance is established",
+    "EUR review is observed live; USD/GBP and save/completion messages retain local synthetic-browser evidence only",
+    "V1-109-F2 preview provider-currency/failure boundary and V1-012 broader test failures remain OPEN",
+    "No production write or provider call was made by the agent"
+  ]
+}

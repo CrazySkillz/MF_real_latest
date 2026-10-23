@@ -20,15 +20,30 @@ const sliceBetween = (source: string, start: string, end: string) => {
 describe("GA4 source lifecycle recompute route guards", () => {
   it.each(["success", "kpiIdsFailed", "benchmarkIdsFailed", "benchmarkIdsSkipped"])("checks the actual source recompute result: %s", async condition => {
     const body = sliceBetween(routes, "const recomputeGA4KPIAndBenchmarkValues =", "const recomputeGA4SpendBeforeResponse =");
-    const storage = { getCampaign: vi.fn().mockResolvedValue({ reportingTimeZone: "Europe/Amsterdam" }), invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn().mockResolvedValue(undefined) };
+    const storage = { getGA4PublicationVersion: vi.fn().mockResolvedValue("completed-version"), getCampaign: vi.fn().mockResolvedValue({ reportingTimeZone: "Europe/Amsterdam" }), invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn().mockResolvedValue(undefined) };
     const result: any = { campaignsProcessed: 1, campaignIdsFailed: [], campaignIdsSkipped: [], kpiIdsFailed: [], kpiIdsSkipped: [], benchmarkIdsFailed: [], benchmarkIdsSkipped: [], alertReconciliationFailures: [] };
     if (condition !== "success") result[condition] = ["affected-row"];
     const jobs = vi.fn().mockResolvedValue(result);
     const fn = new Function("storage", "getReportingDateWindow", "runGA4DailyKPIAndBenchmarkJobs", "console", ts.transpileModule(body + "return recomputeGA4KPIAndBenchmarkValues;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(storage, () => ({ endDate: "2026-10-16" }), jobs, { warn: vi.fn() });
     if (condition === "success") await expect(fn("campaign-a", "Test")).resolves.toBe(true);
     else await expect(fn("campaign-a", "Test")).rejects.toThrow("recompute incomplete");
-    expect(storage.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledWith("campaign-a", "2026-10-16");
-    expect(jobs).toHaveBeenCalledWith({ campaignId: "campaign-a", useSavedOverview: true });
+    expect(storage.getGA4PublicationVersion).toHaveBeenCalledExactlyOnceWith("campaign-a");
+    expect(storage.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledWith("campaign-a", "2026-10-16", { publicationVersion: { campaignId: "campaign-a", version: "completed-version" } });
+    expect(jobs).toHaveBeenCalledWith({ campaignId: "campaign-a", useSavedOverview: true, publicationVersion: { campaignId: "campaign-a", version: "completed-version" } });
+  });
+  it.each(["busy", "changed", "missing campaign"])("stops source recompute before downstream jobs when %s", async condition => {
+    const body = sliceBetween(routes, "const recomputeGA4KPIAndBenchmarkValues =", "const recomputeGA4SpendBeforeResponse =");
+    const error = condition === "busy" ? "GA4_REFRESH_PUBLICATION_BUSY" : condition === "changed" ? "GA4_REFRESH_PUBLICATION_CHANGED" : "Campaign no longer exists";
+    const storage = { getGA4PublicationVersion: vi.fn().mockResolvedValue("v1"),
+      getCampaign: vi.fn().mockResolvedValue(condition === "missing campaign" ? null : { reportingTimeZone: "Europe/Amsterdam" }),
+      invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn().mockResolvedValue(undefined) };
+    if (condition === "busy") storage.getGA4PublicationVersion.mockRejectedValue(new Error(error));
+    if (condition === "changed") storage.invalidateExecutiveSummaryDailySnapshotAlignment.mockRejectedValue(new Error(error));
+    const jobs = vi.fn();
+    const fn = new Function("storage", "getReportingDateWindow", "runGA4DailyKPIAndBenchmarkJobs", "console", ts.transpileModule(body + "return recomputeGA4KPIAndBenchmarkValues;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(storage, () => ({ endDate: "2026-10-16" }), jobs, { warn: vi.fn() });
+    await expect(fn("campaign-a", "Test")).rejects.toThrow(error);
+    expect(jobs).not.toHaveBeenCalled();
+    if (condition !== "changed") expect(storage.invalidateExecutiveSummaryDailySnapshotAlignment).not.toHaveBeenCalled();
   });
   it("completes GA4 source-backed KPI/Benchmark recompute before mutation responses", () => {
     expect(routes).toContain('import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";');
@@ -39,7 +54,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
       "const recomputeGA4KPIAndBenchmarkValues",
       "const recomputeGA4SpendBeforeResponse",
     );
-    expect(ga4Helper).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true });");
+    expect(ga4Helper).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true, publicationVersion });");
     expect(ga4Helper.indexOf("await storage.invalidateExecutiveSummaryDailySnapshotAlignment")).toBeLessThan(ga4Helper.indexOf("await runGA4DailyKPIAndBenchmarkJobs"));
 
     const spendHelper = sliceBetween(routes, "const recomputeGA4SpendBeforeResponse", "const scheduleGA4KpiCreatePostResponseProcessing");

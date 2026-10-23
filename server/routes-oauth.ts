@@ -4477,10 +4477,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const recomputeGA4KPIAndBenchmarkValues = async (campaignId: string, logPrefix: string) => {
     try {
+      const publicationVersion = { campaignId, version: await storage.getGA4PublicationVersion(campaignId) };
       const campaign = await storage.getCampaign(campaignId);
       if (!campaign) throw new Error("Campaign no longer exists");
-      await storage.invalidateExecutiveSummaryDailySnapshotAlignment(campaignId, getReportingDateWindow(1, campaign.reportingTimeZone).endDate);
-      const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true });
+      await storage.invalidateExecutiveSummaryDailySnapshotAlignment(campaignId, getReportingDateWindow(1, campaign.reportingTimeZone).endDate, { publicationVersion });
+      const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true, publicationVersion });
       const targetFailed = (result.campaignIdsFailed || []).includes(campaignId);
       const incomplete = Number(result.campaignsProcessed || 0) <= 0 || targetFailed || result.kpiIdsSkipped.length > 0 || result.kpiIdsFailed.length > 0 ||
         result.benchmarkIdsSkipped.length > 0 || result.benchmarkIdsFailed.length > 0 || result.alertReconciliationFailures.length > 0;

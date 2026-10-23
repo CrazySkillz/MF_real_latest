@@ -1,0 +1,97 @@
+{
+  "at": "2026-10-23T20:55:59.154196+00:00",
+  "finding": "V1-109-F3",
+  "severity": "P1",
+  "baseCommit": "9364b8894415a343616875bb1c224a75fc481d58",
+  "status": "LOCAL CORRECTION VERIFIED; NOT COMMITTED OR DEPLOYED",
+  "symptom": "Import revenue reports Failed to Save HubSpot Mappings: GA4_REFRESH_PUBLICATION_CHANGED after displaying EUR0 confirmed revenue and EUR3200 Contract Sent proxy.",
+  "rootCause": "The HubSpot source transaction commits before recomputeCampaignDerivedValues. Its shared recomputeGA4KPIAndBenchmarkValues helper omitted publicationVersion when invalidating executive-summary alignment. writeGA4DerivedChange rejects an unversioned write when completed GA4 refresh work already exists. A completed prior refresh therefore caused a deterministic HTTP500 after persistence, even without a live competing refresh.",
+  "correction": "Capture the campaign publication version before campaign reads and pass the same version to alignment invalidation and existing KPI/Benchmark jobs. No storage guard, schema, monetary calculation, API response shape or provider query changes.",
+  "trace": [
+    "HubSpotRevenueWizard Import revenue -> POST /api/campaigns/:id/hubspot/save-mappings -> exact campaign access/provider validation -> replaceGa4HubspotRevenueSourceWithRecords transaction.",
+    "After source/records/connection commit, ordinary UI save -> recomputeCampaignDerivedValues -> refreshCampaignCurrentValuesForCampaign -> recomputeGA4KPIAndBenchmarkValues.",
+    "The first current-value refresh already captures publication version. The following shared helper omitted it from invalidateExecutiveSummaryDailySnapshotAlignment -> writeGA4DerivedChange -> readGA4PublicationVersion.",
+    "The corrected helper passes one captured version through invalidation and runGA4DailyKPIAndBenchmarkJobs. Busy/stale versions and missing campaign still reject before downstream jobs.",
+    "The helper also serves existing GA4 Revenue and Spend mutation callers. Existing request/job/storage boundaries and incomplete-job rejection remain unchanged."
+  ],
+  "productionDiagnosis": {
+    "evidence": "hubspot-save-publication-diagnosis.json",
+    "mode": "EXACT CAMPAIGN READ ONLY; transaction ROLLBACK",
+    "campaign": "V1 Batch 5 Test",
+    "hubspotSourceCount": 1,
+    "confirmedRevenue": 0,
+    "pipelineAmount": 3200,
+    "pipelineCurrency": null,
+    "completedRefreshRows": 3,
+    "sourceRecords": 1,
+    "productionWrites": false,
+    "providerCalls": false,
+    "ptomoAccess": false,
+    "conclusion": "A single saved HubSpot source and zero-revenue record already exist; no duplicate removal or reimport was performed. Missing saved pipeline currency remains separate OPEN V1-109-F2 evidence."
+  },
+  "validation": {
+    "before": {
+      "file": "hubspot-save-publication-before.json",
+      "passed": 0,
+      "failed": 2,
+      "filtered": 93,
+      "classification": "Both new add/edit exact-handler plus real PostgreSQL regressions reproduced HTTP500 with GA4_REFRESH_PUBLICATION_CHANGED before the runtime correction."
+    },
+    "after": {
+      "file": "hubspot-save-publication-after.json",
+      "passed": 311,
+      "failed": 0,
+      "skipped": 0,
+      "suites": {
+        "v1-batch5-provider-contract.test.ts": 95,
+        "ga4-source-lifecycle-recompute-regression.test.ts": 17,
+        "ga4-derived-publication-postgres.test.ts": 186,
+        "hubspot-revenue-transaction.test.ts": 7,
+        "hubspot-review-currency-browser.test.ts": 6
+      }
+    },
+    "newCoverage": [
+      "Add and edit with completed GA4 work return HTTP200 after actual route/post-save helpers and real storage invalidation.",
+      "Zero closed-won revenue and two EUR open-stage amounts 200+3000 remain separate; repeat saves reuse the saved source.",
+      "Neighbor campaign sources, records and executive snapshot remain unchanged.",
+      "Actual helper propagates one exact campaign/version; busy, changed and missing-campaign branches stop downstream jobs."
+    ],
+    "testBoundary": "Provider responses are synthetic. New add/edit cases use the actual extracted route and recompute helpers plus real PostgreSQL/storage, but current-value refresh and KPI/Benchmark jobs are stubbed; job argument propagation is asserted. Existing 186 PostgreSQL checks independently exercise the downstream storage publication guards. These are not full live-provider, scheduler or all-consumer acceptance.",
+    "builds": "hubspot-save-publication-build-checks.json",
+    "typecheck": "PASS",
+    "serverBuild": "PASS",
+    "clientBuild": "Not rerun: no client changes; prior currency build evidence retained.",
+    "isolation": "Credential-stripped test/build runner; Node external networking blocked; temporary schemas in loopback PostgreSQL only; synthetic browser requests.",
+    "cleanup": "hubspot-save-publication-cleanup.json"
+  },
+  "remaining": [
+    "Commit, push and deployed save/response verification.",
+    "V1-109-F2 provider pipeline-currency and failed-preview handling remains OPEN; the saved real source has pipelineCurrency:null.",
+    "Actual provider downstream cards, KPI/Benchmark/report propagation, edit/reconnect/cancel/delete and natural refresh acceptance remain OPEN.",
+    "This passing targeted packet does not close prior V1-012 failures or other release gates."
+  ],
+  "releaseDecision": "NO-GO; 130 master assignments, 120 OPEN, 10 DEFERRED, 0 CLOSED unchanged.",
+  "fileSha256": {
+    "server/routes-oauth.ts": "ede76a1cf97bcad0b417981464c8f8f85b55273575606e8b7f7f54c403e6cf42",
+    "server/v1-batch5-provider-contract.test.ts": "1b13344b607e87cb004238896cdab8a8b4afb34ad6f960edcf4ed71f460e6973",
+    "server/ga4-source-lifecycle-recompute-regression.test.ts": "2eeaafaeafb45a110ed91a05ab1ac5887ae7a5a0cd6e8d8345d1d9ae345653b3"
+  },
+  "evidenceSha256": {
+    "hubspot-save-publication-diagnosis.cjs": "ad0bcb8de301695d30eabde3498c3154a245c2f2f573f4b63b6843733f306760",
+    "hubspot-save-publication-diagnosis.json": "4dad185bd446a90454bd30ce8f7d9afde209763bb3eb9750b8ee86ae66bcf575",
+    "hubspot-save-publication-before.json": "e31e00cc638b1112e4eca2a99840922aea56475b7369c8516cb7f3734d6a38e7",
+    "hubspot-save-publication-after.json": "0b09e3732e10360723396fe1854954063a02ef4832ebe9a67a522d4bda412c62",
+    "hubspot-save-publication-build-checks.json": "75ea6c0b00da7ede4b0d2940de872dcf6aca7b581cdbf578bb75c2edea86119e",
+    "hubspot-save-publication-cleanup.cjs": "6bf98744dbd1adf55e7689168ffd09b0987fc8d13ab42f256e8f58f9ccfbc988",
+    "hubspot-save-publication-cleanup.json": "ba6da63c7ccd15ffb54d0ed707f6f16c31023af01acaf44830bc3dfc42491aa7"
+  },
+  "documentationChecks": {
+    "command": "node docs/audits/v1-2026-10-19/check-audit-record.cjs --docs-only",
+    "result": "PASS",
+    "documents": 10,
+    "findings": 130,
+    "localLinks": 1131,
+    "limitation": "Documentation structure/status/link integrity, not runtime certification."
+  },
+  "diffCheck": "git diff --check: PASS"
+}

@@ -1,0 +1,114 @@
+{
+  "at": "2026-10-23T20:47:31.957Z",
+  "campaignName": "V1 Batch 5 Test",
+  "productionWrites": false,
+  "providerCalls": false,
+  "liveHealth": {
+    "status": 200,
+    "ok": true,
+    "commit": "9364b8894415a343616875bb1c224a75fc481d58"
+  },
+  "databaseTargetSha256": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "campaign": {
+    "ref": "de4775c3b435c3350ea24f5d538e60e639c9f9cd21de63d5432956b44551e722",
+    "currency": "EUR",
+    "status": "active"
+  },
+  "hubspotSources": [
+    {
+      "ref": "56317f67397be753088b3a6781b6f8e170a6234134ef205a9b7c0f16ed7be1c0",
+      "currency": "EUR",
+      "active": true,
+      "mapping": {
+        "campaignProperty": "dealname",
+        "selectedValues": [
+          "yesop_prospecting"
+        ],
+        "revenueProperty": "amount",
+        "dateField": "closedate",
+        "currency": "EUR",
+        "lastTotalRevenue": 0,
+        "pipelineEnabled": true,
+        "pipelineStageId": "contractsent",
+        "pipelineStageLabel": "Contract Sent",
+        "pipelineTotalToDate": 3200,
+        "pipelineCurrency": null,
+        "pipelineLastUpdatedAt": "2026-10-23T20:47:23.563Z",
+        "pipelineWarning": null,
+        "pipelineValueRevenueTotals": [
+          {
+            "campaignValue": "yesop_prospecting",
+            "revenue": 3200
+          }
+        ],
+        "lastSyncedAt": "2026-10-23T20:47:23.717Z"
+      },
+      "records": {
+        "rows": 1,
+        "revenue": "0.00",
+        "first_date": "2026-10-22",
+        "last_date": "2026-10-22"
+      }
+    }
+  ],
+  "financial": [
+    {
+      "reporting_date": "2026-10-22",
+      "recorded_at": "2026-10-23T18:38:46.087Z",
+      "financial_daily": {
+        "inputs": {
+          "spend": {
+            "value": null,
+            "sources": [],
+            "available": false
+          },
+          "revenue": {
+            "value": "7653.96",
+            "sources": [
+              "ga4"
+            ],
+            "available": true
+          },
+          "conversions": {
+            "value": 40,
+            "sources": [
+              "ga4"
+            ],
+            "available": true
+          }
+        },
+        "version": "financial_daily_snapshot_v1",
+        "currency": "EUR",
+        "currentValueWindow": {
+          "mode": "initial_import_to_latest_completed_day",
+          "endDate": "2026-10-22",
+          "startDate": "2026-09-23",
+          "dataThroughDate": "2026-10-22",
+          "reportingTimeZone": "Europe/Amsterdam"
+        }
+      }
+    }
+  ],
+  "work": [
+    {
+      "status": "completed",
+      "completed_at": "2026-10-23T18:56:13.410Z",
+      "attempt_count": 1,
+      "retryable": true
+    },
+    {
+      "status": "completed",
+      "completed_at": "2026-10-23T19:45:20.739Z",
+      "attempt_count": 1,
+      "retryable": true
+    },
+    {
+      "status": "completed",
+      "completed_at": "2026-10-23T20:39:21.846Z",
+      "attempt_count": 1,
+      "retryable": true
+    }
+  ],
+  "transactionEnded": "ROLLBACK",
+  "result": "READ_ONLY_CHECK_COMPLETE"
+}

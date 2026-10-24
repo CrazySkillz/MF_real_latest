@@ -6910,9 +6910,6 @@ export default function GA4Metrics() {
                                 Sources ({revenueSourcesCount})
                               </button>
                             )}
-                            {totalRevenueDisplaySources.length > 0 && (
-                              <p className="mt-2 text-xs text-muted-foreground/70">Total Revenue reflects the last successful financial refresh. Recent imports or edits may not be included yet.</p>
-                            )}
                           </CardContent>
                         </Card>
                         </div>
@@ -7325,7 +7322,6 @@ export default function GA4Metrics() {
                         <DialogTitle className="text-foreground">Revenue Sources</DialogTitle>
                         <DialogDescription className="text-muted-foreground/70">
                           Latest imported source values. Total Revenue uses completed data through {formatReportingDateLabel(overviewFinancialReportingDate)}.
-                          <span className="mt-2 block">Recent imports or edits may not yet be included in Total Revenue. It updates after a successful scheduled refresh. Scheduled refreshes: {overviewRefreshSchedule}.</span>
                         </DialogDescription>
                       </DialogHeader>
                       <div className="scrollbar-hide max-h-[65vh] space-y-2 overflow-y-auto pr-1">

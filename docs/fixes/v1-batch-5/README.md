@@ -10,6 +10,8 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ### Revenue refresh explanation October 24
 
+**Subsequent user-requested removal:** the extra refresh-delay text from `346af942` is removed from both the Total Revenue card and Revenue Sources modal. The corrected snapshot reporting date and existing per-source pending notices remain. This is a text-only removal; the validation packet below records the earlier addition. Diff and audit-document checks pass. The removal is included in the user-authorized publication titled `fix(ga4): remove revenue refresh notes`; deployment remains unverified.
+
 The user screenshots show `euro_deal` selected alongside `yesop_prospecting`, EUR 250 confirmed HubSpot revenue in review and Revenue Sources, EUR 3,200 Pipeline Proxy, and the previous EUR 7,653.96 Total Revenue card. This proves the displayed import result, not independent provider/database reconciliation or completion of the next financial publication.
 
 The traced display boundary is shared by imported revenue sources: `ga4-metrics.tsx` reads the main card from `financial-daily-snapshot`, whose guarded route reads the persisted financial publication; source definitions/breakdown expose the latest normalized imports. HubSpot save atomically replaces the selected source's records and requests derived recomputation, but does not publish that financial snapshot. The existing `pendingCompletedDay` notice covers reporting-date eligibility, so an eligible older deal newly selected on an existing source can have no explanation for this difference.

@@ -2,7 +2,9 @@
 
 ## Mandatory status
 
-**Current status: CLEAN-CERTIFIED for the one exact active GA4 Salesforce
+**October 24 incident: current Salesforce credential-renewal stability is UNPROVEN.** The `V1 Batch 5 Test` connection reports `expired access/refresh token`. A confirmed encrypted-credential persistence regression has been corrected and tested locally, but deployment and live renewal recovery remain outstanding. See the [incident, exact path, validation and remaining boundaries](../docs/fixes/v1-batch-5/README.md#encrypted-credential-renewal-correction-october-24). The earlier exact-source certification below is historical evidence and must not be used to certify this connection or current renewal behavior.
+
+**Historical status: CLEAN-CERTIFIED for the one exact active GA4 Salesforce
 Revenue source and exercised lifecycle/configuration boundary recorded below at
 deployed runtime `d4f1ec0ea24caea3d7d565da0be773d219f68b32`.** This is not
 whole-provider, whole-GA4-Overview, or global scheduler certification.

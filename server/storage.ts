@@ -8,6 +8,7 @@ import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, encryptString, type EncryptedTokens } from "./utils/tokenVault";
+import { isDeepStrictEqual } from "node:util";
 import { inboundWebhookReceipts, serviceAccountResourceGrants, campaignCreationRequests } from "@shared/schema";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
@@ -4017,7 +4018,7 @@ export class DatabaseStorage implements IStorage {
       const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
       if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
         || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
-        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+        || fields.some(field => field === "encryptedTokens" ? !isDeepStrictEqual(existing[field] ?? null, expected[field] ?? null) : (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
     if (!existing) return undefined;
     if (cacheWrite) {
@@ -4423,7 +4424,7 @@ export class DatabaseStorage implements IStorage {
       const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
       if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
         || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
-        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+        || fields.some(field => field === "encryptedTokens" ? !isDeepStrictEqual(existing[field] ?? null, expected[field] ?? null) : (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
     if (!existing) return undefined;
 
@@ -4565,7 +4566,7 @@ export class DatabaseStorage implements IStorage {
       const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
       if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
         || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
-        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+        || fields.some(field => field === "encryptedTokens" ? !isDeepStrictEqual(existing[field] ?? null, expected[field] ?? null) : (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
     if (!existing) return undefined;
 
@@ -4778,7 +4779,7 @@ export class DatabaseStorage implements IStorage {
       const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
       if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
         || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
-        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+        || fields.some(field => field === "encryptedTokens" ? !isDeepStrictEqual(existing[field] ?? null, expected[field] ?? null) : (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
     if (!existing) return undefined;
 
@@ -5429,7 +5430,7 @@ export class DatabaseStorage implements IStorage {
       const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
       if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
         || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
-        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+        || fields.some(field => field === "encryptedTokens" ? !isDeepStrictEqual(existing[field] ?? null, expected[field] ?? null) : (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
     if (!existing) return undefined;
     const setObj: any = { ...connection };
@@ -5577,7 +5578,7 @@ export class DatabaseStorage implements IStorage {
       const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
       if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
         || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
-        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+        || fields.some(field => field === "encryptedTokens" ? !isDeepStrictEqual(existing[field] ?? null, expected[field] ?? null) : (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
     if (!existing) return undefined;
 

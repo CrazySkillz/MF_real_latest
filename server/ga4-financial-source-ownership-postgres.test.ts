@@ -111,6 +111,25 @@ function internalRequest(scope?: any) {
     ...(scope ? { "x-internal-ga4-refresh-scope": JSON.stringify(scope) } : {}) } };
 }
 
+function salesforceRenewal(fetch: any) {
+  const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
+  const start = source.indexOf("  const salesforceTokenRefreshes =");
+  const end = source.indexOf("  async function getSalesforceAccessTokenForCampaign", start);
+  const statusStart = source.indexOf('  app.get("/api/salesforce/:campaignId/status"');
+  const statusEnd = source.indexOf("  // Salesforce Opportunity fields", statusStart);
+  expect(start).toBeGreaterThan(0); expect(end).toBeGreaterThan(start);
+  expect(statusStart).toBeGreaterThan(0); expect(statusEnd).toBeGreaterThan(statusStart);
+  let handler: any;
+  const refresh = new Function("storage", "fetch", "app", "ensureCampaignAccess", "console", ts.transpileModule(
+    source.slice(start, end) + source.slice(statusStart, statusEnd) + "\nreturn refreshSalesforceToken;",
+    { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(storage, fetch,
+    { get: (_path: string, fn: any) => { handler = fn; } }, async () => true, { log: vi.fn(), error: vi.fn() });
+  return { refresh, status: async () => {
+    const res: any = { json(payload: any) { this.body = payload; return this; } };
+    await handler({ params: { campaignId: "a" } }, res); return res.body;
+  } };
+}
+
 // Actual save routes and real materialization/ownership transactions; provider reads and auth are fixtures.
 function revenueRoute(provider: "salesforce" | "hubspot" | "shopify", scope?: any, beforeResponse?: () => Promise<void>) {
   const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
@@ -137,7 +156,7 @@ function revenueRoute(provider: "salesforce" | "hubspot" | "shopify", scope?: an
     hubspotSearchDeals: async () => { await providerRead(); return { results: [{ id: "deal-1", properties: { Campaign: "old", amount: "20", hs_currency: "EUR", closedate: date, dealstage: "closedwon" } }] }; },
     assertProductionTokenEncryptionConfigured: () => {}, getShopifyConnectionForCampaign: () => storage.getShopifyConnection("a"),
     getShopifyApiVersion: () => "2026-07", getShopifyConnectionOrderAccess: () => ({ isOauth: false }),
-    getShopifyCampaignOrderWindow: () => ({ limited: false }), getShopifyCampaignWindowStartAt: () => new Date("2026-09-04T00:00:00Z"),
+    getShopifyCampaignOrderWindow: () => ({ limited: false, campaignStartAt: "2026-09-04T00:00:00Z" }), getShopifyCampaignWindowStartAt: () => new Date("2026-09-04T00:00:00Z"),
     isShopifyPartnerDevelopmentStore: async () => false,
     shopifyFetchAllOrders: async () => { await providerRead(); return { orders: [{ id: "order-1", tags: "old", test: false, cancelled_at: null, financial_status: "paid", current_total_price: "20.00", currency: "EUR", created_at: `${date}T10:00:00Z` }] }; },
     getShopifyOrderTags: (order: any) => String(order.tags).split(",").map(value => value.trim()), devLog: () => {},
@@ -407,6 +426,61 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     ["Salesforce", schema.salesforceConnections, "salesforce-a", "salesforce-a"], ["Shopify", schema.shopifyConnections, "shopify-a", "shopify-a"],
     ["GoogleAds", schema.googleAdsConnections, "ads-a", "a"], ["GA4GoogleAdsSpend", schema.ga4GoogleAdsSpendConnections, "ads-a", "a"],
   ] as const;
+  it("keeps Salesforce connected through successive scheduled rotations using the real renewal and status handlers", async () => {
+    await storage.updateSalesforceConnection("salesforce-a", { accessToken: "access-0", refreshToken: "refresh-0",
+      clientId: "fixture-client", clientSecret: "fixture-secret", instanceUrl: "https://fixture.invalid", expiresAt: new Date(0) });
+    const scope = await claim(); let generation = 0;
+    const fetch = vi.fn(async (_url: string, options: any) => {
+      expect(options.body.get("refresh_token")).toBe(`refresh-${generation}`);
+      generation++;
+      return { ok: true, status: 200, json: async () => ({ access_token: `access-${generation}`, refresh_token: `refresh-${generation}` }) };
+    });
+    const fixture = salesforceRenewal(fetch);
+    const records = await pool.query("SELECT * FROM revenue_records ORDER BY id");
+    const sources = await pool.query("SELECT * FROM revenue_sources ORDER BY id");
+    for (let i = 1; i <= 2; i++) {
+      const conn = await storage.getSalesforceConnection("a", { refreshScope: scope });
+      expect(await fixture.refresh(conn, true, { refreshScope: scope })).toBe(`access-${i}`);
+      expect(await fixture.status()).toMatchObject({ connected: true, connectionId: "salesforce-a" });
+      expect((await storage.getSalesforceConnection("a", { refreshScope: scope }))?.refreshToken).toBe(`refresh-${i}`);
+    }
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect((await pool.query("SELECT * FROM revenue_records ORDER BY id")).rows).toEqual(records.rows);
+    expect((await pool.query("SELECT * FROM revenue_sources ORDER BY id")).rows).toEqual(sources.rows);
+  });
+  it("keeps saved Salesforce revenue and credentials intact when the provider rejects renewal", async () => {
+    await storage.updateSalesforceConnection("salesforce-a", { accessToken: "expired", refreshToken: "revoked",
+      clientId: "fixture-client", clientSecret: "fixture-secret", instanceUrl: "https://fixture.invalid", expiresAt: new Date(0) });
+    const before = await saved();
+    const fetch = vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant", error_description: "expired access/refresh token" }) }));
+    expect(await salesforceRenewal(fetch).status()).toMatchObject({ connected: false, connectionId: "salesforce-a" });
+    expect(fetch).toHaveBeenCalledTimes(1); expect(await saved()).toEqual(before);
+  });
+  it.each(connections)("persists successive %s renewals after encrypted credentials are read from PostgreSQL", async (name, table, id, arg) => {
+    // Initial credentials are already encrypted in production; a null-token fixture misses this path.
+    const update = (values: any, options?: any) => (storage as any)[`update${name}Connection`](arg, values, options);
+    await update({ accessToken: "access-0", ...(name !== "Shopify" ? { refreshToken: "refresh-0", clientSecret: "fixture-secret" } : {}) });
+    const scope = await claim();
+    for (let i = 1; i <= 2; i++) {
+      const [expectedConnection] = (await database.current.select().from(table)).filter((row: any) => row.id === id);
+      const [separateRead] = (await database.current.select().from(table)).filter((row: any) => row.id === id);
+      expect(separateRead.encryptedTokens).toEqual(expectedConnection.encryptedTokens);
+      expect(separateRead.encryptedTokens).not.toBe(expectedConnection.encryptedTokens);
+      const renewed = await update({ accessToken: `access-${i}`, ...(name !== "Shopify" ? { refreshToken: `refresh-${i}` } : {}) }, { refreshScope: scope, expectedConnection });
+      expect(renewed.accessToken).toBe(`access-${i}`);
+      if (name !== "Shopify") {
+        expect(renewed.refreshToken).toBe(`refresh-${i}`);
+        expect(renewed.clientSecret).toBe("fixture-secret");
+      }
+      const after = await saved();
+      await expect(update({ accessToken: "stale-write" }, { refreshScope: scope, expectedConnection })).rejects.toThrow("GA4_REFRESH_CONNECTION_CHANGED");
+      expect(await saved()).toEqual(after);
+    }
+    const [current] = (await database.current.select().from(table)).filter((row: any) => row.id === id);
+    await expire(scope); const beforeExpiredSave = await saved();
+    await expect(update({ accessToken: "expired-lease-write" }, { refreshScope: scope, expectedConnection: current })).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+    expect(await saved()).toEqual(beforeExpiredSave);
+  });
   it.each(connections)("fences %s credential renewal, including expired and changed credentials", async (name, table, id, arg) => {
     const scope = await claim(); const [expectedConnection] = (await database.current.select().from(table)).filter((row: any) => row.id === id);
     const update = (options: any) => (storage as any)[`update${name}Connection`](arg, { accessToken: "new-fake-token" }, options);

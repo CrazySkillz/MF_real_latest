@@ -1,0 +1,54 @@
+{
+  "at": "2026-10-24T14:08:39.994Z",
+  "campaignName": "V1 Batch 5 Test",
+  "databaseWrites": false,
+  "providerCalls": false,
+  "credentialReads": false,
+  "live": {
+    "status": 200,
+    "ok": true,
+    "commit": "549aa8a595ff14bb31135e6e4802582bdcb138ad"
+  },
+  "campaign": {
+    "ref": "de4775c3b435c3350ea24f5d538e60e639c9f9cd21de63d5432956b44551e722",
+    "currency": "EUR"
+  },
+  "connections": [
+    {
+      "ref": "c43d929276655d9040651790bb6fae7bd06143a84d6f326b7d08897a80e1729a",
+      "is_active": true,
+      "connected_at": "2026-10-24T08:01:47.604Z",
+      "expires_at": "2026-10-24T12:00:33.602Z",
+      "has_instance_url": true,
+      "has_client_id": true,
+      "has_plain_access": false,
+      "has_plain_refresh": false,
+      "has_plain_client_secret": false,
+      "has_encrypted_access": true,
+      "has_encrypted_refresh": true,
+      "has_encrypted_client_secret": true
+    }
+  ],
+  "sources": [
+    {
+      "ref": "09a7464efe9caacc8d865b3152b88db98e522750229b71ea383e38b72bbfc4e8",
+      "is_active": false,
+      "platform_context": "ga4",
+      "currency": "EUR",
+      "last_synced_at": "2026-10-24T10:16:20.310Z",
+      "pipeline_last_updated_at": null,
+      "last_total_revenue": "100"
+    },
+    {
+      "ref": "1dea8e876b2510ef1094c76558cca17b02ddf2ea595ccd45f64d77413c4a7ce4",
+      "is_active": true,
+      "platform_context": "ga4",
+      "currency": "EUR",
+      "last_synced_at": "2026-10-24T13:52:51.368Z",
+      "pipeline_last_updated_at": null,
+      "last_total_revenue": "100"
+    }
+  ],
+  "transactionEnded": "ROLLBACK",
+  "result": "READ_ONLY_CHECK_COMPLETE"
+}

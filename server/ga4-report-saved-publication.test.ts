@@ -218,4 +218,46 @@ describe("GA4 report saved publication", () => {
     await expect(build()).rejects.toThrow("Financial publication changed");
     expect(printed).toEqual([]);
   });
+  it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv"])("includes completed-day %s revenue even when connected today", async sourceType => {
+    storageMock.getRevenueSources.mockResolvedValue([{ id: "r", isActive: true, createdAt: "2026-10-17", currency: "EUR", sourceType }]);
+    await build();
+    expect(printed).toContain("EUR 130.01");
+    expect(storageMock.getRevenueBreakdownBySource).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-16", "ga4");
+  });
+  it.each(["overview", "kpis", "benchmarks", "custom"])("rejects missing new-source materialization in a %s report", async type => {
+    storageMock.getRevenueSources.mockResolvedValue([{ id: "r", isActive: true, createdAt: "2026-10-17", currency: "EUR", sourceType: "csv" }]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
+    const saved = snapshot(); saved.metrics.financialDaily.inputs.revenue.value = "100.01";
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storageMock.getPlatformKPIs.mockResolvedValue([{ id: "k", name: "Revenue KPI", metric: "revenue", currentValue: "100.01", targetValue: "200" }]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue([{ id: "b", name: "Revenue Benchmark", metric: "revenue", currentValue: "100.01", benchmarkValue: "200" }]);
+    await expect(build(type, { sections: { kpis: true }, subsections: { kpis: { items: true } }, selectedKpiIds: ["k"] })).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE");
+    expect(printed).toEqual([]);
+  });
+  it.each(["overview", "kpis", "benchmarks", "custom"])("keeps verified future-only revenue excluded in a completed-day %s report", async type => {
+    storageMock.getRevenueSources.mockResolvedValue([{ id: "r", isActive: true, createdAt: "2026-10-17", currency: "EUR", sourceType: "csv" }]);
+    storageMock.getRevenueBreakdownBySource.mockImplementation(async (_id, start) => start === "2026-10-17"
+      ? [{ sourceId: "r", revenue: 30, currency: "EUR" }] : []);
+    const saved = snapshot(); saved.metrics.financialDaily.inputs.revenue.value = "100.01";
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storageMock.getPlatformKPIs.mockResolvedValue([{ id: "k", name: "Revenue KPI", metric: "revenue", currentValue: "999.99", targetValue: "200" }]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue([{ id: "b", name: "Revenue Benchmark", metric: "revenue", currentValue: "999.99", benchmarkValue: "200" }]);
+    await build(type, { sections: { kpis: true }, subsections: { kpis: { items: true } }, selectedKpiIds: ["k"] });
+    expect(printed.join("\n")).toContain("100.01");
+    expect(printed.join("\n")).not.toMatch(/130\.01|999\.99/);
+  });
+  it("blocks a new source with mismatched currency despite matching numeric totals", async () => {
+    storageMock.getRevenueSources.mockResolvedValue([{ id: "r", isActive: true, createdAt: "2026-10-17", currency: "USD", sourceType: "csv" }]);
+    await expect(build()).rejects.toThrow("Financial publication changed");
+    expect(printed).toEqual([]);
+  });
+  it("does not assume missing rows are future sales when verification fails", async () => {
+    storageMock.getRevenueSources.mockResolvedValue([{ id: "r", isActive: true, createdAt: "2026-10-17", currency: "EUR", sourceType: "csv" }]);
+    storageMock.getRevenueBreakdownBySource.mockImplementation(async (_id, start) => {
+      if (start === "2026-10-17") throw new Error("fixture verification failure");
+      return [];
+    });
+    await expect(build()).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Revenue");
+    expect(printed).toEqual([]);
+  });
 });

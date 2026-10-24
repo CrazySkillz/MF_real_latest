@@ -36,6 +36,8 @@ const devLog = (...args: any[]) => {
 
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
+export type GA4RevenuePublication = { version: 1; reportingDate: string; sources: Record<string, string>; pendingSourceIds: string[] };
+export type GA4RevenuePublicationStatus = Record<string, { status: "published" | "pending" | "failed"; hash: string }>;
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";
 export type CampaignDeepDiveReportLimits = { maxActiveReports: number; maxScheduledActiveReports: number };
@@ -198,7 +200,7 @@ export interface IStorage {
   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
   getGA4PublicationVersion(campaignId: string): Promise<string | null>;
-  isGA4NativeRecoveryEligible(campaignId: string, options?: { includeFinancialSources?: boolean }): Promise<boolean>;
+  isGA4NativeRecoveryEligible(campaignId: string, options?: { includeFinancialSources?: boolean; revenueChange?: boolean }): Promise<boolean>;
   getRecoverableGA4RefreshWork(): Promise<GA4RefreshWork[]>;
   requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry?: boolean): Promise<GA4RefreshWork | undefined>;
   getGA4InitialImportWork(campaignId: string, ownerId: string, workId?: string): Promise<GA4RefreshWork | undefined>;
@@ -245,7 +247,7 @@ export interface IStorage {
   deleteGA4Connection(connectionId: string): Promise<boolean>;
 
   // GA4 Daily Metrics (daily facts)
-  ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string, options?: { suppressAlerts?: boolean }): Promise<GA4RefreshWork | undefined>;
+  ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string, options?: { suppressAlerts?: boolean; revenueChange?: boolean }): Promise<GA4RefreshWork | undefined>;
   claimGA4RefreshWork(campaignId: string, ownerId: string, workId: string, leaseMs: number): Promise<GA4RefreshWork | undefined>;
   updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string, action: "renew" | "release" | "complete" | "complete_without_alerts" | "complete_initial_import", leaseMs?: number, publicationCompletedAt?: string, failure?: { retryable: boolean; code: string; retryAfterMs?: number }): Promise<GA4RefreshWork | undefined>;
   upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }>;
@@ -287,6 +289,8 @@ export interface IStorage {
 
   // Revenue (generic; platform-scoped to avoid GA4/LinkedIn leakage)
   getRevenueSources(campaignId: string, platformContext?: RevenuePlatformContext): Promise<RevenueSource[]>;
+  getGA4RevenuePublication(campaignId: string, reportingDate: string): Promise<GA4RevenuePublication>;
+  getGA4RevenuePublicationStatus(campaignId: string, reportingDate: string): Promise<GA4RevenuePublicationStatus>;
   getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined>;
   createRevenueSource(source: InsertRevenueSource): Promise<RevenueSource>;
   updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined>;
@@ -559,7 +563,7 @@ export interface IStorage {
   getCampaignSnapshotsByPeriod(campaignId: string, period: 'daily' | 'weekly' | 'monthly'): Promise<MetricSnapshot[]>;
   getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
   createMetricSnapshot(snapshot: InsertMetricSnapshot & GA4RefreshWriteInput): Promise<MetricSnapshot>;
-  upsertFinancialDailySnapshot(snapshot: FinancialDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot>;
+  upsertFinancialDailySnapshot(snapshot: FinancialDailySnapshotInput & GA4RefreshWriteInput & { revenuePublication?: GA4RevenuePublication }): Promise<MetricSnapshot>;
   upsertExecutiveSummaryDailySnapshot(snapshot: ExecutiveSummaryDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot>;
   markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string, options?: GA4RefreshWriteInput): Promise<boolean>;
   invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string, options?: GA4RefreshWriteInput): Promise<void>;
@@ -1453,16 +1457,18 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  private async readGA4RefreshWorkScope(tx: any, campaignId: string, ownerId: string, options: { initialImport?: boolean; workId?: string } = {}) {
+  private async readGA4RefreshWorkScope(tx: any, campaignId: string, ownerId: string, options: { initialImport?: boolean; revenueChange?: boolean; workId?: string } = {}) {
     if (!campaignId?.trim() || !ownerId?.trim()) return undefined;
     const [campaign] = await tx.select().from(campaigns).where(and(
       eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId),
     )).for("update");
     let initialImport = options.initialImport === true;
+    let revenueChange = options.revenueChange === true;
     if (options.workId) {
       const [work] = await tx.select({ scope: ga4RefreshWork.scope }).from(ga4RefreshWork)
         .where(and(eq(ga4RefreshWork.id, options.workId), eq(ga4RefreshWork.campaignId, campaignId)));
       initialImport = work?.scope?.kind === "initial_import";
+      revenueChange = work?.scope?.kind === "revenue_change";
     }
     if (!campaign || (initialImport ? campaign.status !== "draft" : !filterActiveSchedulerCampaigns([campaign]).length)) return undefined;
     const connections = await tx.select({ id: ga4Connections.id, propertyId: ga4Connections.propertyId,
@@ -1485,13 +1491,13 @@ export class DatabaseStorage implements IStorage {
     }
     const scope = { version: 1, campaign: Object.fromEntries([
       "id", "createdAt", "ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone",
-    ].map(key => [key, campaign[key] ?? null])), connections, ...(initialImport ? { kind: "initial_import" } : {}) };
+    ].map(key => [key, campaign[key] ?? null])), connections, ...(initialImport ? { kind: "initial_import" } : revenueChange ? { kind: "revenue_change" } : {}) };
     return { scope, scopeHash: createHash("sha256").update(JSON.stringify(scope)).digest("hex") };
   }
 
   // Serialize an ordinary input edit with owned publication. Invalidating the work
   // identity also rejects edit-then-restore; comparing current field values cannot.
-  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>, lockTimeoutMs = 0): Promise<T> {
+  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>, lockTimeoutMs = 0, revenueChange = false, preserveRevenueWork = true): Promise<T> {
     const campaignIds = Array.from(new Set((Array.isArray(campaignId) ? campaignId : [campaignId]).filter((id): id is string => Boolean(id)))).sort();
     return db.transaction(async (tx: any) => {
       if (lockTimeoutMs > 0) await tx.execute(sql`SELECT set_config('lock_timeout', ${`${lockTimeoutMs}ms`}, true)`);
@@ -1504,14 +1510,50 @@ export class DatabaseStorage implements IStorage {
         // Ordinary saves also run on installations where durable work has not
         // been migrated yet; no owner can exist without its work table.
         const workTable = await tx.execute(sql`SELECT to_regclass('ga4_refresh_work') AS name`);
-        if (!workTable.rows[0]?.name) return result;
+        if (!workTable.rows[0]?.name) {
+          if (revenueChange) throw new Error('GA4_REVENUE_PUBLICATION_UNAVAILABLE');
+          return result;
+        }
+        const unfinished = await tx.select({ campaignId: ga4RefreshWork.campaignId, scope: ga4RefreshWork.scope }).from(ga4RefreshWork)
+          .where(and(inArray(ga4RefreshWork.campaignId, campaignIds), ne(ga4RefreshWork.status, 'completed'),
+            sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`));
         const invalidated = await tx.update(ga4RefreshWork).set({
           scopeHash: sql`'invalidated:' || ${ga4RefreshWork.id}`,
           status: sql`CASE WHEN ${ga4RefreshWork.status} = 'completed' THEN 'completed' ELSE 'pending' END`,
           leaseToken: null, leaseExpiresAt: null, updatedAt: sql`clock_timestamp()`,
         }).where(inArray(ga4RefreshWork.campaignId, campaignIds)).returning({ campaignId: ga4RefreshWork.campaignId });
-        if (invalidated.length) await tx.update(metricSnapshots).set({ notes: null }).where(and(
-          inArray(metricSnapshots.campaignId, invalidated.map((work: any) => work.campaignId)), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
+        const unchangedPublications = new Set<string>();
+        // Persist publication work in the source-save transaction: a restart must
+        // not strand a successful import. Unchanged provider rows need no new total.
+        for (const id of campaignIds) {
+          const unfinishedRevenue = preserveRevenueWork && unfinished.some((work: any) => work.campaignId === id && work.scope?.kind === 'revenue_change');
+          if (!revenueChange && !unfinishedRevenue) continue;
+          const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, id));
+          if (!campaign?.ownerId || !campaign.ga4CampaignFilter?.trim()) continue;
+          const scope = await this.readGA4RefreshWorkScope(tx, id, campaign.ownerId, { revenueChange: true });
+          if (!scope) continue;
+          const reportingDate = getLatestCompleteReportingDate(campaign.reportingTimeZone);
+          const current = await this.readGA4RevenuePublication(tx, id, reportingDate);
+          const [published] = await tx.select({ metrics: metricSnapshots.metrics, reportingDate: metricSnapshots.reportingDate })
+            .from(metricSnapshots).where(and(eq(metricSnapshots.campaignId, id), eq(metricSnapshots.snapshotType, 'financial_daily'),
+              lte(metricSnapshots.reportingDate, reportingDate))).orderBy(desc(metricSnapshots.reportingDate)).limit(1);
+          const receipt = published?.metrics?.revenuePublication;
+          const [receiptWork] = receipt?.workId ? await tx.select({ status: ga4RefreshWork.status }).from(ga4RefreshWork)
+            .where(and(eq(ga4RefreshWork.id, receipt.workId), eq(ga4RefreshWork.campaignId, id))) : [];
+          if (receipt?.version === 1 && published.reportingDate === reportingDate
+            && (!receipt.workId || receiptWork?.status === 'completed')
+            && Object.keys(receipt.sources || {}).length === Object.keys(current.sources).length
+            && Object.entries(current.sources).every(([sourceId, hash]) => receipt.sources[sourceId] === hash)
+            && !unfinished.some((work: any) => work.campaignId === id)) {
+            unchangedPublications.add(id);
+            continue;
+          }
+          if (process.env.GA4_DURABLE_RECOVERY_ENABLED === 'false') throw new Error('GA4_REVENUE_PUBLICATION_UNAVAILABLE');
+          await tx.insert(ga4RefreshWork).values({ campaignId: id, dueAt: sql`date_trunc('milliseconds', clock_timestamp())`, reportingDate, ...scope });
+        }
+        const changedCampaignIds = invalidated.map((work: any) => work.campaignId).filter((id: string) => !unchangedPublications.has(id));
+        if (changedCampaignIds.length) await tx.update(metricSnapshots).set({ notes: null }).where(and(
+          inArray(metricSnapshots.campaignId, changedCampaignIds), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
           sql`split_part(${metricSnapshots.notes}, ':', 1) IN ('ga4_aligned_refresh_v1', 'ga4_refresh_publication_v1')`,
         ));
       }
@@ -1533,7 +1575,7 @@ export class DatabaseStorage implements IStorage {
     return this.withGA4RefreshTransaction(tx => this.readGA4PublicationVersion(tx, campaignId));
   }
 
-  async isGA4NativeRecoveryEligible(campaignId: string, options: { includeFinancialSources?: boolean } = {}): Promise<boolean> {
+  async isGA4NativeRecoveryEligible(campaignId: string, options: { includeFinancialSources?: boolean; revenueChange?: boolean } = {}): Promise<boolean> {
     return this.withGA4RefreshTransaction(async tx => {
       const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, campaignId)).for("share");
       if (!campaign?.ownerId || !filterActiveSchedulerCampaigns([campaign]).length || !campaign.ga4CampaignFilter?.trim()) return false;
@@ -1559,6 +1601,7 @@ export class DatabaseStorage implements IStorage {
         if (source) return false;
       }
       for (const table of [linkedinConnections, metaConnections, instagramConnections, tiktokConnections, googleAdsConnections, ga4GoogleAdsSpendConnections]) {
+        if (options.includeFinancialSources && options.revenueChange) continue;
         if (options.includeFinancialSources && (table === googleAdsConnections || table === ga4GoogleAdsSpendConnections)) continue;
         const [source] = await tx.select({ id: table.id }).from(table).where(eq(table.campaignId, campaignId)).limit(1);
         if (source) return false;
@@ -1617,7 +1660,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async retireGA4RefreshWork(campaignId: string): Promise<void> {
-    await this.writeGA4RefreshInputChange(campaignId, async () => true);
+    await this.writeGA4RefreshInputChange(campaignId, async () => true, 0, false, false);
   }
 
   async requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry = false): Promise<GA4RefreshWork | undefined> {
@@ -1680,13 +1723,13 @@ export class DatabaseStorage implements IStorage {
       error: failed ? invalidated ? "GA4_INITIAL_IMPORT_CONFIGURATION_CHANGED" : work.lastError || "GA4_INITIAL_IMPORT_INTERRUPTED" : null };
   }
 
-  async ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string, options: { suppressAlerts?: boolean } = {}): Promise<GA4RefreshWork | undefined> {
+  async ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string, options: { suppressAlerts?: boolean; revenueChange?: boolean } = {}): Promise<GA4RefreshWork | undefined> {
     if (!(dueAt instanceof Date) || !Number.isFinite(dueAt.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(reportingDate)
       || new Date(`${reportingDate}T00:00:00Z`).toISOString().slice(0, 10) !== reportingDate) throw new Error("Invalid GA4 work date");
     return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
-      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
+      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId, { revenueChange: options.revenueChange });
       if (!scope) return undefined;
       // A later slot supersedes unfinished older slots, including after midnight.
       const [newer] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
@@ -2627,6 +2670,59 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Revenue methods
+  private async readGA4RevenuePublication(tx: any, campaignId: string, reportingDate: string): Promise<GA4RevenuePublication> {
+    const sources = await tx.select({ id: revenueSources.id, sourceType: revenueSources.sourceType, currency: revenueSources.currency })
+      .from(revenueSources).where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.isActive, true),
+        or(eq(revenueSources.platformContext, 'ga4'), isNull(revenueSources.platformContext)))).orderBy(revenueSources.id);
+    const rows = await tx.select({ sourceId: revenueRecords.revenueSourceId, date: revenueRecords.date,
+      revenue: revenueRecords.revenue, currency: revenueRecords.currency, externalId: revenueRecords.externalId,
+      subCampaignUrn: revenueRecords.subCampaignUrn }).from(revenueRecords)
+      .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
+      .where(and(eq(revenueRecords.campaignId, campaignId), eq(revenueSources.campaignId, campaignId), eq(revenueSources.isActive, true),
+        or(eq(revenueSources.platformContext, 'ga4'), isNull(revenueSources.platformContext))));
+    const included = new Map<string, string[]>(), pending = new Set<string>();
+    for (const row of rows) {
+      if (row.date > reportingDate) { pending.add(row.sourceId); continue; }
+      if (row.date < '1900-01-01') continue;
+      const values = included.get(row.sourceId) || [];
+      // Row IDs and import timestamps change on an identical reimport. Amount,
+      // sale date, currency and attribution identify the financial input instead.
+      values.push(JSON.stringify([row.date, String(row.revenue), row.currency, row.externalId, row.subCampaignUrn]));
+      included.set(row.sourceId, values);
+    }
+    return { version: 1, reportingDate, sources: Object.fromEntries(sources.map((source: any) => [source.id,
+      createHash('sha256').update(JSON.stringify([source.sourceType, source.currency, (included.get(source.id) || []).sort()])).digest('hex'),
+    ])), pendingSourceIds: Array.from(pending).sort() };
+  }
+
+  async getGA4RevenuePublication(campaignId: string, reportingDate: string): Promise<GA4RevenuePublication> {
+    return this.withGA4RefreshTransaction(async tx => {
+      await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).for('share');
+      return this.readGA4RevenuePublication(tx, campaignId, reportingDate);
+    });
+  }
+
+  async getGA4RevenuePublicationStatus(campaignId: string, reportingDate: string): Promise<GA4RevenuePublicationStatus> {
+    return this.withGA4RefreshTransaction(async tx => {
+      await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).for('share');
+      const current = await this.readGA4RevenuePublication(tx, campaignId, reportingDate);
+      const [snapshot] = await tx.select().from(metricSnapshots).where(and(eq(metricSnapshots.campaignId, campaignId),
+        eq(metricSnapshots.snapshotType, 'financial_daily'), lte(metricSnapshots.reportingDate, reportingDate)))
+        .orderBy(desc(metricSnapshots.reportingDate)).limit(1);
+      const receipt = snapshot?.metrics?.revenuePublication;
+      const [work] = await tx.select().from(ga4RefreshWork).where(and(eq(ga4RefreshWork.campaignId, campaignId),
+        sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`)).orderBy(desc(ga4RefreshWork.dueAt)).limit(1);
+      const [receiptWork] = receipt?.workId ? await tx.select({ status: ga4RefreshWork.status }).from(ga4RefreshWork)
+        .where(and(eq(ga4RefreshWork.id, receipt.workId), eq(ga4RefreshWork.campaignId, campaignId))) : [];
+      const completed = !receipt?.workId || receiptWork?.status === 'completed';
+      const failed = work?.status !== 'completed' && (Boolean(work?.lastError) || work?.retryable === false || work?.attemptCount >= 3);
+      return Object.fromEntries(Object.entries(current.sources).map(([id, hash]) => {
+        const included = receipt?.version === 1 && receipt.reportingDate === reportingDate && receipt.sources?.[id] === hash && completed;
+        return [id, { status: included && !current.pendingSourceIds.includes(id) ? 'published' : !included && failed ? 'failed' : 'pending', hash }];
+      }));
+    });
+  }
+
   async getRevenueSources(campaignId: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<RevenueSource[]> {
     const ctx = platformContext;
     return db.select().from(revenueSources)
@@ -2657,7 +2753,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return s;
     };
-    return !source.platformContext || source.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(source.campaignId, save) : save(db);
+    return !source.platformContext || source.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(source.campaignId, save, 0, true) : save(db);
   }
 
   async updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined> {
@@ -2671,7 +2767,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return s || undefined;
     };
-    return !target.platformContext || target.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(target.campaignId, save) : save(db);
+    return !target.platformContext || target.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(target.campaignId, save, 0, true) : save(db);
   }
 
   async deleteRevenueSource(sourceId: string): Promise<boolean> {
@@ -2684,7 +2780,7 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${revenueSources.id}::text = ${sourceId}`);
     return (result.rowCount || 0) > 0;
     };
-    return !target.platformContext || target.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(target.campaignId, save) : save(db);
+    return !target.platformContext || target.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(target.campaignId, save, 0, true) : save(db);
   }
 
   async deleteRevenueRecordsBySource(sourceId: string): Promise<boolean> {
@@ -2696,11 +2792,11 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) >= 0;
     };
     return target && (!target.platformContext || target.platformContext === 'ga4')
-      ? this.writeGA4RefreshInputChange(target.campaignId, write) : write(db);
+      ? this.writeGA4RefreshInputChange(target.campaignId, write, 0, true) : write(db);
   }
 
   async deleteRevenueSourceWithRecords(campaignId: string, sourceId: string, platformContext: RevenuePlatformContext): Promise<boolean> {
-    const transaction = platformContext === 'ga4' ? this.writeGA4RefreshInputChange.bind(this, campaignId) : db.transaction.bind(db);
+    const transaction = platformContext === 'ga4' ? (write: (tx: any) => Promise<boolean>) => this.writeGA4RefreshInputChange(campaignId, write, 0, true) : db.transaction.bind(db);
     return await transaction(async (tx: any) => {
       const contextCondition = platformContext === "ga4"
         ? or(eq(revenueSources.platformContext, "ga4" as any), isNull(revenueSources.platformContext))
@@ -2778,7 +2874,7 @@ export class DatabaseStorage implements IStorage {
         .returning({ id: hubspotConnections.id });
       if (!disabledConnection) throw new Error('HubSpot connection changed during disconnect');
       return { sourceIds, connectionId: String(disabledConnection.id) };
-    });
+    }, 0, true);
   }
 
   async disconnectGa4GoogleSheetsRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionIds: string[] }> {
@@ -2871,7 +2967,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
       return { sourceIds, connectionIds };
-    });
+    }, 0, true);
   }
 
   async disconnectGa4ShopifyRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }> {
@@ -2928,7 +3024,7 @@ export class DatabaseStorage implements IStorage {
         .returning({ id: shopifyConnections.id });
       if (!disabledConnection) throw new Error('Shopify connection changed during disconnect');
       return { sourceIds, connectionId: String(disabledConnection.id) };
-    });
+    }, 0, true);
   }
 
   async cleanupDisconnectedGa4ShopifyRevenue(
@@ -3070,7 +3166,7 @@ export class DatabaseStorage implements IStorage {
 
     return results;
     };
-    return affected.length ? this.writeGA4RefreshInputChange(affected, write) : write(db);
+    return affected.length ? this.writeGA4RefreshInputChange(affected, write, 0, true) : write(db);
   }
   async replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput = {}): Promise<RevenueSource> {
     const guarded = "refreshScope" in options;
@@ -3107,7 +3203,7 @@ export class DatabaseStorage implements IStorage {
       if (records.length) await tx.insert(revenueRecords).values(records.map((record) => ({ ...record, campaignId, revenueSourceId: sourceId, sourceType })) as any);
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : platformContext === 'ga4' ? this.writeGA4RefreshInputChange(campaignId, save) : db.transaction(save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : platformContext === 'ga4' ? this.writeGA4RefreshInputChange(campaignId, save, 0, true) : db.transaction(save);
   }
 
   async replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput & { expectedConnectionMappingConfig?: string | null } = {}): Promise<RevenueSource> {
@@ -3149,7 +3245,7 @@ export class DatabaseStorage implements IStorage {
       if (!savedConnection) throw new Error('Salesforce connection not found');
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save, 0, true);
   }
 
   async replaceGa4CsvRevenueSourceWithRecords(
@@ -3210,7 +3306,7 @@ export class DatabaseStorage implements IStorage {
       })) as any);
 
       return savedSource;
-    });
+    }, 0, true);
   }
 
   async replaceGa4HubspotRevenueSourceWithRecords(
@@ -3289,7 +3385,7 @@ export class DatabaseStorage implements IStorage {
 
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save, 0, true);
   }
 
   async disableGa4CrmPipelineProxy(
@@ -3388,7 +3484,7 @@ export class DatabaseStorage implements IStorage {
       if (!savedConnection) throw new Error(expectedState ? 'Shopify connection changed since preview' : 'Shopify connection not found');
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save, 0, true);
   }
 
   async updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string, options: GA4RefreshWriteInput & { expectedSourceMappingConfig?: string | null } = {}): Promise<RevenueSource | undefined> {
@@ -3410,12 +3506,11 @@ export class DatabaseStorage implements IStorage {
       if (guarded && !source) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       return source || undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save, 0, true);
   }
 
   async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {
     const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
-    const sourceCreatedThrough = campaign ? getReportingDateEndAt(endDate, (campaign as any)?.reportingTimeZone) : null;
     const rows = await db
       .select({
         revenue: revenueRecords.revenue,
@@ -3435,15 +3530,12 @@ export class DatabaseStorage implements IStorage {
         platformContext === 'ga4'
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
           : eq(revenueSources.platformContext, platformContext as any),
-        sourceCreatedThrough ? lte(revenueSources.createdAt, sourceCreatedThrough) : undefined,
         sql`${revenueRecords.date} >= ${startDate}`,
         sql`${revenueRecords.date} <= ${endDate}`
       ));
 
     if (requiresGa4RevenueMaterializationCompleteness(platformContext, startDate, endDate)) {
-      const activeSources = (await this.getRevenueSources(campaignId, platformContext)).filter((source: any) =>
-        !campaign || isCreatedThroughReportingDate(source?.createdAt, endDate, (campaign as any)?.reportingTimeZone)
-      );
+      const activeSources = await this.getRevenueSources(campaignId, platformContext);
       try {
         assertGa4RevenueMaterializationComplete(activeSources as any[], rows as any[]);
       } catch (error: any) {
@@ -3487,7 +3579,6 @@ export class DatabaseStorage implements IStorage {
 
   async getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>> {
     const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
-    const sourceCreatedThrough = campaign ? getReportingDateEndAt(endDate, (campaign as any)?.reportingTimeZone) : null;
     const rows = await db
       .select({
         revenueSourceId: revenueRecords.revenueSourceId,
@@ -3508,7 +3599,6 @@ export class DatabaseStorage implements IStorage {
         platformContext === 'ga4'
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
           : eq(revenueSources.platformContext, platformContext as any),
-        sourceCreatedThrough ? lte(revenueSources.createdAt, sourceCreatedThrough) : undefined,
         sql`${revenueRecords.date} >= ${startDate}`,
         sql`${revenueRecords.date} <= ${endDate}`
       ));
@@ -6806,8 +6896,8 @@ export class DatabaseStorage implements IStorage {
     return this.writeGA4DerivedChange(values.campaignId, snapshotData, save);
   }
 
-  async upsertFinancialDailySnapshot(snapshotData: FinancialDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot> {
-    const { refreshScope, publicationVersion, ...values } = snapshotData;
+  async upsertFinancialDailySnapshot(snapshotData: FinancialDailySnapshotInput & GA4RefreshWriteInput & { revenuePublication?: GA4RevenuePublication }): Promise<MetricSnapshot> {
+    const { refreshScope, publicationVersion, revenuePublication, ...values } = snapshotData;
     const guarded = "refreshScope" in snapshotData;
     const snapshotInput = financialDailySnapshotInputSchema.parse(values);
     const { campaignId, reportingDate, ...financialDaily } = snapshotInput;
@@ -6815,13 +6905,20 @@ export class DatabaseStorage implements IStorage {
       if (guarded && (campaignId !== refreshScope!.campaignId || reportingDate !== refreshScope!.reportingDate)) {
         throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       }
+      if (revenuePublication) {
+        const current = await this.readGA4RevenuePublication(tx, campaignId, reportingDate);
+        if (revenuePublication.version !== 1 || revenuePublication.reportingDate !== reportingDate
+          || Object.keys(current.sources).length !== Object.keys(revenuePublication.sources || {}).length
+          || Object.entries(current.sources).some(([sourceId, hash]) => revenuePublication.sources[sourceId] !== hash)) throw new Error('GA4_REFRESH_PUBLICATION_CHANGED');
+      }
       const [snapshot] = await tx
         .insert(metricSnapshots)
         .values({
           campaignId,
           totalConversions: snapshotInput.inputs.conversions.value ?? 0,
           totalSpend: snapshotInput.inputs.spend.value ?? "0",
-          metrics: { financialDaily },
+          metrics: { financialDaily, ...(revenuePublication ? { revenuePublication: { ...revenuePublication,
+            ...(refreshScope ? { workId: refreshScope.work.id } : {}) } } : {}) },
           snapshotType: 'financial_daily',
           reportingDate,
         })

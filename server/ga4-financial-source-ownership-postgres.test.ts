@@ -132,8 +132,9 @@ function revenueRoute(provider: "salesforce" | "hubspot" | "shopify", scope?: an
     fetchCompleteSalesforceQuery: async () => { await providerRead(); return [{ Id: "op-1", Campaign: "old", Amount: "20", CurrencyIsoCode: "EUR", CloseDate: date }]; },
     getHubspotAccessTokenForCampaign: async () => ({ accessToken: "fake" }),
     fetch: async () => ({ ok: true, json: async () => ({ results: [{ stages: [{ id: "closedwon", label: "Closed Won", metadata: { isClosed: "true", probability: "1.0" } }] }] }) }),
+    fetchWithTimeout: async () => ({ ok: true, json: async () => ({ results: [{ stages: [{ id: "closedwon", label: "Closed Won", metadata: { isClosed: "true", probability: "1.0" } }] }] }) }),
     deriveDefaultClosedWonStageIds: () => ["closedwon"], MAX_HUBSPOT_RESULTS: 10000,
-    hubspotSearchDeals: async () => { await providerRead(); return { results: [{ id: "deal-1", properties: { Campaign: "old", amount: "20", hs_currency: "EUR", closedate: date } }] }; },
+    hubspotSearchDeals: async () => { await providerRead(); return { results: [{ id: "deal-1", properties: { Campaign: "old", amount: "20", hs_currency: "EUR", closedate: date, dealstage: "closedwon" } }] }; },
     assertProductionTokenEncryptionConfigured: () => {}, getShopifyConnectionForCampaign: () => storage.getShopifyConnection("a"),
     getShopifyApiVersion: () => "2026-07", getShopifyConnectionOrderAccess: () => ({ isOauth: false }),
     getShopifyCampaignOrderWindow: () => ({ limited: false }), getShopifyCampaignWindowStartAt: () => new Date("2026-09-04T00:00:00Z"),
@@ -142,7 +143,8 @@ function revenueRoute(provider: "salesforce" | "hubspot" | "shopify", scope?: an
     getShopifyOrderTags: (order: any) => String(order.tags).split(",").map(value => value.trim()), devLog: () => {},
     SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE: "SHOPIFY_CAMPAIGN_WINDOW_EXCEEDED", SALESFORCE_PAGINATION_ERROR_CODE: "PAGINATION", SALESFORCE_RESULT_LIMIT_ERROR_CODE: "LIMIT",
   };
-  new Function(...Object.keys(dependencies), ts.transpileModule(source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(dependencies));
+  const amountHelper = source.slice(source.indexOf("  function parseCrmRevenueAmount("), source.indexOf("  async function hubspotSearchDeals("));
+  new Function(...Object.keys(dependencies), ts.transpileModule(amountHelper + source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(dependencies));
   const body: any = { sourceId: `${provider}-a`, platformContext: "ga4", selectedValues: ["old"], days: 90,
     expectedSourceMappingConfig: initialMapping, campaignField: provider === "shopify" ? "tags" : "Campaign", campaignProperty: "Campaign", revenueField: "Amount", revenueProperty: "amount" };
   return { body, providerRead, recompute, invoke: async () => {

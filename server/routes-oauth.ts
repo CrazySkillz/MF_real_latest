@@ -3758,6 +3758,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .catch(() => ({ rows: [] as any[], succeeded: false })),
       ]);
       const breakdown = boundedBreakdownResult.rows;
+      const publicationStatus = platformContext === 'ga4'
+        ? await storage.getGA4RevenuePublicationStatus(campaignId, breakdownEndDate) : {};
       const totalsBySource = new Map((Array.isArray(breakdown) ? breakdown : []).map((row: any) => [String(row?.sourceId || ""), Number(row?.revenue || 0)]));
       const latestTotalsBySource = new Map((Array.isArray(latestBreakdownResult.rows) ? latestBreakdownResult.rows : []).map((row: any) => [String(row?.sourceId || ""), Number(row?.revenue || 0)]));
       const sourcesWithTotals = (Array.isArray(sources) ? sources : []).map((source: any) => {
@@ -3770,10 +3772,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const hasCompletedDayRevenue = totalsBySource.has(sourceId);
         const hasLatestRevenue = latestTotalsBySource.has(sourceId);
         const isGa4RevenueSource = platformContext === "ga4";
-        const pendingCompletedDay = isGa4RevenueSource && boundedBreakdownResult.succeeded && (
-          !isCreatedThroughReportingDate(source?.createdAt, breakdownEndDate, (campaign as any)?.reportingTimeZone)
-          || (!hasCompletedDayRevenue && hasLatestRevenue)
-        );
+        const pendingCompletedDay = isGa4RevenueSource && boundedBreakdownResult.succeeded && latestBreakdownResult.succeeded
+          && hasLatestRevenue && (!hasCompletedDayRevenue || latestTotalsBySource.get(sourceId) !== totalsBySource.get(sourceId));
         const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null);
         const latestRevenue = hasLatestRevenue ? Number(latestTotalsBySource.get(sourceId) || 0) : cfgTotal;
         const completedDayRevenue = hasCompletedDayRevenue ? Number(totalsBySource.get(sourceId) || 0) : 0;
@@ -3787,6 +3787,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             completedDayRevenue: Number(completedDayRevenue.toFixed(2)),
             completedDayEndDate: breakdownEndDate,
             pendingCompletedDay,
+            publicationStatus: publicationStatus[sourceId]?.status || 'pending',
+            publicationHash: publicationStatus[sourceId]?.hash || null,
             boundedRevenueZero: pendingCompletedDay && completedDayRevenue === 0,
           } : {}),
           ...(getShopifyRevenueSourceFreshness(source) ? { freshness: getShopifyRevenueSourceFreshness(source) } : {}),
@@ -4469,11 +4471,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return mappedId && activeGoogleAdsCampaignIds.has(mappedId) ? mappedId : null;
   };
 
-  // Revenue source saves wait for GA4-derived values only within a bounded response window.
-  // If recompute exceeds that window, durable source data can return while the same work continues.
+  // Revenue saves persist durable publication work with the source records. The
+  // same owned pipeline publishes totals, KPIs, benchmarks and report readiness.
   const isGA4RevenuePlatformContext = (platformContext?: string | null) =>
     String(platformContext || "ga4").trim().toLowerCase() === "ga4";
-  const GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS = 15000;
 
   const recomputeGA4KPIAndBenchmarkValues = async (campaignId: string, logPrefix: string) => {
     try {
@@ -4538,28 +4539,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
     if (isGA4RevenuePlatformContext(opts.platformContext)) {
-      const recomputePromise = (async () => {
-        await refreshCampaignCurrentValuesForCampaign(campaignId, true);
-        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
-      })();
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      let completed = false;
-      try {
-        completed = await Promise.race([
-          recomputePromise.then(() => true),
-          new Promise<boolean>((resolve) => {
-            timeoutId = setTimeout(() => resolve(false), GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS);
-          }),
-        ]);
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
-      }
-      if (!completed) {
-        console.warn(`[Revenue Update] GA4 derived recompute exceeded the response wait for campaign ${campaignId}; continuing in background.`);
-        void recomputePromise.catch((e) => {
-          console.warn(`[Revenue Update] Background recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
-        });
-      }
+      // A failed calculation is a processing failure, not a failed source save.
+      // Busy workers and restarts are handled by the existing durable-work poll.
+      void recoverInterruptedGA4Refreshes(campaignId).catch((e) => {
+        console.warn(`[Revenue Update] Publication processing failed for campaign ${campaignId}:`, (e as any)?.message || e);
+      });
       return;
     }
     try {

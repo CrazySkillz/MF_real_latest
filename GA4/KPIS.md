@@ -129,7 +129,7 @@ Important meaning:
 - KPI current values should stay consistent with the Overview and financial-source logic
 - GA4 traffic KPI current values accumulate from the saved initial-import boundary through the latest completed reporting day; the configured import depth does not become a rolling window after setup
 - financial KPI current values use the native saved-import-window and completed-day-bounded imported Revenue/Spend contract documented in `GA4/FINANCIAL_SOURCES.md`
-- an imported Revenue or Spend source created after the current completed-day cutoff remains visible in its source modal with its latest value, but contributes zero to KPI calculations until its source definition and mapped records are eligible for a completed reporting day
+- imported Revenue uses mapped sale/event dates through the completed-day cutoff regardless of connection/import time; a successful revenue edit queues the existing coordinated KPI publication. Today/future sales stay excluded. Spend retains its source-creation and record-date eligibility rule.
 - financial KPI cards, the Executive Snapshot, alerts, and KPI-derived Insights use the eligible completed-day Revenue and Spend totals rather than the source modal's newer pending values
 - saved timeframe or tracking-period fields are target metadata; they do not replace the authoritative cumulative current-value window
 

@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
     getRevenueSources: vi.fn(), getSpendSources: vi.fn(), getGA4DailyMetrics: vi.fn(),
     getGA4OverviewSnapshot: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
     getLatestGA4DailyMetric: vi.fn(), getFinancialDailyComparisonData: vi.fn(), getExecutiveSummaryDailyComparisonData: vi.fn(),
-    getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), upsertFinancialDailySnapshot: vi.fn(),
+    getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), upsertFinancialDailySnapshot: vi.fn(), getGA4RevenuePublication: vi.fn(),
     getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
     markExecutiveSummaryDailySnapshotAligned: vi.fn(),
     invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn(),
@@ -89,6 +89,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.storage.getGA4PublicationVersion.mockResolvedValue(null);
+    mocks.storage.getGA4RevenuePublication.mockImplementation(async (_campaignId, reportingDate) => ({ version: 1, reportingDate, sources: {}, pendingSourceIds: [] }));
     mocks.storage.writeWithGA4RefreshOwnership.mockResolvedValue(undefined);
     mocks.storage.isGA4NativeRecoveryEligible.mockResolvedValue(false);
     mocks.storage.retireGA4RefreshWork.mockResolvedValue(undefined);
@@ -320,6 +321,31 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       await recoverInterruptedGA4Refreshes();
       expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", dueAt, reportingDate, { suppressAlerts: false });
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(true);
+    });
+    it("runs a saved revenue change through the existing coordinated pipeline for only the requested campaign", async () => {
+      const dueAt = new Date(Date.now() - 60_000);
+      mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue(["campaign-b", "campaign-a"].map(campaignId => ({ id: `work-${campaignId}`, campaignId,
+        dueAt, reportingDate, scope: { kind: "revenue_change", campaign: { ownerId: `${campaignId}-owner` } }, suppressAlerts: false })));
+      await recoverInterruptedGA4Refreshes("campaign-a");
+      expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledExactlyOnceWith("campaign-a", "campaign-a-owner", dueAt, reportingDate, { suppressAlerts: false, revenueChange: true });
+      expect(mocks.recompute).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "campaign-a", refreshScope: scope }));
+      expect(mocks.storage.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "campaign-a", revenuePublication: { version: 1, reportingDate, sources: {}, pendingSourceIds: [] } }));
+      expect(mocks.aggregate).toHaveBeenCalledWith("campaign-a", expect.objectContaining({ refreshScope: scope }));
+      expect(mocks.executive).toHaveBeenCalledTimes(1);
+      expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(true);
+    });
+    it("retargets unfinished revenue work after midnight without publishing the old cutoff", async () => {
+      mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue([{ id: "work-a", campaignId: "campaign-a", dueAt: new Date(Date.now() - 60_000),
+        reportingDate: "2026-10-14", scope: { kind: "revenue_change", campaign: { ownerId: "campaign-a-owner" } } }]);
+      await recoverInterruptedGA4Refreshes();
+      expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", expect.any(Date), reportingDate, { revenueChange: true });
+      expect(mocks.storage.claimGA4RefreshWork).not.toHaveBeenCalled();
+      expect(mocks.storage.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+    });
+    it.each(["__autoRefreshInProgress", "__googleSheetsSpendRefreshInProgress", "__salesforcePipelineRefreshInProgress"])("leaves queued work for the next poll while %s is busy", async flag => {
+      (global as any)[flag] = true;
+      try { await recoverInterruptedGA4Refreshes("campaign-a"); expect(mocks.storage.getRecoverableGA4RefreshWork).not.toHaveBeenCalled(); }
+      finally { (global as any)[flag] = false; }
     });
     it.each(["owner", "date", "missing", "unsupported"])("rejects a discovered work item with changed %s", async mismatch => {
       mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue([{ id: "work-a", campaignId: "campaign-a", dueAt: new Date(Date.now() - 60_000),

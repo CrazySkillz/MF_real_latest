@@ -1,7 +1,7 @@
 import { conversionCreditsMatch } from "../shared/metric-math";
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, isCreatedThroughReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct, formatConversionCredit } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
@@ -617,12 +617,19 @@ async function buildGA4ReportPayload(report: any) {
   if (overviewDailyRows.length === 0 && overviewStartDate === dailyStart) {
     overviewDailyRows = dailyRows;
   }
-  const activeRevenueSources = revenueSources.filter((source: any) =>
-    source?.isActive !== false && isCreatedThroughReportingDate(source?.createdAt, financialEndDate, (campaign as any)?.reportingTimeZone)
-  );
+  let activeRevenueSources = revenueSources.filter((source: any) => source?.isActive !== false);
   const hasMaterializedRevenue = (row: any) => row?.revenue != null && Number.isFinite(Number(row.revenue));
   const revenueBreakdownSourceIds = new Set(revenueBreakdown.filter(hasMaterializedRevenue).map((row: any) => String(row?.sourceId || "")));
   const adComparisonRevenueBreakdownSourceIds = new Set(adComparisonRevenueBreakdown.filter(hasMaterializedRevenue).map((row: any) => String(row?.sourceId || "")));
+  if (activeRevenueSources.some((source: any) => !revenueBreakdownSourceIds.has(String(source.id)))) {
+    // A valid source containing only later sales contributes nothing yet. Missing
+    // materialization still blocks the report; source connection dates do not.
+    const afterCutoff = new Date(Date.parse(financialEndDate) + 86400000).toISOString().slice(0, 10);
+    const futureRevenue = await storage.getRevenueBreakdownBySource(campaignId, afterCutoff, "2999-12-31", "ga4")
+      .catch((e) => { logPartFailure("future revenue materialization", e); return [] as any[]; });
+    const futureSourceIds = new Set(futureRevenue.filter(hasMaterializedRevenue).map((row: any) => String(row.sourceId)));
+    activeRevenueSources = activeRevenueSources.filter((source: any) => revenueBreakdownSourceIds.has(String(source.id)) || !futureSourceIds.has(String(source.id)));
+  }
   const overviewMaterializedRevenueUnavailable = activeRevenueSources.some(
     (source: any) => !revenueBreakdownSourceIds.has(String(source?.id || "")),
   );
@@ -813,7 +820,7 @@ async function buildGA4ReportPayload(report: any) {
     if (!parsed.success || parsed.data.campaignId !== campaignId || parsed.data.reportingDate !== financialEndDate ||
         parsed.data.currency !== campaignCurrency || parsed.data.currentValueWindow.startDate !== financialStartDate ||
         parsed.data.currentValueWindow.reportingTimeZone !== reportCumulativeWindow.reportingTimeZone ||
-        failedParts.has("revenue sources") || failedParts.has("revenue breakdown") || failedParts.has("spend sources") || failedParts.has("spend breakdown") ||
+        overviewMaterializedRevenueUnavailable || failedParts.has("revenue sources") || failedParts.has("revenue breakdown") || failedParts.has("spend sources") || failedParts.has("spend breakdown") ||
         [...activeRevenueSources, ...spendSources.filter((source: any) => source?.isActive !== false)].some((source: any) => String(source?.currency || "").trim().toUpperCase() !== campaignCurrency) ||
         !parsed.data.inputs.revenue.available || Number(parsed.data.inputs.revenue.value) !== financialRevenue ||
         !parsed.data.inputs.conversions.available || Number(parsed.data.inputs.conversions.value) !== financialConversions ||

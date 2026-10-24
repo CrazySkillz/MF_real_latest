@@ -1,0 +1,5 @@
+server/ga4-daily-scheduler.ts(1236,70): error TS18048: 'campaign' is possibly 'undefined'.
+server/ga4-daily-scheduler.ts(1237,65): error TS18048: 'campaign' is possibly 'undefined'.
+server/ga4-daily-scheduler.ts(1237,65): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+server/ga4-daily-scheduler.ts(1238,46): error TS18048: 'campaign' is possibly 'undefined'.

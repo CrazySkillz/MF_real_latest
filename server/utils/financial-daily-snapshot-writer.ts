@@ -1,6 +1,6 @@
 import type { FinancialDailySnapshotInput } from "../../shared/schema";
 import { parseGA4FinancialNumber } from "../../shared/ga4-financial-source";
-import { storage, type GA4RefreshWriteInput } from "../storage";
+import { storage, type GA4RefreshWriteInput, type GA4RevenuePublication } from "../storage";
 import { getCampaignMetricTotals, parseGA4CampaignFilter, type CampaignMetricTotals } from "./campaign-current-values";
 import { resolveCampaignCumulativeFinancials } from "./campaign-cumulative-financials";
 import {
@@ -13,6 +13,7 @@ type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: stri
 
 type WriterDependencies = {
   getGA4PublicationVersion?: (campaignId: string) => Promise<string | null>;
+  getGA4RevenuePublication?: (campaignId: string, reportingDate: string) => Promise<GA4RevenuePublication>;
   getCampaign: (campaignId: string) => Promise<any>;
   getGA4Connections: (campaignId: string) => Promise<any[]>;
   getGA4OverviewSnapshot: (campaignId: string, propertyId: string) => Promise<any>;
@@ -20,12 +21,13 @@ type WriterDependencies = {
   getSpendSources: (campaignId: string, platformContext: "ga4") => Promise<any[]>;
   getRevenueTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
   getSpendTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
-  upsertFinancialDailySnapshot: (snapshot: FinancialDailySnapshotInput & GA4RefreshWriteInput) => Promise<unknown>;
+  upsertFinancialDailySnapshot: (snapshot: FinancialDailySnapshotInput & GA4RefreshWriteInput & { revenuePublication?: GA4RevenuePublication }) => Promise<unknown>;
   now: () => Date;
 };
 
 const defaultDependencies: WriterDependencies = {
   getGA4PublicationVersion: campaignId => storage.getGA4PublicationVersion(campaignId),
+  getGA4RevenuePublication: (campaignId, reportingDate) => storage.getGA4RevenuePublication(campaignId, reportingDate),
   getCampaign: (campaignId) => storage.getCampaign(campaignId),
   getGA4Connections: (campaignId) => storage.getGA4Connections(campaignId),
   getGA4OverviewSnapshot: (campaignId, propertyId) => storage.getGA4OverviewSnapshot(campaignId, propertyId),
@@ -66,6 +68,7 @@ export async function writeFinancialDailySnapshotIfReady(
     return { status: "skipped", reasons: ["reporting_date_window_mismatch"] };
   }
 
+  const revenuePublication = await dependencies.getGA4RevenuePublication?.(campaignId, reportingDate);
   const [totals, spendSources, revenueSourceTotal, spendSourceTotal] = await Promise.all([
     dependencies.getCampaignMetricTotals(campaignId, true, parseGA4CampaignFilter(campaign.ga4CampaignFilter).length > 0),
     dependencies.getSpendSources(campaignId, "ga4"),
@@ -158,6 +161,7 @@ export async function writeFinancialDailySnapshotIfReady(
   try {
     await dependencies.upsertFinancialDailySnapshot({ ...cumulative.snapshot,
       ...writeInput,
+      ...(revenuePublication ? { revenuePublication } : {}),
     });
     recordFinancialDailySnapshotWriteOutcome(campaignId, reportingDate, "written");
     return { status: "written", reasons: [], snapshot: cumulative.snapshot };

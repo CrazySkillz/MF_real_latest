@@ -32,6 +32,7 @@ type GA4DailyRefreshPipelineOptions = {
   // Internal opt-in only; timers/bootstrap do not enable ownership recovery yet.
   workDueAt?: Date;
   initialImportWorkId?: string;
+  revenueChange?: boolean;
   assertWorkOwnership?: () => Promise<void>;
   signal?: AbortSignal;
 } & GA4RefreshWriteInput;
@@ -653,7 +654,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     if (!target || getLatestCompleteReportingDate(target.reportingTimeZone, opts.initialImportWorkId ? opts.workDueAt : undefined) !== scope.reportingDate) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     const [revenue, spend] = await Promise.all([storage.getRevenueSources(scope.campaignId), storage.getSpendSources(scope.campaignId)]);
     if (opts.initialImportWorkId && [...revenue, ...spend].some(source => source.isActive !== false)) throw new Error("GA4_REFRESH_SOURCE_OWNERSHIP_NOT_INTEGRATED");
-    if (!opts.initialImportWorkId && !await storage.isGA4NativeRecoveryEligible(scope.campaignId, { includeFinancialSources: true })) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    if (!opts.initialImportWorkId && !await storage.isGA4NativeRecoveryEligible(scope.campaignId, { includeFinancialSources: true, ...(opts.revenueChange ? { revenueChange: true } : {}) })) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   };
   const scheduleHeartbeat = () => {
     heartbeat = setTimeout(() => {
@@ -688,11 +689,11 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       // Initial imports remain native-only; ongoing recovery accepts only integrated source families.
       const [revenue, spend] = await Promise.all([storage.getRevenueSources(campaignId), storage.getSpendSources(campaignId)]);
       if (opts.initialImportWorkId && [...revenue, ...spend].some(source => source.isActive !== false)) throw new Error("GA4_REFRESH_SOURCE_OWNERSHIP_NOT_INTEGRATED");
-      if (!opts.initialImportWorkId && !await storage.isGA4NativeRecoveryEligible(campaignId, { includeFinancialSources: true })) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      if (!opts.initialImportWorkId && !await storage.isGA4NativeRecoveryEligible(campaignId, { includeFinancialSources: true, ...(opts.revenueChange ? { revenueChange: true } : {}) })) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       const reportingDate = getLatestCompleteReportingDate(target.reportingTimeZone, opts.initialImportWorkId ? opts.workDueAt : startedAtDate);
       const work = opts.initialImportWorkId
         ? await storage.getGA4InitialImportWork(campaignId, target.ownerId, opts.initialImportWorkId)
-        : await storage.ensureGA4RefreshWork(campaignId, target.ownerId, opts.workDueAt, reportingDate, { suppressAlerts: opts.suppressAlerts === true });
+        : await storage.ensureGA4RefreshWork(campaignId, target.ownerId, opts.workDueAt, reportingDate, { suppressAlerts: opts.suppressAlerts === true, ...(opts.revenueChange ? { revenueChange: true } : {}) });
       if (!work) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       if (opts.initialImportWorkId && (work.reportingDate !== reportingDate || work.dueAt.getTime() !== opts.workDueAt.getTime())) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       if (work.status === "completed") {
@@ -1205,10 +1206,12 @@ export async function backfillMissingGA4OverviewSnapshots(
   return attemptedCampaignIds;
 }
 
-export async function recoverInterruptedGA4Refreshes(): Promise<void> {
+export async function recoverInterruptedGA4Refreshes(targetCampaignId?: string): Promise<void> {
   if (process.env.GA4_DURABLE_RECOVERY_ENABLED === "false" || (global as any).__ga4DailyRefreshInProgress) return;
+  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress ||
+      (global as any).__salesforcePipelineRefreshInProgress) return;
   const stoppedAt = ga4DailySchedulerStatus.stoppedAt;
-  const work = await storage.getRecoverableGA4RefreshWork();
+  const work = (await storage.getRecoverableGA4RefreshWork()).filter(item => !targetCampaignId || item.campaignId === targetCampaignId);
   if (!work.length || (global as any).__ga4DailyRefreshInProgress || stoppedAt !== ga4DailySchedulerStatus.stoppedAt) return;
   const completed = new Set<string>();
   alignedCampaignIdsInCurrentRun = completed;
@@ -1227,11 +1230,18 @@ export async function recoverInterruptedGA4Refreshes(): Promise<void> {
         try {
           const campaign = await storage.getCampaign(item.campaignId);
           const initialImport = (item.scope as any)?.kind === "initial_import";
+          const revenueChange = (item.scope as any)?.kind === "revenue_change";
+          if (revenueChange && campaign?.ownerId && campaign.ownerId === (item.scope as any)?.campaign?.ownerId
+            && item.reportingDate !== getLatestCompleteReportingDate(campaign.reportingTimeZone)) {
+            await storage.ensureGA4RefreshWork(item.campaignId, campaign.ownerId, new Date(),
+              getLatestCompleteReportingDate(campaign.reportingTimeZone), { revenueChange: true });
+            continue;
+          }
           if (!campaign || campaign.ownerId !== (item.scope as any)?.campaign?.ownerId ||
               getLatestCompleteReportingDate(campaign.reportingTimeZone, initialImport ? item.dueAt : undefined) !== item.reportingDate ||
-              (initialImport ? campaign.status !== "draft" : !await storage.isGA4NativeRecoveryEligible(item.campaignId, { includeFinancialSources: true }))) continue;
+              (initialImport ? campaign.status !== "draft" : !await storage.isGA4NativeRecoveryEligible(item.campaignId, { includeFinancialSources: true, ...(revenueChange ? { revenueChange: true } : {}) }))) continue;
           await runGA4DailyRefreshPipelineForTrigger("recovery", { campaignId: item.campaignId, workDueAt: item.dueAt,
-            suppressAlerts: item.suppressAlerts, refreshFinancialSources: true, ...(initialImport ? { initialImportWorkId: item.id } : {}) }, completed);
+            suppressAlerts: item.suppressAlerts, refreshFinancialSources: true, revenueChange, ...(initialImport ? { initialImportWorkId: item.id } : {}) }, completed);
         } catch (error: any) {
           console.warn(`[GA4 Daily] Recovery attempt failed for campaign ${item.campaignId}:`, error?.message || error);
         }

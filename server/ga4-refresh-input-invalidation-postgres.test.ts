@@ -29,9 +29,10 @@ const tables = [schema.campaigns, schema.ga4Connections, schema.metricSnapshots,
   schema.metaDailyMetrics, schema.instagramDailyMetrics, schema.tiktokDailyMetrics];
 const storage = new DatabaseStorage();
 const date = "2026-10-17";
-const dueAt = new Date(Date.now() - 60_000);
 let admin: Pool, pool: Pool, created = false;
-const ensure = () => storage.ensureGA4RefreshWork("a", "owner-a", dueAt, date);
+// Source saves now queue their own current work; a new test worker must use a
+// current slot rather than attempting to supersede it with a minute-old slot.
+const ensure = () => storage.ensureGA4RefreshWork("a", "owner-a", new Date(), date);
 async function claim() {
   const work = (await ensure())!;
   const claimed = (await storage.claimGA4RefreshWork("a", "owner-a", work.id, 120_000))!;
@@ -73,11 +74,13 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
 
   const kpi = { campaignId: "a", platformType: "google_analytics", name: "Total Sessions", metric: "sessions", targetValue: "100", unit: "count", alertsEnabled: false };
   it.each([true, false])("V1-073 requires a surviving campaign before source replacement (durable table=%s)", async durable => {
+    await storage.replaceGa4CsvRevenueSourceWithRecords("b", null,
+      { campaignId: "b", sourceType: "csv", platformContext: "ga4", currency: "EUR", mappingConfig: "{}" },
+      [{ campaignId: "b", date, revenue: "100.00", currency: "EUR" }]);
     if (!durable) await pool.query('ALTER TABLE ga4_refresh_work RENAME TO suspended_refresh_work');
     try {
       const source = { campaignId: "a", sourceType: "csv", platformContext: "ga4", currency: "EUR", mappingConfig: "{}" } as any;
       const records = [{ campaignId: "a", date, revenue: "100.00", currency: "EUR" }];
-      await storage.replaceGa4CsvRevenueSourceWithRecords("b", null, { ...source, campaignId: "b" }, records.map(r => ({ ...r, campaignId: "b" })));
       await pool.query("DELETE FROM campaigns WHERE id='a'");
       expect(await storage.updateCampaignWithGA4DailyInvalidation("a", { currency: "USD" })).toBeUndefined();
       await expect(storage.replaceGa4CsvRevenueSourceWithRecords("a", null, source, records)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
@@ -441,9 +444,13 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
     expect((await storage.getRevenueSource("a", saved.id))?.mappingConfig).toBe("new");
     await expect(accepts(scope)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
   });
-  it("retains ordinary saves before the optional durable-work migration exists", async () => {
+  it("rejects Revenue saves without durable publication support and preserves ordinary Spend compatibility", async () => {
     await pool.query("DROP TABLE ga4_refresh_work");
-    try { expect(await storage.createRevenueSource(source)).toMatchObject(source); }
+    try {
+      await expect(storage.createRevenueSource(source)).rejects.toThrow("GA4_REVENUE_PUBLICATION_UNAVAILABLE");
+      expect(await storage.getRevenueSources("a")).toEqual([]);
+      expect(await storage.createSpendSource(source)).toMatchObject(source);
+    }
     finally { await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
     await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8")); }
   });

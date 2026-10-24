@@ -1,0 +1,327 @@
+{
+  "at": "2026-10-24T09:10:28.565077+00:00",
+  "localDate": "2026-10-24",
+  "baseCommit": "d719d2a9d08b3f3440c2c0b2e950d5b6c167a939",
+  "scope": "User-authorized GA4 imported Revenue sale-date eligibility, durable post-save financial publication and conditional source status, with scheduled/KPI/Benchmark/report propagation",
+  "status": "Implemented and locally verified within the listed evidence; uncommitted and undeployed; whole Batch 5/V1 acceptance remains open",
+  "rootCause": [
+    "Storage totals/breakdown and completeness used source createdAt as well as record date, making older sales depend on connection date.",
+    "Revenue saves recomputed current values and KPIs without writing the persisted financial_daily publication consumed by Total Revenue.",
+    "Existing pendingCompletedDay could not identify a saved older sale awaiting financial publication.",
+    "Scheduled report preparation separately omitted newly created sources from materialization/currency guards."
+  ],
+  "runtimeFiles": [
+    "client/src/pages/ga4-metrics.tsx",
+    "server/ga4-daily-scheduler.ts",
+    "server/ga4-scheduled-report-pdf.ts",
+    "server/routes-oauth.ts",
+    "server/storage.ts",
+    "server/utils/financial-daily-snapshot-writer.ts"
+  ],
+  "trace": [
+    "GA4 Overview Total Revenue + / Revenue Sources pencil -> existing HubSpot, Salesforce, Shopify, Sheets and CSV import/edit routes -> existing exact campaign/platform source replacement methods.",
+    "Revenue source/record mutations atomically queue revenue_change work through writeGA4RefreshInputChange; owned scheduler mutations keep lease ownership and do not recursively queue.",
+    "Save route kicks recoverInterruptedGA4Refreshes for only the affected campaign; the existing recovery timer handles busy workers, retry and restart discovery.",
+    "Owned GA4 pipeline refreshes selected GA4/source inputs, computes KPI/Benchmark values, validates/writes financial_daily, writes aggregate/executive outputs, checks alerts and completes report readiness.",
+    "The financial writer captures normalized source hashes before computation and verifies them under final write ownership; immutable source contribution metadata is stored beside the strict financialDaily payload.",
+    "Revenue Sources API compares each current source with the completed receipt; all frontend merge branches preserve status, and published status clears only when the displayed financial receipt agrees.",
+    "The shared dated Revenue totals/breakdown flow feeds financial calculations, KPIs and benchmarks; browser and scheduled report paths retain saved-publication/parity safeguards.",
+    "Scheduled PDF preparation removes source-age exclusion; verified future-only materialization can be excluded, whereas missing records or verification errors cannot be interpreted as zero."
+  ],
+  "lifecycleEvidence": {
+    "addEdit": "Real PostgreSQL for seven supported/retained normalized source families, actual Source API handler and synthetic browser publication changes.",
+    "deleteDisconnect": "Exact campaign/platform deletion and preservation tests plus existing lifecycle/owned-source regression packet; no production deletion.",
+    "refreshRestart": "Existing pipeline tests cover targeted campaign recovery, busy-worker deferral, midnight rollover and all integrated source ownership; PostgreSQL verifies durable rediscovery, stale-worker rejection and unchanged import deduplication/readiness.",
+    "sourceDisplay": "20 actual Chromium GA4 page cases with intercepted synthetic network; pending, failed, published and delayed displayed snapshot, source totals and Pipeline Proxy separation.",
+    "totalsDerived": "Actual storage sale-date/zero/currency/materialization and ownership checks; shared financial formula/window tests; KPI/Benchmark writer and report publication guards.",
+    "report": "47 saved-report cases pass, including 15 added cases covering old-sale inclusion, new-source materialization/currency guards and verified future-only exclusion across Overview, KPI, Benchmark and Custom Reports. Related browser reports and parity consumers pass.",
+    "existingData": "No source recreation or cleanup. Existing records are read on the next successful publication. Legacy snapshots lacking receipts remain pending until verified publication."
+  },
+  "validation": {
+    "packets": [
+      "revenue-publication-final.json",
+      "revenue-publication-report-verified.json",
+      "revenue-publication-report-consumers.json"
+    ],
+    "latestDistinctFiles": 24,
+    "passed": 982,
+    "failed": 1,
+    "skipped": 0,
+    "remainingFailure": {
+      "id": "TEST-c290a69da0",
+      "file": "server/ga4-kpi-reporting-window-regression.test.ts",
+      "name": "persists cumulative traffic values while CPA uses import-window financial conversions",
+      "diagnostic": "expected '2026-07-31' to be '2026-07-30'",
+      "classification": "Previously documented BEHAVIOR_ASSERTION_WITH_INCOMPLETE_FIXTURE; file and KPI reporting-window implementation unchanged by this task. Remains OPEN under V1-012.",
+      "evidence": "docs/audits/v1-2026-10-19/VALIDATION.md"
+    },
+    "latestByFile": [
+      {
+        "file": "server/campaign-cumulative-financials.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 8,
+        "failed": 0
+      },
+      {
+        "file": "server/campaign-current-financial-formulas.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 2,
+        "failed": 0
+      },
+      {
+        "file": "server/financial-daily-snapshot-contract.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 7,
+        "failed": 0
+      },
+      {
+        "file": "server/financial-daily-snapshot-writer.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 49,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-browser-report-publication.test.ts",
+        "packet": "revenue-publication-report-consumers.json",
+        "passed": 61,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-derived-publication-postgres.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 186,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-financial-source-ownership-postgres.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 221,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-insights-report-parity-regression.test.ts",
+        "packet": "revenue-publication-report-consumers.json",
+        "passed": 4,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-kpi-financial-window-regression.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 5,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-kpi-report-consumer-regression.test.ts",
+        "packet": "revenue-publication-report-consumers.json",
+        "passed": 10,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-kpi-reporting-window-regression.test.ts",
+        "packet": "revenue-publication-report-verified.json",
+        "passed": 3,
+        "failed": 1
+      },
+      {
+        "file": "server/ga4-overview-conversion-events-scheduled-pdf.test.ts",
+        "packet": "revenue-publication-report-consumers.json",
+        "passed": 2,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-overview-landing-pages-scheduled-pdf.test.ts",
+        "packet": "revenue-publication-report-consumers.json",
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-performance-publication.test.ts",
+        "packet": "revenue-publication-report-consumers.json",
+        "passed": 10,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 64,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 175,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-report-saved-publication.test.ts",
+        "packet": "revenue-publication-report-consumers.json",
+        "passed": 47,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-reporting-timezone-regression.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-reports-certification-gate.test.ts",
+        "packet": "revenue-publication-report-consumers.json",
+        "passed": 7,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-revenue-publication-postgres.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 27,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-source-lifecycle-recompute-regression.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 18,
+        "failed": 0
+      },
+      {
+        "file": "server/ga4-ui-regression.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 49,
+        "failed": 0
+      },
+      {
+        "file": "server/overview-revenue-materialization-regression.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 5,
+        "failed": 0
+      },
+      {
+        "file": "server/v1-batch5-ga4-browser.test.ts",
+        "packet": "revenue-publication-final.json",
+        "passed": 20,
+        "failed": 0
+      }
+    ],
+    "builds": [
+      "revenue-publication-final-build-checks.json",
+      "revenue-publication-report-consumers-build-checks.json"
+    ],
+    "intermediateResults": [
+      {
+        "file": "revenue-publication-initial-tests.json",
+        "passed": 524,
+        "failed": 129,
+        "skipped": 0,
+        "classification": "Mocks lacked the newly required source receipt dependency; route/ownership fixtures lacked current stage/amount dependencies, and one assertion required the superseded synchronous partial recompute. Updated fixtures preserve arithmetic/ownership assertions; the renamed lifecycle test now verifies durable handoff and truthful saved-response behavior."
+      },
+      {
+        "file": "revenue-publication-database.json",
+        "passed": 21,
+        "failed": 1,
+        "skipped": 0,
+        "classification": "Spend regression omitted the explicit ga4 context required by its existing signature; corrected test only."
+      },
+      {
+        "file": "revenue-publication-expanded.json",
+        "passed": 915,
+        "failed": 25,
+        "skipped": 0,
+        "classification": "Fixtures/assertions assumed the old creation-date exclusion, old writer signature or old work due date; several fixtures lacked existing publication-version/stage/route-helper dependencies. New source-endpoint and mixed-platform fixtures used incorrect helper/column names. Queue-absent expectation was changed to the expressly required atomic save-and-publication contract."
+      },
+      {
+        "file": "revenue-publication-corrections.json",
+        "passed": 328,
+        "failed": 1,
+        "skipped": 0,
+        "classification": "One alert spy expected a publication-version argument that the unchanged caller acquires internally; restored the actual two-argument contract."
+      },
+      {
+        "file": "revenue-publication-report-reproduced.json",
+        "passed": 38,
+        "failed": 1,
+        "skipped": 0,
+        "classification": "Expected before-fix failure: a newly connected source with no materialized rows incorrectly allowed a native-only report. Runtime correction retains valid future-only sources while rejecting missing/currency-invalid inputs."
+      }
+    ],
+    "intermediateTypecheck": "revenue-publication-current-typecheck.log contained four narrowing diagnostics in the new midnight branch; the explicit owner guard corrected them. Both subsequent final typechecks pass.",
+    "cleanup": "revenue-publication-cleanup.json",
+    "documentationCheck": {
+      "mode": "documentation-only",
+      "documents": 10,
+      "findings": 130,
+      "open": 120,
+      "deferred": 10,
+      "closed": 0,
+      "localLinks": 1169,
+      "inboundLinks": 12,
+      "checks": "PASS",
+      "limitation": "Layout, assignment, status and local-link integrity only; no runtime or release certification."
+    },
+    "diffCheck": "PASS",
+    "finalManifestCheck": "All 35 tested runtime, test and relevant dependency hashes match."
+  },
+  "fileSha256": {
+    "client/src/pages/ga4-metrics.tsx": "102208ab239491d6ef784cce1520ed0ca0a4944acbce7162c56fe432a96cd292",
+    "server/auto-refresh-scheduler.ts": "4370f0abf1384724a19df6ba832bd24b1e3bf055ca78e2eac2c41e6933d63c86",
+    "server/campaign-cumulative-financials.test.ts": "e918b8139720ab1d922ffa4fa09e6a49a0a9e93e86d70915e4a06a7607674728",
+    "server/campaign-current-financial-formulas.test.ts": "52a4e7914e5be55f6f14c6615567fef0a96e14db7e833a69aef4d6462a32b4e3",
+    "server/financial-daily-snapshot-contract.test.ts": "7fd6ceab9b2bcc8ac7743303f31b835b2dd4672fd49d19685c5929a11a221441",
+    "server/financial-daily-snapshot-writer.test.ts": "5689e3e382b43d98a8446d623277eb872ab11239641dfa21e2cfd42f8a808359",
+    "server/ga4-browser-report-publication.test.ts": "d5e1e9353bad78849d043f3eae440a695e8f41dbd7776aa4582da73ecf879f4a",
+    "server/ga4-daily-scheduler.ts": "a0496412037996e752ca09a925bac9fc1424695bc3a509b1e1bfda32bfe9c0c8",
+    "server/ga4-derived-publication-postgres.test.ts": "48ed1a32051f1aa09754ff5bf0fbcce19e60084327e66f56f161cdc92c11d92c",
+    "server/ga4-financial-source-ownership-postgres.test.ts": "aefcab37794429b1584968b0d336c17174c67f1edb82d5378cec21a9491a8fc8",
+    "server/ga4-insights-report-parity-regression.test.ts": "717cb909ed872bb3879a7560c35f032136470a787f22c11b20c85a4ed9402c10",
+    "server/ga4-kpi-benchmark-jobs.ts": "cac34f4c8b87fe3104eae6622202162c5253a60c0178053af2a3d6d0cdea3230",
+    "server/ga4-kpi-financial-window-regression.test.ts": "48520248e4c8b6c6dc6f2e91da7272af445631aa3e07a1b63ba52e1414f850c5",
+    "server/ga4-kpi-report-consumer-regression.test.ts": "a7d9f7e5a772a7488abc64fa663ca389c719320d077210877a74408e835a2f0b",
+    "server/ga4-kpi-reporting-window-regression.test.ts": "ead98ae771ea5b088392d7c8a8506064014419e79cc60f34e2f6f5ba18cd63cc",
+    "server/ga4-overview-conversion-events-scheduled-pdf.test.ts": "7192825fcd5fd7a10ebd260ce6a160076b40344cbed900194673738a29b3d4b3",
+    "server/ga4-overview-landing-pages-scheduled-pdf.test.ts": "a46fc0566c05eedd2076f4f11c4f4496580715009cc1c151c97de339f37a5350",
+    "server/ga4-performance-publication.test.ts": "eaffbc2a5f42ea5b6d52f2cff3a5353c7a12bc0081980ff8a1868fa80bf3a705",
+    "server/ga4-refresh-input-invalidation-postgres.test.ts": "5bf798ce0a83a53fb3b8a9dcdcab804948fe4ec7673520ac8bca8de809ecf6cf",
+    "server/ga4-refresh-pipeline-source-failure.test.ts": "fdf60ba7bfe3a980ab5c31499a5a4f4dbc25f99a700d6b58127ffcaa06f9533b",
+    "server/ga4-report-saved-publication.test.ts": "e2b9dea3791d1a4b1a75e4e0769ddd39421b2809156b772c97014884e025d357",
+    "server/ga4-reporting-timezone-regression.test.ts": "f62ac3b356993fbe3b6b98d670e693d39bbefcdd7c17b57178208196983bf425",
+    "server/ga4-reports-certification-gate.test.ts": "e130130f2f547095f1f8ef8c45420e723f856c293d54f05717ef7b99ea919ba7",
+    "server/ga4-revenue-publication-postgres.test.ts": "054c27041ba4cca52f46e8184ff0949136585dbfecad1bc20f523e2899ac2806",
+    "server/ga4-scheduled-report-pdf.ts": "693e054943d9da2b1f4bf29b902810c7afc86053a6937d4e6d2d2563b6b074ef",
+    "server/ga4-source-lifecycle-recompute-regression.test.ts": "d1301f9d7b4bde1ed1338f987eeddb0ab8669811728f930cab0b9f1d80a588a5",
+    "server/ga4-ui-regression.test.ts": "dc0dab9ddfd4481b92a124f21e9584c2ea947802035953b60a047cea92300b50",
+    "server/overview-revenue-materialization-regression.test.ts": "ba25da27aaee10facf9e3efb110e1d97695a1fa003b947728880fe35ad694b47",
+    "server/routes-oauth.ts": "0ea679e2801fde1450c25221dc61e044e40207f54354e4fdded50c6a6387f899",
+    "server/storage.ts": "7bfe0269633a439d1244f8db140f39bc33e872c0bbe2ecf32e15566c73f5f241",
+    "server/utils/campaign-cumulative-financials.ts": "933d81c5ade9d210d99bcef16f3344a4ca39e6507e5116241f89a8c6edc70f78",
+    "server/utils/campaign-current-values.ts": "4d1dfa2a25e31379b9d62bccfb71fe2aa602cf8fc60c3557ec2c7d1a67cf484a",
+    "server/utils/financial-daily-snapshot-writer.ts": "80eede27c6d890bad0b3b449c8b99f526324cf4118b2c7a2d1607c91c468e461",
+    "server/v1-batch5-ga4-browser.test.ts": "717f94b477145193ca53ac5d3d1419ffe4337aeb8c6b114a2ce6716586ff379a",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96"
+  },
+  "safety": {
+    "productionAccess": false,
+    "productionWrites": false,
+    "providerCalls": false,
+    "ptomoAccess": false,
+    "databaseSchemaChange": false,
+    "newDependencies": false,
+    "newEnvironmentSettings": false,
+    "testIsolation": "Credential-stripped runners, local-only network guard, intercepted browser requests, disposable local PostgreSQL schemas; fixture stopped after cleanup.",
+    "spendPolicy": "Unchanged; explicit ga4 Spend creation-date regression passes.",
+    "nativeGA4AndPipelineProxy": "Native selection/currency checks and separate Pipeline Proxy calculations retained.",
+    "nonGA4SourceProcessing": "Existing non-GA4 save/recompute branches unchanged."
+  },
+  "limits": [
+    "Not committed, pushed or deployed. No authenticated deployed import/edit or natural scheduled-run validation.",
+    "Provider response correctness, real campaign publication duration and production-volume performance remain unvalidated.",
+    "Publication uses the existing staged owned pipeline, not one atomic transaction spanning all derived tables. A financial snapshot can be written before a later executive/report stage fails; source status remains pending/failed and existing report parity/readiness gates remain.",
+    "Revenue publication requires the existing durable-work migrations and enabled recovery, a valid active campaign, owner, saved GA4 selection and supported configuration. Missing work table or explicitly disabled required recovery rolls back the source transaction.",
+    "No generic explanatory note reintroduced. Only conditional source statuses were added.",
+    "No whole-app, all-provider-lifecycle or production-readiness certification. Master audit counts remain 130 total,120 OPEN,10 DEFERRED,0 CLOSED; NO-GO."
+  ],
+  "concreteAcceptance": {
+    "nativeRevenue": "EUR 7653.96",
+    "sale": "EUR 250 dated 2026-09-30",
+    "selectedOn": "2026-10-24",
+    "totalAfterSuccessfulPublication": "EUR 7903.96 assuming unchanged native revenue",
+    "saleDated20261024": "First eligible on 2026-10-25 and included only after a successful refresh"
+  }
+}

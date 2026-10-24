@@ -2401,9 +2401,12 @@ export default function GA4Metrics() {
     && String(source?.sourceType || "").trim().toLowerCase() === "google_sheets"
     && String(source?.platformContext || "ga4").trim().toLowerCase() === "ga4"
   );
-  const getImportedRevenueRefetchInterval = (data?: any) => hasActiveGa4GoogleSheetsRevenueSource(
-    data || queryClient.getQueryData([`/api/campaigns/${campaignId}/revenue-sources`]),
-  ) ? 15 * 1000 : 10 * 60 * 1000;
+  const getImportedRevenueRefetchInterval = (data?: any) => {
+    const sources = data || queryClient.getQueryData<any>([`/api/campaigns/${campaignId}/revenue-sources`]);
+    if (sources?.sources?.some((source: any) => source.publicationStatus === "pending" && !source.pendingCompletedDay)) return 5000;
+    if (sources?.sources?.some((source: any) => source.publicationStatus === "failed")) return 30_000;
+    return hasActiveGa4GoogleSheetsRevenueSource(sources) ? 15_000 : 10 * 60 * 1000;
+  };
 
   const { data: importedRevenueToDateResp, isLoading: importedRevenueLoading, isError: importedRevenueError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`],
@@ -2440,6 +2443,16 @@ export default function GA4Metrics() {
       return json;
     },
   });
+
+  const revenuePublicationToken = JSON.stringify((revenueSourcesResp?.sources || []).map((source: any) =>
+    [source.id, source.publicationStatus, source.publicationHash]));
+  useEffect(() => {
+    if (!campaignId || !(revenueSourcesResp?.sources || []).some((source: any) => source.publicationStatus === "published")) return;
+    void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot"] });
+    for (const kind of ["kpis", "benchmarks", "reports"]) {
+      void queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/${kind}`, campaignId] });
+    }
+  }, [campaignId, queryClient, revenuePublicationToken]);
 
   const configuredPipelineSourceTypes = useMemo(() => {
     const result = new Set<string>();
@@ -2685,6 +2698,12 @@ export default function GA4Metrics() {
   // Revenue display sources — merges breakdown (per-source amounts) with source definitions (fallback)
   const revenueDisplaySources = useMemo(() => {
     const defs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
+    const getPublicationStatus = (source: any) => {
+      if (source?.publicationStatus !== "published") return source?.publicationStatus;
+      const receipt = financialDailySnapshotResp?.snapshot?.metrics?.revenuePublication;
+      return receipt?.reportingDate === source.completedDayEndDate && receipt?.sources?.[source.id] === source.publicationHash
+        ? "published" : "pending";
+    };
     const getDefinitionRevenue = (source: any) => source?.materializedRevenueStatus === "available" && Number.isFinite(Number(source?.lastTotalRevenue))
       ? Number(source.lastTotalRevenue)
       : null;
@@ -2704,13 +2723,14 @@ export default function GA4Metrics() {
           boundedRevenueZero: definition?.boundedRevenueZero === true,
           latestRevenue: getDefinitionRevenue(definition),
           pendingCompletedDay: definition?.pendingCompletedDay === true,
+          publicationStatus: getPublicationStatus(definition),
           completedDayEndDate: definition?.completedDayEndDate || revenueBreakdownResp?.endDate || null,
         };
       });
       const shownIds = new Set(rows.map((s: any) => String(s.sourceId || "")));
       for (const d of defs.filter((d: any) => d?.isActive !== false)) {
         if (!shownIds.has(String(d.id))) {
-          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getCompletedDayRevenue(d), latestRevenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus, boundedRevenueZero: d.boundedRevenueZero === true, pendingCompletedDay: d.pendingCompletedDay === true, completedDayEndDate: d.completedDayEndDate || revenueBreakdownResp?.endDate || null });
+          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getCompletedDayRevenue(d), latestRevenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus, boundedRevenueZero: d.boundedRevenueZero === true, pendingCompletedDay: d.pendingCompletedDay === true, publicationStatus: getPublicationStatus(d), completedDayEndDate: d.completedDayEndDate || revenueBreakdownResp?.endDate || null });
         }
       }
       return rows;
@@ -2725,9 +2745,10 @@ export default function GA4Metrics() {
       materializedRevenueStatus: d.materializedRevenueStatus,
       boundedRevenueZero: d.boundedRevenueZero === true,
       pendingCompletedDay: d.pendingCompletedDay === true,
+      publicationStatus: getPublicationStatus(d),
       completedDayEndDate: d.completedDayEndDate || revenueBreakdownResp?.endDate || null,
     }));
-  }, [revenueSourcesResp, revenueBreakdownResp]);
+  }, [revenueSourcesResp, revenueBreakdownResp, financialDailySnapshotResp]);
   const totalRevenueDisplaySources = revenueDisplaySources;
   const persistedFinancialSourceCleanupAvailable =
     revenueDisplaySources.length > 0 || spendDisplaySources.length > 0;
@@ -7297,6 +7318,7 @@ export default function GA4Metrics() {
                     initialSource={editingRevenueSource || undefined}
                     platformContext="ga4"
                     onSuccess={() => {
+                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot"] });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
@@ -7391,6 +7413,8 @@ export default function GA4Metrics() {
                                     )}
                                   </div>
                                   {!hasSingleSourceBreakdown && sourceType !== "hubspot" && sourceType !== "salesforce" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
+                                  {s.publicationStatus === "pending" && <p className="text-xs text-red-600 dark:text-red-400">Saved — waiting for Total Revenue to update.</p>}
+                                  {s.publicationStatus === "failed" && <p className="text-xs text-red-600 dark:text-red-400" role="alert">Saved — Total Revenue update failed. Your saved data is intact.</p>}
                                   {pendingCompletedDay && <p className="text-xs text-amber-700 dark:text-amber-300">Pending for totals · included through {formatReportingDateLabel(s.completedDayEndDate)}: {formatMoney(completedDayRevenue)}</p>}
                                 </div>
                                 <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown ? "col-span-2" : ""}`}>

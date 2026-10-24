@@ -547,4 +547,13 @@ describe("gated financial daily snapshot writer", () => {
     expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(2);
     expect(deps.upsertFinancialDailySnapshot.mock.calls[0][0]).toEqual(deps.upsertFinancialDailySnapshot.mock.calls[1][0]);
   });
+  it("captures the saved revenue inputs before calculation and passes that receipt to guarded publication", async () => {
+    successfulEvidence();
+    const receipt = { version: 1, reportingDate, sources: { "revenue-1": "before-calculation" }, pendingSourceIds: [] };
+    const deps = dependencies({ getGA4RevenuePublication: vi.fn().mockResolvedValue(receipt) });
+    await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+    expect(deps.getGA4RevenuePublication).toHaveBeenCalledExactlyOnceWith(campaignId, reportingDate);
+    expect(deps.getGA4RevenuePublication.mock.invocationCallOrder[0]).toBeLessThan(deps.getCampaignMetricTotals.mock.invocationCallOrder[0]);
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({ revenuePublication: receipt }));
+  });
 });

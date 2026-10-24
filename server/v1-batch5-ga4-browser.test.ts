@@ -25,17 +25,19 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
   }, 60_000);
   afterAll(async () => { await browser?.close(); });
 
-  async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number } = {}) {
+  async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number; publication?: string; emptyBreakdown?: boolean } = {}) {
     let state = options.state ?? "positive"; let providers = options.providers ?? ["hubspot", "salesforce", "shopify"];
+    let publication = options.publication;
     const context = await browser.newContext({ viewport: { width: 1400, height: 1000 }, serviceWorkers: "block", timezoneId: "Europe/Amsterdam", locale: "en-US" });
     const page = await context.newPage(); const errors: string[] = [], requests: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.clock.install({ time: new Date("2026-10-23T18:00:00Z") });
-    const confirmed: Record<string, number> = { hubspot: 25, salesforce: 30, shopify: 45 };
+    const confirmed: Record<string, number> = { hubspot: 25, salesforce: 30, shopify: 45, google_sheets: 25, csv: 25, manual: 25, custom: 25 };
     const updatedAt = "2026-10-23T12:10:00Z", day = "2026-10-22";
     const totals = { sessions: 100, users: 90, conversions: 2.75, revenue: 100, engagedSessions: 70, engagementRate: 0.7, pageviews: 120 };
     const selected = "fixture-selected";
     const sources = () => providers.map(provider => ({ id: `${provider}-source`, sourceType: provider, platformContext: "ga4", isActive: true,
+      ...(publication ? { publicationStatus: publication === "waiting-card" ? "published" : publication, publicationHash: `${provider}:new`, completedDayEndDate: day } : {}),
       displayName: provider === "hubspot" ? "HubSpot" : provider === "salesforce" ? "Salesforce" : "Shopify", currency: "EUR", lastTotalRevenue: confirmed[provider], completedDayRevenue: confirmed[provider], materializedRevenueStatus: "available",
       mappingConfig: JSON.stringify({ selectedValues: [selected], campaignProperty: "campaign", campaignField: "Campaign__c", pipelineEnabled: provider !== "shopify", pipelineStageId: "open", pipelineStageName: "Open", pipelineStageLabel: "Open",
         pipelineTotalToDate: 999, pipelineCurrency: "EUR", pipelineValueRevenueTotals: [{ campaignValue: "old-cache", revenue: 999 }], campaignValueRevenueTotals: [{ campaignValue: selected, revenue: confirmed[provider] }] }) }));
@@ -52,7 +54,9 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       else if (url.pathname.startsWith("/api/ga4/check-connection/") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
       else if (url.searchParams.has("statusOnly")) data = { success: true, campaignId: "a", propertyId: "123", publicationToken: "fixture-publication", refreshStatus: "current" };
       else if (url.pathname.endsWith("/ga4-daily")) data = { success: true, propertyId: "123", startDate: "2026-09-04", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8,14,20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
-      else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: { financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-09-04", endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: 100 + imported }, spend: { available: false }, conversions: { available: true, value: 2.75 } } } } } };
+      else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: {
+        ...(publication ? { revenuePublication: { version: 1, reportingDate: day, sources: Object.fromEntries(providers.map(provider => [ `${provider}-source`, `${provider}:${publication === "published" ? "new" : "old"}` ])) } } : {}),
+        financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-09-04", endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: 100 + (publication && publication !== "published" ? 0 : imported) }, spend: { available: false }, conversions: { available: true, value: 2.75 } } } } } };
       else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, lastUpdated: updatedAt, totals, rows: [{ campaign: selected, campaignName: selected, ...totals }], revenueWindow: { source: "ga4", startDate: "2026-09-04", endDate: day }, meta: { currencyCode: "EUR" } };
       else if (url.pathname.endsWith("/ga4-to-date")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals };
       else if (/\/ga4-(conversion-events|landing-pages)$/.test(url.pathname)) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, lastUpdated: updatedAt, rows: [] };
@@ -60,7 +64,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       else if (/\/ga4-(diagnostics|geographic)$/.test(url.pathname)) data = { success: true, propertyId: "123", rows: [] };
       else if (url.pathname.includes("/platforms/google_analytics/")) data = [];
       else if (url.pathname.endsWith("/revenue-sources")) data = { success: true, sources: sources(), completedDayEndDate: day };
-      else if (url.pathname.endsWith("/revenue-breakdown")) data = { success: true, sources: sources().map(s => ({ sourceId: s.id, sourceType: s.sourceType, displayName: s.displayName, revenue: s.lastTotalRevenue })), endDate: day };
+      else if (url.pathname.endsWith("/revenue-breakdown")) data = { success: true, sources: options.emptyBreakdown ? [] : sources().map(s => ({ sourceId: s.id, sourceType: s.sourceType, displayName: s.displayName, revenue: s.lastTotalRevenue })), endDate: day };
       else if (url.pathname.endsWith("/revenue-to-date")) data = { success: true, totalRevenue: imported, sourceIds: sources().map(s => s.id), endDate: day, currency: "EUR" };
       else if (url.pathname.endsWith("/pipeline-proxy")) {
         const provider = url.pathname.split('/')[2]; const amount = state === "zero" ? 0 : provider === "hubspot" ? (options.hubspotAmount ?? 12.75) : 7.25;
@@ -74,8 +78,32 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     await page.goto("http://batch5-ga4-fixture.test/campaigns/a/ga4-metrics");
     const revenue = page.getByText("Total Revenue", { exact: true }).locator("../..");
     const pipeline = page.getByText("Expected Revenue", { exact: true }).locator("../..");
-    return { page, revenue, pipeline, requests, errors, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; }, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
+    return { page, revenue, pipeline, requests, errors, setPublication: (value: string) => { publication = value; }, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; }, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
   }
+
+  it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"])("automatically updates %s totals and clears its red pending status only after publication", async provider => {
+    const f = await fixture({ providers: [provider], publication: "pending", emptyBreakdown: provider === "csv" });
+    try {
+      await browserExpect(f.revenue).toContainText("\u20ac100.00");
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      const pending = f.page.getByText("Saved — waiting for Total Revenue to update.", { exact: true });
+      await browserExpect(pending).toBeVisible(); await browserExpect(pending).toHaveClass(/text-red-600/);
+      f.setPublication("published"); await f.page.clock.runFor(6000);
+      await browserExpect(pending).toHaveCount(0);
+      await f.page.keyboard.press("Escape");
+      await browserExpect(f.revenue).toContainText(provider === "salesforce" ? "\u20ac130.00" : provider === "shopify" ? "\u20ac145.00" : "\u20ac125.00");
+    } finally { await f.close(); }
+  }, 30_000);
+  it.each(["failed", "waiting-card"])("keeps saved source figures visible for %s publication", async publication => {
+    const f = await fixture({ providers: ["hubspot"], publication });
+    try {
+      await browserExpect(f.revenue).toContainText("\u20ac100.00");
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      const dialog = f.page.getByRole("dialog");
+      await browserExpect(dialog).toContainText("\u20ac25.00");
+      await browserExpect(dialog).toContainText(publication === "failed" ? "Saved — Total Revenue update failed. Your saved data is intact." : "Saved — waiting for Total Revenue to update.");
+    } finally { await f.close(); }
+  }, 30_000);
 
   it("renders provider revenue/itemization and keeps pipeline separate", async () => {
     const f = await fixture();

@@ -18,6 +18,17 @@ const sliceBetween = (source: string, start: string, end: string) => {
 };
 
 describe("GA4 source lifecycle recompute route guards", () => {
+  it("does not misreport a saved source as a failed import when background publication fails", async () => {
+    const body = sliceBetween(routes, "const recomputeCampaignDerivedValues =", "// When \"revenue to date\"");
+    const recovery = vi.fn().mockRejectedValue(new Error("fixture processing failure"));
+    const warning = vi.fn(), otherKPIs = vi.fn();
+    const fn = new Function("isGA4RevenuePlatformContext", "recoverInterruptedGA4Refreshes", "refreshKPIsForCampaign", "checkPerformanceAlerts", "console",
+      ts.transpileModule(body + "return recomputeCampaignDerivedValues;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(
+      (value: string) => value === "ga4", recovery, otherKPIs, vi.fn(), { warn: warning });
+    await expect(fn("campaign-a", { platformContext: "ga4" })).resolves.toBeUndefined();
+    expect(recovery).toHaveBeenCalledExactlyOnceWith("campaign-a");
+    expect(warning).toHaveBeenCalled(); expect(otherKPIs).not.toHaveBeenCalled();
+  });
   it.each(["success", "kpiIdsFailed", "benchmarkIdsFailed", "benchmarkIdsSkipped"])("checks the actual source recompute result: %s", async condition => {
     const body = sliceBetween(routes, "const recomputeGA4KPIAndBenchmarkValues =", "const recomputeGA4SpendBeforeResponse =");
     const storage = { getGA4PublicationVersion: vi.fn().mockResolvedValue("completed-version"), getCampaign: vi.fn().mockResolvedValue({ reportingTimeZone: "Europe/Amsterdam" }), invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn().mockResolvedValue(undefined) };
@@ -45,7 +56,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(jobs).not.toHaveBeenCalled();
     if (condition !== "changed") expect(storage.invalidateExecutiveSummaryDailySnapshotAlignment).not.toHaveBeenCalled();
   });
-  it("completes GA4 source-backed KPI/Benchmark recompute before mutation responses", () => {
+  it("keeps Spend recompute synchronous and starts durable coordinated revenue publication after saving", () => {
     expect(routes).toContain('import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";');
     expect(routes).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
 
@@ -69,14 +80,9 @@ describe("GA4 source lifecycle recompute route guards", () => {
       "// When \"revenue to date\"",
     );
     expect(revenueHelper).toContain("if (isGA4RevenuePlatformContext(opts.platformContext))");
-    expect(revenueHelper).toContain("await refreshCampaignCurrentValuesForCampaign(campaignId, true);");
-    expect(revenueHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
-    expect(revenueHelper).toContain("completed = await Promise.race([");
-    expect(revenueHelper).toContain("GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS");
-    expect(revenueHelper).toContain("continuing in background");
-    expect(revenueHelper.indexOf("await refreshCampaignCurrentValuesForCampaign(campaignId, true);")).toBeLessThan(
-      revenueHelper.indexOf('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");'),
-    );
+    expect(revenueHelper).toContain("void recoverInterruptedGA4Refreshes(campaignId).catch");
+    expect(revenueHelper).not.toContain("await refreshCampaignCurrentValuesForCampaign");
+    expect(revenueHelper).not.toContain("Promise.race");
     expect(routes).not.toContain("scheduleGA4RevenuePostResponseRecompute");
   });
 

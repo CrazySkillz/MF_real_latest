@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
+  getGA4PublicationVersion: vi.fn(),
   getCampaign: vi.fn(),
   getCampaigns: vi.fn(),
   getGA4Connections: vi.fn(),
@@ -70,6 +71,7 @@ describe("GA4 KPI persisted financial source window", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-28T12:00:00.000Z"));
     resetMocks();
+    storageMock.getGA4PublicationVersion.mockResolvedValue(null);
 
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
@@ -143,10 +145,10 @@ describe("GA4 KPI persisted financial source window", () => {
       "USD",
     );
 
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "1300" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "6.5" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roi", { currentValue: "550" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "10" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "1300", publicationVersion: { campaignId: "campaign-1", version: null } });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "6.5", publicationVersion: { campaignId: "campaign-1", version: null } });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roi", { currentValue: "550", publicationVersion: { campaignId: "campaign-1", version: null } });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "10", publicationVersion: { campaignId: "campaign-1", version: null } });
     expect(checkPerformanceAlertsMock).toHaveBeenCalledExactlyOnceWith("campaign-1", "2026-06-27");
   });
 
@@ -187,12 +189,12 @@ describe("GA4 KPI persisted financial source window", () => {
       undefined,
       "USD",
     );
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-sessions", { currentValue: "100" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "37518.74" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "30.01" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "8.62" });
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-revenue", { currentValue: "37518.74" });
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-roas", { currentValue: "30.01" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-sessions", { currentValue: "100", publicationVersion: { campaignId: "campaign-1", version: null } });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "37518.74", publicationVersion: { campaignId: "campaign-1", version: null } });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "30.01", publicationVersion: { campaignId: "campaign-1", version: null } });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "8.62", publicationVersion: { campaignId: "campaign-1", version: null } });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-revenue", { currentValue: "37518.74", publicationVersion: { campaignId: "campaign-1", version: null } });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-roas", { currentValue: "30.01", publicationVersion: { campaignId: "campaign-1", version: null } });
   });
 
   it("uses the fixed legacy import boundary when no saved import start is available", async () => {
@@ -233,7 +235,7 @@ describe("GA4 KPI persisted financial source window", () => {
 
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });
 
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-revenue", { currentValue: "1300" });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-revenue", { currentValue: "1300", publicationVersion: { campaignId: "campaign-1", version: null } });
     expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       benchmarkId: "benchmark-revenue", currentValue: "1300", benchmarkValue: "2000", variance: "-35", performanceRating: "poor",
       recordedAt: new Date("2026-06-27T23:59:59.000Z"),

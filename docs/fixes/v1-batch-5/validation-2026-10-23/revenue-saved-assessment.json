@@ -1,0 +1,215 @@
+{
+  "at": "2026-10-24T11:39:10.598Z",
+  "baseCommit": "2646ec8b408be0cb68571e5ba12ab092c684ed7f",
+  "status": "VERIFIED_LOCALLY_NOT_COMMITTED_OR_DEPLOYED",
+  "symptom": "Salesforce EUR 100 saved before the total changed from EUR 7,903.96 to EUR 8,003.96; exact elapsed time not captured.",
+  "rootCause": "Revenue mutations queued durable revenue_change work, but recovery unconditionally refetched all financial providers and native GA4 before downstream publication. Busy-worker recovery and browser polling add separate possible waits.",
+  "path": [
+    "Revenue wizard confirmed save",
+    "routes-oauth.ts provider process/save routes",
+    "storage source/normalized record transaction and revenue_change work",
+    "recomputeCampaignDerivedValues -> targeted recoverInterruptedGA4Refreshes",
+    "owned runGA4DailyRefreshPipelineForTrigger",
+    "financial snapshot receipt -> aggregate/executive snapshots -> alerts and work completion",
+    "financial snapshot/source-status APIs -> GA4 card/source-modal polling"
+  ],
+  "runtimeFiles": [
+    "server/ga4-daily-scheduler.ts",
+    "server/utils/financial-daily-snapshot-readiness.ts"
+  ],
+  "testFiles": [
+    "server/ga4-refresh-pipeline-source-failure.test.ts",
+    "server/campaign-current-value-financial-source-regression.test.ts"
+  ],
+  "hashes": {
+    "server/ga4-daily-scheduler.ts": "356ddb16df4451c3ff2aba3a9ff406fc8fd1cca2fb63f2ce80ae21ae76d39039",
+    "server/utils/financial-daily-snapshot-readiness.ts": "ae1bf1ea8f2f294fa08275c251929c57aedecb3440506e172fd0f4513fbd15b9",
+    "server/ga4-refresh-pipeline-source-failure.test.ts": "6503bfe54e8422ab62c7d2e126ba57b3dff07da23fbea6419ce1ce484f6ca648",
+    "server/campaign-current-value-financial-source-regression.test.ts": "ee8f5021782a2dd5eb9473732ca163512717698fd078589a9a84db487d30932f",
+    "server/storage.ts": "7bfe0269633a439d1244f8db140f39bc33e872c0bbe2ecf32e15566c73f5f241",
+    "server/routes-oauth.ts": "0ea679e2801fde1450c25221dc61e044e40207f54354e4fdded50c6a6387f899",
+    "server/utils/campaign-current-values.ts": "4d1dfa2a25e31379b9d62bccfb71fe2aa602cf8fc60c3557ec2c7d1a67cf484a",
+    "server/utils/financial-daily-snapshot-writer.ts": "80eede27c6d890bad0b3b449c8b99f526324cf4118b2c7a2d1607c91c468e461",
+    "server/utils/financial-daily-snapshot-observation.ts": "3bc5383f40e8056fef8f50106cc515c9b7589a0aaf8761dd55f9339f1e5466b3",
+    "server/ga4-kpi-benchmark-jobs.ts": "cac34f4c8b87fe3104eae6622202162c5253a60c0178053af2a3d6d0cdea3230",
+    "server/scheduler.ts": "cabf23ba16802e601fc17eee62880f8b186e900bc20630c07de4bf5d7698371e",
+    "server/executive-summary-snapshot-scheduler.ts": "262c1e1ee85b3972f797db5c760535d83e3aeac50477908d7e993c712a049f38",
+    "server/ga4-scheduled-report-pdf.ts": "693e054943d9da2b1f4bf29b902810c7afc86053a6937d4e6d2d2563b6b074ef",
+    "client/src/pages/ga4-metrics.tsx": "102208ab239491d6ef784cce1520ed0ca0a4944acbce7162c56fe432a96cd292"
+  },
+  "correction": "Within the existing owned pipeline, verified revenue-change work can reuse one active connection with an exact current native history scope, current completed-day Overview/timestamp and real reconciled daily rows. The existing saved-total selector must verify native and imported financial inputs and source breakdowns. It bypasses provider phases only, retaining every downstream publication guard. Internal saved_inputs evidence retains the original native timestamp.",
+  "unchanged": [
+    "Revenue sale-date eligibility",
+    "Spend source creation/date policy",
+    "Formulas and response contracts",
+    "Provider selections/mappings and normalized records",
+    "Initial/manual/scheduled refresh provider flow",
+    "Ownership/lease/deadline/cancellation/final receipt checks",
+    "Pending/failure source polling",
+    "Other source freshness and native timestamps",
+    "Global busy-worker guards and 60-second recovery interval"
+  ],
+  "latestDistinctResults": {
+    "files": 18,
+    "passed": 958,
+    "failed": 0,
+    "skipped": 0
+  },
+  "resultsByFile": {
+    "campaign-cumulative-financials.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 8
+    },
+    "campaign-current-financial-formulas.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 2
+    },
+    "campaign-current-value-financial-source-regression.test.ts": {
+      "evidence": "revenue-saved-selector-final.json",
+      "tests": 13
+    },
+    "campaign-scheduler-current-value-regression.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 3
+    },
+    "financial-daily-snapshot-contract.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 7
+    },
+    "financial-daily-snapshot-writer.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 49
+    },
+    "ga4-browser-report-publication.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 61
+    },
+    "ga4-derived-publication-postgres.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 186
+    },
+    "ga4-financial-source-ownership-postgres.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 221
+    },
+    "ga4-kpi-financial-window-regression.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 5
+    },
+    "ga4-performance-publication.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 10
+    },
+    "ga4-refresh-input-invalidation-postgres.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 64
+    },
+    "ga4-refresh-pipeline-source-failure.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 212
+    },
+    "ga4-report-saved-publication.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 47
+    },
+    "ga4-revenue-publication-postgres.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 27
+    },
+    "ga4-source-lifecycle-recompute-regression.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 18
+    },
+    "overview-revenue-materialization-regression.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 5
+    },
+    "v1-batch5-ga4-browser.test.ts": {
+      "evidence": "revenue-saved-regression.json",
+      "tests": 20
+    }
+  },
+  "newOrchestrationTests": [
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs publishes saved revenue with the real saved-total selector, preserving native timestamps and all downstream gates",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for missing overview",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for old window",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for wrong campaign",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for wrong property",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for wrong currency",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for missing history",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for changed scope",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for old timestamp",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for future timestamp",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for missing daily row",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for simulated row",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for invalid daily value",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for wrong daily campaign",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs falls back to the existing full refresh for multiple connections",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs keeps scheduled refreshes on the provider path even with reusable inputs",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs keeps manual refreshes on the provider path even with reusable inputs",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs reuses normalized hubspot revenue without reprocessing the source",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs reuses normalized salesforce revenue without reprocessing the source",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs reuses normalized shopify revenue without reprocessing the source",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs reuses normalized google_sheets revenue without reprocessing the source",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs reuses normalized csv revenue without reprocessing the source",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs reuses normalized manual revenue without reprocessing the source",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs reuses normalized custom revenue without reprocessing the source",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs recomputes from the full saved amount after removal/edit to EUR 0",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs recomputes from the full saved amount after removal/edit to EUR 250",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs does not let a caller label ordinary work as a revenue change",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs does not reuse saved inputs when getRevenueTotalForRange fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs does not reuse saved inputs when getSpendTotalForRange fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs does not reuse saved inputs when getRevenueBreakdownBySource fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs does not reuse saved inputs when getSpendBreakdownBySource fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs retains pending work when the saved-input KPI stage fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs retains pending work when the saved-input financial receipt stage fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs retains pending work when the saved-input aggregate stage fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs retains pending work when the saved-input executive stage fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs retains pending work when the saved-input alerts stage fails",
+    "GA4 ordered refresh source-discovery failures automatic durable ownership integration revenue publication from verified saved inputs rejects ownership loss during saved-input validation before recomputing or publishing"
+  ],
+  "buildFiles": [
+    "revenue-saved-final-build-checks.json",
+    "revenue-saved-final-fixture-build-checks.json"
+  ],
+  "intermediateResults": [
+    {
+      "file": "revenue-saved-focused.log",
+      "classification": "ENVIRONMENT",
+      "detail": "Sandbox prevented esbuild child spawn (EPERM); no tests executed. Permissioned isolated rerun passed."
+    },
+    {
+      "file": "revenue-saved-focused-verified.json",
+      "classification": "PASS_INTERMEDIATE",
+      "passed": 202,
+      "failed": 0
+    },
+    {
+      "file": "revenue-saved-regression.json",
+      "classification": "MOCK_CONTRACT_INCOMPLETE",
+      "passed": 957,
+      "failed": 1,
+      "detail": "Existing campaign-current-value fixture lacked getGA4RevenuePublication added in the prior deployed change. Added the mock and a receipt assertion; all 13 tests pass in selector-final. No runtime guard or expectation relaxed."
+    },
+    {
+      "classification": "LOCAL_FIXTURE_STARTUP",
+      "detail": "First shell attempt had argument quoting error; sandbox then blocked child spawn. Permissioned start on default port exited; explicit 127.0.0.1:55444 started successfully but its inherited pipe timed out after status 0. PostgreSQL log and tests verified readiness. Cleanup confirms the isolated cluster is stopped."
+    }
+  ],
+  "isolation": "Credential-stripped test runners, localhost-only network preload, disposable local PostgreSQL schemas, intercepted synthetic browser responses; no production/provider/Ptomo access or writes.",
+  "cleanup": "revenue-saved-cleanup.json",
+  "limitations": [
+    "No measured hosted latency or deployed acceptance for this change. Busy workers and browser polling can still delay visibility; no immediate-update guarantee.",
+    "Multi-GA4 connections, absent/stale/wrong-scope/native inputs and invalid financial inputs retain full refresh. Lookup exceptions fail the attempt.",
+    "Orchestration uses mocked provider/storage/downstream boundaries and the real saved-total selector/writer; separate PostgreSQL and browser tests prove their bounded contracts, not live-provider end-to-end behavior.",
+    "Derived tables are guarded sequentially, not one atomic transaction spanning all tables.",
+    "Broader provider lifecycle, Shopify acceptance and natural scheduler/deployed tests remain open. Previously documented unrelated KPI fixture and whole-suite failures are not recertified or waived."
+  ],
+  "readiness": {
+    "findings": 130,
+    "open": 120,
+    "deferred": 10,
+    "closed": 0,
+    "decision": "NO-GO"
+  }
+}

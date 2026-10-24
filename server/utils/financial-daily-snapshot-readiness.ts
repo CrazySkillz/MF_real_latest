@@ -3,6 +3,8 @@ import { financialDailySnapshotInputSchema, type FinancialDailySnapshotInput } f
 type FinancialInputKey = keyof FinancialDailySnapshotInput["inputs"];
 
 export type FinancialDailyRefreshEvidence = {
+  // Saved-input publication verifies persisted inputs without claiming another provider fetch.
+  basis?: "saved_inputs";
   campaignId: string;
   reportingDate: string;
   status: "success" | "failed" | "skipped" | "running";

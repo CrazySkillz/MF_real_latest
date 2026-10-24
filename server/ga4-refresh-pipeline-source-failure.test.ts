@@ -198,7 +198,8 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       mocks.storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, currency: "EUR", sourceIds: [] });
       mocks.storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, currency: "EUR", sourceIds: [] });
       mocks.totals.mockImplementation(async () => ({ ...totals(), revenue: 500, spend: 0, spendAvailable: false }));
-      mocks.storage.ensureGA4RefreshWork.mockImplementation(async (_id, _owner, _due, _date, options) => ({ id: "work-a", status: "pending", suppressAlerts: options?.suppressAlerts === true }));
+      mocks.storage.ensureGA4RefreshWork.mockImplementation(async (_id, _owner, _due, _date, options) => ({ id: "work-a", status: "pending",
+        scope: { kind: options?.revenueChange ? "revenue_change" : "scheduled" }, suppressAlerts: options?.suppressAlerts === true }));
       mocks.storage.claimGA4RefreshWork.mockResolvedValue({ id: "work-a", leaseToken: "owner-token" });
       mocks.storage.updateGA4RefreshWorkLease.mockImplementation(async (_id, _owner, _work, _token, action, _ms, completedAt) => {
         if (!live) return undefined;
@@ -341,6 +342,125 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", expect.any(Date), reportingDate, { revenueChange: true });
       expect(mocks.storage.claimGA4RefreshWork).not.toHaveBeenCalled();
       expect(mocks.storage.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+    });
+    describe("revenue publication from verified saved inputs", () => {
+      const revenueOptions = () => ({ ...options(), revenueChange: true });
+      const seedSavedInputs = async () => {
+        await refreshAllGA4DailyMetrics({ campaignId: "campaign-a" });
+        overviews.get("campaign-a").updatedAt = new Date("2026-10-16T05:59:00Z");
+        const actual = await vi.importActual<typeof import("./utils/campaign-current-values")>("./utils/campaign-current-values");
+        mocks.totals.mockImplementation(actual.getCampaignMetricTotals);
+        mocks.storage.getRevenueSources.mockResolvedValue([source("campaign-a", "revenue")]);
+        mocks.storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 100, currency: "EUR", sourceIds: ["campaign-a-revenue"] });
+        for (const mock of Object.values(mocks.provider)) mock.mockClear();
+        mocks.storage.replaceGA4DailyMetricsWindow.mockClear();
+      };
+      const expectNoProviderRefresh = () => {
+        for (const [name, mock] of Object.entries(mocks.provider)) {
+          if (name !== "withAbortSignal") expect(mock, name).not.toHaveBeenCalled();
+        }
+        expect(fetch).not.toHaveBeenCalled();
+        expect(mocks.storage.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+      };
+      it("publishes saved revenue with the real saved-total selector, preserving native timestamps and all downstream gates", async () => {
+        await seedSavedInputs();
+        const nativeBefore = structuredClone(overviews.get("campaign-a"));
+        await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+        expectNoProviderRefresh();
+        expect(saved.get("campaign-a").inputs.revenue.value).toBe("600.00");
+        expect(overviews.get("campaign-a")).toEqual(nativeBefore);
+        expect(financialObservation.getFinancialDailySnapshotRefreshEvidence("ga4_daily", "campaign-a"))
+          .toMatchObject({ basis: "saved_inputs", completedAt: "2026-10-16T05:59:00.000Z", status: "success" });
+        expect(financialObservation.getFinancialDailySnapshotRefreshEvidence("financial_sources", "campaign-a"))
+          .toMatchObject({ basis: "saved_inputs", status: "success" });
+        expect(mocks.recompute).toHaveBeenCalledExactlyOnceWith({ campaignId: "campaign-a", suppressAlerts: true, useSavedOverview: true, refreshScope: scope });
+        expect(mocks.aggregate).toHaveBeenCalledExactlyOnceWith("campaign-a", { allowScheduledGA4: true, refreshScope: scope });
+        expect(mocks.executive).toHaveBeenCalledTimes(1);
+        expect(mocks.kpiAlerts).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate, { refreshScope: scope });
+        expect(mocks.benchmarkAlerts).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate, { refreshScope: scope });
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(true);
+      });
+      it.each(["missing overview", "old window", "wrong campaign", "wrong property", "wrong currency", "missing history", "changed scope", "old timestamp", "future timestamp", "missing daily row", "simulated row", "invalid daily value", "wrong daily campaign", "multiple connections"])(
+        "falls back to the existing full refresh for %s", async fault => {
+          await seedSavedInputs();
+          const overview = overviews.get("campaign-a");
+          if (fault === "missing overview") overviews.delete("campaign-a");
+          if (fault === "old window") overview.windowEnd = "2026-10-14";
+          if (fault === "wrong campaign") overview.campaignId = "campaign-b";
+          if (fault === "wrong property") overview.propertyId = "other-property";
+          if (fault === "wrong currency") overview.campaignBreakdown.meta.currencyCode = "USD";
+          if (fault === "missing history") delete overview.campaignBreakdown.meta.dailyHistoryRefresh;
+          if (fault === "changed scope") overview.campaignBreakdown.meta.dailyHistoryRefresh.scope = "prior-selection";
+          if (fault === "old timestamp") overview.updatedAt = new Date("2026-10-15T05:59:00Z");
+          if (fault === "future timestamp") overview.updatedAt = new Date("2026-10-17T05:59:00Z");
+          if (fault === "missing daily row") daily.set("campaign-a", []);
+          if (fault === "simulated row") daily.get("campaign-a")![0].isSimulated = true;
+          if (fault === "invalid daily value") daily.get("campaign-a")![0].conversions = "bad";
+          if (fault === "wrong daily campaign") daily.get("campaign-a")![0].campaignId = "campaign-b";
+          if (fault === "multiple connections") mocks.storage.getGA4Connections.mockResolvedValue([connection("campaign-a"), { ...connection("campaign-a"), id: "second" }]);
+          await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+          expect(mocks.provider.getTimeSeriesData).toHaveBeenCalled();
+          expect(mocks.storage.replaceGA4DailyMetricsWindow).toHaveBeenCalled();
+          expect(saved.get("campaign-a").inputs.revenue.value).toBe("600.00");
+          expect(financialObservation.getFinancialDailySnapshotRefreshEvidence("ga4_daily", "campaign-a")?.basis).toBeUndefined();
+        },
+      );
+      it.each(["scheduled", "manual"])("keeps %s refreshes on the provider path even with reusable inputs", async trigger => {
+        await seedSavedInputs();
+        await runGA4DailyRefreshPipelineForTrigger(trigger, options());
+        expect(mocks.provider.getTimeSeriesData).toHaveBeenCalled();
+      });
+      it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"])(
+        "reuses normalized %s revenue without reprocessing the source", async sourceType => {
+          await seedSavedInputs();
+          mocks.storage.getRevenueSources.mockResolvedValue([{ ...source("campaign-a", "revenue"), sourceType }]);
+          await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+          expectNoProviderRefresh();
+          expect(saved.get("campaign-a").inputs.revenue.value).toBe("600.00");
+        },
+      );
+      it.each([0, 250])("recomputes from the full saved amount after removal/edit to EUR %s", async amount => {
+        await seedSavedInputs();
+        mocks.storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: amount, currency: "EUR", sourceIds: amount ? ["campaign-a-revenue"] : [] });
+        if (!amount) mocks.storage.getRevenueSources.mockResolvedValue([]);
+        await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+        expectNoProviderRefresh();
+        expect(saved.get("campaign-a").inputs.revenue.value).toBe((500 + amount).toFixed(2));
+      });
+      it("does not let a caller label ordinary work as a revenue change", async () => {
+        await seedSavedInputs();
+        mocks.storage.ensureGA4RefreshWork.mockResolvedValue({ id: "work-a", status: "pending", scope: { kind: "scheduled" } });
+        await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+        expect(mocks.provider.getTimeSeriesData).toHaveBeenCalled();
+      });
+      it.each(["getRevenueTotalForRange", "getSpendTotalForRange", "getRevenueBreakdownBySource", "getSpendBreakdownBySource"] as const)(
+        "does not reuse saved inputs when %s fails", async method => {
+          await seedSavedInputs();
+          mocks.storage[method].mockRejectedValueOnce(new Error("unverified source records"));
+          await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+          expect(mocks.provider.getTimeSeriesData).toHaveBeenCalled();
+        },
+      );
+      it.each(["KPI", "financial receipt", "aggregate", "executive", "alerts"])("retains pending work when the saved-input %s stage fails", async stage => {
+        await seedSavedInputs();
+        if (stage === "KPI") mocks.recompute.mockRejectedValue(new Error("KPI recompute failed"));
+        if (stage === "financial receipt") mocks.storage.upsertFinancialDailySnapshot.mockRejectedValue(new Error("GA4_REFRESH_PUBLICATION_CHANGED"));
+        if (stage === "aggregate") mocks.aggregate.mockResolvedValue(false);
+        if (stage === "executive") mocks.executive.mockResolvedValue(false);
+        if (stage === "alerts") mocks.kpiAlerts.mockRejectedValue(new Error("alert decision failed"));
+        await expect(runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions())).rejects.toThrow();
+        expectNoProviderRefresh();
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(false);
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "release")).toBe(true);
+      });
+      it("rejects ownership loss during saved-input validation before recomputing or publishing", async () => {
+        await seedSavedInputs();
+        mocks.storage.getGA4OverviewSnapshot.mockImplementation(async id => { live = false; return overviews.get(id); });
+        await expect(runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions())).rejects.toThrow("OWNERSHIP_LOST");
+        expectNoProviderRefresh();
+        expect(mocks.recompute).not.toHaveBeenCalled();
+        expect(mocks.storage.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+      });
     });
     it.each(["__autoRefreshInProgress", "__googleSheetsSpendRefreshInProgress", "__salesforcePipelineRefreshInProgress"])("leaves queued work for the next poll while %s is busy", async flag => {
       (global as any)[flag] = true;

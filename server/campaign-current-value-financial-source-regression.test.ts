@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
   getGA4PublicationVersion: vi.fn(async () => null),
+  getGA4RevenuePublication: vi.fn(),
   getCampaign: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
@@ -40,6 +41,9 @@ describe("campaign current-value financial source contract", () => {
   beforeEach(() => {
     for (const value of Object.values(storageMock)) value.mockReset();
     for (const value of Object.values(ga4ServiceMock)) value.mockReset();
+    storageMock.getGA4RevenuePublication.mockImplementation(async (_campaignId, reportingDate) => ({
+      version: 1, reportingDate, sources: { "revenue-1": "saved-source-receipt" }, pendingSourceIds: [],
+    }));
     storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", startDate: "2026-05-20T00:00:00.000Z", currency: "USD", reportingTimeZone: "Europe/Amsterdam" });
     storageMock.getGA4Connections.mockResolvedValue([{
       id: "connection-1",
@@ -155,6 +159,7 @@ describe("campaign current-value financial source contract", () => {
     storageMock.upsertFinancialDailySnapshot.mockImplementation(async (value) => { saved = value; });
     expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
     expect(saved.inputs.revenue.value).toBe("800.01");
+    expect(saved.revenuePublication).toMatchObject({ reportingDate, sources: { "revenue-1": "saved-source-receipt" } });
     ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 500.02, conversions: 25 } });
     expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
     expect(saved.inputs.revenue.value).toBe("800.01");

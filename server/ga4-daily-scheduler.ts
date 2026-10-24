@@ -13,6 +13,7 @@ import { captureExecutiveSummarySnapshot } from "./executive-summary-snapshot-sc
 import { getAutoRefreshRunFailure, runDailyAutoRefreshOnce } from "./auto-refresh-scheduler";
 import { recordCampaignMetrics } from "./scheduler";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
+import { getCampaignMetricTotals } from "./utils/campaign-current-values";
 
 type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
@@ -636,6 +637,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   let renewal: Promise<void> | undefined;
   let ownershipError: unknown;
   let workCompleted = false;
+  let revenueChangeWork = false;
   let closing = false;
   let attemptFailure: { retryable: boolean; code: string; retryAfterMs?: number } | undefined;
   const controller = opts.workDueAt ? new AbortController() : undefined;
@@ -706,6 +708,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       const claimed = await storage.claimGA4RefreshWork(campaignId, target.ownerId, work.id, 120_000);
       if (!claimed?.leaseToken) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       refreshWriteInput = { refreshScope: { campaignId, ownerId: target.ownerId, reportingDate, work: { id: work.id, leaseToken: claimed.leaseToken } } };
+      revenueChangeWork = opts.revenueChange === true && (work.scope as any)?.kind === "revenue_change";
       scheduleHeartbeat();
     }
     if (opts.initialImportWorkId) {
@@ -741,6 +744,44 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     }
     const refreshFinancialSources = Boolean(refreshWriteInput.refreshScope) || (trigger === "scheduled" && !campaignId)
       || (["snapshot_bootstrap", "manual"].includes(trigger) && Boolean(campaignId) && opts.refreshFinancialSources === true);
+    let savedRevenueRefresh: GA4DailyRefreshResult | undefined;
+    let savedOverviewCompletedAt: string | undefined;
+    if (revenueChangeWork && refreshWriteInput.refreshScope) {
+      // A revenue edit changes normalized financial inputs, not the already imported GA4 facts.
+      // Reuse only a reconciled current-day import for the exact saved selection; otherwise refresh normally.
+      const target = targets[0];
+      const connections = (await storage.getGA4Connections(campaignId, { migrateLegacyTokens: false }))
+        .filter(connection => connection.isActive !== false && String(connection.propertyId || "").trim());
+      const connection = connections.length === 1 ? connections[0] : undefined;
+      const window = connection && resolveGA4ImportToDateWindow(connection.importStartDate, target.reportingTimeZone, startedAtDate);
+      if (connection && window && window.endDate === refreshWriteInput.refreshScope.reportingDate) {
+        const overview = await storage.getGA4OverviewSnapshot(campaignId, String(connection.propertyId));
+        const history = (overview?.campaignBreakdown as any)?.meta?.dailyHistoryRefresh;
+        const historyScope = createHash("sha256").update(JSON.stringify([
+          campaignId, connection.id, connection.method, connection.isPrimary, getGA4RefreshAttemptScope(target, connection),
+        ])).digest("hex");
+        const updatedAt = new Date(overview?.updatedAt || "");
+        if (overview?.campaignId === campaignId && overview.propertyId === connection.propertyId &&
+            overview.windowStart === window.startDate && overview.windowEnd === window.endDate &&
+            history?.version === 1 && history.scope === historyScope && history.reportingDate === window.endDate &&
+            Number.isFinite(updatedAt.getTime()) && updatedAt <= startedAtDate &&
+            getLatestCompleteReportingDate(target.reportingTimeZone, updatedAt) === window.endDate) {
+          const rows = await storage.getGA4DailyMetrics(campaignId, String(connection.propertyId), window.startDate, window.endDate);
+          const totals = await getCampaignMetricTotals(campaignId, true, true);
+          if (rows.length > 0 && rows.every(row => row.isSimulated === false && normalizeGA4InsightsDailyMetricValues(row)) &&
+              totals?.ga4FinancialSource === "persisted_overview" && totals.ga4Available === true &&
+              totals.ga4RevenueAvailable === true && totals.financialConversionsAvailable === true &&
+              totals.revenueAvailable === true && totals.spendAvailable === true &&
+              totals.revenueBreakdownAvailable === true && totals.spendBreakdownAvailable === true) {
+            await checkOwnership();
+            savedOverviewCompletedAt = updatedAt.toISOString();
+            savedRevenueRefresh = { campaignIdsProcessed: [campaignId], campaignIdsSkipped: [], campaignIdsFailed: [],
+              propertyIdsProcessed: [String(connection.propertyId)], propertyIdsFailed: [], rowsUpserted: 0,
+              reportingDatesByCampaign: { [campaignId]: window.endDate } };
+          }
+        }
+      }
+    }
     const recomputeEvidence = {
       campaignIdsProcessed: [] as string[], campaignIdsSkipped: [] as string[], campaignIdsFailed: [] as string[],
       kpiIdsUpdated: [] as string[], kpiIdsSkipped: [] as string[], kpiIdsFailed: [] as string[],
@@ -803,7 +844,8 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
           campaignId: processedCampaignId,
           reportingDate,
           status: "success",
-          completedAt,
+          completedAt: savedOverviewCompletedAt || completedAt,
+          ...(savedRevenueRefresh ? { basis: "saved_inputs" as const } : {}),
           failures: [],
         });
         try {
@@ -898,7 +940,11 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     };
     const finishEachCampaign = trigger === "scheduled" && !campaignId;
     const finishedCampaignIds = new Set<string>();
-    if (refreshFinancialSources && refreshWriteInput.refreshScope) {
+    if (savedRevenueRefresh) {
+      recordFinancialDailySnapshotRefreshEvidence("financial_sources", { campaignId,
+        reportingDate: refreshWriteInput.refreshScope!.reportingDate, status: "success", basis: "saved_inputs",
+        completedAt: new Date().toISOString(), failures: [] });
+    } else if (refreshFinancialSources && refreshWriteInput.refreshScope) {
       const [revenue, spend] = await Promise.all([storage.getRevenueSources(campaignId, "ga4"), storage.getSpendSources(campaignId, "ga4")]);
       if ([...revenue, ...spend].some(source => source.isActive !== false)) {
         const financial = await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", { campaignId, financialSourcesOnly: true, deferDownstream: true, ...refreshWriteInput });
@@ -957,7 +1003,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
         publicationVersion: { campaignId: target.id, version: await storage.getGA4PublicationVersion(target.id) },
       });
     }
-    if (!finishEachCampaign) await publishRefresh(await refreshAllGA4DailyMetrics({ campaignId, ...refreshWriteInput,
+    if (!finishEachCampaign) await publishRefresh(savedRevenueRefresh || await refreshAllGA4DailyMetrics({ campaignId, ...refreshWriteInput,
       ...(refreshWriteInput.refreshScope ? { assertWorkOwnership: checkOwnership, signal: controller?.signal } : {}),
     }));
     const refreshFailure = refreshFailures.join("; ") || null;

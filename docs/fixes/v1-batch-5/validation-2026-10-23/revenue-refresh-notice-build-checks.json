@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-24T00:09:36.454Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "revenue-refresh-notice-typecheck.log"
+    }
+  ]
+}

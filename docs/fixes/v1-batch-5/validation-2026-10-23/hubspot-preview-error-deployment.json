@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-23T22:20:23.710Z",
+  "amsterdamLocalDate": "2026-10-24",
+  "endpoint": "https://marketforensics.onrender.com/api/health",
+  "httpStatus": 200,
+  "ok": true,
+  "commit": "c852115a2ad6dda3c20e67ae9598b4308439e7c6",
+  "result": "PASS_PUBLIC_REVISION_HEALTH_AND_USER_REVIEW_DISPLAY",
+  "authenticatedUiChecked": true,
+  "providerAccessed": false,
+  "productionWrites": false,
+  "limitation": "Normal review rendering and expected amounts are confirmed by the screenshot. Saved fallback amounts can remain visible while a preview is pending, so a static screenshot alone does not establish request completion or independently verify live provider data. Failed-preview/retry behavior remains proven locally only; no deployed save, failure experiment or full-source acceptance is claimed.",
+  "authenticatedUiMethod": "User-provided screenshot after the requested page refresh and existing-source edit navigation; no agent-authenticated browser/API inspection",
+  "reviewScreenshot": {
+    "providedLocalDate": "2026-10-24",
+    "campaignContext": "V1 Batch 5 Test from conversation; name not visible in crop",
+    "screen": "HubSpot revenue - Review Settings",
+    "currency": "EUR",
+    "revenueField": "Amount",
+    "totalRevenue": 0,
+    "campaignIdentifierField": "Deal Name",
+    "selectedDeals": [
+      "yesop_prospecting"
+    ],
+    "pipelineStage": "Contract Sent",
+    "pipelineAmount": 3200,
+    "dateField": "Close Date",
+    "visibleError": false,
+    "updateAction": "Update revenue appears disabled; DOM state was not independently inspected",
+    "instruction": "No setting changes or save requested; user may close with X"
+  }
+}

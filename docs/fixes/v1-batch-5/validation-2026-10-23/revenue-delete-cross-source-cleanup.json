@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-24T16:29:37.269Z",
+  "schemas": [],
+  "otherClients": 0,
+  "fixtureStopped": true,
+  "statusMessage": "pg_ctl: no server running"
+}

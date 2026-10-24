@@ -25,7 +25,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
   }, 60_000);
   afterAll(async () => { await browser?.close(); });
 
-  async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number; publication?: string; emptyBreakdown?: boolean } = {}) {
+  async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number; publication?: string; emptyBreakdown?: boolean; deletion?: "success" | "failed"; multipleItems?: boolean } = {}) {
     let state = options.state ?? "positive"; let providers = options.providers ?? ["hubspot", "salesforce", "shopify"];
     let publication = options.publication;
     const context = await browser.newContext({ viewport: { width: 1400, height: 1000 }, serviceWorkers: "block", timezoneId: "Europe/Amsterdam", locale: "en-US" });
@@ -36,13 +36,30 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     const updatedAt = "2026-10-23T12:10:00Z", day = "2026-10-22";
     const totals = { sessions: 100, users: 90, conversions: 2.75, revenue: 100, engagedSessions: 70, engagementRate: 0.7, pageviews: 120 };
     const selected = "fixture-selected";
+    let selections = options.multipleItems ? [selected, "keep-selected"] : [selected];
+    let receipt = "fixture-publication";
+    let publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0);
+    const mutations: Array<{ method: string; path: string; body: any }> = [];
     const sources = () => providers.map(provider => ({ id: `${provider}-source`, sourceType: provider, platformContext: "ga4", isActive: true,
       ...(publication ? { publicationStatus: publication === "waiting-card" ? "published" : publication, publicationHash: `${provider}:new`, completedDayEndDate: day } : {}),
       displayName: provider === "hubspot" ? "HubSpot" : provider === "salesforce" ? "Salesforce" : "Shopify", currency: "EUR", lastTotalRevenue: confirmed[provider], completedDayRevenue: confirmed[provider], materializedRevenueStatus: "available",
-      mappingConfig: JSON.stringify({ selectedValues: [selected], campaignProperty: "campaign", campaignField: "Campaign__c", pipelineEnabled: provider !== "shopify", pipelineStageId: "open", pipelineStageName: "Open", pipelineStageLabel: "Open",
-        pipelineTotalToDate: 999, pipelineCurrency: "EUR", pipelineValueRevenueTotals: [{ campaignValue: "old-cache", revenue: 999 }], campaignValueRevenueTotals: [{ campaignValue: selected, revenue: confirmed[provider] }] }) }));
+      mappingConfig: JSON.stringify({ selectedValues: selections, campaignProperty: "campaign", campaignField: "Campaign__c", pipelineEnabled: provider !== "shopify", pipelineStageId: "open", pipelineStageName: "Open", pipelineStageLabel: "Open",
+        campaignMappings: selections.map(crmValue => ({ crmValue, linkedinCampaignUrn: crmValue, linkedinCampaignName: crmValue })), dateField: provider === "salesforce" ? "CloseDate" : "closedate",
+        pipelineTotalToDate: 999, pipelineCurrency: "EUR", pipelineValueRevenueTotals: [{ campaignValue: "old-cache", revenue: 999 }], campaignValueRevenueTotals: selections.map(campaignValue => ({ campaignValue, revenue: confirmed[provider] / selections.length })) }) }));
     await context.route("**/*", async route => {
       const request = route.request(), url = new URL(request.url());
+      if (url.hostname === "batch5-ga4-fixture.test" && options.deletion && request.method() !== "GET") {
+        const deletion = /^\/api\/campaigns\/a\/revenue-sources\/([a-z_]+)-source$/.exec(url.pathname);
+        const edit = /^\/api\/campaigns\/a\/(hubspot|salesforce)\/save-mappings$/.exec(url.pathname);
+        if ((deletion && request.method() === "DELETE") || (edit && request.method() === "POST")) {
+          const body = edit ? request.postDataJSON() : null;
+          mutations.push({ method: request.method(), path: url.pathname + url.search, body });
+          if (options.deletion === "failed") { await route.fulfill({ status: 409, json: { success: false, error: "Source changed; refresh and try again." } }); return; }
+          if (deletion) providers = providers.filter(provider => provider !== deletion[1]);
+          if (edit) { selections = body.selectedValues; confirmed[edit[1]] /= 2; }
+          await route.fulfill({ json: { success: true } }); return;
+        }
+      }
       if (url.hostname !== "batch5-ga4-fixture.test" || request.method() !== "GET") { errors.push(`Blocked host or mutation: ${request.method()} ${url.hostname}${url.pathname}`); await route.abort(); return; }
       if (url.pathname === "/fixture.js") { await route.fulfill({ contentType: "application/javascript", body: bundle }); return; }
       if (!url.pathname.startsWith("/api/")) { await route.fulfill({ contentType: "text/html", body: '<html><body><div id="root"></div><script src="/fixture.js"></script></body></html>' }); return; }
@@ -50,13 +67,13 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       const property = { propertyId: "123", propertyName: "Synthetic fixture", isPrimary: true, lookbackDays: 30 };
       const imported = providers.reduce((sum, provider) => sum + confirmed[provider], 0);
       let data: any; let status = 200;
-      if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Isolated Batch 5 fixture", currency: "EUR", status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify([selected]), createdAt: "2026-09-04T00:00:00Z" };
+      if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Isolated Batch 5 fixture", currency: "EUR", status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify(options.multipleItems ? [selected, "keep-selected"] : [selected]), createdAt: "2026-09-04T00:00:00Z" };
       else if (url.pathname.startsWith("/api/ga4/check-connection/") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
-      else if (url.searchParams.has("statusOnly")) data = { success: true, campaignId: "a", propertyId: "123", publicationToken: "fixture-publication", refreshStatus: "current" };
+      else if (url.searchParams.has("statusOnly")) data = { success: true, campaignId: "a", propertyId: "123", publicationToken: receipt, refreshStatus: "current" };
       else if (url.pathname.endsWith("/ga4-daily")) data = { success: true, propertyId: "123", startDate: "2026-09-04", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8,14,20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
       else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: {
         ...(publication ? { revenuePublication: { version: 1, reportingDate: day, sources: Object.fromEntries(providers.map(provider => [ `${provider}-source`, `${provider}:${publication === "published" ? "new" : "old"}` ])) } } : {}),
-        financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-09-04", endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: 100 + (publication && publication !== "published" ? 0 : imported) }, spend: { available: false }, conversions: { available: true, value: 2.75 } } } } } };
+        financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-09-04", endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: options.deletion ? publishedTotal : 100 + (publication && publication !== "published" ? 0 : imported) }, spend: { available: false }, conversions: { available: true, value: 2.75 } } } } } };
       else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, lastUpdated: updatedAt, totals, rows: [{ campaign: selected, campaignName: selected, ...totals }], revenueWindow: { source: "ga4", startDate: "2026-09-04", endDate: day }, meta: { currencyCode: "EUR" } };
       else if (url.pathname.endsWith("/ga4-to-date")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals };
       else if (/\/ga4-(conversion-events|landing-pages)$/.test(url.pathname)) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, lastUpdated: updatedAt, rows: [] };
@@ -70,7 +87,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
         const provider = url.pathname.split('/')[2]; const amount = state === "zero" ? 0 : provider === "hubspot" ? (options.hubspotAmount ?? 12.75) : 7.25;
         if (provider === "salesforce" && state === "failed") { status = 503; data = { success: false, error: "Isolated provider failure" }; }
         else data = { success: true, sourceId: state === "wrong-source" && provider === "salesforce" ? "other-source" : `${provider}-source`, pipelineEnabled: true, mode: "current_stage", pipelineStageLabel: "Open", currency: state === "hubspot-missing-currency" && provider === "hubspot" ? null : state === "wrong-currency" && provider === "salesforce" ? "USD" : "EUR", lastUpdatedAt: state === "missing-time" && provider === "salesforce" ? null : updatedAt, totalToDate: amount,
-          pipelineValueRevenueTotals: amount === 0 ? [] : [{ campaignValue: selected, revenue: state === "incomplete-items" && provider === "salesforce" ? 1 : amount }] };
+          pipelineValueRevenueTotals: amount === 0 ? [] : selections.map(campaignValue => ({ campaignValue, revenue: state === "incomplete-items" && provider === "salesforce" ? 1 : amount / selections.length })) };
       } else if (url.pathname.includes("spend") || url.pathname.endsWith("/revenue-daily")) data = { success: true, sources: [], sourceIds: [], totalSpend: 0, spendToDate: 0, rows: [], endDate: day };
       else { errors.push(`Unmodelled API: ${url.pathname}${url.search}`); status = 501; data = { success: false }; }
       await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
@@ -78,8 +95,72 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     await page.goto("http://batch5-ga4-fixture.test/campaigns/a/ga4-metrics");
     const revenue = page.getByText("Total Revenue", { exact: true }).locator("../..");
     const pipeline = page.getByText("Expected Revenue", { exact: true }).locator("../..");
-    return { page, revenue, pipeline, requests, errors, setPublication: (value: string) => { publication = value; }, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; }, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
+    return { page, revenue, pipeline, requests, errors, mutations,
+      completeDeletion: () => { publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0); receipt = "after-deletion"; },
+      setPublication: (value: string) => { publication = value; }, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; }, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
   }
+
+  it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"])("the %s delete button removes only its source and updates the card after publication", async provider => {
+    const f = await fixture({ providers: [provider], deletion: "success" });
+    try {
+      const before = provider === "salesforce" ? "130.00" : provider === "shopify" ? "145.00" : "125.00";
+      await browserExpect(f.revenue).toContainText(`\u20ac${before}`);
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      const button = ["hubspot", "salesforce"].includes(provider)
+        ? f.page.getByRole("button", { name: "Remove fixture-selected", exact: true }) : f.page.getByTitle("Remove revenue source", { exact: true });
+      await button.click();
+      await f.page.getByRole("alertdialog").getByRole("button", { name: "Cancel", exact: true }).click();
+      expect(f.mutations).toEqual([]);
+      // Cancel may restore the CRM source dialog; generic source deletion leaves it closed.
+      if (!await button.isVisible()) await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      await button.click();
+      await f.page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
+      await browserExpect.poll(() => f.mutations.length).toBe(1);
+      expect(f.mutations[0]).toEqual({ method: "DELETE", path: `/api/campaigns/a/revenue-sources/${provider}-source?platformContext=ga4`, body: null });
+      await browserExpect(f.revenue).toContainText(`\u20ac${before}`);
+      f.completeDeletion(); await f.page.clock.runFor(31_000);
+      await browserExpect(f.revenue).toContainText("\u20ac100.00");
+      await f.page.keyboard.press("Escape");
+      await browserExpect(f.revenue.getByRole("button", { name: "Sources (1)", exact: true })).toHaveCount(1);
+      await browserExpect(f.pipeline).toContainText("Not configured");
+    } finally { await f.close(); }
+  }, 30_000);
+
+  it.each(["hubspot", "salesforce"])("removes one %s item while preserving the remaining mapping and pipeline settings", async provider => {
+    const f = await fixture({ providers: [provider], deletion: "success", multipleItems: true });
+    try {
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      await f.page.getByRole("button", { name: "Remove fixture-selected", exact: true }).click();
+      await f.page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
+      await browserExpect.poll(() => f.mutations.length).toBe(1);
+      expect(f.mutations[0]).toMatchObject({ method: "POST", path: `/api/campaigns/a/${provider}/save-mappings`, body: {
+        sourceId: `${provider}-source`, selectedValues: ["keep-selected"], platformContext: "ga4", pipelineEnabled: true,
+        campaignMappings: [{ crmValue: "keep-selected", linkedinCampaignUrn: "keep-selected", linkedinCampaignName: "keep-selected" }], expectedSourceMappingConfig: expect.any(String),
+        dateField: provider === "salesforce" ? "CloseDate" : "closedate",
+        ...(provider === "salesforce" ? { pipelineStageName: "Open" } : { pipelineStageId: "open" }),
+      } });
+      f.completeDeletion(); await f.page.clock.runFor(31_000);
+      await browserExpect(f.revenue).toContainText(provider === "salesforce" ? "\u20ac115.00" : "\u20ac112.50");
+      await browserExpect(f.page.getByRole("button", { name: "Remove fixture-selected", exact: true })).toHaveCount(0);
+      await browserExpect(f.page.getByRole("button", { name: "Remove keep-selected", exact: true })).toHaveCount(1);
+      await browserExpect(f.pipeline).toContainText(provider === "salesforce" ? "\u20ac7.25" : "\u20ac12.75");
+    } finally { await f.close(); }
+  }, 30_000);
+
+  it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv"])("keeps the %s source and total when removal fails", async provider => {
+    const f = await fixture({ providers: [provider], deletion: "failed" });
+    try {
+      const before = provider === "salesforce" ? "130.00" : provider === "shopify" ? "145.00" : "125.00";
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      await (["hubspot", "salesforce"].includes(provider) ? f.page.getByRole("button", { name: "Remove fixture-selected", exact: true }) : f.page.getByTitle("Remove revenue source", { exact: true })).click();
+      await f.page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
+      await browserExpect.poll(() => f.mutations.length).toBe(1);
+      await f.page.clock.runFor(31_000);
+      await browserExpect(f.revenue).toContainText(`\u20ac${before}`);
+      await f.page.keyboard.press("Escape");
+      await browserExpect(f.revenue.getByRole("button", { name: "Sources (2)", exact: true })).toHaveCount(1);
+    } finally { await f.close(); }
+  }, 30_000);
 
   it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"])("automatically updates %s totals and clears its red pending status only after publication", async provider => {
     const f = await fixture({ providers: [provider], publication: "pending", emptyBreakdown: provider === "csv" });

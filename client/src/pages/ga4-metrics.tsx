@@ -6244,7 +6244,7 @@ export default function GA4Metrics() {
         queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false }),
         queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false }),
       ]);
-      toast({ title: "HubSpot deal removed", description: `${campaignValue} was removed and Total Revenue was recalculated.` });
+      toast({ title: "HubSpot deal removed", description: `${campaignValue} was removed. Total Revenue will update when processing finishes.` });
     } catch (error: any) {
       toast({ title: "Remove failed", description: error?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -6326,7 +6326,7 @@ export default function GA4Metrics() {
         queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false }),
         queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false }),
       ]);
-      toast({ title: "Salesforce opportunity removed", description: `${campaignValue} was removed and Total Revenue was recalculated.` });
+      toast({ title: "Salesforce opportunity removed", description: `${campaignValue} was removed. Total Revenue will update when processing finishes.` });
     } catch (error: any) {
       toast({ title: "Remove failed", description: error?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -7862,7 +7862,7 @@ export default function GA4Metrics() {
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
                               queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
                               queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
-                              toast({ title: "Revenue source removed", description: "Total Revenue has been recalculated." });
+                              toast({ title: "Revenue source removed", description: "Total Revenue will update when processing finishes." });
                             } catch (e: any) {
                               console.error(e);
                               toast({ title: "Delete failed", description: e?.message || "Please try again.", variant: "destructive" });

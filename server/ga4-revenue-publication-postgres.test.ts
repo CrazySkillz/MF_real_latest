@@ -55,8 +55,9 @@ async function publish(scope: Awaited<ReturnType<typeof claim>>, complete = true
     revenuePublication, refreshScope: scope };
   await storage.upsertFinancialDailySnapshot(snapshot);
   if (complete) {
-    await database.current.insert(schema.metricSnapshots).values({ campaignId: "a", reportingDate: day, snapshotType: "executive_summary_daily",
-      notes: `ga4_refresh_publication_v1:${scope.work.id}:${createHash("sha256").update(scope.work.leaseToken).digest("hex")}` });
+    const notes = `ga4_refresh_publication_v1:${scope.work.id}:${createHash("sha256").update(scope.work.leaseToken).digest("hex")}`;
+    const updated = await pool.query("UPDATE metric_snapshots SET notes=$1 WHERE campaign_id='a' AND reporting_date=$2 AND snapshot_type='executive_summary_daily'", [notes, day]);
+    if (!updated.rowCount) await database.current.insert(schema.metricSnapshots).values({ campaignId: "a", reportingDate: day, snapshotType: "executive_summary_daily", notes });
     expect(await storage.updateGA4RefreshWorkLease("a", "owner-a", scope.work.id, scope.work.leaseToken, "complete", 120_000, new Date().toISOString())).toBeDefined();
   }
   return snapshot;
@@ -73,6 +74,22 @@ async function sourceResponse() {
   const res: any = { setHeader() {}, status(code: number) { this.code = code; return this; }, json(body: any) { this.body = body; return this; } };
   await handler({ params: { id: "a" }, query: {} }, res);
   expect(res.code, JSON.stringify(res.body)).toBeUndefined(); return res.body;
+}
+
+// Actual delete handler and storage transaction. Authentication and the asynchronous recovery kick are controlled.
+async function deleteResponse(sourceId: string, options: { campaignId?: string; platform?: string; authorized?: boolean } = {}) {
+  const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
+  const start = source.indexOf('app.delete("/api/campaigns/:id/revenue-sources/:sourceId",');
+  const end = source.indexOf("// Individual spend source delete", start);
+  let handler: any; const recompute = vi.fn();
+  new Function("app", "storage", "ensureCampaignAccess", "parsePlatformContext", "revenuePurposeForPlatformContext", "recomputeCampaignDerivedValues",
+    ts.transpileModule(source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(
+    { delete: (_path: string, callback: any) => { handler = callback; } }, storage,
+    async (_req: any, res: any) => options.authorized === false ? (res.status(403).json({ success: false }), false) : true,
+    (value: string) => value, (value: string) => value === "ga4" ? "revenue" : `${value}_revenue`, recompute);
+  const res: any = { code: 200, status(code: number) { this.code = code; return this; }, json(body: any) { this.body = body; return this; } };
+  await handler({ params: { id: options.campaignId ?? "a", sourceId }, query: { platformContext: options.platform ?? "ga4" } }, res);
+  return { ...res, recompute };
 }
 
 describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication with real PostgreSQL", () => {
@@ -208,6 +225,87 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue).toBe(0);
     expect((await storage.getRevenueTotalForRange("b", "1900-01-01", day)).totalRevenue).toBe(900);
     expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day, "linkedin")).totalRevenue).toBe(900);
+  });
+  it.each(families)("deletes %s through the real route, publishes the lower total and prevents stale restoration", async kind => {
+    const source = await save(kind);
+    const neighbor = await save("csv", null, rows("100.00"));
+    for (const [id, campaignId, platformContext] of [["foreign", "b", "ga4"], ["linkedin", "a", "linkedin"]]) {
+      await database.current.insert(schema.revenueSources).values({ id, campaignId, platformContext, sourceType: kind, currency: "EUR" });
+      await database.current.insert(schema.revenueRecords).values({ campaignId, revenueSourceId: id, date: "2026-09-30", revenue: "900", currency: "EUR" });
+    }
+    expect((await publish(await claim())).inputs.revenue.value).toBe("8003.96");
+    for (const options of [{ authorized: false }, { campaignId: "b" }, { platform: "linkedin" }]) {
+      const rejected = await deleteResponse(source.id, options);
+      expect(rejected.code).toBe(options.authorized === false ? 403 : 404);
+      expect(rejected.recompute).not.toHaveBeenCalled();
+    }
+    const removed = await deleteResponse(source.id);
+    expect(removed.body).toEqual({ success: true, revenueTrackingDisabled: false });
+    expect(removed.recompute).toHaveBeenCalledExactlyOnceWith("a", { platformContext: "ga4" });
+    const jobs = await storage.getRecoverableGA4RefreshWork();
+    expect(jobs).toHaveLength(1);
+    expect((await sourceResponse()).sources.map((item: any) => item.id)).toEqual([neighbor.id]);
+    expect((await deleteResponse(source.id)).code).toBe(404);
+    await expect(save(kind, source.id)).rejects.toThrow();
+    expect((await publish(await claim())).inputs.revenue.value).toBe("7753.96");
+    expect((await storage.getRevenueTotalForRange("b", "1900-01-01", day)).totalRevenue).toBe(900);
+    expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day, "linkedin")).totalRevenue).toBe(900);
+    expect((await pool.query("SELECT count(*)::int AS n FROM revenue_records WHERE revenue_source_id=$1", [source.id])).rows[0].n).toBe(0);
+    expect(await storage.getRecoverableGA4RefreshWork()).toEqual([]);
+  });
+  it.each(families)("removes the final %s source while retaining native GA4 and unrelated sheet connections", async kind => {
+    const source = await save(kind);
+    for (const [id, campaignId, purpose] of [["own", "a", "revenue"], ["spend", "a", "spend"], ["platform", "a", "linkedin_revenue"], ["foreign", "b", "revenue"]]) {
+      await database.current.insert(schema.googleSheetsConnections).values({ id, campaignId, purpose, spreadsheetId: id, method: "oauth", isActive: true });
+    }
+    expect((await deleteResponse(source.id)).body).toEqual({ success: true, revenueTrackingDisabled: true });
+    expect((await publish(await claim())).inputs.revenue.value).toBe("7653.96");
+    expect((await pool.query("SELECT id FROM google_sheets_connections WHERE is_active=true ORDER BY id")).rows.map(row => row.id)).toEqual(["foreign", "platform", "spend"]);
+    expect((await sourceResponse()).sources).toEqual([]);
+  });
+  for (const kind of ["hubspot", "salesforce"] as const) {
+    it.each([false, true])(`${kind} deletion preserves the remaining pipeline owner and OAuth connection (other owner: %s)`, async otherOwner => {
+      const source = await save(kind);
+      const config = { platformContext: "ga4", selectedValues: ["removed"], pipelineEnabled: true, pipelineStageId: "open", pipelineStageName: "Open", pipelineTotalToDate: 3200 };
+      await pool.query("UPDATE revenue_sources SET mapping_config=$1 WHERE id=$2", [JSON.stringify(config), source.id]);
+      await pool.query(`UPDATE ${kind}_connections SET mapping_config=$1 WHERE id=$2`, [JSON.stringify(config), `${kind}-a`]);
+      const retained = { ...config, platformContext: "linkedin", selectedValues: ["retained"], pipelineTotalToDate: 500 };
+      if (otherOwner) await database.current.insert(schema.revenueSources).values({ id: "other-owner", campaignId: "a", sourceType: kind, platformContext: "linkedin", currency: "EUR", mappingConfig: JSON.stringify(retained) });
+      const foreignBefore = (await pool.query(`SELECT * FROM ${kind}_connections WHERE campaign_id='b'`)).rows;
+      const response = await deleteResponse(source.id);
+      expect(response.code).toBe(200);
+      const connection: any = kind === "hubspot" ? await storage.getHubspotConnection("a") : await storage.getSalesforceConnection("a");
+      expect(connection.isActive).toBe(true);
+      expect(JSON.parse(connection.mappingConfig)).toMatchObject(otherOwner ? retained : { pipelineEnabled: false, pipelineTotalToDate: 0 });
+      if (otherOwner) expect(JSON.parse((await storage.getRevenueSource("a", "other-owner"))!.mappingConfig!)).toEqual(retained);
+      expect((await pool.query(`SELECT * FROM ${kind}_connections WHERE campaign_id='b'`)).rows).toEqual(foreignBefore);
+      expect((await publish(await claim())).inputs.revenue.value).toBe("7653.96");
+    });
+  }
+  it.each(families)("rejects an in-flight publication after %s deletion", async kind => {
+    const source = await save(kind); const stale = await claim();
+    const oldSnapshot = await publish(stale, false);
+    expect((await deleteResponse(source.id)).code).toBe(200);
+    await expect(storage.upsertFinancialDailySnapshot(oldSnapshot)).rejects.toThrow(/GA4_REFRESH/);
+    expect((await storage.getRecoverableGA4RefreshWork()).map(item => item.id)).not.toContain(stale.work.id);
+    expect((await publish(await claim())).inputs.revenue.value).toBe("7653.96");
+  });
+  it.each(families)("rolls back a failed %s delete without changing records, totals or publication work", async kind => {
+    const source = await save(kind); await publish(await claim());
+    const before = await storage.getGA4RevenuePublication("a", day);
+    await pool.query("CREATE FUNCTION reject_revenue_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture deletion failure'; END $$");
+    await pool.query("CREATE TRIGGER reject_revenue_delete BEFORE DELETE ON revenue_records FOR EACH ROW EXECUTE FUNCTION reject_revenue_delete()");
+    try {
+      const response = await deleteResponse(source.id);
+      expect(response.code).toBe(500); expect(response.recompute).not.toHaveBeenCalled();
+      expect(await storage.getGA4RevenuePublication("a", day)).toEqual(before);
+      expect((await sourceResponse()).sources.map((item: any) => item.id)).toEqual([source.id]);
+      expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue).toBe(250);
+      expect(await storage.getRecoverableGA4RefreshWork()).toEqual([]);
+    } finally {
+      await pool.query("DROP TRIGGER reject_revenue_delete ON revenue_records");
+      await pool.query("DROP FUNCTION reject_revenue_delete()");
+    }
   });
   it("publishes 8003.96 after removing only the 785.95 Shopify source", async () => {
     const hubspot = await save("hubspot", null, rows("250.00"));

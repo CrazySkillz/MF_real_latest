@@ -1,0 +1,82 @@
+{
+  "at": "2026-10-24T16:31:06.085Z",
+  "baseCommit": "6a96b5c7474e57ee1c764fb31ac317ec7a22e3cb",
+  "scope": "GA4 Revenue Sources modal source/item delete; not general provider disconnect or production certification",
+  "runtimeChange": "Three success-message strings only; scheduler correction already committed separately",
+  "results": [
+    {
+      "file": "ga4-browser-publication-refresh.test.ts",
+      "report": "revenue-delete-cross-source-final.json",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "ga4-financial-source-ownership-postgres.test.ts",
+      "report": "revenue-delete-cross-source-crm-verified.json",
+      "passed": 233,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "ga4-refresh-pipeline-source-failure.test.ts",
+      "report": "revenue-delete-cross-source-final.json",
+      "passed": 221,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "ga4-revenue-publication-postgres.test.ts",
+      "report": "revenue-delete-cross-source-final.json",
+      "passed": 60,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "v1-batch5-ga4-browser.test.ts",
+      "report": "revenue-delete-cross-source-crm-verified.json",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "uniquePassingTests": 583,
+  "newRegressionCases": 50,
+  "sourceHashes": {
+    "client/src/pages/ga4-metrics.tsx": "5de6b0d3ebbcb9be1c587a9bb95f12f5adc06231fcae7fb5233c9e54a3674357",
+    "server/storage.ts": "fa41d0791a18fe5e05ac4ee3fce8e078d693123566879a8a1b87366a6043a1cc",
+    "server/routes-oauth.ts": "444094a4cdac0818dde23c974077933155a2c816c385ebfc8723267993553ad1",
+    "server/auto-refresh-scheduler.ts": "4370f0abf1384724a19df6ba832bd24b1e3bf055ca78e2eac2c41e6933d63c86",
+    "server/ga4-daily-scheduler.ts": "868dbe834e9836e0a80274d5594c753956922d550a4614299b58324ca6007108",
+    "server/ga4-revenue-publication-postgres.test.ts": "2f78d2d1b9cd5ac7c78bf606e956751713599c6cde915127005918318a75d39e",
+    "server/ga4-financial-source-ownership-postgres.test.ts": "97e7f84ddd898291818fb5d1e21fb9a8ab08e4ec52416fc5abb430cece39c572",
+    "server/v1-batch5-ga4-browser.test.ts": "f6a9e68ead60de87107efab10323232cfdae73b4073463c94114eaf9ce5a6d02",
+    "server/ga4-browser-publication-refresh.test.ts": "af7263cc5e9243dae12e9b64506ae4ba23e495a556675fc5d1d8f70ebc6feea5",
+    "server/ga4-refresh-pipeline-source-failure.test.ts": "a41705d89b913c8216c5961726fce73a50ae77cc0db4e07629d60e0a68d2965c"
+  },
+  "builds": "revenue-delete-cross-source-build-checks.json",
+  "finalTypecheck": "revenue-delete-cross-source-verified-build-checks.json",
+  "productionWrites": false,
+  "liveProviderCalls": false,
+  "pushedByAgent": false,
+  "limitations": [
+    "Browser HTTP responses are synthetic; database handlers use controlled auth/provider boundaries",
+    "Publication test helper writes a controlled executive receipt; production reporting output was not exercised",
+    "Natural production queue recovery and final lower total after deployment remain unverified",
+    "Connection-disconnect controls, legacy bulk routes and other-platform page acceptance remain outside this scope"
+  ],
+  "earlierRuns": [
+    {
+      "report": "revenue-delete-cross-source-first.json",
+      "passed": 341,
+      "failed": 6,
+      "reason": "New browser fixture modal accessibility and retained-selection scope"
+    },
+    {
+      "report": "revenue-delete-cross-source-final.json",
+      "passed": 577,
+      "failed": 6,
+      "reason": "New CRM mapping fixtures did not use required legacy crosswalk field names; browser retained-selection scope excluded by fixture"
+    }
+  ]
+}

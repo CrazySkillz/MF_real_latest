@@ -225,6 +225,31 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     else expect(result.id).toBe(sourceId(kind));
   });
   for (const provider of ["salesforce", "hubspot"] as const) {
+    it.each([false, true])(`${provider} item removal preserves remaining revenue and rejects stale selection (stale: %s)`, async stale => {
+      const retainedMapping = { crmValue: "old", linkedinCampaignUrn: "old", linkedinCampaignName: "old" };
+      const config = JSON.stringify({ selectedValues: ["old", "removed"], campaignMappings: [retainedMapping, { crmValue: "removed", linkedinCampaignUrn: "removed", linkedinCampaignName: "removed" }] });
+      await pool.query("UPDATE revenue_sources SET mapping_config=$1 WHERE id=$2", [config, `${provider}-a`]);
+      await database.current.insert(schema.revenueRecords).values({ campaignId: "a", revenueSourceId: `${provider}-a`, date, currency: "EUR", revenue: "40.00", externalId: "removed-sale" });
+      const before = await saved();
+      const route = revenueRoute(provider);
+      route.body.expectedSourceMappingConfig = stale ? initialMapping : config;
+      route.body.campaignMappings = [retainedMapping];
+      const response = await route.invoke();
+      const after = await saved();
+      if (stale) {
+        expect(response.statusCode).toBe(409); expect(after).toEqual(before); expect(route.recompute).not.toHaveBeenCalled(); return;
+      }
+      expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+      expect(JSON.parse(after.revenue_sources.find(row => row.id === `${provider}-a`)!.mapping_config)).toMatchObject({ selectedValues: ["old"], campaignMappings: [retainedMapping] });
+      expect(after.revenue_records.filter(row => row.revenue_source_id === `${provider}-a`).map(row => row.revenue)).toEqual(["20.00"]);
+      expect(route.recompute).toHaveBeenCalledExactlyOnceWith("a", { platformContext: "ga4" });
+      for (const table of Object.keys(before)) {
+        const other = (row: any) => table === `${provider}_connections` ? row.campaign_id !== "a" : row.id !== `${provider}-a` && row.revenue_source_id !== `${provider}-a`;
+        expect(after[table].filter(other)).toEqual(before[table].filter(other));
+      }
+    });
+  }
+  for (const provider of ["salesforce", "hubspot"] as const) {
     it.each(["TimeoutError", "AbortError", "SyntaxError"])(`${provider} retains all saved source facts after provider %s`, async name => {
       const before = await saved();
       const error = name === "SyntaxError" ? new SyntaxError("fixture invalid JSON") : new DOMException("fixture interrupted body", name);

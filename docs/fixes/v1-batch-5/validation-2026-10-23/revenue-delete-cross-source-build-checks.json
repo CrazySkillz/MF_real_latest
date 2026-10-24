@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-24T16:20:33.923Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "revenue-delete-cross-source-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "revenue-delete-cross-source-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "revenue-delete-cross-source-server-build.log"
+    }
+  ]
+}

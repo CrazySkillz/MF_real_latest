@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-24T16:28:54.927Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "revenue-delete-cross-source-verified-typecheck.log"
+    }
+  ]
+}

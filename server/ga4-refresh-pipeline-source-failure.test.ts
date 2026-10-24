@@ -362,6 +362,52 @@ describe("GA4 ordered refresh source-discovery failures", () => {
         expect(fetch).not.toHaveBeenCalled();
         expect(mocks.storage.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
       };
+      const timingEntries = () => vi.mocked(console.log).mock.calls
+        .filter(([label]) => label === "[GA4 Daily] Revenue publication timing").map(([, entry]) => {
+          expect(typeof entry).toBe("string"); expect(entry).not.toContain("\n"); return JSON.parse(entry);
+        });
+      it("records scoped cumulative timings without changing saved publication or exposing credentials", async () => {
+        await seedSavedInputs();
+        mocks.executive.mockImplementation(async () => { vi.setSystemTime(Date.now() + 7000); return true; });
+        await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+        const entries = timingEntries();
+        expect(entries.map(entry => entry.stage)).toEqual(["work_claimed", "inputs_checked", "inputs_ready", "recompute_complete",
+          "financial_snapshot_complete", "aggregate_snapshot_complete", "executive_snapshot_complete", "alerts_complete", "pipeline_finished"]);
+        for (const [index, entry] of entries.entries()) {
+          expect(entry).toMatchObject({ campaignId: "campaign-a", workId: "work-a" });
+          expect(Number.isFinite(entry.elapsedMs)).toBe(true);
+          expect(entry.elapsedMs).toBeGreaterThanOrEqual(entries[index - 1]?.elapsedMs ?? 0);
+          expect(Object.keys(entry).sort()).toEqual(["campaignId", "elapsedMs", "stage", "workId",
+            ...(entry.stage === "inputs_checked" ? ["savedInputs"] : entry.stage === "pipeline_finished" ? ["completed"] : [])].sort());
+        }
+        expect(entries.find(entry => entry.stage === "inputs_checked").savedInputs).toBe(true);
+        expect(entries.find(entry => entry.stage === "executive_snapshot_complete").elapsedMs -
+          entries.find(entry => entry.stage === "aggregate_snapshot_complete").elapsedMs).toBe(7000);
+        expect(entries.at(-1)).toMatchObject({ completed: true });
+        expect(saved.get("campaign-a").inputs.revenue.value).toBe("600.00");
+        expectNoProviderRefresh();
+      });
+      it("records unfinished timing and preserves failure and lease release when an existing step throws", async () => {
+        await seedSavedInputs();
+        const failure = new Error("fixture executive failure");
+        mocks.executive.mockRejectedValueOnce(failure);
+        await expect(runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions())).rejects.toBe(failure);
+        const entries = timingEntries();
+        expect(entries.at(-1)).toMatchObject({ stage: "pipeline_finished", completed: false });
+        expect(entries.some(entry => entry.stage === "executive_snapshot_complete")).toBe(false);
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(false);
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "release")).toBe(true);
+      });
+      it("identifies provider fallback and emits no revenue timings for ordinary work", async () => {
+        await seedSavedInputs();
+        overviews.clear();
+        await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+        expect(timingEntries().find(entry => entry.stage === "inputs_checked")).toMatchObject({ savedInputs: false });
+        expect(mocks.provider.getTimeSeriesData).toHaveBeenCalled();
+        vi.mocked(console.log).mockClear();
+        await runGA4DailyRefreshPipelineForTrigger("recovery", options());
+        expect(timingEntries()).toEqual([]);
+      });
       it("publishes saved revenue with the real saved-total selector, preserving native timestamps and all downstream gates", async () => {
         await seedSavedInputs();
         const nativeBefore = structuredClone(overviews.get("campaign-a"));

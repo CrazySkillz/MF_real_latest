@@ -710,6 +710,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       refreshWriteInput = { refreshScope: { campaignId, ownerId: target.ownerId, reportingDate, work: { id: work.id, leaseToken: claimed.leaseToken } } };
       revenueChangeWork = opts.revenueChange === true && (work.scope as any)?.kind === "revenue_change";
       scheduleHeartbeat();
+      if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: work.id, stage: "work_claimed", elapsedMs: Date.now() - startedAt }));
     }
     if (opts.initialImportWorkId) {
       await checkOwnership();
@@ -782,6 +783,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
         }
       }
     }
+    if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: refreshWriteInput.refreshScope?.work.id, stage: "inputs_checked", elapsedMs: Date.now() - startedAt, savedInputs: Boolean(savedRevenueRefresh) }));
     const recomputeEvidence = {
       campaignIdsProcessed: [] as string[], campaignIdsSkipped: [] as string[], campaignIdsFailed: [] as string[],
       kpiIdsUpdated: [] as string[], kpiIdsSkipped: [] as string[], kpiIdsFailed: [] as string[],
@@ -790,6 +792,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     const refreshFailures: string[] = [];
     const executiveSummarySnapshotFailures: string[] = [];
     const publishRefresh = async (refreshResult: GA4DailyRefreshResult) => {
+      if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: refreshWriteInput.refreshScope?.work.id, stage: "inputs_ready", elapsedMs: Date.now() - startedAt }));
       await checkOwnership();
       const refreshFailure = getGA4DailyRefreshFailure(refreshResult, campaignId);
       if (refreshFailure) refreshFailures.push(refreshFailure);
@@ -834,6 +837,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
         benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed),
       };
       console.log(`[GA4 Daily] KPI/Benchmark recompute result ${JSON.stringify(recomputeEvidence)}`);
+      if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: refreshWriteInput.refreshScope?.work.id, stage: "recompute_complete", elapsedMs: Date.now() - startedAt }));
 
       const completedAt = new Date().toISOString();
       const alignedSnapshotCampaignIds: string[] = [];
@@ -859,6 +863,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
           console.warn(`[GA4 Daily] Financial snapshot write failed for campaign ${processedCampaignId}:`, error?.message || error);
         }
       }
+      if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: refreshWriteInput.refreshScope?.work.id, stage: "financial_snapshot_complete", elapsedMs: Date.now() - startedAt }));
       const alignedAggregateSnapshotCampaignIds: string[] = [];
       for (const processedCampaignId of alignedSnapshotCampaignIds) {
         await checkOwnership();
@@ -869,6 +874,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
         }
       }
 
+      if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: refreshWriteInput.refreshScope?.work.id, stage: "aggregate_snapshot_complete", elapsedMs: Date.now() - startedAt }));
       const executiveSummaryCapturedCampaignIds: string[] = [];
       if (executiveSummarySnapshotBaseUrl) {
         for (const processedCampaignId of alignedAggregateSnapshotCampaignIds) {
@@ -883,6 +889,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
         ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestedAt = new Date();
         ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestFailures = hashEvidenceIds(executiveSummarySnapshotFailures);
       }
+      if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: refreshWriteInput.refreshScope?.work.id, stage: "executive_snapshot_complete", elapsedMs: Date.now() - startedAt }));
       if (opts.suppressAlerts && refreshWriteInput.refreshScope && executiveSummaryCapturedCampaignIds.includes(campaignId)) {
         await checkOwnership();
         const scope = refreshWriteInput.refreshScope;
@@ -911,6 +918,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
             console.warn(`[GA4 Daily] Campaign-scoped alert check failed for ${processedCampaignId}:`, e?.message || e);
           }
         }
+        if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: refreshWriteInput.refreshScope?.work.id, stage: "alerts_complete", elapsedMs: Date.now() - startedAt }));
         const alignedCompletedAt = new Date().toISOString();
         for (const processedCampaignId of alignedAlertCampaignIds) {
           const reportingDate = refreshResult.reportingDatesByCampaign[processedCampaignId];
@@ -1058,6 +1066,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       }
     }
     console.log(`[GA4 Daily] Pipeline done (trigger=${trigger}, elapsedSeconds=${Math.round((Date.now() - startedAt) / 1000)})`);
+    if (revenueChangeWork) console.log("[GA4 Daily] Revenue publication timing", JSON.stringify({ campaignId, workId: refreshWriteInput.refreshScope?.work.id, stage: "pipeline_finished", elapsedMs: Date.now() - startedAt, completed: workCompleted }));
   }
 }
 

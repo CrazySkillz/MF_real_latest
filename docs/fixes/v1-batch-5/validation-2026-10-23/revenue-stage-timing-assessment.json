@@ -1,0 +1,43 @@
+{
+  "at": "2026-10-24T15:03:17.070Z",
+  "baseCommit": "dc432be33d7f4cdeb1a0ea96ab6acccf9deb37e2",
+  "scope": "Diagnostic timing logs only; not a latency fix",
+  "runtimeAddedLines": 9,
+  "productionWrites": false,
+  "providerCalls": false,
+  "files": [
+    {
+      "file": "server/ga4-daily-scheduler.ts",
+      "sha256": "3fa9f97adf3f86cf501854e919c0dbfb16fb505cc2a2dd55aca55af45b48be22"
+    },
+    {
+      "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+      "sha256": "05463f9705fe705905ba2146013fd67a11eec1a4680894ec3253c37c947e7cad"
+    }
+  ],
+  "tests": {
+    "passed": 256,
+    "failed": 2,
+    "skipped": 0,
+    "report": "revenue-stage-timing-final.json",
+    "baseline": "revenue-stage-timing-baseline.json",
+    "baselineLimit": "Exact failed source-text assertions reproduced against committed code before the final JSON log formatting refinement; not a full baseline-suite rerun or waiver.",
+    "newTimingCasesPassed": 3
+  },
+  "build": "revenue-stage-timing-final-build-checks.json",
+  "incident": {
+    "date": "2026-10-24",
+    "timezone": "Europe/Amsterdam",
+    "sourceSaved": "16:13:02.272",
+    "workDue": "16:13:05.472",
+    "workClaimed": "16:13:16.085",
+    "financialSnapshotRecorded": "16:13:48.772",
+    "executiveSnapshotRecorded": "16:14:09.222",
+    "workCompleted": "16:14:24.592",
+    "userReportedPipelineSeconds": 81,
+    "evidence": "User-supplied Render log plus earlier enforced read-only queries in this conversation; timestamp-without-timezone values read as text with database timezone UTC.",
+    "limits": "Step-level execution durations and exact UI display latency remain unmeasured; no proven performance fix."
+  },
+  "deployed": false,
+  "latencyFixed": false
+}

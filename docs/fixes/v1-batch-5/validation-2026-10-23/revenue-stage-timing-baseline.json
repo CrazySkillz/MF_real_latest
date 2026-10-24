@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-24T14:58:56.589Z",
+  "baselineCommit": "dc432be33d7f4cdeb1a0ea96ab6acccf9deb37e2",
+  "before": {
+    "financialRefreshIndex": 57843,
+    "expectedPublicationIndex": -1,
+    "expectedStorageStartPresent": false
+  },
+  "after": {
+    "financialRefreshIndex": 60450,
+    "expectedPublicationIndex": -1,
+    "expectedStorageStartPresent": false
+  },
+  "result": "BOTH_FAILED_SOURCE_TEXT_ASSERTIONS_ALSO_FAIL_ON_COMMITTED_CODE",
+  "limit": "Exact failed assertions inspected; this is not a rerun or waiver of the full baseline suite."
+}

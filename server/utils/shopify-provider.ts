@@ -78,8 +78,9 @@ export function resolveShopifyCampaignOrderWindow(args: {
   authType: string | null | undefined;
   scopes: Iterable<string>;
   now?: number;
+  revenueHistoryStart?: string | null;
 }) {
-  const campaignStart = args.campaignStart instanceof Date ? new Date(args.campaignStart) : new Date(args.campaignStart);
+  let campaignStart = args.campaignStart instanceof Date ? new Date(args.campaignStart) : new Date(args.campaignStart);
   const now = new Date(args.now ?? Date.now());
   if (!Number.isFinite(campaignStart.getTime())) throw new Error('Campaign has no valid Shopify reporting-window start');
   if (!Number.isFinite(now.getTime())) throw new Error('Invalid Shopify order-window reference time');
@@ -88,6 +89,13 @@ export function resolveShopifyCampaignOrderWindow(args: {
     && !hasShopifyAllOrdersScope(args.scopes);
   const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   cutoff.setUTCDate(cutoff.getUTCDate() - SHOPIFY_RECENT_ORDER_WINDOW_DAYS);
+  if (Object.prototype.hasOwnProperty.call(args, 'revenueHistoryStart')) {
+    // GA4 revenue follows order dates, independently of campaign creation.
+    const historyStart = args.revenueHistoryStart == null ? null : Date.parse(args.revenueHistoryStart);
+    if (historyStart !== null && !Number.isFinite(historyStart)) throw new Error('Invalid saved Shopify revenue history start');
+    const accessibleStart = limited ? cutoff.getTime() : now.getTime() - 3650 * 86400000;
+    campaignStart = new Date(Math.min(accessibleStart, historyStart ?? accessibleStart));
+  }
   const refreshThrough = new Date(Date.UTC(campaignStart.getUTCFullYear(), campaignStart.getUTCMonth(), campaignStart.getUTCDate()));
   refreshThrough.setUTCDate(refreshThrough.getUTCDate() + SHOPIFY_RECENT_ORDER_WINDOW_DAYS);
 
@@ -104,7 +112,7 @@ export function requireShopifyCampaignOrderWindow(args: Parameters<typeof resolv
   const window = resolveShopifyCampaignOrderWindow(args);
   if (!window.eligible) {
     const error: any = new Error(
-      `Shopify OAuth currently provides recent-order access only. This campaign started before ${window.cutoffAt.slice(0, 10)}, so revenue was not changed while read_all_orders approval is pending.`,
+      `Shopify OAuth currently provides recent-order access only. The required order window starts before ${window.cutoffAt.slice(0, 10)}, so revenue was not changed while read_all_orders approval is pending.`,
     );
     error.code = SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE;
     throw error;

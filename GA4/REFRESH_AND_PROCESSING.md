@@ -617,6 +617,7 @@ Shopify auto-reprocess rule:
 - GA4 Shopify has a non-UI, campaign-access-guarded validation route that resolves one exact active GA4 Shopify revenue `sourceId` and invokes the same scheduler reprocess function immediately; it does not run the global daily cycle or prove the natural timer
 - refreshed Shopify revenue should update the existing source's materialized order-date revenue records and recomputed campaign financial state
 - Shopify `Tags` attribution should match exact individual Shopify order tags during manual edit and scheduled refresh
+- October 24 local correction (deployment pending): GA4 saved-source reprocess uses the same order-history window as preview/save, independent of campaign creation. It preserves the earliest imported order boundary and fails before replacement when provider access cannot cover it; rolling recent-order access must never silently remove saved older revenue. The exact-source last-good failure state remains in place. [Trace and validation](../docs/fixes/v1-batch-5/README.md#shopify-sale-date-window-correction-october-24).
 - Shopify's current readiness remains unverified after the 2026-10-03 cross-campaign OAuth renewal defect. The same-owner/same-store recovery fix and exact Campaign2 provider/source/API recovery passed before that redundant campaign was deliberately deleted; multi-instance collision testing and whole-source recertification remain open in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`.
 
 CRM token continuity rule:

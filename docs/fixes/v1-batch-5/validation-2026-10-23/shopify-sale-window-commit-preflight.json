@@ -1,0 +1,185 @@
+{
+  "at": "2026-10-24T13:51:54.048Z",
+  "baseCommit": "493dd4d28f6bc2b75436211d6b2eabf97ed877d7",
+  "commitTitle": "fix(shopify): import revenue by order date",
+  "testedCodeHashesMatch": true,
+  "localValidation": {
+    "targetedPassed": 125,
+    "targetedFailed": 0,
+    "broaderPassed": 189,
+    "broaderPreExistingFailed": 7,
+    "skipped": 0
+  },
+  "files": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "444094a4cdac0818dde23c974077933155a2c816c385ebfc8723267993553ad1"
+    },
+    {
+      "file": "server/utils/shopify-provider.ts",
+      "sha256": "4e5da1ad83e46ff632eda618f15572446b737a87758041251532f09daeb54241"
+    },
+    {
+      "file": "client/src/components/ShopifyRevenueWizard.tsx",
+      "sha256": "e53bf082b132d5e1d0cd042890e16544b6dfa80186a41491879f07677f52ed9c"
+    },
+    {
+      "file": "server/shopify-sale-date-window.test.ts",
+      "sha256": "95317f2e376d3fcbab810d5bc390585054cb1dbc4c8cd6d393644c80f426bb2c"
+    },
+    {
+      "file": "server/shopify-sale-date-window-browser.test.ts",
+      "sha256": "7412b7cbde07240354eff054dac81be37def87173dcec92d0c6da229bc77d4af"
+    },
+    {
+      "file": "server/shopify-revenue-regression.test.ts",
+      "sha256": "085905dea36509eaf2119603f257d4a3fdbcadd1dc06848895fe8c101345b72e"
+    },
+    {
+      "file": "GA4/FINANCIAL_SOURCES.md",
+      "sha256": "2b3217292421136a2d18a1aa2ba036fcb9ace248ac5c833d83ef956580a14de1"
+    },
+    {
+      "file": "GA4/REFRESH_AND_PROCESSING.md",
+      "sha256": "ea49695fed510c4ec7619569db61b753115a2504a058b0ec763b27baa2b8b2a1"
+    },
+    {
+      "file": "GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md",
+      "sha256": "ae33e08516e87114ac897f0aabe4ddceb71378a39431d2d37f8b2cf6b4b0c7ae"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/README.md",
+      "sha256": "3c351758125924ec04e7e2f59aff3bc51eea8595a9868786e8db719989e2af32"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-acceptance.json",
+      "sha256": "5e6c620a1fac2a1e81e952894eb6803152c71d5ae7404c42ae5a7211daa571b8"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-acceptance.log",
+      "sha256": "f4e668b5a4f6fce3caee0628a6f0bbfb1cd518f719201ea27dd3dc639b65c5f9"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-adjacent.json",
+      "sha256": "16b49b8d8e2442af0d4a32983fa5d6899523ab5527328aa18b6416a0a6f02615"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-adjacent.log",
+      "sha256": "9eb6341da7e923f06c1562a14a61b0284c68f2c60f4a0ddd8ed4a0e2239c642c"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-baseline-confirmed.json",
+      "sha256": "46b72db0d6bad9e01b62e529f0b1154e71b60bd4ef5abe64709bed468a3ffa86"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-baseline-confirmed.log",
+      "sha256": "84e5b239a96f31b97642342b2f2b1be7eb46ae85856b33fe8feb7e663a0de3e7"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-disconnect-baseline.json",
+      "sha256": "3d8fb868e6f473c3c2cf07db496c975dcc829393be0242ae24f8149eecde2a8c"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-disconnect-baseline.log",
+      "sha256": "9b70cca77211250242f566a5a2f00ea52f47f98d629ac6a6cdd4e404737658a6"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-browser-verified.json",
+      "sha256": "9130d9b4acbc533af2b0d61e1bee5050fe52015e2cf53ef2b9828e0a82ef19f7"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-browser-verified.log",
+      "sha256": "6e3f96cab61218a669d7714f503c5686d30054337ad91bfdb5eec91a87b602fd"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-build-checks.json",
+      "sha256": "c0b5f8275dcd45e434c17d3831ffc1d27a4b5169fc53ccf41784cf3f80579766"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-client-build.log",
+      "sha256": "e814d8eb4b52dac3bc2519b8cf6924f8bbb8fa0718772c14bd9807b7bdcba596"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-server-build.log",
+      "sha256": "0a9ea74d7b5017932bc5b47c3105bf2300f02e3543df555d9c58c2383be9e3fe"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-tests-build-checks.json",
+      "sha256": "4245b4891f2cf8337d4f9548f9bc2b49a8cdbec59eb47a76020b066c21a64b3e"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-tests-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-local-validation.json",
+      "sha256": "fb481e6f72308bd1979b44141531f8e89ba071c6c681100b019d266bf61d1a86"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-cleanup.json",
+      "sha256": "f3e3429b3916436ec2ec84f1491ad8d84eeb25211f1649ca0d964002e52babbb"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-window-diagnosis.cjs",
+      "sha256": "42ad9dbb1eb33d7f7f0b38fa5b72837fc7763894727de938a87a192b1ec9aa3e"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-window-diagnosis.json",
+      "sha256": "1034e692e87d5d56c4608f1e300ffefc36c4b11d7cff575fadb2c6719ae5dae4"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-order-diagnosis.cjs",
+      "sha256": "21fc55293430c38bd192e273a49562c62098ddd46b6105933897d621ce49a71e"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-order-diagnosis.json",
+      "sha256": "5b2cba2457ce70addf6ad75b2da9dbe459dacd6c9ab746fd40c4a2aa35b9f15f"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-order-diagnosis-confirmed.json",
+      "sha256": "7d568c8ed888e95d77b5532a71edeaa58918d083027888a20be1be97f5acb6fa"
+    }
+  ],
+  "publicationFiles": [
+    "server/routes-oauth.ts",
+    "server/utils/shopify-provider.ts",
+    "client/src/components/ShopifyRevenueWizard.tsx",
+    "server/shopify-sale-date-window.test.ts",
+    "server/shopify-sale-date-window-browser.test.ts",
+    "server/shopify-revenue-regression.test.ts",
+    "GA4/FINANCIAL_SOURCES.md",
+    "GA4/REFRESH_AND_PROCESSING.md",
+    "GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md",
+    "docs/fixes/v1-batch-5/README.md",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-acceptance.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-acceptance.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-adjacent.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-adjacent.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-baseline-confirmed.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-baseline-confirmed.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-disconnect-baseline.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-disconnect-baseline.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-browser-verified.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-browser-verified.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-build-checks.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-typecheck.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-client-build.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-server-build.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-tests-build-checks.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-final-tests-typecheck.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-local-validation.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-cleanup.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-window-diagnosis.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-window-diagnosis.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-order-diagnosis.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-order-diagnosis.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-tags-order-diagnosis-confirmed.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/shopify-sale-window-commit-preflight.json"
+  ],
+  "deployment": "pending",
+  "productionDatabaseMutations": false
+}

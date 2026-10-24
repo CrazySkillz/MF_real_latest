@@ -69,8 +69,8 @@ export function ShopifyRevenueWizard(props: {
     onStepChange?.(step);
   }, [step, onStepChange]);
 
-  // Full-access connections retain the established validation lookback. The server replaces this
-  // with the exact campaign window for OAuth and blocks inaccessible historical campaigns.
+  // The server resolves GA4 order history independently of campaign creation and
+  // blocks refresh when saved history exceeds the connection's access window.
   const [days] = useState<number>(3650);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const revenueMetric = "current_total_price";
@@ -251,7 +251,7 @@ export function ShopifyRevenueWizard(props: {
   };
 
   const fetchStatus = async () => {
-    const resp = await fetch(`/api/shopify/${campaignId}/status`, { credentials: "include" });
+    const resp = await fetch(`/api/shopify/${campaignId}/status?platformContext=${encodeURIComponent(platformContext)}${editSourceId ? `&sourceId=${encodeURIComponent(editSourceId)}` : ""}`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to check Shopify connection");
     const isConnected = !!json?.connected;
@@ -428,7 +428,7 @@ export function ShopifyRevenueWizard(props: {
     setValuesLoading(true);
     try {
       const resp = await fetch(
-        `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField)}${
+        `/api/shopify/${campaignId}/orders/unique-values?platformContext=${encodeURIComponent(platformContext)}${editSourceId ? `&sourceId=${encodeURIComponent(editSourceId)}` : ""}&field=${encodeURIComponent(campaignField)}${
           requestDays ? `&days=${encodeURIComponent(String(requestDays))}` : ""
         }&limit=300`,
         { credentials: "include", cache: "no-store" }
@@ -528,7 +528,7 @@ export function ShopifyRevenueWizard(props: {
       if (orderWindowBlocked) {
         toast({
           title: "Shopify historical access required",
-          description: `This campaign started on ${orderWindow?.campaignStart}. Revenue remains unchanged while Shopify historical access is pending.`,
+          description: `The required order window begins on ${orderWindow?.campaignStart}. Revenue remains unchanged while Shopify historical access is pending.`,
           variant: "destructive",
         });
         return;
@@ -860,8 +860,8 @@ export function ShopifyRevenueWizard(props: {
                     ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
                     : "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"}`} role="status">
                     {orderWindow.eligible
-                      ? `Shopify currently provides recent-order access. This campaign will use its exact ${orderWindow.campaignStart}-to-today window and can refresh through ${orderWindow.refreshThrough} unless historical access is granted sooner.`
-                      : `Shopify currently provides recent-order access only. This campaign started on ${orderWindow.campaignStart}, before the accessible ${orderWindow.cutoff} boundary, so mapping and refresh are blocked without changing saved revenue.`}
+                      ? `Shopify currently provides recent-order access. Orders from ${orderWindow.campaignStart} are available. Historical access is needed to keep refreshing saved orders once they pass Shopify’s access limit.`
+                      : `Shopify currently provides recent-order access only. The saved revenue window begins on ${orderWindow.campaignStart}, before the accessible ${orderWindow.cutoff} boundary. Historical access is required; saved revenue has not been changed.`}
                   </div>
                 )}
 

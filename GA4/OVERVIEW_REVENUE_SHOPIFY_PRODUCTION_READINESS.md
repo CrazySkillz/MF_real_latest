@@ -4,6 +4,8 @@
 
 **Current status: UNVERIFIED on the current candidate.**
 
+October 24: the new-campaign/older-order selection path is also unverified in production. The campaign-creation filter excluded the user's September 28 order from an October 23 campaign. A localized order-history correction is locally tested but not deployed; [the current packet](../docs/fixes/v1-batch-5/README.md#shopify-sale-date-window-correction-october-24) records actual route, PostgreSQL, scheduler-reprocess and Chromium coverage, seven reproduced pre-existing test failures, and the remaining live-provider/deployment boundaries. Historical certificates below do not close this path.
+
 The earlier clean certificate below is historical. Production evidence on
 2026-10-03 exposed a cross-campaign OAuth renewal defect for campaigns using the
 same Shopify app and store. `Campaign2` last stored a renewable token on

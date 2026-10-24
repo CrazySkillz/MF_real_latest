@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-24T13:10:13.957Z",
+  "campaignName": "V1 Batch 5 Test",
+  "databaseWrites": false,
+  "providerCalls": false,
+  "live": {
+    "status": 200,
+    "ok": true,
+    "commit": "493dd4d28f6bc2b75436211d6b2eabf97ed877d7"
+  },
+  "campaign": {
+    "ref": "de4775c3b435c3350ea24f5d538e60e639c9f9cd21de63d5432956b44551e722",
+    "currency": "EUR",
+    "startDate": null,
+    "createdAt": "2026-10-23T16:53:23.694Z",
+    "reportingTimeZone": "Europe/Amsterdam"
+  },
+  "connections": [
+    {
+      "ref": "09bfc6328961896e1717deaac3b8e391f0a1c9ec88eb30a0bf56d17cd2e4d7b9",
+      "storeRef": "7cfdfa3442d8f130ac3e6639a6de08de680129569cb1787606cce017bc450934",
+      "active": true,
+      "connectedAt": "2026-10-24T11:01:35.410Z",
+      "authType": "oauth",
+      "scopes": [
+        "read_orders"
+      ],
+      "accessTokenExpiresAt": "2026-10-24T14:01:34.085Z"
+    }
+  ],
+  "transactionEnded": "ROLLBACK",
+  "result": "READ_ONLY_CHECK_COMPLETE"
+}

@@ -316,7 +316,7 @@ describe("Shopify revenue regression guard", () => {
     const wizard = read(SHOPIFY_WIZARD_FILE);
     expect(routes).toContain('developmentStoreTestOrdersIncluded = await isShopifyPartnerDevelopmentStore');
     expect(routes).toContain('developmentStoreVerification = \'failed_closed\'');
-    expect(routes).toContain("const providerOrderWindowStartAt = orderAccess.isOauth");
+    expect(routes).toContain("const providerOrderWindowStartAt = platformCtx === 'ga4'");
     expect(routes).toContain('developmentStoreTestOrdersIncluded = verifiedDevelopmentStore || orderBatch.developmentStoreTestOrdersIncluded');
     expect(routes).toContain('shouldPreserveShopifyDevelopmentStoreLastGood({');
     expect(routes).toContain("schedulerRefresh: internalAutoRefresh && platformCtx === 'ga4'");
@@ -446,7 +446,7 @@ describe("Shopify revenue regression guard", () => {
     expect(oauthStart).not.toContain("read_all_orders");
   });
 
-  it("applies one fail-closed campaign window across basic OAuth discovery, save, and refresh", () => {
+  it("applies one fail-closed order history window across GA4 OAuth discovery, save, and refresh", () => {
     const routes = read(ROUTES_FILE);
     const wizard = read(SHOPIFY_WIZARD_FILE);
     const statusRoute = routeSection(
@@ -471,7 +471,9 @@ describe("Shopify revenue regression guard", () => {
     expect(uniqueValuesRoute).toContain('? orderWindow.campaignStartAt');
     expect(uniqueValuesRoute).toContain('discoveryWindowLimited: orderWindow.limited');
     expect(saveRoute).toContain('if (orderWindow.limited) requireShopifyCampaignOrderWindow({');
-    expect(saveRoute).toContain('const providerOrderWindowStartAt = orderAccess.isOauth');
+    expect(saveRoute).toContain("const providerOrderWindowStartAt = platformCtx === 'ga4'");
+    expect(saveRoute).toContain('await getShopifyCampaignOrderWindow(conn, camp, Date.now(), platformCtx, requestedSourceId)');
+    expect(uniqueValuesRoute).toContain('await getShopifyCampaignOrderWindow(conn, campaign, Date.now(), platformContext,');
     expect(saveRoute.indexOf('requireShopifyCampaignOrderWindow({')).toBeLessThan(saveRoute.indexOf('const orderBatch = await shopifyFetchAllOrders({'));
     expect(saveRoute.indexOf('const orderBatch = await shopifyFetchAllOrders({')).toBeLessThan(saveRoute.indexOf('await storage.replaceGa4ShopifyRevenueSourceWithRecords('));
     expect(saveRoute.indexOf('const orderBatch = await shopifyFetchAllOrders({')).toBeLessThan(saveRoute.indexOf('await storage.deleteRevenueRecordsBySource(String(nonGa4Source.id));'));

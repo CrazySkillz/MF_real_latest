@@ -34402,14 +34402,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return startAt;
   };
 
-  const getShopifyCampaignOrderWindow = (connection: any, campaign: any, now = Date.now()) => {
+  const getShopifyCampaignOrderWindow = async (connection: any, campaign: any, now = Date.now(), platformContext?: string, sourceId?: string) => {
     const orderAccess = getShopifyConnectionOrderAccess(connection);
-    return resolveShopifyCampaignOrderWindow({
+    let revenueHistoryStart: string | null = null;
+    if (platformContext === 'ga4') {
+      const sources = await storage.getRevenueSources(String(campaign.id), 'ga4');
+      const source = sources.find(s => s.isActive !== false && s.sourceType === 'shopify' && (!sourceId || s.id === sourceId));
+      if (sourceId && !source) throw new Error('Shopify revenue source not found');
+      if (source) {
+        const mapping = JSON.parse(String(source.mappingConfig || '{}'));
+        if (Object.prototype.hasOwnProperty.call(mapping, 'earliestOrderCreatedAt')) {
+          revenueHistoryStart = mapping.earliestOrderCreatedAt;
+        } else {
+          revenueHistoryStart = mapping.providerQueryAudit?.orderWindowStart || mapping.orderWindowStart;
+          if (!revenueHistoryStart) throw new Error('Saved Shopify revenue history window is unavailable');
+        }
+        if (revenueHistoryStart !== null && (typeof revenueHistoryStart !== 'string' || !Number.isFinite(Date.parse(revenueHistoryStart)))) throw new Error('Invalid saved Shopify revenue history start');
+      }
+    }
+    return { ...resolveShopifyCampaignOrderWindow({
       campaignStart: getShopifyCampaignWindowStartAt(campaign),
       authType: orderAccess.isOauth ? 'oauth' : 'token',
       scopes: orderAccess.scopes,
       now,
-    });
+      ...(platformContext === 'ga4' ? { revenueHistoryStart } : {}),
+    }), revenueHistoryStart };
   };
 
   /**
@@ -34458,7 +34475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch orders from Shopify
       const apiVersion = getShopifyApiVersion();
       const orderAccess = getShopifyConnectionOrderAccess(conn);
-      const orderWindow = getShopifyCampaignOrderWindow(conn, campaign);
+      const orderWindow = await getShopifyCampaignOrderWindow(conn, campaign);
       if (orderWindow.limited) requireShopifyCampaignOrderWindow({
         campaignStart: orderWindow.campaignStartAt,
         authType: 'oauth',
@@ -34622,7 +34639,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const orderAccess = connected ? getShopifyConnectionOrderAccess(conn) : null;
-      const orderWindow = connected ? resolveShopifyCampaignOrderWindow({
+      const orderWindow = connected && req.query.platformContext === 'ga4'
+        ? await getShopifyCampaignOrderWindow(conn, campaign, Date.now(), 'ga4', String(req.query.sourceId || '').trim())
+        : connected ? resolveShopifyCampaignOrderWindow({
         campaignStart: getShopifyCampaignWindowStartAt(campaign),
         authType: authType || (orderAccess?.isOauth ? 'oauth' : 'token'),
         scopes: orderAccess?.scopes || [],
@@ -34844,14 +34863,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = getShopifyApiVersion();
       const orderAccess = getShopifyConnectionOrderAccess(conn);
-      const orderWindow = getShopifyCampaignOrderWindow(conn, campaign);
+      const platformContext = String(req.query.platformContext || '').trim();
+      const orderWindow = await getShopifyCampaignOrderWindow(conn, campaign, Date.now(), platformContext, String(req.query.sourceId || '').trim());
       if (orderWindow.limited) requireShopifyCampaignOrderWindow({
         campaignStart: orderWindow.campaignStartAt,
         authType: 'oauth',
         scopes: orderAccess.scopes,
       });
       const discoveryDays = orderAccess.isOauth ? SHOPIFY_RECENT_ORDER_WINDOW_DAYS : days;
-      const createdAtMin = orderAccess.isOauth
+      const createdAtMin = orderAccess.isOauth || platformContext === 'ga4'
         ? orderWindow.campaignStartAt
         : new Date(Date.now() - discoveryDays * 24 * 60 * 60 * 1000).toISOString();
       const { orders, developmentStoreTestOrdersIncluded } = await shopifyFetchAllOrders({
@@ -35059,7 +35079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fallbackCreatedAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
       const campaignWindowStartAt = getShopifyCampaignWindowStartAt(camp);
       const orderAccess = getShopifyConnectionOrderAccess(conn);
-      const orderWindow = getShopifyCampaignOrderWindow(conn, camp);
+      const orderWindow = await getShopifyCampaignOrderWindow(conn, camp, Date.now(), platformCtx, requestedSourceId);
       if (orderWindow.limited) requireShopifyCampaignOrderWindow({
         campaignStart: orderWindow.campaignStartAt,
         authType: 'oauth',
@@ -35068,9 +35088,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const verifiedDevelopmentStore = platformCtx === 'ga4'
         ? await isShopifyPartnerDevelopmentStore({ shopDomain: conn.shopDomain, accessToken: conn.accessToken, apiVersion }).catch(() => false)
         : false;
-      const providerOrderWindowStartAt = orderAccess.isOauth
-        ? campaignWindowStartAt
-        : platformCtx === 'ga4' && !verifiedDevelopmentStore ? campaignWindowStartAt : fallbackCreatedAtMin;
+      const providerOrderWindowStartAt = platformCtx === 'ga4'
+        ? new Date(orderWindow.campaignStartAt)
+        : orderAccess.isOauth ? campaignWindowStartAt : fallbackCreatedAtMin;
       const createdAtMin = providerOrderWindowStartAt.toISOString();
       const providerQueryAudit: Record<string, any> = {};
       const orderBatch = await shopifyFetchAllOrders({
@@ -35289,6 +35309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         existingSourceMapping = {};
       }
       const refreshSuccessEvent = { ...refreshEvent, at: new Date().toISOString() };
+      const historyStart = platformCtx === 'ga4' ? matchedOrders.reduce((start, order) => Math.min(start, Date.parse(String(order.created_at))), orderWindow.revenueHistoryStart ? Date.parse(orderWindow.revenueHistoryStart) : Infinity) : Infinity;
+      const earliestOrderCreatedAt = Number.isFinite(historyStart) ? new Date(historyStart).toISOString() : null;
 
       // Persist GA4 connection metadata with its revenue replacement transaction below.
       let shopifyConnectionId: string | null = null;
@@ -35327,6 +35349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             orderIdentityField: 'id',
             orderDateBasis: 'created_at_campaign_reporting_timezone',
             orderWindowStart: ga4StartDate,
+            earliestOrderCreatedAt,
             materializationGranularity: 'order',
           } : {}),
           shopDomain: conn.shopDomain,
@@ -35384,6 +35407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             orderIdentityField: 'id',
             orderDateBasis: 'created_at_campaign_reporting_timezone',
             orderWindowStart: ga4StartDate,
+            earliestOrderCreatedAt,
             materializationGranularity: 'order',
           } : {}),
           revenueClassification: rc,

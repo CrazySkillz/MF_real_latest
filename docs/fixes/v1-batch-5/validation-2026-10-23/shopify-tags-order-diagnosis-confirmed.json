@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-24T13:13:04.118Z",
+  "campaignName": "V1 Batch 5 Test",
+  "databaseWrites": false,
+  "providerWrites": false,
+  "oauthRefresh": false,
+  "transactionEnded": "ROLLBACK",
+  "accessTokenAvailable": false,
+  "result": "CHECK_INCOMPLETE",
+  "errorCode": "ERR_ASSERTION"
+}

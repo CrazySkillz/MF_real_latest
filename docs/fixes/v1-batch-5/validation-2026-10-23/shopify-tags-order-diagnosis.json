@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-24T13:12:09.953Z",
+  "campaignName": "V1 Batch 5 Test",
+  "databaseWrites": false,
+  "providerWrites": false,
+  "oauthRefresh": false,
+  "result": "CHECK_INCOMPLETE",
+  "errorCode": "ERR_ASSERTION"
+}

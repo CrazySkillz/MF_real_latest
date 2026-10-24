@@ -1,0 +1,80 @@
+{
+  "at": "2026-10-24T13:41:34.631Z",
+  "productionMutations": false,
+  "committed": false,
+  "deployed": false,
+  "files": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "444094a4cdac0818dde23c974077933155a2c816c385ebfc8723267993553ad1"
+    },
+    {
+      "file": "server/utils/shopify-provider.ts",
+      "sha256": "4e5da1ad83e46ff632eda618f15572446b737a87758041251532f09daeb54241"
+    },
+    {
+      "file": "client/src/components/ShopifyRevenueWizard.tsx",
+      "sha256": "e53bf082b132d5e1d0cd042890e16544b6dfa80186a41491879f07677f52ed9c"
+    },
+    {
+      "file": "server/shopify-sale-date-window.test.ts",
+      "sha256": "95317f2e376d3fcbab810d5bc390585054cb1dbc4c8cd6d393644c80f426bb2c"
+    },
+    {
+      "file": "server/shopify-sale-date-window-browser.test.ts",
+      "sha256": "7412b7cbde07240354eff054dac81be37def87173dcec92d0c6da229bc77d4af"
+    },
+    {
+      "file": "server/shopify-revenue-regression.test.ts",
+      "sha256": "085905dea36509eaf2119603f257d4a3fdbcadd1dc06848895fe8c101345b72e"
+    }
+  ],
+  "counts": {
+    "passed": 189,
+    "failed": 7
+  },
+  "unresolved": [
+    {
+      "file": "shopify-downstream-content-regression.test.ts",
+      "name": "Shopify downstream value/content regression guard persists GA4 KPI and Benchmark row values from the Shopify imported revenue total",
+      "status": "failed"
+    },
+    {
+      "file": "shopify-ga4-disconnect-transaction.test.ts",
+      "name": "GA4 Shopify atomic disconnect deactivates the GA4 source and connection and removes only its records",
+      "status": "failed"
+    },
+    {
+      "file": "shopify-revenue-regression.test.ts",
+      "name": "Shopify revenue regression guard keeps Shopify refresh out of the UI while exposing a guarded source-scoped scheduler validation trigger",
+      "status": "failed"
+    },
+    {
+      "file": "shopify-revenue-regression.test.ts",
+      "name": "Shopify revenue regression guard keeps Shopify save portable across campaign and mapping variants",
+      "status": "failed"
+    },
+    {
+      "file": "shopify-revenue-regression.test.ts",
+      "name": "Shopify revenue regression guard shows mapped campaign label under Shopify in GA4 revenue sources modal",
+      "status": "failed"
+    },
+    {
+      "file": "shopify-revenue-regression.test.ts",
+      "name": "Shopify revenue regression guard uses renewable expiring offline tokens for Shopify OAuth without changing Admin token connections",
+      "status": "failed"
+    },
+    {
+      "file": "shopify-revenue-transaction.test.ts",
+      "name": "GA4 Shopify revenue transaction commits connection metadata, source metadata, and records together",
+      "status": "failed"
+    }
+  ],
+  "results": [
+    "shopify-sale-window-acceptance.json",
+    "shopify-sale-window-browser-verified.json",
+    "shopify-sale-window-adjacent.json"
+  ],
+  "builds": "shopify-sale-window-final-build-checks.json",
+  "cleanup": "shopify-sale-window-cleanup.json"
+}

@@ -1,0 +1,138 @@
+{
+  "at": "2026-10-24T17:33:23.572Z",
+  "baseCommit": "670dd7d3ed0805757a108c2db422f34371ee5266",
+  "committedByThisTask": false,
+  "pushedByThisTask": false,
+  "production": {
+    "evidence": "postdeploy-revenue-readonly.json",
+    "writes": false,
+    "providerRequests": false,
+    "totalRevenue": 8003.96,
+    "pipelineProxy": 3200,
+    "shopifyInactive": true,
+    "kpiCount": 0,
+    "benchmarkCount": 0,
+    "reportCount": 0,
+    "reportReadyMarker": null
+  },
+  "change": {
+    "runtimeFile": "server/routes-oauth.ts",
+    "behavior": "GA4 CRM proxy cache rebuilds update their source without rewriting shared connection mapping",
+    "preserved": [
+      "non-GA4 connection cache writes",
+      "source cache rebuild and reuse",
+      "confirmed records and totals",
+      "OAuth paths",
+      "scheduler cadence",
+      "ownership and invalidation guards"
+    ],
+    "rootCause": "Connection cache write invalidated the aligned marker; unchanged source-only cache write could not restore it",
+    "reproduction": "postdeploy-pipeline-readiness-confirmed-v2.json",
+    "productionCausationOfNullMarker": "not established by a production request trace"
+  },
+  "validation": {
+    "mainPacket": "postdeploy-revenue-verified.json",
+    "passed": 781,
+    "failed": 5,
+    "skipped": 0,
+    "baselinePacket": "postdeploy-revenue-baseline-verified.json",
+    "baselinePassed": 27,
+    "baselineFailed": 5,
+    "sameFivePreexistingFailures": true,
+    "unresolvedFailures": [
+      "HubSpot revenue GA4 Overview regression guard excludes Pipeline Proxy from GA4 report artifacts while retaining its operational Overview card",
+      "HubSpot revenue GA4 Overview regression guard keeps HubSpot Pipeline Proxy scoped and separate from confirmed GA4 financial revenue",
+      "HubSpot revenue GA4 Overview regression guard keeps HubSpot-backed GA4 KPI and Benchmark live formulas aligned with Overview financial revenue",
+      "HubSpot revenue GA4 Overview regression guard keeps server GA4 KPI and Benchmark persisted/current-value formulas additive with HubSpot imported revenue",
+      "HubSpot revenue GA4 Overview regression guard scheduler reprocesses saved HubSpot revenue mappings with platform context and stable source IDs"
+    ],
+    "exactTotalPacket": "postdeploy-report-exact-total.json",
+    "builds": {
+      "at": "2026-10-24T17:30:36.605Z",
+      "nodeEnv": "production",
+      "checks": [
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "error": null,
+          "log": "postdeploy-revenue-typecheck.log"
+        },
+        {
+          "name": "server-build",
+          "exitCode": 0,
+          "error": null,
+          "log": "postdeploy-revenue-server-build.log"
+        }
+      ]
+    },
+    "cleanup": {
+      "at": "2026-10-24T17:32:25.285Z",
+      "prefixes": [
+        "ga4_revenue_publication_it_",
+        "ga4_input_it_",
+        "ga4_source_it_"
+      ],
+      "remainingFixtureSchemas": 0,
+      "otherClients": 0,
+      "stopExitCode": 0,
+      "fixtureStopped": true
+    },
+    "docs": {
+      "status": "PASS",
+      "links": 1223,
+      "findings": 130,
+      "open": 120,
+      "deferred": 10,
+      "closed": 0,
+      "checkedAt": "2026-10-24T17:34:00.464Z"
+    }
+  },
+  "limits": [
+    "Forward correction is local, not deployed",
+    "Existing production readiness marker not repaired; requires a standard coordinated publication, never direct marker fabrication",
+    "Next complete daily production refresh not observed",
+    "Provider/auth boundaries controlled in local route tests",
+    "No live KPI, Benchmark or report definitions exist in this campaign; no live PDF/email acceptance",
+    "Five source-text baseline failures remain unresolved",
+    "Historical 81-second latency not decomposed",
+    "HubSpot persisted Sept 29 sale date differs from user-described Sept 30; original provider timestamp/timezone not verified; both are before cutoff"
+  ],
+  "sourceHashes": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "1272e818038aed5dd6c9a2c86ba6bc59dc9eaae21142dd1275da01bb0a903790"
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "fa41d0791a18fe5e05ac4ee3fce8e078d693123566879a8a1b87366a6043a1cc"
+    },
+    {
+      "file": "server/auto-refresh-scheduler.ts",
+      "sha256": "4370f0abf1384724a19df6ba832bd24b1e3bf055ca78e2eac2c41e6933d63c86"
+    },
+    {
+      "file": "server/ga4-daily-scheduler.ts",
+      "sha256": "868dbe834e9836e0a80274d5594c753956922d550a4614299b58324ca6007108"
+    },
+    {
+      "file": "server/ga4-kpi-benchmark-jobs.ts",
+      "sha256": "cac34f4c8b87fe3104eae6622202162c5253a60c0178053af2a3d6d0cdea3230"
+    },
+    {
+      "file": "server/ga4-scheduled-report-pdf.ts",
+      "sha256": "693e054943d9da2b1f4bf29b902810c7afc86053a6937d4e6d2d2563b6b074ef"
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "sha256": "3d3c4a79db831a959662a858f370a599fbbd63cd75c501ec3369fa2d9afce7da"
+    },
+    {
+      "file": "server/ga4-report-saved-publication.test.ts",
+      "sha256": "74862af90ac01c748e0a16de001a67173de650b421e348611029e1630fdc1189"
+    },
+    {
+      "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+      "sha256": "a41705d89b913c8216c5961726fce73a50ae77cc0db4e07629d60e0a68d2965c"
+    }
+  ]
+}

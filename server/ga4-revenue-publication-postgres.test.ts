@@ -8,6 +8,11 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import ts from "typescript";
 import * as schema from "../shared/schema";
 import { getLatestCompleteReportingDate } from "./utils/reporting-timezone";
+import { z } from "zod";
+import * as sfQuery from "./utils/salesforce-query";
+import * as sfCurrency from "./utils/salesforceCurrency";
+import * as hubCurrency from "./utils/hubspot-currency";
+import * as hubPagination from "./utils/hubspot-pagination";
 
 const database = vi.hoisted(() => ({ current: null as any }));
 vi.mock("./db", () => ({ get db() { return database.current; }, pool: null }));
@@ -74,6 +79,31 @@ async function sourceResponse() {
   const res: any = { setHeader() {}, status(code: number) { this.code = code; return this; }, json(body: any) { this.body = body; return this; } };
   await handler({ params: { id: "a" }, query: {} }, res);
   expect(res.code, JSON.stringify(res.body)).toBeUndefined(); return res.body;
+}
+
+// Actual proxy GET handlers and storage; only access/provider responses are controlled.
+async function pipelineResponse(provider: "hubspot" | "salesforce", context = "ga4", failProvider = false) {
+  const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
+  const start = source.indexOf(`app.get("/api/${provider}/:campaignId/pipeline-proxy"`);
+  const end = source.indexOf(provider === "hubspot" ? 'app.delete("/api/hubspot/:campaignId/pipeline-proxy"' : '// HubSpot deals properties', start);
+  let handler: any;
+  const providerRead = vi.fn(async () => { if (failProvider) throw new Error("provider unavailable"); });
+  const dependencies = {
+    app: { get: (_path: string, fn: any) => { handler = fn; } }, storage,
+    ensureCampaignAccess: async () => true, getGA4CampaignFilterValues: () => ["sale"],
+    zSalesforceRevenuePlatformContext: z.enum(["ga4", "linkedin"]),
+    ...sfQuery, ...sfCurrency, ...hubCurrency, ...hubPagination, MAX_HUBSPOT_RESULTS: 10000,
+    getHubspotAccessTokenForCampaign: async () => ({ accessToken: "fake" }),
+    getSalesforceAccessTokenForCampaign: async () => ({ accessToken: "fake", instanceUrl: "https://example.invalid", fetchImpl: vi.fn() }),
+    hubspotSearchDeals: async () => { await providerRead(); return { results: [{ id: "pipeline-deal", properties: { Campaign: "sale", amount: "3200", deal_currency_code: "EUR" } }] }; },
+    fetchCompleteSalesforceQuery: async () => { await providerRead(); return [{ Id: "pipeline-opportunity", Campaign: "sale", Amount: "3200", CurrencyIsoCode: "EUR" }]; },
+  };
+  const amountHelper = source.slice(source.indexOf("  function parseCrmRevenueAmount("), source.indexOf("  async function hubspotSearchDeals("));
+  const platformHelper = source.slice(source.indexOf("  const isGA4RevenuePlatformContext ="), source.indexOf("  const recomputeGA4KPIAndBenchmarkValues ="));
+  new Function(...Object.keys(dependencies), ts.transpileModule(amountHelper + platformHelper + source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(dependencies));
+  const res: any = { code: 200, setHeader() {}, status(code: number) { this.code = code; return this; }, json(body: any) { this.body = body; return this; } };
+  await handler({ params: { campaignId: "a" }, query: { platformContext: context } }, res);
+  return { ...res, providerRead };
 }
 
 // Actual delete handler and storage transaction. Authentication and the asynchronous recovery kick are controlled.
@@ -146,6 +176,45 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     await save(kind, source.id, rows("300.00"));
     expect((await storage.getGA4RevenuePublicationStatus("a", day))[source.id].status).toBe("pending");
     expect(await storage.getRecoverableGA4RefreshWork()).toHaveLength(1);
+  });
+  it.each((["hubspot", "salesforce"] as const).flatMap(provider => ["ga4", null].flatMap(context => [false, true].map(failProvider => ({ provider, context, failProvider })))))
+  ("preserves published report readiness for $provider Pipeline Proxy (context=$context, provider failure=$failProvider)", async ({ provider, context, failProvider }) => {
+    const source = await save(provider);
+    const config = { platformContext: "ga4", selectedValues: ["sale"], campaignProperty: "Campaign", campaignField: "Campaign",
+      revenueProperty: "amount", revenueField: "Amount", pipelineEnabled: true, pipelineStageId: "contractsent", pipelineStageName: "Contract Sent",
+      pipelineStageLabel: "Contract Sent", campaignValueRevenueTotals: [{ campaignValue: "sale", revenue: 250 }] };
+    await storage.updateRevenueSource(source.id, { platformContext: context, mappingConfig: JSON.stringify(config) });
+    await publish(await claim());
+    const before = await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='executive_summary_daily'");
+    expect(before.rows[0].notes).toContain("ga4_aligned_refresh_v1:");
+    const response = await pipelineResponse(provider, "ga4", failProvider);
+    expect(response.providerRead).toHaveBeenCalledTimes(1);
+    if (failProvider) {
+      expect(response.code).toBe(provider === "hubspot" ? 503 : 500);
+      expect((await storage.getRevenueSource("a", source.id))!.mappingConfig).toBe(JSON.stringify(config));
+    } else {
+      expect(response.code, JSON.stringify(response.body)).toBe(200); expect(response.body).toMatchObject({ success: true, totalToDate: 3200, currency: "EUR", sourceId: source.id });
+      expect(JSON.parse((await storage.getRevenueSource("a", source.id))!.mappingConfig!).pipelineTotalToDate).toBe(3200);
+      const cached = await pipelineResponse(provider);
+      expect(cached.body.totalToDate).toBe(3200); expect(cached.providerRead).not.toHaveBeenCalled();
+    }
+    expect((await pool.query(`SELECT mapping_config FROM ${provider}_connections WHERE id=$1`, [`${provider}-a`])).rows[0].mapping_config).toBe("{}");
+    expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day, "ga4")).totalRevenue).toBe(250);
+    expect((await storage.getLatestFinancialDailySnapshot("a", day))?.metrics).toMatchObject({ financialDaily: { inputs: { revenue: { value: "7903.96" } } } });
+    expect(await storage.getRecoverableGA4RefreshWork()).toHaveLength(0);
+    expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='executive_summary_daily'")).rows).toEqual(before.rows);
+  });
+  it.each(["hubspot", "salesforce"] as const)("retains %s connection-cache updates for the existing LinkedIn path", async provider => {
+    const source = await save(provider);
+    const config = { platformContext: "linkedin", selectedValues: ["sale"], campaignProperty: "Campaign", campaignField: "Campaign",
+      revenueProperty: "amount", revenueField: "Amount", pipelineEnabled: true, pipelineStageId: "contractsent", pipelineStageName: "Contract Sent",
+      pipelineStageLabel: "Contract Sent", campaignValueRevenueTotals: [{ campaignValue: "sale", revenue: 250 }] };
+    await storage.updateRevenueSource(source.id, { platformContext: "linkedin", mappingConfig: JSON.stringify(config) });
+    const response = await pipelineResponse(provider, "linkedin");
+    expect(response.code, JSON.stringify(response.body)).toBe(200); expect(response.body.totalToDate).toBe(3200);
+    const connection = (await pool.query(`SELECT mapping_config FROM ${provider}_connections WHERE id=$1`, [`${provider}-a`])).rows[0];
+    expect(JSON.parse(connection.mapping_config).pipelineTotalToDate).toBe(3200);
+    expect(JSON.parse((await storage.getRevenueSource("a", source.id))!.mappingConfig!).pipelineTotalToDate).toBe(3200);
   });
   it("does not clear pending merely because a financial snapshot was written before the coordinated job finished", async () => {
     const source = await save("hubspot"); const scope = await claim();

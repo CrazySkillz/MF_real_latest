@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-24T17:32:25.285Z",
+  "prefixes": [
+    "ga4_revenue_publication_it_",
+    "ga4_input_it_",
+    "ga4_source_it_"
+  ],
+  "remainingFixtureSchemas": 0,
+  "otherClients": 0,
+  "stopExitCode": 0,
+  "fixtureStopped": true
+}

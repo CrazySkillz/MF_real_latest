@@ -19313,7 +19313,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignValue,
           revenue: Number(revenue.toFixed(2)),
         }));
-        if (conn?.id) await storage.updateSalesforceConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+        // GA4 caches belong to the source; connection edits invalidate report readiness.
+        if (conn?.id && !isGA4RevenuePlatformContext(pipelineSource?.platformContext)) await storage.updateSalesforceConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
         if (pipelineSource?.id) {
           let sourceCfg: any = {};
           try {
@@ -19633,7 +19634,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             cfg.pipelineWarning = warning;
           }
 
-          if (conn?.id) {
+          // GA4 caches belong to the source; connection edits invalidate report readiness.
+          if (conn?.id && !isGA4RevenuePlatformContext(pipelineSource?.platformContext)) {
             await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(cfg) } as any);
           }
           if (pipelineSource?.id) {

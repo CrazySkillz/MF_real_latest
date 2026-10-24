@@ -147,6 +147,30 @@ describe("GA4 report saved publication", () => {
     storageMock.getSpendSources.mockResolvedValue([]); storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
     await build(); expect(printed).toContain("Unavailable");
   });
+  it("uses EUR8003.96 after Shopify deletion in report Revenue, KPI and Benchmark values", async () => {
+    const ga4 = overview();
+    ga4.campaignBreakdown.totals.revenue = 7653.96; ga4.campaignBreakdown.rows[0].revenue = 7653.96;
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(ga4);
+    const daily = await storageMock.getGA4DailyMetrics();
+    storageMock.getGA4DailyMetrics.mockResolvedValue(daily.map((row: any, i: number) => ({ ...row, revenue: i === 0 ? "3000.00" : "4653.96" })));
+    const saved: any = snapshot();
+    saved.metrics.financialDaily.inputs.revenue = { value: "8003.96", available: true, sources: ["ga4", "revenue-source:h", "revenue-source:f"] };
+    saved.metrics.financialDaily.inputs.spend = { value: null, available: false, sources: [] };
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storageMock.getRevenueSources.mockResolvedValue([
+      { id: "h", isActive: true, sourceType: "hubspot", currency: "EUR", mappingConfig: JSON.stringify({ pipelineEnabled: true, pipelineTotalToDate: 3200 }) },
+      { id: "f", isActive: true, sourceType: "salesforce", currency: "EUR" },
+    ]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "h", revenue: 250, currency: "EUR" }, { sourceId: "f", revenue: 100, currency: "EUR" }]);
+    storageMock.getSpendSources.mockResolvedValue([]); storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
+    storageMock.getPlatformKPIs.mockResolvedValue([{ id: "k", name: "Revenue KPI", metric: "revenue", currentValue: "8789.91", targetValue: "10000" }]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue([{ id: "b", name: "Revenue Benchmark", metric: "revenue", currentValue: "8789.91", benchmarkValue: "10000" }]);
+    await build("custom", { sections: { overview: true, kpis: true, benchmarks: true },
+      subsections: { overview: { revenue: true, spend: true, performance: true }, kpis: { items: true }, benchmarks: { items: true } }, selectedKpiIds: ["k"], selectedBenchmarkIds: ["b"] });
+    expect(printed).toContain("EUR 8,003.96"); expect(printed.filter(value => value === "8003.96")).toHaveLength(2);
+    expect(printed).toContain("Unavailable"); expect(printed.join("\n")).not.toMatch(/8,?789\.91|11,?203\.96/);
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
   it.each(["overview", "kpis", "benchmarks", "custom"])("uses native GA4 Revenue without external sources in a %s report", async type => {
     const saved: any = snapshot();
     saved.metrics.financialDaily.inputs.revenue = { value: "100.01", available: true, sources: ["ga4"] };

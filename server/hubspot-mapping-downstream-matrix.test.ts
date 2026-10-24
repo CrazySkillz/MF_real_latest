@@ -40,7 +40,7 @@ describe('HubSpot GA4 mapping and downstream variant matrix', () => {
     expect(saveRoute).toContain('existingHubspot ? String((existingHubspot as any).id) : null');
     expect(saveRoute).toContain('// Note: do NOT deactivate existing sources');
     expect(wizard).toContain('...(sourceId ? { sourceId } : {}),');
-    expect(scheduler).toContain('reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))');
+    expect(scheduler).toContain('reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id), refreshWriteInput)');
   });
 
   it('keeps exact imported matching out of mixed-window Ad Comparison rows', () => {
@@ -98,7 +98,9 @@ describe('HubSpot GA4 mapping and downstream variant matrix', () => {
     expect(saveRoute).toContain('await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });');
     expect(deleteRoute).toContain('await storage.deleteRevenueSourceWithRecords(campaignId, sourceId, sourcePlatformContext');
     expect(deleteRoute).toContain('await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });');
-    expect(recompute).toContain('recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update")');
+    expect(recompute).toContain('isGA4RevenuePlatformContext(opts.platformContext)');
+    expect(recompute).toContain('recoverInterruptedGA4Refreshes(campaignId)');
+    expect(read('server/ga4-daily-scheduler.ts')).toContain('runGA4DailyKPIAndBenchmarkJobs(');
     expect(recompute).toContain('await checkPerformanceAlerts();');
   });
 });

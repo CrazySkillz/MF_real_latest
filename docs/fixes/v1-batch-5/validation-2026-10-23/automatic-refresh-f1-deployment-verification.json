@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-24T20:39:30.375Z",
+  "deployedCommit": "f1dc2ef09271cd0951f2ca43c617693f87662cb6",
+  "scope": "Exact V1 Batch 5 Test campaign: deployed recovery and financial preservation",
+  "observation": {
+    "file": "automatic-refresh-observation-deployed-f1-initial.json",
+    "sha256": "fc88c6979b6ea7906234e0d2131d3e06b9e0784e498b0e146aa2b1e99b016d7e"
+  },
+  "comparison": {
+    "file": "automatic-refresh-observation-final.json",
+    "sha256": "45a7ef8a384196b0078b290507f8a2e706029a69b5cc0846b45d15ad5c32b7b1"
+  },
+  "productionWrites": false,
+  "providerCalls": false,
+  "forcedRefresh": false,
+  "recoveryCompletedAtUtc": "2026-10-24T20:31:01.625Z",
+  "recoveryCompletedAtAmsterdam": "2026-10-24 22:31:01 CEST",
+  "reportReadinessMatchesCompletedPublication": true,
+  "laterCrmRefreshPreservedReadiness": true,
+  "activeRecoverableWorkCount": 0,
+  "revenueEur": 8003.96,
+  "nativeGa4RevenueEur": 7653.96,
+  "hubspotRevenueEur": 250,
+  "salesforceRevenueEur": 100,
+  "separatePipelineProxyEur": 3200,
+  "sourceIdentitiesFactsMappingsPreserved": true,
+  "shopifyInactiveWithZeroRecords": true,
+  "nativeOverviewTimestampUnchanged": true,
+  "remainingUnverified": [
+    "Next complete scheduled native GA4 refresh",
+    "Live KPI, Benchmark and scheduled-report propagation: this campaign has no definitions",
+    "Provider failure and reconnect lifecycles, scheduled email delivery, historical cleanup and whole Batch 5 certification"
+  ],
+  "outcome": "BOUNDED_DEPLOYMENT_VERIFICATION_PASSED"
+}

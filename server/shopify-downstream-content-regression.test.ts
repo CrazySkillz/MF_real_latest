@@ -6,6 +6,7 @@ const pdfTextCalls = vi.hoisted((): string[] => []);
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getCampaigns: vi.fn(),
+  getGA4PublicationVersion: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4Connection: vi.fn(),
   updateGA4ConnectionTokens: vi.fn(),
@@ -218,6 +219,7 @@ function setSavedPublication(breakdown: { rows: any[]; totals?: Record<string, n
 function setCommonShopifyFinancialMocks() {
   storageMock.getCampaign.mockResolvedValue(campaign);
   storageMock.getCampaigns.mockResolvedValue([campaign]);
+  storageMock.getGA4PublicationVersion.mockResolvedValue(7);
   storageMock.getGA4Connections.mockResolvedValue([
     { id: "ga4-1", campaignId: campaign.id, propertyId: "properties/123", method: "access_token", accessToken: "ga4-token", isPrimary: true, lookbackDays: 30, importStartDate: "2026-07-02" },
   ]);
@@ -734,8 +736,8 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(result.kpiIdsSkipped).toEqual([]);
     expect(result.benchmarkIdsSkipped).toEqual([]);
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-07-04", "ga4");
-    expect(storageMock.updateKPI).toHaveBeenCalledWith(revenueKpi.id, { currentValue: "299.98" });
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith(revenueBenchmark.id, { currentValue: "299.98" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith(revenueKpi.id, { currentValue: "299.98", publicationVersion: { campaignId: campaign.id, version: 7 } });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith(revenueBenchmark.id, { currentValue: "299.98", publicationVersion: { campaignId: campaign.id, version: 7 } });
   });
 
   it("returns notification metadata with the current Shopify-backed GA4 revenue value", async () => {

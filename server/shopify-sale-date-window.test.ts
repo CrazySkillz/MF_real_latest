@@ -66,6 +66,7 @@ function harness(options: any = {}) {
     sendBadRequest: (res: any, error: string) => res.status(400).json({ error }),
     getShopifyConnectionForCampaign: async () => storage.getShopifyConnection('a'),
     isShopifyPartnerDevelopmentStore: async () => options.developmentStore === true,
+    fetchShopifyOrderCustomerJourneyUtms: (args: any) => provider.fetchShopifyOrderCustomerJourneyUtms({ ...args, fetchImpl: options.journeyFetch }),
     shopifyApiFetch: async () => ({ access_scopes: JSON.parse(state.connection.mappingConfig).grantedScopesList.map((handle: string) => ({ handle })) }),
     shopifyAdminFetch: async (args: any) => {
       const url = new URL(args.endpoint); queries.push(url);
@@ -167,6 +168,31 @@ describe('Shopify sale dates through real discovery, preview, save and scheduler
     const h = harness({ pages: true, state: { orders: [order(), order({ id: 2, tags: 'campaign3_eur_test_extra' }), order({ id: 3, cancelled_at: '2026-10-01' }), order({ id: 4, test: true })] } });
     expect((await h.call()).payload.totalRevenue).toBe(785.95); expect(h.state.records).toHaveLength(1); expect(h.queries).toHaveLength(2);
   });
+  it.each(['preview', 'save', 'scheduler'])('retains saved amounts when %s receives incomplete journey attribution', async mode => {
+    const h = harness({ journeyFetch: async () => new Response(JSON.stringify({ data: { nodes: [{ id: 'gid://shopify/Order/1014', customerJourneySummary: {} }] } }),
+      { status: 200, headers: { 'X-Shopify-API-Version': '2026-07' } }) });
+    expect((await h.call()).statusCode).toBe(200);
+    const records = structuredClone(h.state.records), connection = structuredClone(h.state.connection);
+    h.state.orders = [order({ landing_site: null })];
+    const result = await h.call(savePath, { sourceId: 'shopify-source', campaignField: 'utm_campaign', ...(mode === 'preview' ? { dryRun: true } : {}) }, {}, mode === 'scheduler');
+    expect(result.statusCode, JSON.stringify(result.payload)).toBeGreaterThanOrEqual(400);
+    expect(h.writes).toHaveLength(1); expect(h.state.records).toEqual(records); expect(h.state.connection).toEqual(connection);
+    expect(JSON.parse(h.state.sources[0].mappingConfig)).toMatchObject({ campaignField: 'tags', lastTotalRevenue: 785.95 });
+  });
+  it.each([null, { ready: false, firstVisit: null }, { ready: true, firstVisit: null },
+    { ready: true, firstVisit: { landingPage: null, utmParameters: { campaign: 'campaign3_eur_test', source: null, medium: null } } },
+  ])('distinguishes absent, pending and matching journey attribution: %j', async customerJourneySummary => {
+    const h = harness({ state: { orders: [order({ landing_site: null })] },
+      journeyFetch: async () => new Response(JSON.stringify({ data: { nodes: [{ id: 'gid://shopify/Order/1014', customerJourneySummary }] } }),
+        { status: 200, headers: { 'X-Shopify-API-Version': '2026-07' } }) });
+    const result = await h.call(savePath, { campaignField: 'utm_campaign' });
+    if (customerJourneySummary?.ready === false) {
+      expect(result.statusCode).toBeGreaterThanOrEqual(400); expect(h.writes).toEqual([]);
+    } else {
+      expect(result.statusCode, JSON.stringify(result.payload)).toBe(200);
+      expect(result.payload.totalRevenue).toBe(customerJourneySummary?.firstVisit ? 785.95 : 0);
+    }
+  });
   it('includes test orders only after development-store verification', async () => {
     const h = harness({ developmentStore: true, state: { orders: [order({ test: true })] } });
     expect((await h.call()).payload.totalRevenue).toBe(785.95);
@@ -213,7 +239,9 @@ describe.skipIf(!testUrl)('Shopify September sale route through real PostgreSQL 
       await database.current.insert(schema.revenueSources).values({ id: `hubspot-${id}`, campaignId: id, sourceType: 'hubspot', platformContext: 'ga4', currency: 'EUR', mappingConfig: '{}' });
       await database.current.insert(schema.revenueRecords).values({ campaignId: id, revenueSourceId: `hubspot-${id}`, date: '2026-09-30', revenue: '350', currency: 'EUR' });
     }
-    const h = harness({ storage, state: { orders: [order(), order({ id: 1015, created_at: '2026-10-24T09:00:00Z', current_total_price: '100' })] } });
+    const h = harness({ storage, state: { orders: [order(), order({ id: 1015, created_at: '2026-10-24T09:00:00Z', current_total_price: '100' })] },
+      journeyFetch: async () => new Response(JSON.stringify({ data: { nodes: [{ id: 'gid://shopify/Order/1014', customerJourneySummary: {} }] } }),
+        { status: 200, headers: { 'X-Shopify-API-Version': '2026-07' } }) });
     expect((await h.call(valuesPath)).payload.values).toEqual([{ value: 'campaign3_eur_test', count: 2 }]);
     expect((await h.call()).statusCode).toBe(200);
     const source = (await storage.getRevenueSources('a')).find(s => s.sourceType === 'shopify')!; expect(source).toBeDefined();
@@ -226,6 +254,25 @@ describe.skipIf(!testUrl)('Shopify September sale route through real PostgreSQL 
     expect((await storage.getRevenueSources('a')).filter(s => s.sourceType === 'shopify').map(s => s.id)).toEqual([source.id]);
     expect((await storage.getRevenueTotalForRange('a', '1900-01-01', '2026-10-23')).totalRevenue).toBe(1150);
     expect((await storage.getRevenueBreakdownBySource('a', '1900-01-01', '2026-10-23')).find(s => s.sourceId === source.id)?.revenue).toBe(800);
+    const recordsBefore = (await pool.query('SELECT * FROM revenue_records ORDER BY id')).rows;
+    const connectionBefore = (await pool.query('SELECT * FROM shopify_connections ORDER BY id')).rows;
+    const workBefore = (await pool.query('SELECT * FROM ga4_refresh_work ORDER BY id')).rows;
+    h.state.orders = [order({ landing_site: null })];
+    expect((await h.call(savePath, { sourceId: source.id, campaignField: 'utm_campaign' }, {}, true)).statusCode).toBeGreaterThanOrEqual(400);
+    expect((await pool.query('SELECT * FROM revenue_records ORDER BY id')).rows).toEqual(recordsBefore);
+    expect((await pool.query('SELECT * FROM shopify_connections ORDER BY id')).rows).toEqual(connectionBefore);
+    const workAfter = (await pool.query('SELECT * FROM ga4_refresh_work ORDER BY id')).rows;
+    // Refresh attempt/failure metadata legitimately invalidates this campaign's
+    // pending work; it must never publish zero or touch a neighboring campaign.
+    expect(workAfter.filter(row => row.campaign_id !== 'a')).toEqual(workBefore.filter(row => row.campaign_id !== 'a'));
+    expect(workAfter.filter(row => !row.scope_hash.startsWith('invalidated:'))).toEqual([
+      expect.objectContaining({ campaign_id: 'a', status: 'pending', completed_at: null, scope: expect.objectContaining({ kind: 'revenue_change' }) }),
+    ]);
+    const retainedSource = (await storage.getRevenueSources('a')).find(s => s.id === source.id)!;
+    // Latest source total still includes today's EUR100; the completed-day total excludes it.
+    expect(JSON.parse(retainedSource.mappingConfig!)).toMatchObject({ campaignField: 'tags', lastTotalRevenue: 900 });
+    expect((await storage.getRevenueTotalForRange('a', '1900-01-01', '2026-10-23')).totalRevenue).toBe(1150);
+    expect((await storage.getRevenueTotalForRange('neighbor', '1900-01-01', '2026-10-23')).totalRevenue).toBe(350);
     vi.setSystemTime(new Date('2026-11-27T12:00:00Z'));
     expect((await h.call(savePath, { sourceId: source.id }, {}, true)).statusCode).toBe(409);
     expect((await storage.getRevenueTotalForRange('a', '1900-01-01', '2026-10-23')).totalRevenue).toBe(1150);

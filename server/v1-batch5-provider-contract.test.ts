@@ -37,7 +37,7 @@ function visit(node: ts.Node) {
 visit(source);
 const transpile = (code: string) => ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
 const bind = (code: string, env: any, result = '') => new Function(...Object.keys(env), `${transpile(code)}\n${result}`)(...Object.values(env));
-const definitionNames = ['zHubSpotRevenuePlatformContext', 'zSalesforceRevenuePlatformContext', 'zValueSource', 'zNumberLike', 'zSelectedValues', 'deriveDefaultClosedWonStageIds'];
+const definitionNames = ['zHubSpotRevenuePlatformContext', 'zSalesforceRevenuePlatformContext', 'zValueSource', 'zNumberLike', 'zSelectedValues', 'deriveDefaultClosedWonStageIds', 'isGA4RevenuePlatformContext'];
 const definitions = bind(definitionNames.map(n => named.get(n)).join('\n'), { z, MAX_SELECTED_VALUES: 200 }, `return {${definitionNames.join(',')}}`);
 const deal = (amount: any, id = 'deal-1') => ({ id, properties: { campaign: 'selected', amount, closedate: '2026-10-18', hs_currency: 'USD', dealstage: 'closedwon' } });
 const page = (results: any[], total = results.length, after?: string) => ({ total, results, ...(after ? { paging: { next: { after } } } : {}) });
@@ -116,7 +116,7 @@ async function readHubspotCurrencyProxy(pages: any[], change: any = {}, options:
     queries.push(JSON.parse(init.body));
     return { ok: options.providerOk !== false, status: options.providerOk === false ? 503 : 200, json: async () => pages.shift() };
   };
-  const env: any = { ...hubspotPagination, ...hubspotCurrency, MAX_HUBSPOT_RESULTS: 5000,
+  const env: any = { ...definitions, ...hubspotPagination, ...hubspotCurrency, MAX_HUBSPOT_RESULTS: 5000,
     app: { get: (...args: any[]) => { handler = args.at(-1); } }, ensureCampaignAccess: async () => options.access !== false,
     getGA4CampaignFilterValues: () => ['selected'], getHubspotAccessTokenForCampaign: async () => ({ accessToken: 'fixture' }),
     fetch: fetchImpl, fetchWithTimeout: fetchImpl, console: { error() {} },
@@ -138,7 +138,7 @@ describe('HubSpot Pipeline Proxy currency regression', () => {
     expect(res.payload).toMatchObject({currency:'EUR',totalToDate:3200,sourceId:'source',warning:null,pipelineValueRevenueTotals:[{campaignValue:'selected',revenue:3200}]});
     expect(queries).toHaveLength(1);expect(queries[0].properties).toContain('deal_currency_code');
     expect(queries[0].filterGroups[0].filters).toEqual([{propertyName:'campaign',operator:'IN',values:['selected']},{propertyName:'dealstage',operator:'IN',values:['open-stage']}]);
-    expect(writes).toHaveLength(2);for(const write of writes)expect(JSON.parse(write[2].mappingConfig)).toMatchObject({pipelineCurrency:'EUR',pipelineTotalToDate:3200,lastTotalRevenue:0});
+    expect(writes).toHaveLength(1);expect(writes[0][0]).toBe('source');for(const write of writes)expect(JSON.parse(write[2].mappingConfig)).toMatchObject({pipelineCurrency:'EUR',pipelineTotalToDate:3200,lastTotalRevenue:0});
     expect(accountReads).toHaveLength(0);
   });
   it.each([false,true])('uses provider deal currency in save and preview (preview=%s)', async previewOnly => {
@@ -183,7 +183,7 @@ describe('HubSpot Pipeline Proxy currency regression', () => {
   });
   it('uses verified account currency only when selected deal currency is absent',async()=>{
     const {res,accountReads,writes}=await readHubspotCurrencyProxy([page([pipelineDeal(3200,null)])],{},{accountCurrency:'EUR'});
-    expect(res.payload).toMatchObject({currency:'EUR',totalToDate:3200});expect(accountReads).toHaveLength(1);expect(writes).toHaveLength(2);
+    expect(res.payload).toMatchObject({currency:'EUR',totalToDate:3200});expect(accountReads).toHaveLength(1);expect(writes).toHaveLength(1);expect(writes[0][0]).toBe('source');
   });
   it('keeps verified currency caches and complete zero without provider calls',async()=>{
     for(const change of [{pipelineCurrency:'EUR'},{pipelineCurrency:' eur '},{pipelineTotalToDate:0,pipelineValueRevenueTotals:[]}]){
@@ -254,7 +254,7 @@ describe('Batch 5 Salesforce legacy pipeline currency recovery', () => {
   it.each([null, 'EUR'])('recomputes an incomplete or mismatched cache (%s) with verified currency', async pipelineCurrency => {
     const provider = salesforceCurrencyFixture(); const { res, writes } = await readSalesforceCurrencyProxy(provider, { pipelineCurrency, pipelineWarning: 'Earlier failure' });
     expect(res.statusCode, JSON.stringify(res.payload)).toBe(200); expect(res.payload).toMatchObject({ sourceId: 'source', currency: 'USD', totalToDate: 12.75, warning: null, pipelineValueRevenueTotals: [{ campaignValue: 'selected', revenue: 12.75 }] });
-    expect(writes).toHaveLength(2); for (const write of writes) expect(JSON.parse(write[2].mappingConfig)).toMatchObject({ pipelineCurrency: 'USD', pipelineTotalToDate: 12.75 });
+    expect(writes).toHaveLength(1); expect(writes[0][0]).toBe('source'); for (const write of writes) expect(JSON.parse(write[2].mappingConfig)).toMatchObject({ pipelineCurrency: 'USD', pipelineTotalToDate: 12.75 });
     expect(provider.calls.filter(url => url.includes('/Soap/'))).toHaveLength(1);
   });
   it('does not treat an otherwise complete missing-currency cache as usable', async () => {
@@ -338,11 +338,11 @@ describe.skipIf(!testUrl)('Batch 5 real PostgreSQL preservation and replacement'
     expect(after.revenue_records).toEqual(before.revenue_records);
     expect(after.revenue_sources.map((row:any)=>row.id)).toEqual(before.revenue_sources.map((row:any)=>row.id));
     expect(JSON.parse(after.revenue_sources.find((row:any)=>row.id==='hubspot-fixture').mapping_config)).toMatchObject({...cfg,pipelineCurrency:'EUR',pipelineLastUpdatedAt:expect.any(String)});
-    for(const table of ['clients','campaigns','ga4_refresh_work','salesforce_connections','metric_snapshots'])expect(after[table]).toEqual(before[table]);
+    for(const table of ['clients','campaigns','ga4_refresh_work','hubspot_connections','salesforce_connections','metric_snapshots'])expect(after[table]).toEqual(before[table]);
     expect(after.revenue_sources.filter((row:any)=>row.id!=='hubspot-fixture')).toEqual(before.revenue_sources.filter((row:any)=>row.id!=='hubspot-fixture'));
     const again=await readHubspotCurrencyProxy([],{},{storage});expect(again.res.payload).toMatchObject({currency:'EUR',totalToDate:3200});expect(again.queries).toEqual([]);expect(await snapshot()).toEqual(after);
   });
-  it.each(['add', 'edit'])('HubSpot %s completes its actual post-save recompute after prior GA4 publication', async mode => {
+  it.each(['add', 'edit'])('HubSpot %s starts recovery after saving without synchronously publishing partial KPI values', async mode => {
     await pool.query("UPDATE campaigns SET currency='EUR' WHERE id='fixture'");
     await seed(schema.ga4RefreshWork, { id: 'completed', campaignId: 'fixture', ownerId: 'owner', status: 'completed',
       reportingDate: '2026-10-22', dueAt: new Date('2026-10-23T06:00:00Z'), completedAt: new Date('2026-10-23T06:10:00Z'), scope: {} });
@@ -350,7 +350,8 @@ describe.skipIf(!testUrl)('Batch 5 real PostgreSQL preservation and replacement'
       snapshotType: 'executive_summary_daily', reportingDate: '2026-10-22', metrics: {}, notes: 'ga4_aligned_refresh_v1:2026-10-22:fixture' });
     const jobs = vi.fn().mockResolvedValue({ campaignsProcessed: 1, campaignIdsFailed: [], campaignIdsSkipped: [],
       kpiIdsSkipped: [], kpiIdsFailed: [], benchmarkIdsSkipped: [], benchmarkIdsFailed: [], alertReconciliationFailures: [] });
-    const env: any = { storage, getReportingDateWindow: () => ({ endDate: '2026-10-22' }), runGA4DailyKPIAndBenchmarkJobs: jobs,
+    const recovery = vi.fn().mockResolvedValue(undefined);
+    const env: any = { storage, getReportingDateWindow: () => ({ endDate: '2026-10-22' }), runGA4DailyKPIAndBenchmarkJobs: jobs, recoverInterruptedGA4Refreshes: recovery,
       refreshCampaignCurrentValuesForCampaign: vi.fn().mockResolvedValue({}), isGA4RevenuePlatformContext: () => true,
       GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS: 15000, setTimeout, clearTimeout, console: { warn() {} } };
     env.recomputeGA4KPIAndBenchmarkValues = bind(named.get('recomputeGA4KPIAndBenchmarkValues')!, env, 'return recomputeGA4KPIAndBenchmarkValues');
@@ -364,7 +365,8 @@ describe.skipIf(!testUrl)('Batch 5 real PostgreSQL preservation and replacement'
     expect(res.payload).toMatchObject({ success: true, totalRevenue: 0 });
     const version = await storage.getGA4PublicationVersion('fixture');
     expect(version).not.toBeNull();
-    expect(jobs).toHaveBeenCalledWith({ campaignId: 'fixture', useSavedOverview: true, publicationVersion: { campaignId: 'fixture', version } });
+    expect(recovery).toHaveBeenCalledWith('fixture');
+    expect(jobs).not.toHaveBeenCalled();
     const after = await snapshot();
     const selected = after.revenue_sources.filter((row: any) => row.campaign_id === 'fixture' && row.source_type === 'hubspot');
     expect(selected).toHaveLength(mode === 'add' ? 2 : 1);

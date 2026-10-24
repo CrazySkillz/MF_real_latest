@@ -27,7 +27,10 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
   });
 
   it("refreshes pipeline-enabled and revenue-only sources while preserving stable IDs", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([
+      { id: "campaign-1", status: "active" }, { id: "paused", status: "paused" },
+      { id: "draft", status: "draft" }, { id: "unknown-status" },
+    ] as any);
     vi.spyOn(storage, "getRevenueSources").mockResolvedValue([
       { id: "sf-valid", campaignId: "campaign-1", sourceType: "salesforce", platformContext: "ga4", isActive: true, mappingConfig: JSON.stringify({ platformContext: "ga4", pipelineEnabled: true, pipelineStageName: "Prospecting", selectedValues: ["Delta"] }) },
       { id: "sf-legacy", campaignId: "campaign-1", sourceType: "salesforce", platformContext: null, isActive: true, mappingConfig: JSON.stringify({ pipelineEnabled: true, pipelineStageName: "Prospecting", selectedValues: ["Legacy"] }) },
@@ -44,6 +47,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     await runSalesforcePipelineAutoRefreshOnce();
 
     expect(storage.getRevenueSources).toHaveBeenCalledWith("campaign-1", "ga4");
+    expect(storage.getRevenueSources).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const requests = fetchMock.mock.calls.map(([url, options]) => ({
       url: String(url),
@@ -129,7 +133,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(sourceDialog).toContain('sourceType !== "hubspot" && sourceType !== "salesforce"');
     expect(sourceDialog).toContain("formatMoney(item.revenue)");
     expect(sourceDialog).not.toContain("cfg?.pipelineValueRevenueTotals");
-    expect(sourceDialog).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}');
+    expect(sourceDialog).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}');
   });
 
   it("edits the Salesforce source from its provider heading and removes confirmed values individually", () => {

@@ -257,6 +257,39 @@ describe('Shopify provider hardening', () => {
     expect(String(request[1]?.body)).toContain('utmParameters');
   });
 
+  it.each([
+    {}, { customerJourneySummary: {} }, { customerJourneySummary: false },
+    { customerJourneySummary: { ready: null, firstVisit: null } },
+    { customerJourneySummary: { ready: 'true', firstVisit: null } },
+    { customerJourneySummary: { ready: true } },
+    { customerJourneySummary: { ready: true, firstVisit: {} } },
+    { customerJourneySummary: { ready: true, firstVisit: { landingPage: 42, utmParameters: null } } },
+    { customerJourneySummary: { ready: true, firstVisit: { landingPage: null, utmParameters: {} } } },
+    { customerJourneySummary: { ready: true, firstVisit: { landingPage: null, utmParameters: { campaign: {}, source: null, medium: null } } } },
+  ])('rejects incomplete requested Customer Journey fields: %j', async fields => {
+    const orderId = 'gid://shopify/Order/123';
+    await expect(fetchShopifyOrderCustomerJourneyUtms({
+      shopDomain: 'store.myshopify.com', accessToken: 'fixture', apiVersion: '2026-07', orderIds: [orderId],
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ data: { nodes: [{ id: orderId, ...fields }] } }), {
+        status: 200, headers: { 'X-Shopify-API-Version': '2026-07' },
+      })),
+    })).rejects.toThrow('attribution response is incomplete');
+  });
+
+  it.each([null, { ready: false, firstVisit: null }, { ready: true, firstVisit: null },
+    { ready: true, firstVisit: { landingPage: null, utmParameters: null } },
+    { ready: true, firstVisit: { landingPage: null, utmParameters: { campaign: null, source: null, medium: null } } },
+  ])('preserves valid nullable attribution fields and pending readiness: %j', async customerJourneySummary => {
+    const orderId = 'gid://shopify/Order/123';
+    const result = await fetchShopifyOrderCustomerJourneyUtms({
+      shopDomain: 'store.myshopify.com', accessToken: 'fixture', apiVersion: '2026-07', orderIds: [orderId],
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ data: { nodes: [{ id: orderId, customerJourneySummary }] } }), {
+        status: 200, headers: { 'X-Shopify-API-Version': '2026-07' },
+      })),
+    });
+    expect(result.get(orderId)).toEqual({ ready: customerJourneySummary?.ready ?? null, landingSite: '', utm_campaign: '', utm_source: '', utm_medium: '' });
+  });
+
   it('batches Customer Journey reads without truncating requested orders', async () => {
     const orderIds = Array.from({ length: 51 }, (_, index) => `gid://shopify/Order/${index + 1}`);
     const fetchImpl = vi.fn(async (_url: any, init: any) => {

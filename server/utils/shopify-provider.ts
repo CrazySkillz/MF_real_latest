@@ -369,9 +369,23 @@ export async function fetchShopifyOrderCustomerJourneyUtms(args: {
     for (let index = 0; index < batch.length; index++) {
       const node = json.data.nodes[index];
       if (!node || String(node.id || '') !== batch[index]) throw new Error('Shopify customer journey attribution order mismatch');
-      const summary = node.customerJourneySummary || null;
-      const visit = summary?.firstVisit || null;
-      const utm = visit?.utmParameters || {};
+      // Nullable fields are valid; omitted or malformed requested fields are not
+      // evidence of an unattributed order and must not replace saved revenue.
+      const summary = node.customerJourneySummary;
+      if (summary !== null && (!summary || typeof summary !== 'object' || Array.isArray(summary)
+        || typeof summary.ready !== 'boolean' || !Object.hasOwn(summary, 'firstVisit'))) {
+        throw new Error('Shopify customer journey attribution response is incomplete');
+      }
+      const visit = summary === null ? null : summary.firstVisit;
+      if (visit !== null && (!visit || typeof visit !== 'object' || Array.isArray(visit)
+        || (visit.landingPage !== null && typeof visit.landingPage !== 'string') || !Object.hasOwn(visit, 'utmParameters'))) {
+        throw new Error('Shopify customer journey attribution response is incomplete');
+      }
+      const utm = visit === null ? null : visit.utmParameters;
+      if (utm !== null && (!utm || typeof utm !== 'object' || Array.isArray(utm)
+        || ['campaign', 'source', 'medium'].some(key => utm[key] !== null && typeof utm[key] !== 'string'))) {
+        throw new Error('Shopify customer journey attribution response is incomplete');
+      }
       results.set(batch[index], {
         ready: typeof summary?.ready === 'boolean' ? summary.ready : null,
         landingSite: String(visit?.landingPage || ''),

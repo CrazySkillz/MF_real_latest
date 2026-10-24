@@ -88,7 +88,10 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
       pipelineStageId: null,
       pipelineStageLabel: null,
     });
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([
+      { id: "campaign-1", status: "active" }, { id: "paused", status: "paused" },
+      { id: "draft", status: "draft" }, { id: "unknown-status" },
+    ] as any);
     vi.spyOn(storage, "getRevenueSources").mockResolvedValue([
       { id: "hubspot-valid", campaignId: "campaign-1", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: savedMapping },
       { id: "hubspot-other-campaign", campaignId: "campaign-2", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: savedMapping },
@@ -105,6 +108,7 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     await runHubSpotPipelineAutoRefreshOnce();
 
     expect(storage.getRevenueSources).toHaveBeenCalledWith("campaign-1", "ga4");
+    expect(storage.getRevenueSources).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const [pipelineUrl, pipelineOptions] = fetchMock.mock.calls[0];
     expect(String(pipelineUrl)).toContain("/api/campaigns/campaign-1/hubspot/save-mappings");

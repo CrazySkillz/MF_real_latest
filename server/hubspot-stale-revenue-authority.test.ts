@@ -75,6 +75,7 @@ describe("GA4 Revenue Sources completed-day and latest-value responses", () => {
       mappingConfig: JSON.stringify({ platformContext: "ga4", lastTotalRevenue: 999 }) };
     const storage = {
       getRevenueSources: vi.fn().mockResolvedValue([source]),
+      getGA4RevenuePublicationStatus: vi.fn().mockResolvedValue({ "source-1": { status: "published", hash: "fixture-hash" } }),
       getRevenueBreakdownBySource: vi.fn(async (_campaign, _start, end) => {
         if (end === "2999-12-31") {
           if (failLatest) throw new Error("latest read failed");
@@ -100,6 +101,7 @@ describe("GA4 Revenue Sources completed-day and latest-value responses", () => {
     await handler({ params: { id: "campaign-1" }, query: { platformContext: "ga4" } }, response);
     expect(response.status).not.toHaveBeenCalled();
     expect(storage.getRevenueSources).toHaveBeenCalledWith("campaign-1", "ga4");
+    expect(storage.getGA4RevenuePublicationStatus).toHaveBeenCalledWith("campaign-1", "2026-10-16");
     expect(storage.getRevenueBreakdownBySource.mock.calls).toEqual([
       ["campaign-1", "1900-01-01", "2026-10-16", "ga4"],
       ["campaign-1", "1900-01-01", "2999-12-31", "ga4"],
@@ -126,10 +128,17 @@ describe("GA4 Revenue Sources completed-day and latest-value responses", () => {
     });
   });
 
-  it.each([{ latest: [] }, { latest: [{ sourceId: "source-1", revenue: 200 }] }])("keeps a newly added source pending with zero completed-day contribution (%j)", async ({ latest }) => {
+  it.each([{ latest: [] }, { latest: [{ sourceId: "source-1", revenue: 200 }] }])("uses materialized sale dates, not connection dates, for a newly added source (%j)", async ({ latest }) => {
     expect(await readSource({ createdAt: "2026-10-17T08:00:00.000Z", latest })).toMatchObject({
-      lastTotalRevenue: latest.length ? 200 : 999, completedDayRevenue: 0,
-      materializedRevenueStatus: "available", pendingCompletedDay: true, boundedRevenueZero: true,
+      lastTotalRevenue: latest.length ? 200 : null, completedDayRevenue: 0,
+      materializedRevenueStatus: latest.length ? "available" : "unavailable", pendingCompletedDay: latest.length > 0, boundedRevenueZero: latest.length > 0,
+    });
+  });
+
+  it("includes an older sale immediately even when the source was added today", async () => {
+    const rows = [{ sourceId: "source-1", revenue: 250 }];
+    expect(await readSource({ createdAt: "2026-10-17T08:00:00.000Z", latest: rows, completed: rows })).toMatchObject({
+      lastTotalRevenue: 250, completedDayRevenue: 250, pendingCompletedDay: false, publicationStatus: "published", publicationHash: "fixture-hash",
     });
   });
 

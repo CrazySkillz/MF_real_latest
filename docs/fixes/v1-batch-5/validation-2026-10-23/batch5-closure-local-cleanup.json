@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-24",
+  "host": "127.0.0.1:55444",
+  "database": "ga4_alignment_test",
+  "remainingFixtureSchemas": 0,
+  "otherClients": 0,
+  "fixtureStopped": true,
+  "verifiedAfterStop": "pg_ctl: no server running",
+  "productionAccess": false,
+  "productionWrites": false
+}

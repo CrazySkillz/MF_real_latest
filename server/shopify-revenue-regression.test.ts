@@ -173,13 +173,13 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('runShopifyRevenueSourceRefreshForValidation(campaignId, sourceId)');
     expect(ga4Metrics).not.toContain('shopify-refresh/run-now');
     expect(ga4Metrics).not.toContain('shopify-reprocess/run-now');
-    expect(scheduler).toContain('async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>');
+    expect(scheduler).toContain('async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>');
     expect(scheduler).toContain('String(s.sourceType || "").toLowerCase() === "shopify"');
     expect(scheduler).toContain('const shopCfg = shopCfgRaw ? { ...shopCfgRaw, platformContext: shopCfgRaw.platformContext || shopifySource.platformContext || ctx } : null;');
-    expect(scheduler).toContain('reprocessShopify(campaignId, shopCfg, String(shopifySource.id))');
+    expect(scheduler).toContain('reprocessShopify(campaignId, shopCfg, String(shopifySource.id), refreshWriteInput)');
     expect(scheduler).toContain('export async function runShopifyRevenueSourceRefreshForValidation');
     expect(scheduler).toContain('reprocessShopify(normalizedCampaignId, mappingConfig, normalizedSourceId)');
-    expect(scheduler).toContain('const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body);');
+    expect(scheduler).toContain('const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body, refreshWriteInput);');
     expect(scheduler).toContain('if (isStaleRevenueSourceReprocess(result)) {');
   });
 
@@ -335,7 +335,7 @@ describe("Shopify revenue regression guard", () => {
 
     expect(saveRoute).toContain("const campaignId = req.params.id;");
     expect(saveRoute).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
-    expect(saveRoute).toContain("const conn = await getShopifyConnectionForCampaign(campaignId);");
+    expect(saveRoute).toContain("const conn = await getShopifyConnectionForCampaign(campaignId, refreshWriteInput);");
     expect(saveRoute).toContain("requestedSource = await storage.getRevenueSource(campaignId, requestedSourceId);");
     expect(saveRoute).toContain("const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);");
     expect(saveRoute).toContain("const sourceValues = {\n          campaignId,\n          sourceType: 'shopify',\n          platformContext: platformCtx,");
@@ -354,7 +354,7 @@ describe("Shopify revenue regression guard", () => {
     const helper = routeSection(
       ga4Metrics,
       "const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {",
-      "// Merged spend sources for micro copy display",
+      "const spendDisplaySources = useMemo",
     );
 
     expect(helper).toContain('if (sourceType !== "shopify") return "";');
@@ -494,7 +494,7 @@ describe("Shopify revenue regression guard", () => {
     );
     const connectionResolver = routeSection(
       routes,
-      "const getShopifyConnectionForCampaign = async (campaignId: string) => {",
+      "const getShopifyConnectionForCampaign = async (campaignId: string, refreshWriteInput: GA4RefreshWriteInput = {}) => {",
       "/**\n   * Auto-recalculate Shopify conversion value",
     );
     const adminConnect = routeSection(

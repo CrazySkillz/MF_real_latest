@@ -262,7 +262,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(reprocessHubSpot).toContain('postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body, refreshWriteInput)');
     expect(reprocessHubSpot).toContain("Skipping stale HubSpot revenue source");
 
-    expect(hubspotLoop).toContain("const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))");
+    expect(hubspotLoop).toContain("const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx))");
+    expect(hubspotLoop).not.toContain(".catch(() => []");
     expect(hubspotLoop).toContain('String(s.sourceType || "").toLowerCase() === "hubspot"');
     expect(hubspotLoop).toContain("const hubCfg = hubCfgRaw ? { ...hubCfgRaw, platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx, expectedSourceMappingConfig: String(hubspotSource.mappingConfig) } : null;");
     expect(hubspotLoop).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id), refreshWriteInput)");
@@ -316,7 +317,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const mappedCampaignLabelHelper = sliceBetween(
       client,
       "const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {",
-      "  // Merged spend sources"
+      "  const spendDisplaySources = useMemo"
     );
 
     expect(pipelineRoute).toContain("requestedPlatformContext");
@@ -341,13 +342,13 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineRoute).toContain("{ propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] }");
     expect(pipelineRoute).toContain("totalToDate: Number(cfg.pipelineTotalToDate || 0)");
 
-    expect(pipelineMemo).toContain('getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot")');
+    expect(pipelineMemo).toContain('getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot", hubspotPipelineProxyError)');
     expect(pipelineMemo).toContain("sourceMatchesGa4Scope");
     expect(pipelineMemo).toContain('String(source?.sourceType || "").trim().toLowerCase() === "hubspot" && Array.isArray(cfg.campaignMappings)');
     expect(pipelineMemo).toContain("item?.linkedinCampaignUrn, item?.linkedinCampaignName");
     expect(pipelineMemo).toContain("return sorted.find(sourceMatchesGa4Scope) || null;");
-    expect(pipelineMemo).toContain('const endpointSourceId = sourceType === "salesforce"');
-    expect(pipelineMemo).toContain('String(source?.id || "") === endpointSourceId');
+    expect(pipelineMemo).toContain('String(source?.id || "") === String(endpointData?.sourceId || "") && sourceMatchesGa4Scope(source)');
+    expect(pipelineMemo).toContain('const available = !requestFailed && !!endpointSource');
     expect(pipelineMemo).toContain("const crmSource = endpointSource || selectPipelineSource(eligible);");
     expect(pipelineMemo).not.toContain("return sorted[0]");
     expect(pipelineMemo).toContain("providerEntries: entries.map");
@@ -783,7 +784,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(overviewReportBlock).not.toContain("pipelineTotal + payload.financialRevenue");
   });
 
-  it("excludes Pipeline Proxy from GA4 report artifacts while retaining its operational Overview card", () => {
+  it("excludes Pipeline Proxy from confirmed GA4 report revenue while retaining its operational Overview card", () => {
     const client = ga4MetricsFile();
     const pdf = ga4ScheduledReportPdfFile();
     const browserReportRevenue = sliceBetween(
@@ -793,7 +794,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const operationalOverview = sliceBetween(
       client,
-      "<p className=\"text-sm font-medium text-muted-foreground/70\">Pipeline Proxy</p>",
+      "<h4 className=\"text-sm font-semibold text-foreground mb-2\">Pipeline Proxy</h4>",
       "<p className=\"text-sm font-medium text-muted-foreground/70\">Profit</p>"
     );
     const reportPayload = sliceBetween(
@@ -942,21 +943,16 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(kpiCreateMutationBlock).toContain("revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0)");
     expect(kpiCreateMutationBlock).toContain("spend: Number(financialSpend || 0)");
     expect(kpiLiveBlock).toContain("return resolveGA4KpiLiveValue({");
-    expect(kpiLiveBlock).toContain("financialRevenue,");
-    expect(kpiLiveBlock).toContain("financialSpend,");
-    expect(kpiLiveBlock).toContain("financialROI,");
-    expect(kpiLiveBlock).toContain("financialCPA,");
+    expect(kpiLiveBlock).toContain("financialRevenue: overviewFinancialRevenue,");
+    expect(kpiLiveBlock).toContain("financialSpend: overviewFinancialSpend,");
+    expect(kpiLiveBlock).toContain("financialROI: overviewFinancialROI,");
+    expect(kpiLiveBlock).toContain("financialCPA: overviewFinancialCPA,");
     expect(ga4KpiLiveValue).toContain('if (metric === "revenue") return Number(financialRevenue || 0).toFixed(2);');
     expect(ga4KpiLiveValue).toContain('if (metric === "roas") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);');
     expect(ga4KpiLiveValue).toContain('if (metric === "roi") return Number(financialROI || 0).toFixed(2);');
     expect(ga4KpiLiveValue).toContain('if (metric === "cpa") return Number(financialCPA || 0).toFixed(2);');
 
-    expect(benchmarkLiveBlock).toContain("Number(resolveGA4KpiLiveValue({");
-    expect(benchmarkLiveBlock).toContain("kpi: { metric, name, currentValue },");
-    expect(benchmarkLiveBlock).toContain("financialRevenue,");
-    expect(benchmarkLiveBlock).toContain("financialSpend,");
-    expect(benchmarkLiveBlock).toContain("financialROI,");
-    expect(benchmarkLiveBlock).toContain("financialCPA,");
+    expect(benchmarkLiveBlock).toContain("Number(getLiveKpiValue({ metric, name, currentValue }))");
   });
 
   it("keeps server GA4 KPI and Benchmark persisted/current-value formulas additive with HubSpot imported revenue", () => {
@@ -974,7 +970,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const campaignTotalsBlock = sliceBetween(
       campaignCurrent,
-      "async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false): Promise<CampaignMetricTotals | null> {",
+      "async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false, useSavedOverview = false): Promise<CampaignMetricTotals | null> {",
       "function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number | null {"
     );
     const campaignConfigBlock = sliceBetween(
@@ -1005,8 +1001,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(jobs).toContain("const metricInputs = benchmarkInputsForMetric(metricKey);");
     expect(jobs).toContain("benchmarkIdsSkipped.add(benchmarkId);");
     expect(jobs).toContain("const currentValue = computeKpiValue(metricKey, metricInputs);");
-    expect(jobs).toContain('await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);');
-    expect(jobs).toContain('await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);');
+    expect(jobs).toContain('await storage.updateKPI(kpiId, { currentValue: String(valueNum), ...refreshWriteInput } as any);');
+    expect(jobs).toContain('await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(currentValue), ...refreshWriteInput } as any);');
 
     expect(campaignTotalsBlock).toContain("await Promise.allSettled([");
     expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');

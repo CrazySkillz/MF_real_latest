@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-24T21:25:47.645Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "batch5-closure-final-types-typecheck.log"
+    }
+  ]
+}

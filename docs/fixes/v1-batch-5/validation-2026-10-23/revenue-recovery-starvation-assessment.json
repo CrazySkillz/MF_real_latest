@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-24T15:58:12.120Z",
+  "baseCommit": "e0b0c6f8d0cd681fdaa534c2b5ecf601bb42bd8a",
+  "scope": "Bounded retry of recovery checks deferred by existing runner guards; not a calculation or provider change",
+  "deployed": false,
+  "productionWrites": false,
+  "providerCalls": false,
+  "files": [
+    {
+      "file": "server/ga4-daily-scheduler.ts",
+      "sha256": "868dbe834e9836e0a80274d5594c753956922d550a4614299b58324ca6007108"
+    },
+    {
+      "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+      "sha256": "a41705d89b913c8216c5961726fce73a50ae77cc0db4e07629d60e0a68d2965c"
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "sha256": "1dd111acc5f33a50bb46e7481c8f81a5c67896afc8ee577f7b183dd0b9ad7408"
+    }
+  ],
+  "tests": {
+    "targetedUniquePassed": 362,
+    "widerUniquePassed": 366,
+    "widerExistingFailed": 48,
+    "finalSkipped": 0,
+    "reproduction": "revenue-recovery-starvation-before.json",
+    "orchestrationAndWriter": "revenue-recovery-starvation-fixed.json",
+    "inputInvalidation": "revenue-recovery-starvation-database-final.json",
+    "publicationStorage": "revenue-recovery-delete-amount-verified.json",
+    "baselineBoundaryComparison": "revenue-recovery-starvation-baseline.json"
+  },
+  "build": "revenue-recovery-starvation-final-build-checks.json",
+  "cleanup": "revenue-recovery-starvation-cleanup.json",
+  "incident": {
+    "date": "2026-10-24",
+    "timezone": "Europe/Amsterdam",
+    "observedPendingAt": "17:47:28",
+    "jobDueAt": "17:44:01.175",
+    "attemptCount": 0,
+    "activeSourceAmounts": {
+      "hubspot": 250,
+      "salesforce": 100
+    },
+    "removedShopify": 785.95,
+    "expectedTotal": 8003.96,
+    "displayedTotal": 8789.91,
+    "evidence": "User screenshots/log-search result, enforced read-only exact-campaign queries and public scheduler health in this conversation",
+    "limits": "Individual live guard values at skip time, deployed correction, browser completion latency and full downstream acceptance unverified"
+  },
+  "fixtureIssues": [
+    "Initial start used unavailable default port; local tests skipped; documented port 55444 succeeded.",
+    "Initial exact-amount fixture inserted duplicate executive rows; final fixture reuses the existing row."
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-24T15:55:25.776Z",
+  "baseline": "e0b0c6f8d0cd681fdaa534c2b5ecf601bb42bd8a",
+  "unchangedFiles": [
+    {
+      "file": "server/financial-snapshot-saved-ga4.test.ts",
+      "sha256": "4068213c2c46729ea107496077b48ebb2ebca22f39e4feb0ef802fd0a02ac3f9"
+    },
+    {
+      "file": "server/utils/financial-daily-snapshot-writer.ts",
+      "sha256": "80eede27c6d890bad0b3b449c8b99f526324cf4118b2c7a2d1607c91c468e461"
+    },
+    {
+      "file": "server/utils/campaign-current-values.ts",
+      "sha256": "bf93b1e580053854817c90738a15860fb34b98e6780555b8c8b80adf4282af60"
+    },
+    {
+      "file": "server/utils/campaign-cumulative-financials.ts",
+      "sha256": "933d81c5ade9d210d99bcef16f3344a4ca39e6507e5116241f89a8c6edc70f78"
+    },
+    {
+      "file": "server/utils/financial-daily-snapshot-observation.ts",
+      "sha256": "3bc5383f40e8056fef8f50106cc515c9b7589a0aaf8761dd55f9339f1e5466b3"
+    },
+    {
+      "file": "server/ga4-scheduler-observability-regression.test.ts",
+      "sha256": "16bcf94265f760374648960c90b15acce24ba8ea0a06181faf587d203797a30b"
+    }
+  ],
+  "failures": {
+    "missingExistingMock": 47,
+    "absentExistingSourceText": 1
+  },
+  "limit": "Compared exact failing boundaries with committed code; not a full baseline-suite rerun or waiver."
+}

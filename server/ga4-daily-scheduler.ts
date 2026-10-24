@@ -1394,10 +1394,13 @@ export function startGA4DailyScheduler(port?: number): void {
   scheduleNextRun();
   const recover = () => {
     if (ga4DailySchedulerStatus.startedAt !== lifecycle || ga4DailySchedulerStatus.stoppedAt) return;
+    // Avoid repeatedly colliding with the financial scheduler's one-minute timer.
+    const retryAfterMs = (global as any).__ga4DailyRefreshInProgress || (global as any).__autoRefreshInProgress ||
+      (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress ? 5_000 : 60_000;
     void recoverInterruptedGA4Refreshes().catch(error => console.warn("[GA4 Daily] Recovery discovery failed:", error?.message || error))
       .finally(() => {
         if (ga4DailySchedulerStatus.startedAt === lifecycle && !ga4DailySchedulerStatus.stoppedAt) {
-          (global as any).ga4DailyRecoveryTimer = setTimeout(recover, 60_000);
+          (global as any).ga4DailyRecoveryTimer = setTimeout(recover, retryAfterMs);
         }
       });
   };

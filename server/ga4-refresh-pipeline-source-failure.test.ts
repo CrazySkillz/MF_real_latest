@@ -54,7 +54,7 @@ import {
   recoverInterruptedGA4Refreshes,
 } from "./ga4-daily-scheduler";
 import { checkScheduledReports, getScheduledReportAlignedRefreshGate } from "./report-scheduler";
-import { getAutoRefreshSchedulerStatus, runDailyAutoRefreshOnce } from "./auto-refresh-scheduler";
+import { getAutoRefreshSchedulerStatus, runDailyAutoRefreshOnce, startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
 import * as financialObservation from "./utils/financial-daily-snapshot-observation";
 
 // Run the real orchestration, source discovery, daily reconciliation, evidence and financial writer.
@@ -366,6 +366,36 @@ describe("GA4 ordered refresh source-discovery failures", () => {
         .filter(([label]) => label === "[GA4 Daily] Revenue publication timing").map(([, entry]) => {
           expect(typeof entry).toBe("string"); expect(entry).not.toContain("\n"); return JSON.parse(entry);
         });
+      it("publishes queued revenue when the real minute-based financial scheduler starts before recovery", async () => {
+        await seedSavedInputs();
+        stopGA4DailyScheduler();
+        vi.stubEnv("AUTO_REFRESH_ENABLED", "true");
+        vi.stubEnv("AUTO_REFRESH_RUN_ON_STARTUP", "false");
+        vi.stubEnv("GA4_DAILY_PIPELINE_OWNS_REFRESH", "true");
+        vi.stubEnv("GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES", "1");
+        vi.stubEnv("SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES", "5");
+        // Each real Sheets sweep holds its existing guard during one second of storage latency.
+        mocks.storage.getCampaigns.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([]), 1000)));
+        mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValueOnce([{ id: "work-a", campaignId: "campaign-a",
+          dueAt: new Date(Date.now() - 1000), reportingDate, scope: { kind: "revenue_change", campaign: { ownerId: "campaign-a-owner" } } }])
+          .mockResolvedValue([]);
+        try {
+          startDailyAutoRefreshScheduler();
+          startGA4DailyScheduler(5000);
+          await vi.advanceTimersByTimeAsync(60_000);
+          expect((global as any).__googleSheetsSpendRefreshInProgress).toBe(true);
+          expect(mocks.storage.claimGA4RefreshWork).not.toHaveBeenCalled();
+          await vi.advanceTimersByTimeAsync(65_000);
+          expect(mocks.storage.claimGA4RefreshWork).toHaveBeenCalledExactlyOnceWith("campaign-a", "campaign-a-owner", "work-a", 120_000);
+          expect(saved.get("campaign-a").inputs.revenue.value).toBe("600.00");
+          expect(timingEntries().at(-1)).toMatchObject({ stage: "pipeline_finished", completed: true });
+          expectNoProviderRefresh();
+        } finally {
+          for (const key of ["__autoRefreshSchedulerInterval", "__salesforcePipelineRefreshSchedulerInterval"]) {
+            clearInterval((global as any)[key]); (global as any)[key] = null;
+          }
+        }
+      });
       it("records scoped cumulative timings without changing saved publication or exposing credentials", async () => {
         await seedSavedInputs();
         mocks.executive.mockImplementation(async () => { vi.setSystemTime(Date.now() + 7000); return true; });
@@ -512,6 +542,29 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       (global as any)[flag] = true;
       try { await recoverInterruptedGA4Refreshes("campaign-a"); expect(mocks.storage.getRecoverableGA4RefreshWork).not.toHaveBeenCalled(); }
       finally { (global as any)[flag] = false; }
+    });
+    it.each(["__ga4DailyRefreshInProgress", "__autoRefreshInProgress", "__googleSheetsSpendRefreshInProgress", "__salesforcePipelineRefreshInProgress"])("retries after %s clears without overlapping it or surviving shutdown", async flag => {
+      (global as any)[flag] = true;
+      try {
+        await vi.advanceTimersByTimeAsync(65_000);
+        expect(mocks.storage.getRecoverableGA4RefreshWork).not.toHaveBeenCalled();
+        expect(mocks.storage.claimGA4RefreshWork).not.toHaveBeenCalled();
+        (global as any)[flag] = false;
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(mocks.storage.getRecoverableGA4RefreshWork).toHaveBeenCalledTimes(1);
+        (global as any)[flag] = true;
+        await vi.advanceTimersByTimeAsync(60_000);
+        stopGA4DailyScheduler();
+        (global as any)[flag] = false;
+        await vi.advanceTimersByTimeAsync(65_000);
+        expect(mocks.storage.getRecoverableGA4RefreshWork).toHaveBeenCalledTimes(1);
+      } finally { (global as any)[flag] = false; }
+    });
+    it("keeps the normal one-minute recovery cadence when no runner is busy", async () => {
+      await vi.advanceTimersByTimeAsync(119_999);
+      expect(mocks.storage.getRecoverableGA4RefreshWork).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mocks.storage.getRecoverableGA4RefreshWork).toHaveBeenCalledTimes(2);
     });
     it.each(["owner", "date", "missing", "unsupported"])("rejects a discovered work item with changed %s", async mismatch => {
       mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue([{ id: "work-a", campaignId: "campaign-a", dueAt: new Date(Date.now() - 60_000),

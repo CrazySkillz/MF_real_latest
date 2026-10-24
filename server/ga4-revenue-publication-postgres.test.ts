@@ -209,6 +209,24 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     expect((await storage.getRevenueTotalForRange("b", "1900-01-01", day)).totalRevenue).toBe(900);
     expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day, "linkedin")).totalRevenue).toBe(900);
   });
+  it("publishes 8003.96 after removing only the 785.95 Shopify source", async () => {
+    const hubspot = await save("hubspot", null, rows("250.00"));
+    const salesforce = await save("salesforce", null, rows("100.00", "2026-09-02"));
+    const shopify = await save("shopify", null, rows("785.95", "2026-09-28"));
+    expect((await publish(await claim())).inputs.revenue.value).toBe("8789.91");
+    expect(await storage.deleteRevenueSourceWithRecords("a", shopify.id, "ga4")).toBe(true);
+    const scope = await claim();
+    const snapshot = await publish(scope, false);
+    // Reuse the existing executive row, as the real daily upsert does, instead of the fixture's insert-only helper.
+    await pool.query("UPDATE metric_snapshots SET notes=$1 WHERE campaign_id=$2 AND reporting_date=$3 AND snapshot_type='executive_summary_daily'",
+      [`ga4_refresh_publication_v1:${scope.work.id}:${createHash("sha256").update(scope.work.leaseToken).digest("hex")}`, "a", day]);
+    expect(await storage.updateGA4RefreshWorkLease("a", "owner-a", scope.work.id, scope.work.leaseToken, "complete", 120_000, new Date().toISOString())).toBeDefined();
+    expect(snapshot.inputs.revenue.value).toBe("8003.96");
+    expect(Object.keys(snapshot.revenuePublication.sources).sort()).toEqual([hubspot.id, salesforce.id].sort());
+    expect((await storage.getRevenueSources("a", "ga4")).map(source => source.id).sort()).toEqual([hubspot.id, salesforce.id].sort());
+    expect((await pool.query("SELECT count(*)::int AS n FROM revenue_records WHERE campaign_id=$1 AND revenue_source_id=$2", ["a", shopify.id])).rows[0].n).toBe(0);
+    expect(await storage.getRecoverableGA4RefreshWork()).toEqual([]);
+  });
   it("keeps zero available and rejects missing materialization and mixed currency", async () => {
     const source = await save("csv", null, rows("0.00"));
     expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue).toBe(0);

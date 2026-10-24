@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-24T18:29:08.051894+00:00",
+  "kind": "user-provided-browser-overview-pdf-review",
+  "file": "C:\\Users\\me\\Downloads\\GA4_Overview_Report_2026-10-24.pdf",
+  "sha256": "a2b9eb0782511fbdd9634beca0fe04fa60463e005c4e316a00136a1eec8a5d24",
+  "pages": 3,
+  "scope": "Batch 5 financial publication in this one browser-generated Overview artifact",
+  "checks": {
+    "campaign": "V1 Batch 5 Test",
+    "generatedAt": "2026-10-24T20:23:10+02:00",
+    "currency": "EUR",
+    "totalRevenue": "8003.96",
+    "nativeRevenue": "7653.96",
+    "salesforce": "100.00",
+    "hubspot": "250.00",
+    "sourceSumMatchesTotal": true,
+    "shopifyAbsent": true,
+    "pipelineProxy": "3200.00",
+    "pipelineExcludedFromConfirmedTotal": true,
+    "reportingCutoff": "2026-10-23",
+    "spendAndDerivedPerformanceUnavailable": true,
+    "allThreePagesVisuallyInspected": true,
+    "clippingOrOverlappingContentObserved": false
+  },
+  "campaignBreakdown": {
+    "rowRevenues": [
+      "3400.43",
+      "4253.52"
+    ],
+    "rowSum": "7653.95",
+    "differenceFromCombinedRevenue": "350.01",
+    "status": "Not reconciled to exact saved campaign mappings in this check",
+    "codeTrace": "Browser uses provider sessionKeyEventRate for row conversion rates and adds only exact mapped imported revenue via shared/ga4-campaign-breakdown.ts. Overall financial source total and campaign-row allocation are distinct."
+  },
+  "layoutNotes": [
+    "Total Revenue card and source list span pages 1 and 2.",
+    "Page 3 contains only Conversion Events and footer; readable, sparse."
+  ],
+  "limits": [
+    "Financial values are verified for this supplied artifact, not all report templates or lifecycle paths.",
+    "Full native metric correctness and campaign-row mapping/one-cent difference are not certified by this check.",
+    "No scheduled report, provider email acceptance or inbox delivery was tested.",
+    "No application code, production data, source mapping or provider state was changed.",
+    "Batch 5 is not certified complete."
+  ],
+  "campaignBreakdownFollowUp": {
+    "at": "2026-10-24T18:50:16.103636+00:00",
+    "evidence": "pdf-native-breakdown-readonly.json",
+    "evidenceSha256": "6438d4ed4405555db21ce2694fc5b440ac4914155c7504ea65b617a2aece8369",
+    "sourceCampaignMappingsEmpty": true,
+    "rawNativeRowSum": "7653.956333",
+    "roundedNativeTotal": "7653.96",
+    "sumOfIndividuallyRoundedDisplayedRows": "7653.95",
+    "conclusion": "The EUR350 CRM contribution correctly remains outside campaign rows. The remaining EUR0.01 is caused solely by rounding individual rows before summing. No application change required for this discrepancy.",
+    "productionWrites": false,
+    "providerCalls": false
+  }
+}

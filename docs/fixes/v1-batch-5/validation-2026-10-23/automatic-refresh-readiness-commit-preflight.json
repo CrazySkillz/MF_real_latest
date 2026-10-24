@@ -1,0 +1,182 @@
+{
+  "at": "2026-10-24T20:19:32.654221+00:00",
+  "baseCommit": "b9a81999356d51b772a6c699265557422a4b6397",
+  "branch": "main",
+  "userAuthorizedCommitAndPush": true,
+  "runtimeAndTestHashesMatchValidatedAssessment": true,
+  "tests": {
+    "passed": 760,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed",
+  "serverBuild": "passed",
+  "productionMutations": false,
+  "deploymentVerified": false,
+  "publicationFiles": [
+    "server/storage.ts",
+    "server/ga4-revenue-publication-postgres.test.ts",
+    "docs/fixes/v1-batch-5/README.md",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-local-cleanup.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation-start.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation-followup.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation-end.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation-final.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-reproduced.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-reproduced.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-fixed.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-fixed.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-adjacent.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-adjacent.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-before.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-assessment.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-build-checks.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-typecheck.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-server-build.log",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-readonly.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-readonly.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-followup.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-followup.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-refresh-final.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-refresh-final.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-completion.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-completion.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployment-verification.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/pdf-native-breakdown-readonly.cjs",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/pdf-native-breakdown-readonly.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/user-overview-pdf-2026-10-24-review.json",
+    "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-commit-preflight.json"
+  ],
+  "fileHashes": [
+    {
+      "file": "server/storage.ts",
+      "sha256": "bf9cd489bcfcbf4b1da02fd5b9a2ec4c9ae9eda668679fd5d913fe759f19e2b6"
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "sha256": "841a8d90811278717d01b717544dc1cbe094f6a730a3e3307efcc5bfa9baba39"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/README.md",
+      "sha256": "a486a26695b26ce5ffc9eb1518b09b13ec21feb88b1da4f72a9e507ec5710b9a"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-local-cleanup.json",
+      "sha256": "2162e0cb207db89b21f151e1fa7a4f7a403c68fbd86c856aaa11915eb25cb8ea"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation.cjs",
+      "sha256": "f4a38af0c101b868bc996851baaaec9457ccaa5ea638114368ee788a3f9159cf"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation-start.json",
+      "sha256": "012f451ca6a2c62f7c5283aa507c8edca425511e6e2a59d824df061fcdc31fa4"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation-followup.json",
+      "sha256": "ecb772b42423cc65ddc8f2aa7318df7e8610f294fcb919fcb9e6d1827b8654d8"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation-end.json",
+      "sha256": "12e1cfd8baaa3c42f73528dde5545fe69c4c5bc28a54fee469a7bcc5bb98c302"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-observation-final.json",
+      "sha256": "45a7ef8a384196b0078b290507f8a2e706029a69b5cc0846b45d15ad5c32b7b1"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-reproduced.json",
+      "sha256": "709fe21dfba3caefb2d26261bb496043c1662e05c65dd932e7f9dd5cc429d560"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-reproduced.log",
+      "sha256": "9d6a037c5590de2ed642cfd3aefcaba1ca7b58e5cedbb898a1f2e6e890374419"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-fixed.json",
+      "sha256": "27fb02b7282445912743ce21763765125713b61892b188d39ea9975f37c87070"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-fixed.log",
+      "sha256": "dcbde9d50f44c50f8e0e205a69d5f5a4f25eab368996e2119089c5cccd48a5d2"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-adjacent.json",
+      "sha256": "1cb45a70046086e0010f46fa7a800224f91dbbc40773e704911d8f9cf8778547"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-adjacent.log",
+      "sha256": "ef036ae59ea97279a43d8ae602102a590f46ce7479620b8404f0984ee3d41318"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-before.log",
+      "sha256": "c5695d2c9b45670c8c921d44a945d48b79fb437dd019a9a1bd80fbc06f2b3e2e"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-assessment.json",
+      "sha256": "a1d610766c1aec350af51e9d62c91c2bd4a16c7acdb3bd113cbf2999e041d297"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-build-checks.json",
+      "sha256": "145840eda43f9c69b8df91cda18335031d4987dd7e06ea1d781d7f70be401d81"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/automatic-refresh-readiness-server-build.log",
+      "sha256": "8adf47b252f23817bb9ccc504a18ede0042074ca23def4e96d0eef8aeba1d449"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-readonly.cjs",
+      "sha256": "839b644e48935d038273ad475665edf7cd55ea9895536eccedac736ad96575b2"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-readonly.json",
+      "sha256": "068861e56373b4ef572e8cdc24b21d9a39516aa5f4c9abc9d17c0ac9d38262a0"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-followup.cjs",
+      "sha256": "253a40738b2aaca98ca3da17b2685add1989f2db124a2e4094e26560b1897a0a"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-followup.json",
+      "sha256": "1d3f5d684c998201cabe80556ffc061b3c851c6f8ff909486e65cdd5110c80be"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-refresh-final.cjs",
+      "sha256": "e6e5a894f5a2a1f4bbff068f5bf9ba15eae7ad1d2b3aa5175b5113ec7305435e"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-refresh-final.json",
+      "sha256": "e5cbc93ea98e0d9e5dde5174c459630ff67870e816647827a77d922b39a70365"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-completion.cjs",
+      "sha256": "d59792e2c5a11e2936844b06a258f719fc27893173f19facd27e64e369d78ce8"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployed-completion.json",
+      "sha256": "19a144c5dd3efd599114e647bdad2b6ed53382584b2c69a67b4e4e1bc2edf193"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/crm-cache-deployment-verification.json",
+      "sha256": "91508d973fec38385998a3088f4e148bd87f0b58ffae1f5b9b59931a8d312ef0"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/pdf-native-breakdown-readonly.cjs",
+      "sha256": "d1b3034b78ebfd6634ce7f7773266a946a1c0106699c765a2988abed42955518"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/pdf-native-breakdown-readonly.json",
+      "sha256": "6438d4ed4405555db21ce2694fc5b440ac4914155c7504ea65b617a2aece8369"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/validation-2026-10-23/user-overview-pdf-2026-10-24-review.json",
+      "sha256": "e34c849c83cd917c0dc721a224d63c1c673f2d303c192389257e7ae77f1012a6"
+    }
+  ],
+  "logNormalization": "Removed only extra trailing blank lines from the initial sandbox-startup failure log."
+}

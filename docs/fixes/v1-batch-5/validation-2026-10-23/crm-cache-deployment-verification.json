@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-24T18:12:19.198Z",
+  "deployedCommit": "b9a81999356d51b772a6c699265557422a4b6397",
+  "productionWrites": false,
+  "providerCallsByAgent": false,
+  "forcedRefresh": false,
+  "verified": {
+    "revenue": 8003.96,
+    "pipelineProxy": 3200,
+    "shopifyInactiveWithNoRecords": true,
+    "sourceReceiptMatches": true,
+    "latestAutomaticWork": {
+      "status": "completed",
+      "reporting_date": "2026-10-23",
+      "kind": "revenue_change",
+      "due_at": "2026-10-24T18:09:17.173Z",
+      "started_at": "2026-10-24T18:10:16.273Z",
+      "completed_at": "2026-10-24T18:11:25.863Z",
+      "attempt_count": 1,
+      "retryable": true
+    },
+    "reportReadyMarker": "ga4_aligned_refresh_v1:2026-10-23:2026-10-24T18:11:25.863Z",
+    "completedAtAmsterdam": "2026-10-24 20:11:25 Europe/Amsterdam"
+  },
+  "limits": [
+    "Observed automatic revenue-change recovery completion; the superseded ordinary scheduled job did not complete",
+    "Saved native GA4 Overview timestamp remained unchanged; no fresh native provider import certified",
+    "No live KPI, Benchmark or report definitions in this campaign, and no live PDF/email generated",
+    "Cache rebuild edge case is locally regression-tested; no deliberate production cache invalidation performed",
+    "Processing duration after claim was about 70 seconds; latency is not claimed resolved",
+    "No application code changed during deployment verification"
+  ],
+  "evidence": [
+    {
+      "file": "crm-cache-deployed-readonly.json",
+      "sha256": "068861e56373b4ef572e8cdc24b21d9a39516aa5f4c9abc9d17c0ac9d38262a0"
+    },
+    {
+      "file": "crm-cache-deployed-followup.json",
+      "sha256": "1d3f5d684c998201cabe80556ffc061b3c851c6f8ff909486e65cdd5110c80be"
+    },
+    {
+      "file": "crm-cache-deployed-refresh-final.json",
+      "sha256": "e5cbc93ea98e0d9e5dde5174c459630ff67870e816647827a77d922b39a70365"
+    },
+    {
+      "file": "crm-cache-deployed-completion.json",
+      "sha256": "19a144c5dd3efd599114e647bdad2b6ed53382584b2c69a67b4e4e1bc2edf193"
+    }
+  ]
+}

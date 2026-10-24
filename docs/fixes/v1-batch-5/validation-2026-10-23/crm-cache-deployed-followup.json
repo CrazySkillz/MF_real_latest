@@ -1,0 +1,160 @@
+{
+  "at": "2026-10-24T18:09:07.528Z",
+  "campaignName": "V1 Batch 5 Test",
+  "productionWrites": false,
+  "providerCalls": false,
+  "liveHealth": {
+    "status": 200,
+    "ok": true,
+    "commit": "b9a81999356d51b772a6c699265557422a4b6397"
+  },
+  "databaseTargetSha256": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "databaseTimeZone": "UTC",
+  "campaign": {
+    "ref": "de4775c3b435c3350ea24f5d538e60e639c9f9cd21de63d5432956b44551e722",
+    "currency": "EUR",
+    "status": "active",
+    "reportingTimeZone": "Europe/Amsterdam"
+  },
+  "sources": [
+    {
+      "ref": "1dea8e876b2510ef1094c76558cca17b02ddf2ea595ccd45f64d77413c4a7ce4",
+      "type": "salesforce",
+      "active": true,
+      "currency": "EUR",
+      "recordCount": 1,
+      "completedDayRevenue": 100,
+      "saleDates": [
+        "2026-09-02"
+      ],
+      "futureRecordCount": 0,
+      "pipeline": {
+        "enabled": false,
+        "stage": null,
+        "total": null,
+        "currency": null,
+        "updatedAt": null
+      }
+    },
+    {
+      "ref": "5980d609b3dabf806e1b2c4a1c04381e12977c430468818b550491502ca39bf8",
+      "type": "hubspot",
+      "active": true,
+      "currency": "EUR",
+      "recordCount": 1,
+      "completedDayRevenue": 250,
+      "saleDates": [
+        "2026-09-29"
+      ],
+      "futureRecordCount": 0,
+      "pipeline": {
+        "enabled": true,
+        "stage": "Contract Sent",
+        "total": 3200,
+        "currency": "EUR",
+        "updatedAt": "2026-10-24T18:08:05.441Z"
+      }
+    },
+    {
+      "ref": "09a7464efe9caacc8d865b3152b88db98e522750229b71ea383e38b72bbfc4e8",
+      "type": "salesforce",
+      "active": false,
+      "currency": "EUR",
+      "recordCount": 0,
+      "completedDayRevenue": 0,
+      "saleDates": [],
+      "futureRecordCount": 0,
+      "pipeline": {
+        "enabled": false,
+        "stage": null,
+        "total": null,
+        "currency": null,
+        "updatedAt": null
+      }
+    },
+    {
+      "ref": "56317f67397be753088b3a6781b6f8e170a6234134ef205a9b7c0f16ed7be1c0",
+      "type": "hubspot",
+      "active": false,
+      "currency": "EUR",
+      "recordCount": 0,
+      "completedDayRevenue": 0,
+      "saleDates": [],
+      "futureRecordCount": 0,
+      "pipeline": {
+        "enabled": true,
+        "stage": "Contract Sent",
+        "total": 3200,
+        "currency": null,
+        "updatedAt": "2026-10-23T21:12:38.370Z"
+      }
+    },
+    {
+      "ref": "d25ca6ea221fe380ef1338266cf2e697672cb187b2aa0137106efccf6a91178c",
+      "type": "shopify",
+      "active": false,
+      "currency": "EUR",
+      "recordCount": 0,
+      "completedDayRevenue": 0,
+      "saleDates": [],
+      "futureRecordCount": 0,
+      "pipeline": {
+        "enabled": null,
+        "stage": null,
+        "total": null,
+        "currency": null,
+        "updatedAt": null
+      }
+    }
+  ],
+  "financial": {
+    "reportingDate": "2026-10-23",
+    "recordedAtUtc": "2026-10-24 17:55:03.131684",
+    "currency": "EUR",
+    "window": {
+      "mode": "initial_import_to_latest_completed_day",
+      "endDate": "2026-10-23",
+      "startDate": "2026-09-23",
+      "dataThroughDate": "2026-10-23",
+      "reportingTimeZone": "Europe/Amsterdam"
+    },
+    "revenue": "8003.96",
+    "spendAvailable": false,
+    "receiptMatchesCurrentSources": true,
+    "receiptReportingDate": "2026-10-23",
+    "receiptWorkStatus": "completed",
+    "receiptCompletedAt": "2026-10-24T17:55:38.438Z"
+  },
+  "work": [
+    {
+      "status": "pending",
+      "reporting_date": "2026-10-23",
+      "kind": "revenue_change",
+      "due_at": "2026-10-24T18:08:56.859Z",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "retryable": true
+    }
+  ],
+  "nativeOverview": [
+    {
+      "window_start": "2026-09-23",
+      "window_end": "2026-10-23",
+      "updated_at_utc": "2026-10-24 12:24:25.274",
+      "revenue": "7653.96"
+    }
+  ],
+  "executive": [
+    {
+      "reporting_date": "2026-10-23",
+      "recorded_at_utc": "2026-10-24 17:55:24.164211",
+      "notes": null
+    }
+  ],
+  "kpis": [],
+  "benchmarks": [],
+  "reports": [],
+  "transactionEnded": "ROLLBACK",
+  "result": "READ_ONLY_CHECK_COMPLETE"
+}

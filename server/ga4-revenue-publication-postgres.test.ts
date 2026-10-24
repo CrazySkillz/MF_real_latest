@@ -177,6 +177,48 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     expect((await storage.getGA4RevenuePublicationStatus("a", day))[source.id].status).toBe("pending");
     expect(await storage.getRecoverableGA4RefreshWork()).toHaveLength(1);
   });
+  it.each(["hubspot", "salesforce"] as const)("recovers report readiness after %s connection invalidation with unchanged revenue", async kind => {
+    const source = await save(kind); await publish(await claim());
+    const before = await storage.getGA4RevenuePublication("a", day);
+    const beforeOther = await storage.getGA4RevenuePublication("b", day);
+    if (kind === "hubspot") await storage.updateHubspotConnection("hubspot-a", { expiresAt: new Date(Date.now() + 3600_000) });
+    else await storage.updateSalesforceConnection("salesforce-a", { expiresAt: new Date(Date.now() + 3600_000) });
+    expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='executive_summary_daily'")).rows[0].notes).toBeNull();
+    await save(kind, source.id);
+    expect(await storage.getGA4RevenuePublication("a", day)).toEqual(before);
+    expect(await storage.getGA4RevenuePublication("b", day)).toEqual(beforeOther);
+    const queued = await storage.getRecoverableGA4RefreshWork();
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({ campaignId: "a", reportingDate: day, scope: { kind: "revenue_change" } });
+    await publish(await claim());
+    expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='executive_summary_daily'")).rows[0].notes).toContain(`ga4_aligned_refresh_v1:${day}:`);
+    await save(kind, source.id);
+    expect(await storage.getRecoverableGA4RefreshWork()).toHaveLength(0);
+    expect((await storage.getLatestFinancialDailySnapshot("a", day))?.metrics).toMatchObject({ financialDaily: { inputs: { revenue: { value: "7903.96" } } } });
+  });
+  it.each(families)("queues %s unchanged revenue when existing report readiness is missing", async kind => {
+    const source = await save(kind); await publish(await claim());
+    const before = await storage.getGA4RevenuePublication("a", day);
+    await pool.query("UPDATE metric_snapshots SET notes=NULL WHERE campaign_id='a' AND snapshot_type='executive_summary_daily'");
+    await save(kind, source.id);
+    expect(await storage.getGA4RevenuePublication("a", day)).toEqual(before);
+    expect(await storage.getRecoverableGA4RefreshWork()).toMatchObject([{ campaignId: "a", scope: { kind: "revenue_change" } }]);
+    expect((await storage.getLatestFinancialDailySnapshot("a", day))?.metrics).toMatchObject({ financialDaily: { inputs: { revenue: { value: "7903.96" } } } });
+  });
+  it.each(["missing", "wrong_date", "invalid_time", "future_time", "unfinished"])("does not accept %s report readiness for unchanged revenue", async state => {
+    const source = await save("hubspot"); await publish(await claim());
+    if (state === "missing") await pool.query("DELETE FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='executive_summary_daily'");
+    else {
+      const notes = state === "wrong_date" ? `ga4_aligned_refresh_v1:2000-01-01:${new Date().toISOString()}`
+        : state === "invalid_time" ? `ga4_aligned_refresh_v1:${day}:invalid`
+        : state === "future_time" ? `ga4_aligned_refresh_v1:${day}:2999-01-01T00:00:00Z`
+        : "ga4_refresh_publication_v1:unfinished:receipt";
+      await pool.query("UPDATE metric_snapshots SET notes=$1 WHERE campaign_id='a' AND snapshot_type='executive_summary_daily'", [notes]);
+    }
+    await save("hubspot", source.id);
+    expect(await storage.getRecoverableGA4RefreshWork()).toHaveLength(1);
+    expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue).toBe(250);
+  });
   it.each((["hubspot", "salesforce"] as const).flatMap(provider => ["ga4", null].flatMap(context => [false, true].map(failProvider => ({ provider, context, failProvider })))))
   ("preserves published report readiness for $provider Pipeline Proxy (context=$context, provider failure=$failProvider)", async ({ provider, context, failProvider }) => {
     const source = await save(provider);

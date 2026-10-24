@@ -1541,7 +1541,16 @@ export class DatabaseStorage implements IStorage {
           const receipt = published?.metrics?.revenuePublication;
           const [receiptWork] = receipt?.workId ? await tx.select({ status: ga4RefreshWork.status }).from(ga4RefreshWork)
             .where(and(eq(ga4RefreshWork.id, receipt.workId), eq(ga4RefreshWork.campaignId, id))) : [];
+          // Identical revenue can still need recovery after another input cleared
+          // report readiness. Only a completed aligned publication can skip work.
+          const [aligned] = await tx.select({ notes: metricSnapshots.notes }).from(metricSnapshots).where(and(
+            eq(metricSnapshots.campaignId, id), eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
+            eq(metricSnapshots.reportingDate, reportingDate),
+          )).limit(1);
+          const alignedPrefix = `ga4_aligned_refresh_v1:${reportingDate}:`;
+          const alignedAt = aligned?.notes?.startsWith(alignedPrefix) ? new Date(aligned.notes.slice(alignedPrefix.length)) : null;
           if (receipt?.version === 1 && published.reportingDate === reportingDate
+            && alignedAt && Number.isFinite(alignedAt.getTime()) && alignedAt.getTime() <= Date.now()
             && (!receipt.workId || receiptWork?.status === 'completed')
             && Object.keys(receipt.sources || {}).length === Object.keys(current.sources).length
             && Object.entries(current.sources).every(([sourceId, hash]) => receipt.sources[sourceId] === hash)

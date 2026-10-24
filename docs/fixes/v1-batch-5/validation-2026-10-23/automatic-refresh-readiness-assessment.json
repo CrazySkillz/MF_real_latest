@@ -1,0 +1,88 @@
+{
+  "at": "2026-10-24T19:13:02.502798+00:00",
+  "baseCommit": "b9a81999356d51b772a6c699265557422a4b6397",
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "scope": "Exact V1 Batch 5 Test source preservation and recovery from missing report readiness",
+  "production": {
+    "writes": false,
+    "providerRequests": false,
+    "forcedRefresh": false,
+    "revenue": "8003.96",
+    "hubspot": 250,
+    "salesforce": 100,
+    "pipelineProxy": 3200,
+    "shopifyInactiveWithNoRecords": true,
+    "sameSourceFactsAcrossObservations": true,
+    "receiptMatchesCurrentSources": true,
+    "reportReadyMarker": null,
+    "fullDailyNativeRunObserved": false,
+    "exactRequestThatClearedMarker": "not identified"
+  },
+  "rootCause": "Unchanged-source receipt shortcut did not require a current completed alignment marker; a successful unchanged source refresh could leave invalidated report readiness without recovery work.",
+  "reproducedVia": "Actual PostgreSQL storage: publish, update HubSpot/Salesforce connection expiry, replace unchanged source, observe no recovery work. Both new tests fail on the baseline; original 70 pass.",
+  "change": {
+    "file": "server/storage.ts",
+    "function": "writeGA4RefreshInputChange",
+    "addedRuntimeLines": 9,
+    "behavior": "Only skip unchanged revenue publication when a valid current-day completed alignment marker also exists; otherwise use the existing owned recovery pipeline."
+  },
+  "validation": [
+    {
+      "file": "automatic-refresh-readiness-fixed.json",
+      "passed": 148,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "automatic-refresh-readiness-adjacent.json",
+      "passed": 612,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "builds": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "automatic-refresh-readiness-typecheck.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "automatic-refresh-readiness-server-build.log"
+    }
+  ],
+  "newDocLinksValidated": 9,
+  "cleanup": {
+    "at": "2026-10-24T19:12:22.543Z",
+    "remainingFixtureSchemas": 0,
+    "otherClients": 0,
+    "productionAccess": false,
+    "fixtureStopped": true
+  },
+  "limits": [
+    "Current correction not committed/deployed; live missing marker not repaired by agent.",
+    "Exact production invalidating request not identified; local expiry update is one confirmed reproducer.",
+    "No full ordinary daily native refresh observed; later persisted CRM materializations were observed without request/timer logs.",
+    "No live KPI, Benchmark or scheduled report definitions in this campaign; those consumers tested in isolated fixtures.",
+    "Older unrelated test failures remain unresolved; whole Batch 5 is not certified."
+  ],
+  "fileHashes": [
+    {
+      "file": "server/storage.ts",
+      "sha256": "bf9cd489bcfcbf4b1da02fd5b9a2ec4c9ae9eda668679fd5d913fe759f19e2b6"
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "sha256": "841a8d90811278717d01b717544dc1cbe094f6a730a3e3307efcc5bfa9baba39"
+    },
+    {
+      "file": "docs/fixes/v1-batch-5/README.md",
+      "sha256": "3e8cff4adc6b51246079c79d59e831a5d36a132ffb3259ba5b266bc31f83dc7b"
+    }
+  ]
+}

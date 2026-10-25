@@ -554,18 +554,18 @@ export default function CampaignPerformanceSummary() {
     ? "ready"
     : performanceGA4ConnectionsLoading || performanceSummaryPending || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
-      : performanceGA4RevenueError && performanceGA4RevenueResponse
+      : (performanceGA4RevenueError && performanceGA4RevenueResponse) || (hasNativeRevenue && trafficInputState === "stale")
         ? "stale"
-      : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceDataThroughDate || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || performanceGA4RevenueResponse?.imported?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
+      : (hasNativeRevenue && trafficInputState === "unavailable") || performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceDataThroughDate || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || performanceGA4RevenueResponse?.imported?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
         ? "unavailable"
         : "ready";
   const financialConversionsInputState: GA4KpiInputState = demoMode
     ? "ready"
     : performanceGA4ConnectionsLoading || performanceSummaryPending || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
-      : (performanceGA4SummaryError && performanceGA4SummaryResponse) || (performanceGA4RevenueError && performanceGA4RevenueResponse)
+      : trafficInputState === "stale" || (performanceGA4RevenueError && performanceGA4RevenueResponse)
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceDataThroughDate || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeFinancialConversions)
+        : trafficInputState === "unavailable" || performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceDataThroughDate || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeFinancialConversions)
           ? "unavailable"
           : "ready";
   const spendSummaryMetric = performanceSummary?.totals?.spend;
@@ -1480,6 +1480,7 @@ export default function CampaignPerformanceSummary() {
                     <p className="text-xs text-muted-foreground">
                       {overviewSourceLabel(overviewUsers, "Sources unavailable")}
                     </p>
+                    <p className="text-xs text-muted-foreground">GA4 users are summed daily counts, not unique people across the reporting window.</p>
                   </CardContent>
                 </Card>
 

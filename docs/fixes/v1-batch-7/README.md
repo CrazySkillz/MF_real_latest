@@ -6,17 +6,60 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 7 status
 
+**Group 2 publication packet, October 26:** The user authorized committing and pushing the verified metrics/source-backed-goal changes and their 675-check plus 59-check follow-up evidence. Uncommitted/undeployed statements below describe validation time. This publication does not close live acceptance, the remaining nine implementation findings, or Batch 6's postponed sign-off.
+
+**Current Group 2 checkpoint, October 26:** All twelve metrics/source-backed-goal findings have local forward-path evidence: V1-056/077/084/094/095/096/097/098/099/100/101/122. **675 checks in 40 files pass**, with no failed/skipped checks; TypeScript, client and server builds pass. V1-101 was already corrected at the current baseline and is verified without another precision change. Group 2 is uncommitted and undeployed. Group 1 was committed/pushed as `1de80e15`; its deployment has not been independently verified.
+
+**Remaining work:** Twenty of the 29 original findings now have local forward-path evidence. **Nine findings remain in two implementation groups**: retained pages/forms/exports (V1-061/062/064/125/129/130, six) and report content/layout/parity (V1-015/085/086, three), followed by combined validation. All 29 release acceptances remain OPEN. Batch 6 live sign-off remains postponed. No browser, production records, provider accounts or actual email service were accessed.
+
+Earlier checkpoints below preserve their validation-time state. They are superseded by this checkpoint where they describe current counts or commit state.
+
 **Publication packet, October 26:** The user authorized committing and pushing Group 1 and its 680-check evidence for Render deployment. Statements below saying uncommitted/undeployed record the validation-time state. This publication does not close deployed/provider acceptance or Batch 6's postponed sign-off; 21 Batch 7 implementation findings remain.
 
 **Deployment/UI update, October 25:** The user reports `825972a9` deployed and confirms that no saved reports currently exist. The focused saved-report download check has therefore not been performed; keep it in the combined live validation round. No test report, schedule or email was created, and no browser/provider access was performed. This does not block local work on the remaining findings or close live acceptance.
 
-**Consolidated work, current:** Group 1 (V1-021/022/058/059/110) is now corrected and verified locally as recorded below. Eight original Batch 7 forward defects have local corrections; **21 findings remain in three implementation groups**: metrics and source-backed goals (V1-056/077/084/094/095/096/097/098/099/100/101/122, twelve); retained pages/forms/exports (V1-061/062/064/125/129/130, six); report content/layout/parity (V1-015/085/086, three). A combined regression/live-validation round follows. All 29 release acceptances remain OPEN; Batch 6 sign-off is separately postponed.
+**Consolidated work, earlier Group 1 checkpoint:** Group 1 (V1-021/022/058/059/110) is now corrected and verified locally as recorded below. Eight original Batch 7 forward defects have local corrections; **21 findings remain in three implementation groups**: metrics and source-backed goals (V1-056/077/084/094/095/096/097/098/099/100/101/122, twelve); retained pages/forms/exports (V1-061/062/064/125/129/130, six); report content/layout/parity (V1-015/085/086, three). A combined regression/live-validation round follows. All 29 release acceptances remain OPEN; Batch 6 sign-off is separately postponed.
 
 **Publication packet, October 25:** The three tested report-history/Meta corrections and their evidence accompany the user-authorized commit and push. Deployment and live acceptance remain unverified. Statements below saying uncommitted describe the validation-time state; the remaining 26 findings and all 29 release acceptances remain OPEN.
 
 **IN PROGRESS, October 25.** The latest combined evidence has **680 passing checks in 32 files**, including 60 new real-PostgreSQL reliability cases. TypeScript and the server build pass. Group 1 is uncommitted and undeployed; the earlier three fixes were pushed in `825972a9` and the user reports deployment. No production records, user browser, provider account or actual email service were accessed during this work.
 
 The user postponed Batch 6 live sign-off after Google account verification blocked login and requested Batch 7 work. Batch 6 is not certified or excluded; live Google Ads validation remains pending. The prior public health observation of `4cd498cf` proves deployment only.
+
+## Metrics and source-backed goals checkpoint, October 26
+
+**Boundary:** Group 2's twelve recorded findings, within the existing UI, centralized routes, storage, shared metric helpers and alert-decision paths. This is local forward-path verification, not whole-section or production certification. [Evidence manifest](validation-2026-10-26/metrics-evidence.json) records revision, hashes, tests, builds and test-database cleanup.
+
+| Finding | Confirmed root cause / traced path | Correction and local evidence |
+|---|---|---|
+| V1-056 | Retained Trend API summed raw active records across source contexts/grains; its aggregate overwrote native revenue, combined web/paid conversions and chose clicks first. | `routes-oauth.ts` uses canonical eligible source IDs, campaign currency, date bounds and aggregate-row precedence, with a reconciliation guard. `trend-analysis-aggregate.ts` adds imports to native revenue, preserves explicit zero and uses web conversions/sessions when available (including Custom web metrics). Actual HTTP and PostgreSQL query cases cover other campaigns/sources, future dates, aggregate/subcampaign duplicates, aggregate zero, empty source arrays, errors and access denial. |
+| V1-077 | Failed daily reads became empty success; the browser padded missing/unrequested dates with zeros, and PDF comparisons sliced rows instead of calendar windows. | Daily read failure now reaches HTTP 500. Trends/findings keep recorded facts only, preserve explicit zeros and require complete adjacent calendar windows. Browser and scheduled PDF calculations use existing calendar helpers. Executed extracted expressions, real route callbacks and neighbors cover failed/empty/zero reads, missing days, unrequested history and complete windows. |
+| V1-084 | Two financial finding titles hard-coded `$0`. | Both use existing campaign currency formatting; EUR/USD/JPY title expressions pass. Browser PDF uses these findings. No money calculation changed. |
+| V1-094 | Equality fell through to positive return / before period end. | Revenue=Spend is break-even in the client and both report branches; projected exhaustion exactly at period end says on. Negative/equal/positive controls pass without formula changes. |
+| V1-095 | Cached native traffic could be stale while related financial recommendation inputs stayed ready. | Performance Summary propagates native stale/unavailable state into native revenue and financial conversions; imported-only revenue and independent spend retain their own state. Exact expressions and scoring neighbors pass. |
+| V1-096 | Daily summed GA4 users lacked grain explanation in included downstream consumers. | Performance Summary, Trend and Executive labels/notes plus browser/scheduled report copy identify daily sums. Calculations and persisted data are unchanged. Source inspection and builds cover the copy; visual wrapping in generated reports remains unverified. |
+| V1-097 | Trend headline normalized an already-percent engagement rate a second time. | Format the percent directly. 0, 0.5, 1, 1.01 and 50 percent controls pass; fraction-based daily consumers remain unchanged. |
+| V1-098 | Zero-session cumulative totals generated a misleading zero ratio. | Trend cumulative helpers/headline/report website summaries and GA4 Overview/browser/scheduled cards withhold undefined ratios while retaining measured zero counts. Zero/positive-denominator helper/report controls pass. Broader report parity remains in V1-085/086. |
+| V1-099 | Executive CVR label used the presence of clicks instead of its chosen denominator. | Label follows the aggregate CVR provenance. Mixed web/paid fixture yields 10% session-based CVR; paid-only fixture yields 25% click-through CVR. |
+| V1-100 | Executive API selected the first GA4 connection, defaulted all to 30 days, lost native revenue and double-added pageviews. | Primary property and persisted scoped daily facts use the configured initial import through latest completed day, clamped for 7/30/90-day requests. No live-provider total is mixed in. Empty/failed reads leave unavailable fields. Actual branch execution verifies property, window, native revenue, pageviews and errors. Full Executive HTTP/provider parity remains unverified. |
+| V1-101 | Original audit recorded fractional conversion truncation in Executive headline/goal formatting. | Current baseline already uses `formatConversionCredit`. Exact current formatter controls preserve 0, 0.75 and 12.25. No new precision implementation was needed. |
+| V1-122 | Central alert decisions returned stored Custom/Sheets goal values even when source-backed UI values differed or were unavailable. | Existing resolver reads exact saved integration/tab/column scope, validated Custom imports or complete fresh filtered Sheets cache, and platform financial totals. It rechecks campaign/source identity, preserves manual goals, and blocks missing/stale/failed/mismatched inputs. KPI/Benchmark false-positive/negative/zero/fractional/financial controls pass. Sheets reads explicitly disable token migration and runtime credential resolution; actual storage-method tests prove read-only behavior and unchanged default behavior. |
+
+**Paths and limits:**
+
+| Lifecycle / downstream path | Evidence in this packet | Still unverified |
+|---|---|---|
+| Source add/edit/delete/refresh | Controlled latest-import/cache replacement, missing/deleted source, changed identity and active-but-unmaterialized finance inputs exercise the resolver. Source mutations/schedulers are not changed. | Full source HTTP/provider mutation lifecycles and natural refresh timing were not re-run by Group 2. |
+| Read/list/totals | Real GA4 daily and retained Trend HTTP handlers; compiled production financial SQL runs against disposable PostgreSQL temporary tables. Campaign/source/date and zero/grain boundaries pass. | Canonical storage eligibility totals are controlled in these route tests; this is not a fresh certification of every underlying source storage query. Production history inventory is not performed. |
+| Goal/notification/email decisions | Actual central resolver and existing aggregate/filter helpers execute for both goal kinds; caller regression checks cover shared decision usage. Failed source resolution cannot use the stored numeric goal value. | No production notification or real email is created. Real provider freshness, independent-worker races between the final read and dispatch, and delivery acceptance remain open. |
+| Display/scoring/reports | Exact UI expressions, cumulative/aggregate helpers, report metric branches and neighboring consumer guards pass. Copy is inspected and compiled. | No browser UI or rendered PDF layout check; full artifact/value parity belongs to V1-015/085/086 and the combined live round. |
+| Existing records | No persisted financial/goal records are rewritten by this packet. The new cache-only read avoids connection credential writes/renewal. | No damaged-data boundary is inferred, and no production cleanup/backfill is attempted. |
+
+**Validation:** [Consolidated results](validation-2026-10-26/metrics-verified.json): 675 passed, zero failed/skipped, 40 files. Twelve new route cases include three real-PostgreSQL cases. Final review preserved the Executive GA4 response field set explicitly and added four missing/failed/zero controls; the affected four files then passed [59 focused checks](validation-2026-10-26/metrics-api-contract.json). [Final TypeScript/server build](validation-2026-10-26/metrics-api-contract-build-checks.json) pass; [client production build](validation-2026-10-26/metrics-final-build-checks.json) passed before the last server-only safety/contract changes. Client code was unchanged afterward. The 84-case initial baseline packet records 68 failures and 16 passes against extracted `1de80e15` code; directly imported helpers remained working-tree code, so it is not a whole-revision baseline test.
+
+Initial harness issues (worker permissions, AST branch selection, expected owner-denial status and SQL-array expectations) were corrected. The PostgreSQL run exposed and verified the required typed SQL array binding. Four obsolete assertions in the consolidated pass were aligned with the new daily/Executive contract or the existing immutable historical-PDF contract; the earlier storage transaction assertion was also stale at HEAD. No historical PDF route or publication transaction runtime changed in this group. Intermediate failures are retained as diagnostic evidence, not acceptance.
+
+Twelve runtime files change. There are no new dependencies, schema changes, provider mutations, send actions or production cleanup. Local test credentials are stripped, outbound networking is restricted to loopback, and the owned disposable PostgreSQL instance is stopped after verification. Group 2 is ready for a separately authorized commit/push; the remaining groups and all release gates stay open.
 
 ## Reliability checkpoint, October 25
 
@@ -72,7 +115,7 @@ Initial fixture issues (required Meta fields, a date override changing both side
 | Notifications/source-backed goals | V1-110, V1-122 | Original lifecycle evidence read; correction and decision/history/email-episode validation remain. |
 | Retained pages | V1-061, V1-062, V1-064, V1-125, V1-129, V1-130 | Functional correction or agreed effective exclusion remains; no new exclusion is assumed. |
 
-This table records the earlier three-fix checkpoint. The current eight-fix status and remaining 21 findings are listed above; neither checkpoint is Batch 7 completion or production sign-off.
+This table records the earlier three-fix checkpoint. The current Group 2 status and remaining nine implementation findings are listed above; neither checkpoint is Batch 7 completion or production sign-off.
 
 ## Scope and acceptance
 
@@ -102,7 +145,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-015](#v1-015) | P1 | OPEN | OPEN |
 | [V1-021](#v1-021) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-022](#v1-022) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-056](#v1-056) | P1 | OPEN | OPEN |
+| [V1-056](#v1-056) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-058](#v1-058) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-059](#v1-059) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-060](#v1-060) | P1 | VERIFIED LOCALLY | OPEN |
@@ -110,21 +153,21 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-062](#v1-062) | P1 | OPEN | OPEN |
 | [V1-064](#v1-064) | P1 | OPEN | OPEN |
 | [V1-074](#v1-074) | P2 | VERIFIED LOCALLY | OPEN |
-| [V1-077](#v1-077) | P1 | OPEN | OPEN |
-| [V1-084](#v1-084) | P2 | OPEN | OPEN |
+| [V1-077](#v1-077) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-084](#v1-084) | P2 | VERIFIED LOCALLY | OPEN |
 | [V1-085](#v1-085) | P1 | OPEN | OPEN |
 | [V1-086](#v1-086) | P2 | OPEN | OPEN |
-| [V1-094](#v1-094) | P2 | OPEN | OPEN |
-| [V1-095](#v1-095) | P1 | OPEN | OPEN |
-| [V1-096](#v1-096) | P2 | OPEN | OPEN |
-| [V1-097](#v1-097) | P1 | OPEN | OPEN |
-| [V1-098](#v1-098) | P1 | OPEN | OPEN |
-| [V1-099](#v1-099) | P1 | OPEN | OPEN |
-| [V1-100](#v1-100) | P1 | OPEN | OPEN |
-| [V1-101](#v1-101) | P1 | OPEN | OPEN |
+| [V1-094](#v1-094) | P2 | VERIFIED LOCALLY | OPEN |
+| [V1-095](#v1-095) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-096](#v1-096) | P2 | VERIFIED LOCALLY | OPEN |
+| [V1-097](#v1-097) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-098](#v1-098) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-099](#v1-099) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-100](#v1-100) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-101](#v1-101) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-110](#v1-110) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-119](#v1-119) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-122](#v1-122) | P1 | OPEN | OPEN |
+| [V1-122](#v1-122) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-125](#v1-125) | P1 | OPEN | OPEN |
 | [V1-129](#v1-129) | P1 | OPEN | OPEN |
 | [V1-130](#v1-130) | P1 | OPEN | OPEN |
@@ -171,7 +214,7 @@ Browser PDFs, immutable snapshots, scheduled server artifacts and confirmed deli
 
 ### V1-056
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -179,7 +222,7 @@ Browser PDFs, immutable snapshots, scheduled server artifacts and confirmed deli
 
 `routes-oauth.ts:2966` sums active financial records without canonical currency/context/grain handling. `utils/trend-analysis-aggregate.ts:117-146` uses truthy revenue override, sums web+paid conversions and chooses clicks before sessions. Exact helper fixtures show15/75% versus Performance10/10%, and zero/positive override inconsistency. Current cumulative GA4 UI uses separate verified rows; affected retained API/non-cumulative branch is explicitly distinguished.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-058
 
@@ -267,7 +310,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 ### V1-077
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -275,11 +318,11 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `routes-oauth.ts:9540` catches a failed daily read as empty; `ga4-metrics.tsx:2115–2125` pads from campaign creation beyond the60-day request, ignoring coverage. Three exact-code cases show failure→complete zero, two absent days→−28.57% complete-window decline, and unrequested July→complete zero month. Findings, coverage text, Trends and browser PDF inherit this boundary. Distinguish verified no-activity from failed/unfetched days before downstream comparisons.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-084
 
-**Severity:** P2. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P2. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -287,7 +330,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `ga4-metrics.tsx:5516,5527` hard-code `$0` in two financial finding titles while descriptions use campaign-currency formatMoney. Non-dollar campaigns get conflicting currency labels; browser PDF reuses findings. Use the same current currency contract and validate zero-value wording/UI/PDF. No monetary arithmetic error is inferred.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-085
 
@@ -315,7 +358,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 ### V1-094
 
-**Severity:** P2. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P2. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -323,11 +366,11 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `client/src/pages/financial-analysis.tsx:757–768,1094`; `server/report-scheduler.ts:2005–2009,2661–2665`. Revenue100/Spend100 gives correct ROI0/ROAS1 but is described as Positive financial return in all three expressions; exhaustion exactly on period end is described as before it. [Exact expressions and controls](../../audits/v1-2026-10-19/FINANCIAL_ANALYSIS_VALUE_INVENTORY.md). Distinguish equality without changing formulas.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-095
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -335,11 +378,11 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `client/src/pages/campaign-performance.tsx:537–578,633–649,1408–1416`: explicit GA4 stale metadata with aligned retained finance withholds the Revenue headline but leaves financial recommendation inputs ready. Exact current expressions/helper call Revenue300 versus target200 verified/on target. [Controls and upstream boundary](../../audits/v1-2026-10-19/PERFORMANCE_SUMMARY_VALUE_INVENTORY.md). Real occurrence and full rendered health remain unverified; preserve source-aware last-good semantics.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-096
 
-**Severity:** P2. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P2. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -347,11 +390,11 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `client/src/pages/campaign-performance.tsx:1471–1479` shows Total Users from daily sums without the explanation present at `ga4-metrics.tsx:6865`. `shared/ga4-traffic-window.ts:14–30` correctly implements the intended daily-sum contract; this is not a calculation-change request. [Helper/card evidence and provider definition](../../audits/v1-2026-10-19/PERFORMANCE_SUMMARY_VALUE_INVENTORY.md). Make grain/window explicit across included consumers.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-097
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -359,11 +402,11 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `client/src/pages/trend-analysis.tsx:1590` normalizes an already-percent cumulative Engagement Rate using `shared/metric-math.ts:75–79`. Exact current helper/card cases show0.5%→50%,1%→100%; website summary correctly prints0.5%. [Boundary cases and unit trace](../../audits/v1-2026-10-19/TREND_ANALYSIS_VALUE_INVENTORY.md). Preserve fraction-based daily chart consumers; no stored-data corruption inferred.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-098
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -371,11 +414,11 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `client/src/lib/trend-analysis-cumulative.ts:215–229`, `trend-analysis.tsx:516–520,1589–1590,1957–1960` compute/display0 rates when there are0 sessions; daily chart correctly treats no activity as unavailable. Server Trend website-summary expressions2097/2900 also return0. Current GA4 Overview2387/6898/6423 independently shows0% for valid zero-session totals in its [boundary packet](../../audits/v1-2026-10-19/ga4-overview-boundary-reproductions.json). [Trend cases and propagation limits](../../audits/v1-2026-10-19/TREND_ANALYSIS_VALUE_INVENTORY.md). Preserve measured zero counts while withholding undefined ratios.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-099
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -383,11 +426,11 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `client/src/pages/executive-summary.tsx:269,653–656` selects Click-Through CVR whenever paid clicks exist, while aggregate CVR retains GA4 conversions/sessions precedence. Exact mixed-source case:100 sessions,10 conversions,20 paid clicks shows10% labelled click-through. [Separate controls and consumer trace](../../audits/v1-2026-10-19/EXECUTIVE_SUMMARY_VALUE_INVENTORY.md). Bind label to the actual denominator.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-100
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -395,11 +438,11 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `server/routes-oauth.ts:32909–32952` picks first rather than primary GA4 connection, defaults all-period provider request to30days, drops native Revenue on success and adds daily pageviews to provider total. Exact branch fixture and failure control reproduce each boundary. [Evidence/consumer limits](../../audits/v1-2026-10-19/EXECUTIVE_SUMMARY_VALUE_INVENTORY.md). Current page funnel uses separate outcome totals; API/retained report consumption still needs parity checks.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-101
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -407,7 +450,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `client/src/pages/executive-summary.tsx:185–186,496–505` truncates valid0.75 conversions to0 in headline and target formatting. [Exact formatter/control cases](../../audits/v1-2026-10-19/EXECUTIVE_SUMMARY_VALUE_INVENTORY.md). Independent of upstream V1-079; fixing ingestion alone does not preserve fractional values through executive presentation.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. The current baseline already preserves fractional credits; this packet adds verification, not another precision change.
 
 ### V1-110
 
@@ -435,7 +478,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 ### V1-122
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -443,7 +486,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `utils/campaign-current-values.ts:471–477` and `utils/ga4-alert-current-value.ts:121–123` return stored Custom/Sheets goal values without resolving current source scope/data. Current page resolvers use the latest saved-source value instead. [Eighteen KPI/Benchmark decision cases](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md) show false positive/negative decisions and unavailable-source eligibility; email/notification callers are traced, no message sent. Resolve the exact source-backed current value and state consistently before decisions, preserving intentional manual values.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Group 2 checkpoint](#metrics-and-source-backed-goals-checkpoint-october-26) records the exact root cause, traced path, correction and limits. 675 local checks in 40 files and production builds pass. Uncommitted/undeployed; all release acceptance remains OPEN. No production data cleanup or whole-section certification is claimed.
 
 ### V1-125
 

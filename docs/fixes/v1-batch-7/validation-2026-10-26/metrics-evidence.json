@@ -1,0 +1,599 @@
+{
+  "at": "2026-10-25T23:57:53.285Z",
+  "baselineRevision": "1de80e152b33ba38feb1e00abfc098a878b71663",
+  "workingTreeUncommitted": true,
+  "findings": [
+    "V1-056",
+    "V1-077",
+    "V1-084",
+    "V1-094",
+    "V1-095",
+    "V1-096",
+    "V1-097",
+    "V1-098",
+    "V1-099",
+    "V1-100",
+    "V1-101",
+    "V1-122"
+  ],
+  "scope": "Batch 7 Group 2 local forward-path corrections and current-baseline precision verification. Not production certification.",
+  "tests": {
+    "baseline": {
+      "file": "metrics-baseline.json",
+      "sha256": "daf51a465289bfc6edfc5d65943fa959d7912d2e65f10a531597029f48b57690",
+      "total": 84,
+      "passed": 16,
+      "failed": 68,
+      "skipped": 0,
+      "fileCount": 2,
+      "files": [
+        {
+          "file": "server/v1-batch7-metric-boundaries.test.ts",
+          "passed": 15,
+          "failed": 12,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch7-source-goal-values.test.ts",
+          "passed": 1,
+          "failed": 56,
+          "skipped": 0
+        }
+      ]
+    },
+    "consolidated": {
+      "file": "metrics-verified.json",
+      "sha256": "382dbcf5ae1748640957a23ab35fb514edfb1b63a0d2bd0a34b77231c6eab80a",
+      "total": 675,
+      "passed": 675,
+      "failed": 0,
+      "skipped": 0,
+      "fileCount": 40,
+      "files": [
+        {
+          "file": "server/campaign-alert-current-value-regression.test.ts",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/campaign-financial-analysis-regression.test.ts",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/campaign-performance-overview-regression.test.ts",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/custom-report-regression.test.ts",
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/custom-report-window-metadata.test.ts",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/executive-summary-regression.test.ts",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/executive-summary-scheduled-pdf.test.ts",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/executive-summary-target-eligibility-regression.test.ts",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-copy-accuracy-regression.test.ts",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-data-summary-empty-window.test.ts",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-data-summary-history-window.test.ts",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-findings-completeness-regression.test.ts",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-findings-daily-failure.test.ts",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-findings-spend-advice.test.ts",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-findings-verified-zero.test.ts",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-production-path.test.ts",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-regression.test.ts",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-report-parity-regression.test.ts",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-trends-campaign-start.test.ts",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-trends-chart-regression.test.ts",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-insights-trends-zero-days.test.ts",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-kpi-report-consumer-regression.test.ts",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-overview-reporting-note.test.ts",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/ga4-report-saved-publication.test.ts",
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/google-sheets-aggregate-source.test.ts",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/performance-summary-aggregate.test.ts",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/performance-summary-insights-regression.test.ts",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/performance-summary-scheduled-pdf.test.ts",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/performance-summary-scheduler-regression.test.ts",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/trend-analysis-aggregate.test.ts",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/trend-analysis-anomaly-regression.test.ts",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/trend-analysis-overview-regression.test.ts",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/trend-analysis-window-regression.test.ts",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch4-custom-import.test.ts",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch4-custom-values.test.ts",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "passed": 57,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+          "passed": 103,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch7-metric-boundaries.test.ts",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch7-metric-routes.test.ts",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch7-source-goal-values.test.ts",
+          "passed": 67,
+          "failed": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "finalContract": {
+      "file": "metrics-api-contract.json",
+      "sha256": "7fff3a48e369e585653778283d722ea2272663d8666488ab3907f12925b5b571",
+      "total": 59,
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "fileCount": 4,
+      "files": [
+        {
+          "file": "server/executive-summary-regression.test.ts",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/executive-summary-scheduled-pdf.test.ts",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/executive-summary-target-eligibility-regression.test.ts",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "file": "server/v1-batch7-metric-boundaries.test.ts",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "postgres": {
+      "file": "metrics-http-postgres.json",
+      "sha256": "117ef88f04d5b8d008fd7415f76812cd440311c2b5804da4dd62ebe889bab803",
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "fileCount": 1,
+      "files": [
+        {
+          "file": "server/v1-batch7-metric-routes.test.ts",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0
+        }
+      ]
+    }
+  },
+  "baselineLimit": "Only extracted runtime blocks use git show at 1de80e15. Direct imports use working-tree helpers. Initial 84-case reproduction predates later coverage additions; not a whole-revision baseline.",
+  "finalContractReason": "After the consolidated pass, preserve the Executive GA4 response field set explicitly; add four missing/failed/zero input controls and rerun the affected four test files. Unchanged PostgreSQL paths retain their passing evidence.",
+  "validationTypes": [
+    "Extracted actual UI expressions and report branches",
+    "Actual central alert resolver with controlled storage and current filter/metric helpers",
+    "Actual Express route registration with controlled providers/storage",
+    "Compiled production SQL against three real PostgreSQL temporary-table cases",
+    "Existing neighboring regression guards; some are structural assertions"
+  ],
+  "builds": {
+    "finalTypeScriptAndServer": {
+      "at": "2026-10-25T23:53:15.968Z",
+      "nodeEnv": "production",
+      "checks": [
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "error": null,
+          "log": "metrics-api-contract-typecheck.log"
+        },
+        {
+          "name": "server-build",
+          "exitCode": 0,
+          "error": null,
+          "log": "metrics-api-contract-server-build.log"
+        }
+      ]
+    },
+    "clientAndEarlierBuild": {
+      "at": "2026-10-25T23:43:17.088Z",
+      "nodeEnv": "production",
+      "checks": [
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "error": null,
+          "log": "metrics-final-typecheck.log"
+        },
+        {
+          "name": "client-build",
+          "exitCode": 0,
+          "error": null,
+          "log": "metrics-final-client-build.log"
+        },
+        {
+          "name": "server-build",
+          "exitCode": 0,
+          "error": null,
+          "log": "metrics-final-server-build.log"
+        }
+      ]
+    },
+    "clientUnchangedSinceBuild": true
+  },
+  "cleanup": {
+    "at": "2026-10-25T23:50:38.263Z",
+    "before": {
+      "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch4-sheets-pg",
+      "listen": "127.0.0.1",
+      "test_sessions": 0,
+      "test_temp_tables": 0
+    },
+    "stopExitCode": 0,
+    "statusExitCode": 3,
+    "stopped": true,
+    "productionAccessed": false
+  },
+  "staleTestEvidenceAtBaseline": {
+    "immutableArtifactPresent": true,
+    "obsoleteHistoricalPreflightAbsent": true,
+    "oldTestExpectedHistoricalPreflight": true,
+    "scopedTransactionAlreadyPresent": true
+  },
+  "runtimeFileCount": 12,
+  "files": [
+    {
+      "file": "GA4/INSIGHTS.md",
+      "sha256": "7d753bfb4126706e7470449234cd5c2ee4f75c6d5929a885e3770674b0c57ee4",
+      "kind": "documentation"
+    },
+    {
+      "file": "client/src/lib/trend-analysis-cumulative.ts",
+      "sha256": "b54fabef60cda96c2930f54d176b7ba6592a9f4acf8253543b1084b90ea11186",
+      "kind": "runtime"
+    },
+    {
+      "file": "client/src/pages/campaign-performance.tsx",
+      "sha256": "7ffa8e477740fdcc2ae515bf4b8e369ea234ca754cae8715d0d67e352840545c",
+      "kind": "runtime"
+    },
+    {
+      "file": "client/src/pages/executive-summary.tsx",
+      "sha256": "60a37586b4dece82f1dbd22068d049c613a187e27a65c096b7bfe5a52ebde815",
+      "kind": "runtime"
+    },
+    {
+      "file": "client/src/pages/financial-analysis.tsx",
+      "sha256": "60edaf489f917cb10da2172c8d45edea1bcc7d872fc98f540ff5013832176ef9",
+      "kind": "runtime"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "2393255867bf65c5cc4abdb1fd899d98f75eb4fab533a7e024ccc741037f3367",
+      "kind": "runtime"
+    },
+    {
+      "file": "client/src/pages/trend-analysis.tsx",
+      "sha256": "f8e3d7ead64169c3981fbbacecc20045fc469882373f60496fbcad9dc0644ec3",
+      "kind": "runtime"
+    },
+    {
+      "file": "docs/V1_RELEASE_READINESS.md",
+      "sha256": "13b241a9ed55a1741dc7f1038647e6fa35c9a2b15fe57ab404660ab046392800",
+      "kind": "documentation"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+      "sha256": "d9a41b25a1855c633a2c1904d9cc3a9ab4df14aac522b2bd11500faa20c37100",
+      "kind": "documentation"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/README.md",
+      "sha256": "2d4134fd89ba377ca1dae180821e744945fc858179c81cdda05fef531f31cc60",
+      "kind": "documentation"
+    },
+    {
+      "file": "server/executive-summary-regression.test.ts",
+      "sha256": "85915dc316b012ccd868c30ab886771077ce97412cb61a80b3f6d837526950c9",
+      "kind": "test"
+    },
+    {
+      "file": "server/ga4-insights-production-path.test.ts",
+      "sha256": "d708c2aa655f3072f20ac8c2a555bacf0c06d6a63b2a55166936f2c73e2d3828",
+      "kind": "test"
+    },
+    {
+      "file": "server/ga4-insights-regression.test.ts",
+      "sha256": "e5d35444caca0f12dfbb64e860cb0bd32c7a4c23cf4c810a9bc3017281e06b86",
+      "kind": "test"
+    },
+    {
+      "file": "server/ga4-insights-report-parity-regression.test.ts",
+      "sha256": "28a613d8f5c29a57e47f1444bb4f111e965d5da5f8c70b328a2f9129c784a7e1",
+      "kind": "test"
+    },
+    {
+      "file": "server/ga4-insights-trends-campaign-start.test.ts",
+      "sha256": "49e40559d3990e12f9a589b14138289b0abb46f01d869f24f3789867626ec83e",
+      "kind": "test"
+    },
+    {
+      "file": "server/ga4-kpi-report-consumer-regression.test.ts",
+      "sha256": "faca10d8e4e6abe7ef01448e5e92c533983ac24e2f25c727199a57c742067dcf",
+      "kind": "test"
+    },
+    {
+      "file": "server/ga4-scheduled-report-pdf.ts",
+      "sha256": "41735ace33c823a8cfe2c65fc156ea8b093274e46a6d8c6ff204ab88d9ad098c",
+      "kind": "runtime"
+    },
+    {
+      "file": "server/report-scheduler.ts",
+      "sha256": "4881ca2aea213f6a8b432f6bac7990d8f948f84a4f69cedd7d933cc6bf97e8b1",
+      "kind": "runtime"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "ef4305440b805ff7a76a72cbeb98ecc9a168e0e78e114876210833987186eb6c",
+      "kind": "runtime"
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "37e6ccf9216c40fc6f9ba99a3ff231404f4a81d597c83f521cc07200e2c2ae12",
+      "kind": "runtime"
+    },
+    {
+      "file": "server/trend-analysis-aggregate.test.ts",
+      "sha256": "2ad8be835c90c3515077bd681339ffd9dbabe14246550fee30c5557b5d8e0962",
+      "kind": "test"
+    },
+    {
+      "file": "server/utils/ga4-alert-current-value.ts",
+      "sha256": "ce8ec696b0e43a76b9f261f5e4aedc63fcfd2b4833a5d8af41d3851a5683420e",
+      "kind": "runtime"
+    },
+    {
+      "file": "server/utils/trend-analysis-aggregate.ts",
+      "sha256": "16738ba5a6907ab3dc1eabb440fc5c43ec85651a9f19899f61f6c0a9ccebe28c",
+      "kind": "runtime"
+    },
+    {
+      "file": "server/v1-batch7-metric-boundaries.test.ts",
+      "sha256": "0ecedb4af5c95bd639367bc0675ebe60be67897373d755096d8885c4184ccdaa",
+      "kind": "test"
+    },
+    {
+      "file": "server/v1-batch7-metric-routes.test.ts",
+      "sha256": "96ef02917dadb3ed6c8ca9d92dd84869b6b51554b15913999f4b2e1cdb05a89e",
+      "kind": "test"
+    },
+    {
+      "file": "server/v1-batch7-source-goal-values.test.ts",
+      "sha256": "0386d43a8bd76a9a1db72e7b1959af86bb2246fd076f0230aa9a2c4e0debc745",
+      "kind": "test"
+    }
+  ],
+  "safety": {
+    "productionAccess": false,
+    "browserAccess": false,
+    "providerAccess": false,
+    "actualEmailSent": false,
+    "schemaChanges": false,
+    "newDependencies": false,
+    "productionDataCleanup": false,
+    "sourceMutations": false,
+    "connectionReadGuard": "Sheets alert reads disable lazy token migration and runtime credential resolution; default getter behavior tested unchanged",
+    "network": "Test runners strip credentials and permit only loopback; disposable PostgreSQL bound to 127.0.0.1:55444"
+  },
+  "remaining": [
+    "Nine findings in retained pages/forms/exports and report content/layout/parity groups",
+    "All 29 Batch 7 release acceptances remain open",
+    "Batch 6 live Google Ads sign-off postponed",
+    "No browser or rendered-PDF visual validation",
+    "No full source mutation/provider/scheduler lifecycle recertification",
+    "No independent-worker final-read-to-dispatch race proof or real notification/email delivery",
+    "No production historical-data inventory/repair"
+  ],
+  "intendedEvidenceFiles": [
+    "run-tests.cjs",
+    "run-build-checks.cjs",
+    "run-metrics-suite.cjs",
+    "metrics-test-files.json",
+    "metrics-cleanup.cjs",
+    "record-metrics-evidence.cjs",
+    "metrics-evidence.json",
+    "metrics-baseline.json",
+    "metrics-verified.json",
+    "metrics-api-contract.json",
+    "metrics-http-postgres.json",
+    "metrics-cleanup.json",
+    "metrics-final-build-checks.json",
+    "metrics-final-typecheck.log",
+    "metrics-final-client-build.log",
+    "metrics-final-server-build.log",
+    "metrics-api-contract-build-checks.json",
+    "metrics-api-contract-typecheck.log",
+    "metrics-api-contract-server-build.log",
+    "metrics-verified-build-checks.json",
+    "metrics-verified-typecheck.log",
+    "metrics-verified-server-build.log"
+  ]
+}

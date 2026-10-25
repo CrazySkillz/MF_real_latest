@@ -86,9 +86,9 @@ describe("Trend Analysis aggregate contract", () => {
     expect(aggregate.metrics.spend.sources).toEqual(["canonical_spend_sources"]);
     expect(aggregate.dailyTotals[0].metrics).toMatchObject({
       spend: 40,
-      revenue: 120,
-      roas: 3,
-      roi: 200,
+      revenue: 220,
+      roas: 5.5,
+      roi: 450,
     });
   });
 

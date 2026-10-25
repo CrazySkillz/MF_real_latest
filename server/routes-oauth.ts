@@ -3042,27 +3042,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hasGoogleAdsImportedAttributedRevenue = googleAdsImportedAttributedRevenue > 0;
 
+      // Use the same eligible source IDs, currency checks and aggregate-row precedence as financial totals.
+      const [financialSpend, financialRevenue] = await Promise.all([
+        storage.getSpendTotalForRange(campaignId, startDate, endDate, primaryGA4PropertyId ? "ga4" : undefined),
+        storage.getRevenueTotalForRange(campaignId, startDate, endDate, "ga4"),
+      ]);
+      const currency = String(campaign?.currency || "USD").toUpperCase();
+      if ([financialSpend, financialRevenue].some(value => value.sourceIds.length > 0 && value.currency !== currency)) {
+        throw new Error("Trend financial currencies do not match campaign currency");
+      }
       const financialData = await db.execute(sql`
-        SELECT sr.date, SUM(sr.spend::NUMERIC) as spend, 0::NUMERIC as revenue
+        SELECT sr.date, sr.spend as value, sr.spend_source_id as source_id, 'spend' as kind, true as aggregate
         FROM spend_records sr
-        INNER JOIN spend_sources ss ON ss.id::text = sr.spend_source_id
-        WHERE sr.campaign_id = ${campaignId} AND ss.is_active = true AND sr.date >= ${startDate} AND sr.date <= ${endDate}
-        GROUP BY sr.date
+        WHERE sr.campaign_id = ${campaignId} AND sr.spend_source_id = ANY(ARRAY[${sql.join(financialSpend.sourceIds.map(id => sql`${id}`), sql`, `)}]::text[])
+          AND sr.date >= ${startDate} AND sr.date <= ${endDate}
         UNION ALL
-        SELECT rr.date, 0::NUMERIC as spend, SUM(rr.revenue::NUMERIC) as revenue
+        SELECT rr.date, rr.revenue as value, rr.revenue_source_id as source_id, 'revenue' as kind,
+          (rr.sub_campaign_urn IS NULL OR rr.sub_campaign_urn = '') as aggregate
         FROM revenue_records rr
-        INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
-        WHERE rr.campaign_id = ${campaignId} AND rs.is_active = true AND rr.date >= ${startDate} AND rr.date <= ${endDate}
-        GROUP BY rr.date
+        WHERE rr.campaign_id = ${campaignId} AND rr.revenue_source_id = ANY(ARRAY[${sql.join(financialRevenue.sourceIds.map(id => sql`${id}`), sql`, `)}]::text[])
+          AND rr.date >= ${startDate} AND rr.date <= ${endDate}
       `);
-      const financialByDate = new Map<string, { date: string; spend: number; revenue: number }>();
-      for (const row of (financialData.rows as any[])) {
+      const aggregateRevenueSources = new Set((financialData.rows as any[])
+        .filter(row => row.kind === "revenue" && row.aggregate).map(row => row.source_id));
+      const financialByDate = new Map<string, { date: string; spend?: number; revenue?: number }>();
+      for (const row of financialData.rows as any[]) {
+        if (row.kind === "revenue" && aggregateRevenueSources.has(row.source_id) && !row.aggregate) continue;
         const date = String(row.date || "").slice(0, 10);
-        if (!date) continue;
-        const current = financialByDate.get(date) || { date, spend: 0, revenue: 0 };
-        current.spend += parseFloat(String(row.spend || 0)) || 0;
-        current.revenue += parseFloat(String(row.revenue || 0)) || 0;
+        const current = financialByDate.get(date) || { date };
+        const kind = row.kind as "spend" | "revenue";
+        current[kind] = (current[kind] || 0) + Number(row.value);
         financialByDate.set(date, current);
+      }
+      const financialRows = Array.from(financialByDate.values());
+      if (Math.abs(financialRows.reduce((sum, row) => sum + (row.spend || 0), 0) - financialSpend.totalSpend) > 0.005
+        || Math.abs(financialRows.reduce((sum, row) => sum + (row.revenue || 0), 0) - financialRevenue.totalRevenue) > 0.005) {
+        throw new Error("Trend financial sources changed during the read; retry");
       }
 
       const aggregate = buildTrendAnalysisAggregate({
@@ -9562,7 +9577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const providerRefreshRowCount = 0;
       const providerRefreshCompletedAt: string | null = null;
       const providerCoverageThroughDate: string | null = null;
-      const stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
+      const stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
       const latestStoredDailyDate = getLatestStoredDailyDate(stored);
       const configuredOverviewStartDate = String((selectedConnection as any)?.importStartDate || '').trim();
       const overviewStartCandidate = configuredOverviewStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
@@ -31855,54 +31870,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch GA4 metrics
-      let ga4Metrics: any = { sessions: 0, conversions: 0, bounceRate: 0, pageviews: 0, users: 0, revenue: 0 };
+      let ga4Metrics: any = { sessions: null, conversions: null, bounceRate: null, pageviews: null, users: null, revenue: null };
       let ga4LastUpdate: string | null = null;
       let hasGA4Connection = false;
 
       try {
         const ga4Connections = await storage.getGA4Connections(id);
-        const activeGA4Connection = (ga4Connections || []).find((conn: any) => conn?.propertyId && conn.propertyId !== "");
+        const activeGA4Connection = (ga4Connections || []).find((conn: any) => conn?.isPrimary && conn?.propertyId)
+          || (ga4Connections || []).find((conn: any) => conn?.propertyId);
         if (activeGA4Connection) {
           hasGA4Connection = true;
-          const primaryPropertyId = String((activeGA4Connection as any).propertyId || "");
-          const ga4Start = startDate;
-          const ga4End = endDate;
-          let usedGA4SourceTruth = false;
-          try {
-            const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-            const ga4DateRange = periodParam === "7d" ? "7daysAgo" :
-              periodParam === "90d" ? "90daysAgo" : "30daysAgo";
-            const metrics = await ga4Service.getMetricsWithAutoRefresh(id, storage, ga4DateRange, primaryPropertyId || undefined, campaignFilter);
-            ga4Metrics.sessions = parseNum((metrics as any)?.sessions);
-            ga4Metrics.conversions = parseNum((metrics as any)?.conversions);
-            ga4Metrics.pageviews = parseNum((metrics as any)?.pageviews);
-            ga4Metrics.users = parseNum((metrics as any)?.impressions);
-            ga4Metrics.revenue = 0;
-            ga4Metrics.bounceRate = parseNum((metrics as any)?.bounceRate);
-            ga4LastUpdate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone, now).endDate;
-            usedGA4SourceTruth = true;
-          } catch {
-            // Fall back to persisted GA4 daily rows below if the Connected Platforms GA4 metric source is unavailable.
-          }
+          const primaryPropertyId = String(activeGA4Connection.propertyId);
+          const reportingWindow = getGA4KPIReportingWindow(campaign.reportingTimeZone, undefined, now, activeGA4Connection.importStartDate);
+          const ga4Start = periodParam === "all" ? reportingWindow.startDate : (startDate > reportingWindow.startDate ? startDate : reportingWindow.startDate);
+          const ga4End = reportingWindow.endDate;
+          // Saved daily facts share the primary property's configured scope and completed-day window.
+          // Do not mix a live rolling provider total with these cumulative rows.
           const ga4Daily = await storage.getGA4DailyMetrics(id, primaryPropertyId, ga4Start, ga4End);
-          if (ga4Daily && ga4Daily.length > 0) {
-            let bounceRateSum = 0;
-            let bounceRateCount = 0;
-            ga4Daily.forEach((row: any) => {
-              if (!usedGA4SourceTruth) {
-                ga4Metrics.sessions += parseNum(row.sessions);
-                ga4Metrics.conversions += parseNum(row.conversions);
-                ga4Metrics.users += parseNum(row.users || row.totalUsers);
-                ga4Metrics.revenue += parseNum(row.revenue);
-              }
-              ga4Metrics.pageviews += parseNum(row.pageviews || row.screenPageViews);
-              const br = parseNum(row.bounceRate);
-              if (br > 0) { bounceRateSum += br; bounceRateCount++; }
-            });
-            if (!ga4Metrics.bounceRate) ga4Metrics.bounceRate = bounceRateCount > 0 ? bounceRateSum / bounceRateCount : 0;
-            const lastRow = ga4Daily[ga4Daily.length - 1];
-            ga4LastUpdate = ga4LastUpdate || (lastRow as any)?.date || null;
+          const scopedRows = ga4Daily.filter((row: any) => String(row.date) >= ga4Start && String(row.date) <= ga4End);
+          if (scopedRows.length > 0) {
+            const totals = summarizeGA4TrafficRows(scopedRows);
+            ga4Metrics = { sessions: totals.sessions, conversions: totals.conversions, pageviews: totals.pageviews,
+              users: totals.users, revenue: totals.revenue, bounceRate: totals.sessions > 0 ? (1 - totals.engagementRate) * 100 : null };
           }
+          ga4LastUpdate = scopedRows.map((row: any) => String(row.date)).sort().at(-1) || null;
         }
       } catch (err) {
         console.log('No GA4 metrics found for campaign', id);

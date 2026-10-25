@@ -1651,10 +1651,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       if (["users", "sessions", "conversions"].includes(key)) return Number((performancePageTrafficTotals as any)?.[key]);
       if (key === "cvr") return performancePageTrafficTotals.sessions > 0
         ? (performancePageTrafficTotals.conversions / performancePageTrafficTotals.sessions) * 100
-        : 0;
+        : null;
       if (key === "engagementRate") return performancePageTrafficTotals.sessions > 0
         ? (performancePageTrafficTotals.engagedSessions / performancePageTrafficTotals.sessions) * 100
-        : 0;
+        : null;
     }
     return metricAvailable(key) ? metricNumber(key) : null;
   };
@@ -1663,10 +1663,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       if (["users", "sessions", "conversions"].includes(key)) return Number((trendPreviousTrafficTotals as any)?.[key]);
       if (key === "cvr") return trendPreviousTrafficTotals.sessions > 0
         ? (trendPreviousTrafficTotals.conversions / trendPreviousTrafficTotals.sessions) * 100
-        : 0;
+        : null;
       if (key === "engagementRate") return trendPreviousTrafficTotals.sessions > 0
         ? (trendPreviousTrafficTotals.engagedSessions / trendPreviousTrafficTotals.sessions) * 100
-        : 0;
+        : null;
     }
     if (key === "spend") return historicalTrendFinancialValue("spend");
     if (key === "revenue") return historicalTrendFinancialValue("revenue");
@@ -1958,11 +1958,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   };
   const addSelectedSectionBody = (section: string) => {
     addText(campaignDeepDiveTabLabels[section] || section, { size: 14, bold: true });
+    if (performancePageTrafficTotals) addText("GA4 users are summed daily counts, not unique people across the reporting window.", { size: 9 });
     if (section.startsWith("performance-summary:")) {
       const performanceCurrency = validExecutiveCurrency || "USD";
       addText("Key Outcomes", { bold: true, indent: 4 });
       ([
-        ["users", "Total Users"],
+        ["users", "Total Users (daily sum)"],
         ["sessions", "Total Sessions"],
         ["conversions", "Total Conversions"],
         ["revenue", "Total Revenue"],
@@ -2089,7 +2090,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       const returnAction = metricAvailable("roas") && metricAvailable("roi")
         ? metricNumber("roas") < 1 || metricNumber("roi") < 0
           ? { title: "Return below break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Review revenue attribution, conversion efficiency, and spend before adding budget.` }
-          : { title: "Positive financial return", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
+          : metricNumber("roi") === 0
+            ? { title: "Financial return at break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is 0.00%. Revenue equals spend. Monitor efficiency before increasing budget.` }
+            : { title: "Positive financial return", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
         : { title: "Return cannot be assessed", body: "Compatible revenue and spend are required to assess return." };
       const budgetAction = buildFinancialBudgetAction({
         hasCampaignBudget: campaignBudget !== null,
@@ -2178,15 +2181,15 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         const sessions = Number(performancePageTrafficTotals.sessions);
         const engagedSessions = Number(performancePageTrafficTotals.engagedSessions);
         const conversions = Number(performancePageTrafficTotals.conversions);
-        const engagementRate = sessions > 0 ? (engagedSessions / sessions) * 100 : 0;
-        const conversionsPerHundredSessions = sessions > 0 ? (conversions / sessions) * 100 : 0;
+        const engagementRate = sessions > 0 ? (engagedSessions / sessions) * 100 : null;
+        const conversionsPerHundredSessions = sessions > 0 ? (conversions / sessions) * 100 : null;
         addText("Website Engagement & Conversion Summary", { bold: true, indent: 4 });
         addText(`- Cumulative from initial import through ${trendWindowEnd || "the latest completed reporting day"}.`, { indent: 8 });
         addText(`- Sessions: ${formatCampaignDeepDiveMetricValue("sessions", sessions)}`, { indent: 8 });
         addText(`- Engaged Sessions: ${formatCampaignDeepDiveMetricValue("sessions", engagedSessions)}`, { indent: 8 });
         addText(`- Conversions: ${formatCampaignDeepDiveMetricValue("conversions", conversions)}`, { indent: 8 });
         addText(`- Engagement rate: ${formatCampaignDeepDiveMetricValue("engagementRate", engagementRate)}`, { indent: 8 });
-        addText(`- Conversions per 100 sessions: ${conversionsPerHundredSessions.toFixed(1)}`, { indent: 8 });
+        addText(`- Conversions per 100 sessions: ${conversionsPerHundredSessions === null ? "Unavailable" : conversionsPerHundredSessions.toFixed(1)}`, { indent: 8 });
       } else {
         const webSources = (Array.isArray(trendAnalysis?.sources) ? trendAnalysis.sources : [])
           .filter((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("sessions"));
@@ -2615,6 +2618,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     drawText(reportType === "executive-summary" ? executiveMetricBasis : customReportWindowLabel, margin + 6, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 10 });
     drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
     y += metaCardHeight + 8;
+    if (performancePageTrafficTotals) {
+      drawText("GA4 users are summed daily counts, not unique people across the reporting window.", margin, y + 3, { size: 7, color: colors.secondary, maxWidth: contentWidth });
+      y += 8;
+    }
 
     if (reportType === "financial-analysis") {
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
@@ -2745,7 +2752,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       const returnAction = metricAvailable("roas") && metricAvailable("roi")
         ? metricNumber("roas") < 1 || metricNumber("roi") < 0
           ? { title: "Return below break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Review revenue attribution, conversion efficiency, and spend before adding budget.` }
-          : { title: "Positive financial return", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
+          : metricNumber("roi") === 0
+            ? { title: "Financial return at break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is 0.00%. Revenue equals spend. Monitor efficiency before increasing budget.` }
+            : { title: "Positive financial return", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
         : { title: "Return cannot be assessed", body: "Compatible revenue and spend are required to assess return." };
       const budgetAction = buildFinancialBudgetAction({
         hasCampaignBudget: campaignBudget !== null,
@@ -2981,8 +2990,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           ["Sessions", formatCampaignDeepDiveMetricValue("sessions", sessions)],
           ["Engaged Sessions", formatCampaignDeepDiveMetricValue("sessions", engagedSessions)],
           ["Conversions", formatCampaignDeepDiveMetricValue("conversions", conversions)],
-          ["Engagement Rate", formatCampaignDeepDiveMetricValue("engagementRate", sessions > 0 ? (engagedSessions / sessions) * 100 : 0)],
-          ["Conversions per 100 Sessions", sessions > 0 ? ((conversions / sessions) * 100).toFixed(1) : "0.0"],
+          ["Engagement Rate", formatCampaignDeepDiveMetricValue("engagementRate", sessions > 0 ? (engagedSessions / sessions) * 100 : null)],
+          ["Conversions per 100 Sessions", sessions > 0 ? ((conversions / sessions) * 100).toFixed(1) : "Unavailable"],
         ];
       } else if (webSources.length > 0) {
         const sessions = webMetricTotal("sessions");

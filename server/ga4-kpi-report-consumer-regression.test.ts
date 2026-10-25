@@ -119,16 +119,19 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(route.indexOf("const buf = await buildPdfAttachmentForReport")).toBeLessThan(route.indexOf(".insert(reportSnapshots as any)"));
   });
 
-  it("preflights direct GA4 snapshot PDF downloads before regenerating current KPI values", () => {
+  it("serves the immutable snapshot artifact without recomputing historical KPI values", () => {
     const source = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const route = source.slice(
       source.indexOf('app.get("/api/report-snapshots/:snapshotId/pdf"'),
       source.indexOf("// Get single benchmark")
     );
 
-    expect(route).toContain("preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true })");
-    expect(route).toContain("snapshot PDF not generated");
-    expect(route.indexOf("preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true })")).toBeLessThan(route.indexOf("const buf = await buildPdfAttachmentForReport"));
+    expect(route).toContain("ensurePlatformReportAccess");
+    expect(route).toContain("snapshotCampaignId !== reportCampaignId || snapshotPlatform !== reportPlatform");
+    expect(route).toContain("const immutablePdf = readReportPdfArtifact(payload);");
+    expect(route).toContain("return res.send(immutablePdf);");
+    expect(route).not.toContain("preflightGA4ReportKPIConsumers(");
+    expect(route).not.toContain("buildPdfAttachmentForReport(");
   });
 
   it("fails GA4 KPI-section PDF generation when persisted KPI rows cannot be read", () => {
@@ -160,7 +163,7 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(sendStart).toBeGreaterThan(-1);
     expect(testStart).toBeGreaterThan(-1);
     expect(routesSource).toContain("preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true })");
-    expect(routesSource).toContain("preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true })");
+    expect(routesSource).not.toContain("preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true })");
   });
 
   it("documents GA4 report refresh as fail-closed instead of best-effort", () => {

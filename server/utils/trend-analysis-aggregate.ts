@@ -87,11 +87,14 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
     }
   }
   const hasCompleteExplicitMetric = (date: string, metricName: string) => {
-    const expectedSources = metricSources(sources, metricName);
+    const expectedSources = metricSources(metricName === "conversions" && webSource ? [webSource] : sources, metricName);
     const explicitSources = explicitMetricSourcesByDate.get(date)?.get(metricName);
     return expectedSources.length > 0 && expectedSources.every((sourceId) => explicitSources?.has(sourceId));
   };
 
+  const webSource = sources.find(source => source.category === "web_analytics")
+    || sources.find(source => source.category === "custom" && hasMetric(source, "sessions"));
+  const conversionSources = webSource ? [webSource] : sources;
   const totalsByDate = new Map<string, Record<string, number>>();
   const ensureDate = (date: string) => {
     const existing = totalsByDate.get(date);
@@ -105,6 +108,7 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
     for (const row of source.dailyRows) {
       const total = ensureDate(row.date);
       for (const metricName of source.includedMetrics) {
+        if ((metricName === "conversions" || metricName === "revenue") && webSource && source !== webSource) continue;
         total[metricName] = roundSourceMetric(metricName, (total[metricName] || 0) + parseNum(row.metrics[metricName]));
       }
     }
@@ -115,8 +119,8 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
     const date = normalizeDate(row.date);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
     const total = ensureDate(date);
-    total.spend = round2(parseNum(row.spend));
-    total.revenue = round2(parseNum(row.revenue) || total.revenue || 0);
+    if (row.spend != null && Number.isFinite(Number(row.spend))) total.spend = round2(Number(row.spend));
+    if (row.revenue != null && Number.isFinite(Number(row.revenue))) total.revenue = round2((total.revenue || 0) + Number(row.revenue));
   }
 
   const dailyTotals = Array.from(totalsByDate.entries())
@@ -128,8 +132,8 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
       const clicks = parseNum(metrics.clicks);
       const conversions = parseNum(metrics.conversions);
       const sessions = parseNum(metrics.sessions);
-      const hasExplicitSpend = hasCompleteExplicitMetric(date, "spend");
-      const hasExplicitRevenue = hasCompleteExplicitMetric(date, "revenue");
+      const hasExplicitSpend = financialRows.some(row => normalizeDate(row.date) === date && row.spend != null && Number.isFinite(Number(row.spend))) || hasCompleteExplicitMetric(date, "spend");
+      const hasExplicitRevenue = financialRows.some(row => normalizeDate(row.date) === date && row.revenue != null && Number.isFinite(Number(row.revenue))) || hasCompleteExplicitMetric(date, "revenue");
       const hasExplicitClicks = hasCompleteExplicitMetric(date, "clicks");
       const hasExplicitConversions = hasCompleteExplicitMetric(date, "conversions");
       return {
@@ -142,20 +146,21 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
           roas: spend > 0 && (revenue > 0 || (revenue === 0 && hasExplicitRevenue)) ? round2(revenue / spend) : null,
           roi: spend > 0 && (revenue > 0 || (revenue === 0 && hasExplicitRevenue)) ? round2(((revenue - spend) / spend) * 100) : null,
           ctr: impressions > 0 && (clicks > 0 || (clicks === 0 && hasExplicitClicks)) ? round2((clicks / impressions) * 100) : null,
-          cvr: clicks > 0 && (conversions > 0 || (conversions === 0 && hasExplicitConversions))
-            ? round2((conversions / clicks) * 100)
-            : sessions > 0 && (conversions > 0 || (conversions === 0 && hasExplicitConversions))
-              ? round2((conversions / sessions) * 100)
+          cvr: webSource && sessions > 0 && hasExplicitConversions
+            ? round2((conversions / sessions) * 100)
+            : !webSource && clicks > 0 && hasExplicitConversions
+              ? round2((conversions / clicks) * 100)
               : null,
         },
       };
     });
 
   const availableSources = (metricName: string) => {
-    const sourcesForMetric = metricSources(sources, metricName);
-    if (metricName === "spend" && financialRows.some((row) => parseNum(row.spend) > 0)) {
+    const sourcesForMetric = metricSources(metricName === "conversions" ? conversionSources : metricName === "revenue" && webSource ? [webSource] : sources, metricName);
+    if (metricName === "spend" && financialRows.some((row) => row.spend != null && Number.isFinite(Number(row.spend)))) {
       return ["canonical_spend_sources"];
     }
+    if (metricName === "revenue" && financialRows.some(row => row.revenue != null && Number.isFinite(Number(row.revenue)))) return [...sourcesForMetric, "canonical_revenue_sources"];
     return sourcesForMetric;
   };
 

@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-25T23:43:17.088Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "metrics-final-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "metrics-final-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "metrics-final-server-build.log"
+    }
+  ]
+}

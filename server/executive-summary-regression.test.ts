@@ -129,10 +129,10 @@ describe("campaign Executive Summary regression guard", () => {
     expect(routes).toContain("roas: hasRevenueTracking && linkedInSpend > 0");
     expect(routes).toContain("roi: hasRevenueTracking && linkedInSpend > 0");
     expect(route).toContain("dateRange: executiveDateRange");
-    expect(route).toContain("const metrics = await ga4Service.getMetricsWithAutoRefresh(id, storage, ga4DateRange, primaryPropertyId || undefined, campaignFilter);");
-    expect(route).toContain('periodParam === "90d" ? "90daysAgo" : "30daysAgo"');
-    expect(route).toContain("let usedGA4SourceTruth = false;");
-    expect(route).toContain("if (!usedGA4SourceTruth) {");
+    expect(route).toContain("const totals = summarizeGA4TrafficRows(scopedRows);");
+    expect(route).toContain("getGA4KPIReportingWindow(campaign.reportingTimeZone, undefined, now, activeGA4Connection.importStartDate)");
+    expect(route).toContain("if (scopedRows.length > 0) {");
+    expect(route).not.toContain("let usedGA4SourceTruth = false;");
     expect(route).toContain("ga4: { connected: hasGA4Connection, ...ga4Metrics }");
     expect(route).toContain('const executiveSpendPlatformContext = hasGA4Connection ? "ga4" : undefined;');
     expect(route).toContain('const spendBreakdown = await storage.getSpendBreakdownBySource(id, "1900-01-01", endDate, executiveSpendPlatformContext).catch(() => []);');

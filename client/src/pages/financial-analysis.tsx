@@ -762,9 +762,9 @@ export default function FinancialAnalysis() {
           tone: "warning",
         }
       : {
-          title: "Positive financial return",
-          body: `ROAS is ${financialRoasMetric.value.toFixed(2)}x and ROI is ${formatPercentage(financialRoiMetric.value)}. Protect current returns while monitoring pacing and source capacity.`,
-          tone: "success",
+          title: financialRoiMetric.value === 0 ? "Financial return at break-even" : "Positive financial return",
+          body: `ROAS is ${financialRoasMetric.value.toFixed(2)}x and ROI is ${formatPercentage(financialRoiMetric.value)}. ${financialRoiMetric.value === 0 ? "Revenue equals spend. Monitor efficiency before increasing budget." : "Protect current returns while monitoring pacing and source capacity."}`,
+          tone: financialRoiMetric.value === 0 ? "info" : "success",
         });
   } else {
     executiveFinancialActions.push({
@@ -1091,7 +1091,7 @@ export default function FinancialAnalysis() {
                             {budgetPeriodSpendMetric.available && !isOverBudget && projectedEndDateOrdinal !== null && daysRemaining > 0 && (
                               <p className="border-t pt-3 text-xs text-muted-foreground">
                                 At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
-                                {pacingCalendar.endDateOrdinal !== null && <span> ({projectedEndDateOrdinal > pacingCalendar.endDateOrdinal ? "after" : "before"} budget period end)</span>}
+                                {pacingCalendar.endDateOrdinal !== null && <span> ({projectedEndDateOrdinal > pacingCalendar.endDateOrdinal ? "after" : projectedEndDateOrdinal === pacingCalendar.endDateOrdinal ? "on" : "before"} budget period end)</span>}
                               </p>
                             )}
                           </div>
@@ -1658,7 +1658,7 @@ export default function FinancialAnalysis() {
                                 <p className="text-xs text-muted-foreground">
                                   At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
                                   {pacingCalendar.endDateOrdinal !== null && (
-                                    <span> ({projectedEndDateOrdinal > pacingCalendar.endDateOrdinal ? 'after' : 'before'} budget period end)</span>
+                                    <span> ({projectedEndDateOrdinal > pacingCalendar.endDateOrdinal ? 'after' : projectedEndDateOrdinal === pacingCalendar.endDateOrdinal ? 'on' : 'before'} budget period end)</span>
                                   )}
                                 </p>
                               </div>

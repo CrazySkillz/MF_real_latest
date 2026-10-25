@@ -221,13 +221,13 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
   return {
     current: {
       ...current,
-      engagementRate: current.sessions > 0 ? (current.engagedSessions / current.sessions) * 100 : 0,
-      cvr: current.sessions > 0 ? (current.conversions / current.sessions) * 100 : 0,
+      engagementRate: current.sessions > 0 ? (current.engagedSessions / current.sessions) * 100 : null,
+      cvr: current.sessions > 0 ? (current.conversions / current.sessions) * 100 : null,
     },
     previous: {
       ...previous,
-      engagementRate: previous.sessions > 0 ? (previous.engagedSessions / previous.sessions) * 100 : 0,
-      cvr: previous.sessions > 0 ? (previous.conversions / previous.sessions) * 100 : 0,
+      engagementRate: previous.sessions > 0 ? (previous.engagedSessions / previous.sessions) * 100 : null,
+      cvr: previous.sessions > 0 ? (previous.conversions / previous.sessions) * 100 : null,
     },
     comparisonDate,
   };
@@ -258,8 +258,8 @@ export const resolveVerifiedProviderCumulativeGA4Traffic = (args: {
     const engagedSessions = Number(raw.engagedSessions);
     return {
       users, sessions, conversions, engagedSessions,
-      engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : 0,
-      cvr: sessions > 0 ? (conversions / sessions) * 100 : 0,
+      engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : null,
+      cvr: sessions > 0 ? (conversions / sessions) * 100 : null,
     };
   };
   const current = normalize(providerWindow.currentTotals);

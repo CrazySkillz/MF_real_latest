@@ -105,21 +105,21 @@ Shows completed daily-history views:
 Current meaning:
 
 - Trends uses persisted GA4 daily facts for the selected campaign/property/scope and shows only reporting dates on or after the campaign creation calendar date in the campaign reporting timezone; this display filter does not delete pre-creation stored rows or change other sections
-- Insights requests an isolated 60-calendar-day stored-history window so two exact 30-day windows can be evaluated without changing Overview or KPI windows; legacy storage may be sparse, so the campaign calendar is materialized separately through the scheduler-derived completed-history boundary
+- Insights requests an isolated 60-calendar-day stored-history window so two exact 30-day windows can be evaluated without changing Overview or KPI windows; sparse or unrequested dates remain unavailable
 - all normal browser daily-history requests are read-only; Insights Trends renders scheduler-produced stored facts and does not run a live GA4 coverage request when the page loads
 - today's intraday data is excluded until it becomes a completed reporting day
-- `Latest imported day` remains visible and is the latest persisted row eligible for Trends after the creation-date filter; the scheduler-derived completed-history boundary still materializes the series but is no longer shown as `Chart through`
+- `Latest imported day` remains visible and is the latest persisted row eligible for Trends after the creation-date filter; the scheduler-derived completed-history boundary limits the series but is not shown as `Chart through`
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
-- from campaign creation through the completed-history boundary, a date without a stored activity row is displayed and evaluated as zero; dates before campaign creation remain hidden
+- a date without a stored row remains unavailable and cannot complete a comparison window; dates before campaign creation remain hidden, and an explicit persisted zero remains a valid observed value
 - the daily scheduler also persists explicit zero rows for completed no-activity dates after it verifies the provider response; an incomplete or failed provider response preserves the last-good stored window instead of writing false zeros
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
 - the metric selector uses a native select; Users is available only in Daily because daily distinct-user counts cannot be summed across days
 
 History gates:
 
-- `Daily`: at least 1 eligible completed campaign date; the chart considers up to 30 calendar days through the completed-history boundary, excludes pre-creation dates, fills later no-activity dates with zero, and shows a delta against the prior calendar day when present; its visible coverage note is only `Missing stored dates are shown as 0`; the table shows 14 recent rows initially and up to 30 with `Show all`
-- `7d`: the chart shows every complete historical 7-calendar-day rolling window in the campaign calendar; zero/no-activity dates count as complete, and the latest comparison requires two adjacent 7-day windows
-- `30d`: the chart shows every complete historical 30-calendar-day rolling window in the campaign calendar; zero/no-activity dates count as complete, and the latest comparison requires two adjacent 30-day windows
+- `Daily`: at least 1 eligible recorded completed date; the chart considers up to 30 calendar days through the completed-history boundary, excludes pre-creation dates, leaves gaps for missing rows, and shows a delta against the prior calendar day when present; its coverage note says `Missing stored dates are unavailable; recorded zero values remain 0.` The table shows 14 recent rows initially and up to 30 with `Show all`
+- `7d`: each complete rolling window requires 7 consecutive recorded calendar days, including explicit zero rows; the latest comparison requires two complete adjacent 7-day windows
+- `30d`: each complete rolling window requires 30 consecutive recorded calendar days, including explicit zero rows; the latest comparison requires two complete adjacent 30-day windows
 - `Monthly`: one calendar month can be shown and is marked partial when incomplete; only two adjacent complete calendar months are compared
 
 ### Data Summary
@@ -157,8 +157,8 @@ Shows grouped, rule-based executive guidance.
 Current meaning:
 
 - findings are grouped by investigation type
-- daily trend findings use the same scheduler-synchronized, campaign-creation-bounded, zero-filled calendar rows as Trends; adjacent 7-day windows take precedence over a 3-day fallback
-- zero/no-activity dates can complete a comparison window; insufficient campaign age, rather than sparse activity rows, controls the early-history gate
+- daily trend findings use the same recorded completed rows as Trends, bounded by campaign creation; complete adjacent 7-day windows take precedence over a complete 3-day fallback
+- explicit persisted zero rows can complete a comparison window; missing dates or insufficient campaign age withhold comparisons, and failed stored-history reads return an error rather than manufactured zero data
 - stale freshness metadata on an otherwise successful scheduler-backed response does not create a setup finding or withhold current target/trend evaluation; an actual daily-history request failure with no response still withholds affected trend conclusions
 - channel details in KPI/Benchmark recommendations require a reconciled breakdown and can remain when daily history is stale or mismatched; missing or wrong-property snapshots withhold streak/history context, not verified current target evaluations
 - invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions

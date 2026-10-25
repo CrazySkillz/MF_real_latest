@@ -46,7 +46,7 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     expect(getStartDate("invalid", "Europe/Amsterdam")).toBe("");
   });
 
-  it("excludes dates before creation and materializes every later missing date as zero", () => {
+  it("excludes dates before creation and leaves unrecorded dates unavailable", () => {
     const startDate = getStartDate("2026-09-08T10:06:04.469Z", "Europe/Amsterdam");
     const coverage = {
       startDate: "2026-08-18",
@@ -54,15 +54,15 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
       zeroDates: ["2026-08-18", "2026-09-08", "2026-09-11"],
     };
     const rows = buildRows(coverage.dailyRows, "2026-09-16", startDate);
-    expect(rows.map((item) => item.date)).toEqual(Array.from({ length: 9 }, (_, index) => addGA4InsightsDateDays("2026-09-08", index)));
-    expect(rows.find((item) => item.date === "2026-09-08")?.sessions).toBe(0);
-    expect(rows.find((item) => item.date === "2026-09-11")?.sessions).toBe(0);
+    expect(rows.map((item) => item.date)).toEqual(coverage.dailyRows.slice(1).map(item => item.date));
+    expect(rows.find((item) => item.date === "2026-09-08")).toBeUndefined();
+    expect(rows.find((item) => item.date === "2026-09-11")).toBeUndefined();
     expect(importedRows(coverage.dailyRows, startDate, "2026-09-16").map((item) => item.date)).toEqual(coverage.dailyRows.slice(1).map((item) => item.date));
 
     const rollups = buildGA4InsightsRollups(rows, "2026-09-16");
-    expect(rollups.last7.complete).toBe(true);
+    expect(rollups.last7.complete).toBe(false);
     expect(rollups.prior7.complete).toBe(false);
-    expect(rollups.prior7.days).toBe(2);
+    expect(rollups.prior7.days).toBe(1);
     expect(rollups.last30.complete).toBe(false);
     expect(buildGA4InsightsMonthlySeries(rows, "2026-09-16", "sessions").map((month) => ({ month: month.month, value: month.value, partial: month.partial }))).toEqual([
       { month: "2026-09", value: 283, partial: true },
@@ -72,30 +72,27 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     expect(page).toContain('comparable ? "No % baseline" : "Not comparable"');
   });
 
-  it("renders missing completed dates as zero and fails closed without a creation date", () => {
+  it("renders missing dates as gaps and fails closed without a creation date", () => {
     const rows = [row("2026-09-03", 10), row("2026-09-04", 30), row("2026-09-06", 34)];
     expect(buildRows(rows, "2026-09-06", "2026-09-04")).toEqual([
       row("2026-09-04", 30),
-      row("2026-09-05", 0),
       row("2026-09-06", 34),
     ]);
     expect(buildRows(rows, "2026-09-16", "")).toEqual([]);
     expect(importedRows(rows, "", "2026-09-16")).toEqual([]);
     const chart = dailyChart([row("2026-09-09", 38), row("2026-09-10", 38)], "2026-09-08");
     expect(chart.chartData.map((point) => point.date)).toEqual(["09-08", "09-09", "09-10"]);
-    expect(chart.chartData.map((point) => point.value)).toEqual([0, 38, 38]);
+    expect(chart.chartData.map((point) => point.value)).toEqual([null, 38, 38]);
   });
 
-  it("keeps zero-filled chart rows bounded by creation and the completed-day cutoff", () => {
+  it("keeps recorded rows bounded by creation and the completed-day cutoff", () => {
     const rows = buildRows([row("2026-09-09", 38), row("2026-09-17", 8)], "2026-09-17", "2026-09-08");
-    expect(rows).toHaveLength(10);
-    expect(rows.filter((item) => item.sessions === 0).map((item) => item.date)).toEqual([
-      "2026-09-08", "2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16",
-    ]);
+    expect(rows).toHaveLength(2);
+    expect(rows.filter((item) => item.sessions === 0)).toEqual([]);
   });
 
   it("renders Campaign3 from Sep 22 through Sep 24 with explicit zero points", () => {
-    expect(buildRows([row("2026-09-22", 127)], "2026-09-24", "2026-09-22").map((item) => ({ date: item.date, sessions: item.sessions }))).toEqual([
+    expect(buildRows([row("2026-09-22", 127), row("2026-09-23", 0), row("2026-09-24", 0)], "2026-09-24", "2026-09-22").map((item) => ({ date: item.date, sessions: item.sessions }))).toEqual([
       { date: "2026-09-22", sessions: 127 },
       { date: "2026-09-23", sessions: 0 },
       { date: "2026-09-24", sessions: 0 },

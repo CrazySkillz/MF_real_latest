@@ -348,7 +348,7 @@ export interface IStorage {
   getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
 
   // Google Sheets Connections
-  getGoogleSheetsConnections(campaignId: string, purpose?: string, options?: GA4RefreshWriteInput): Promise<GoogleSheetsConnection[]>;
+  getGoogleSheetsConnections(campaignId: string, purpose?: string, options?: GA4RefreshWriteInput & { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean }): Promise<GoogleSheetsConnection[]>;
   getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined>;
   getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined>;
   createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection>;
@@ -3653,7 +3653,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Google Sheets Connection methods
-  async getGoogleSheetsConnections(campaignId: string, purpose?: string, options: GA4RefreshWriteInput = {}): Promise<GoogleSheetsConnection[]> {
+  async getGoogleSheetsConnections(campaignId: string, purpose?: string, options: GA4RefreshWriteInput & { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean } = {}): Promise<GoogleSheetsConnection[]> {
     try {
       const purposeCol = (googleSheetsConnections as any).purpose;
       const purposeFilter = purpose
@@ -3695,7 +3695,7 @@ export class DatabaseStorage implements IStorage {
         rows.map(async (r: any) => {
           const hasPlain = Boolean(r?.accessToken) || Boolean(r?.refreshToken) || Boolean(r?.clientSecret);
           const hasEnc = Boolean(r?.encryptedTokens);
-          if ("refreshScope" in options || !hasPlain || hasEnc || !r?.id) return;
+          if (options.migrateLegacyTokens === false || "refreshScope" in options || !hasPlain || hasEnc || !r?.id) return;
           try {
             const nextEnc = buildEncryptedTokens({
               accessToken: r.accessToken,
@@ -3716,7 +3716,7 @@ export class DatabaseStorage implements IStorage {
       );
 
       return await Promise.all(rows.map(async (r: any) => (
-        hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(r) as any)
+        options.resolveRuntimeCredentials === false ? hydrateDecryptedTokens(r) : hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(r) as any)
       ))) as any;
     } catch (error: any) {
       // If sheet_name/purpose column doesn't exist yet, use raw SQL query

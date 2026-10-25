@@ -1,4 +1,7 @@
 import { storage } from "../storage";
+import { buildGoogleSheetsMetricSummary } from "./google-sheets-aggregate-source";
+import { filterGoogleSheetsRows } from "./googleSheetsSelection";
+import { hasCompleteGoogleSheetsCache } from "./google-sheets-revenue-ranges";
 import { financialDailySnapshotInputSchema } from "../../shared/schema";
 import { ga4Service } from "../analytics";
 import {
@@ -191,6 +194,97 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       ]);
       if (sourceScope(currentCampaign, currentConnection) !== expectedScope) return unavailable();
       return Number.isFinite(value) ? { ...resolved, currentValue: String(value) } as T & Record<string, any> : unavailable();
+    } catch {
+      return unavailable();
+    }
+  }
+  const sourcePlatform = String(resolved.platformType || "").trim().toLowerCase();
+  if (sourcePlatform === "custom_integration" || sourcePlatform === "google_sheets") {
+    const metric = String(resolved.metric || (resolved as any).metricKey || "").trim();
+    // Custom manual goals intentionally retain their entered value.
+    if (sourcePlatform === "custom_integration" && (!metric || metric === "custom")) return resolved;
+    const unavailable = () => blockAlertDecision(resolved, "unavailable");
+    try {
+      const config = typeof resolved.calculationConfig === "string" ? JSON.parse(resolved.calculationConfig) : resolved.calculationConfig as any;
+      const campaignId = String(resolved.campaignId || "");
+      const campaign = campaignId ? await storage.getCampaign(campaignId) : null;
+      if (!campaign || campaign.status === "deleted") return unavailable();
+      const scope = config?.sourceScope;
+      let value: number | null = null;
+      let imported: any = null;
+      let verifySource: () => Promise<boolean> = async () => true;
+      const financialKey = sourcePlatform === "custom_integration"
+        ? ({ revenue: "overview.total_revenue", spend: "overview.total_spend", roas: "overview.roas", roi: "overview.roi" } as Record<string, string>)[metric] || metric : metric;
+      const financial = sourcePlatform === "custom_integration"
+        ? ["overview.total_revenue", "overview.total_spend", "overview.roas", "overview.roi"].includes(financialKey)
+        : config?.valueSource === "confirmed_financial_overview";
+      if (sourcePlatform === "custom_integration") {
+        const integration = await storage.getCustomIntegration(campaignId);
+        if (scope?.platform !== sourcePlatform || scope.scopeType !== "latest_validated_import"
+          || !integration || integration.campaignId !== campaignId || scope.integrationId !== integration.id) return unavailable();
+        imported = await storage.getLatestCustomIntegrationMetrics(campaignId);
+        verifySource = async () => {
+          const [current, latest] = await Promise.all([storage.getCustomIntegration(campaignId), storage.getLatestCustomIntegrationMetrics(campaignId)]);
+          return current?.id === integration.id && latest?.id === imported?.id;
+        };
+        if (!financial) {
+          if (!imported || imported.campaignId !== campaignId) return unavailable();
+          const allowed = ["impressions", "clicks", "conversions", "leads", "users", "sessions", "pageviews", "pagesPerSession", "bounceRate", "organicSearchShare", "directBrandedShare", "emailShare", "referralShare", "paidShare", "socialShare", "emailsDelivered", "openRate", "clickThroughRate", "clickToOpen", "clickToOpenRate", "listGrowth"];
+          if (!allowed.includes(metric)) return unavailable();
+          value = parseGA4FinancialNumber(metric === "clickToOpen" ? imported.clickToOpenRate ?? imported.clickToOpen : imported[metric]);
+        }
+      } else if (!financial) {
+        const matches = (connection: any) => scope?.platform === sourcePlatform && scope?.activeSpreadsheetId
+          && connection.campaignId === campaignId && connection.isActive !== false
+          && (!connection.purpose || connection.purpose === "general")
+          && [`${connection.spreadsheetId}:${connection.id}`, `${connection.spreadsheetId}:${connection.sheetName}`].includes(scope.activeSpreadsheetId)
+          && (!scope.connectionId || scope.connectionId === connection.id)
+          && (!scope.spreadsheetId || scope.spreadsheetId === connection.spreadsheetId)
+          && (!scope.sheetName || scope.sheetName === connection.sheetName);
+        const connections = (await storage.getGoogleSheetsConnections(campaignId, undefined, { migrateLegacyTokens: false, resolveRuntimeCredentials: false })).filter(matches);
+        if (connections.length !== 1 || !hasCompleteGoogleSheetsCache(connections[0])) return unavailable();
+        const connection = connections[0];
+        const cache = connection.cachedData as any;
+        const rows = filterGoogleSheetsRows(connection, cache.headers, cache.rows, campaign.name);
+        const summary = buildGoogleSheetsMetricSummary(cache.headers, rows, connection.columnMappings);
+        const columns = summary.detectedColumns.filter((column: any) => column.name === metric);
+        if (columns.length !== 1) return unavailable();
+        value = parseGA4FinancialNumber(columns[0].summaryValue);
+        const fingerprint = (source: any) => JSON.stringify([source?.id, source?.columnMappings, source?.cachedData, source?.lastDataRefreshAt]);
+        verifySource = async () => {
+          const current = (await storage.getGoogleSheetsConnections(campaignId, undefined, { migrateLegacyTokens: false, resolveRuntimeCredentials: false })).filter(matches);
+          return current.length === 1 && fingerprint(current[0]) === fingerprint(connection) && hasCompleteGoogleSheetsCache(current[0]);
+        };
+      }
+      if (financial) {
+        const needsRevenue = financialKey !== "overview.total_spend";
+        const needsSpend = financialKey !== "overview.total_revenue";
+        const [revenue, spend, revenueSources, spendSources] = await Promise.all([
+          needsRevenue ? storage.getRevenueTotalForRange(campaignId, "1900-01-01", "2999-12-31", sourcePlatform) : Promise.resolve({ totalRevenue: 0, sourceIds: [], currency: undefined }),
+          needsSpend ? storage.getSpendTotalForRange(campaignId, "1900-01-01", "2999-12-31", sourcePlatform) : Promise.resolve({ totalSpend: 0, sourceIds: [], currency: undefined }),
+          needsRevenue ? storage.getRevenueSources(campaignId, sourcePlatform) : Promise.resolve([]),
+          needsSpend ? storage.getSpendSources(campaignId, sourcePlatform) : Promise.resolve([]),
+        ]);
+        if ([revenue, spend].some(source => source.sourceIds.length > 0 && source.currency !== campaign.currency)) return unavailable();
+        const importedRevenue = parseGA4FinancialNumber(imported?.revenue);
+        const importedSpend = parseGA4FinancialNumber(imported?.spend);
+        const hasRevenue = Number.isFinite(revenue.totalRevenue) && (revenue.sourceIds.length > 0 || importedRevenue !== null)
+          && revenueSources.filter(source => source.isActive !== false).every(source => revenue.sourceIds.includes(String(source.id)));
+        const hasSpend = Number.isFinite(spend.totalSpend) && (spend.sourceIds.length > 0 || importedSpend !== null)
+          && spendSources.filter(source => source.isActive !== false).every(source => spend.sourceIds.includes(String(source.id)));
+        const totalRevenue = revenue.totalRevenue + (importedRevenue ?? 0);
+        const totalSpend = spend.totalSpend + (importedSpend ?? 0);
+        if (financialKey === "overview.total_revenue" && hasRevenue) value = totalRevenue;
+        if (financialKey === "overview.total_spend" && hasSpend) value = totalSpend;
+        if (hasRevenue && hasSpend && totalSpend > 0 && (!revenue.currency || !spend.currency || revenue.currency === spend.currency)) {
+          if (financialKey === "overview.roas") value = totalRevenue / totalSpend;
+          if (financialKey === "overview.roi") value = (totalRevenue - totalSpend) / totalSpend * 100;
+        }
+      }
+      const currentCampaign = await storage.getCampaign(campaignId);
+      if (!currentCampaign || currentCampaign.ownerId !== campaign.ownerId || currentCampaign.clientId !== campaign.clientId
+        || currentCampaign.status !== campaign.status || currentCampaign.currency !== campaign.currency || !(await verifySource())) return unavailable();
+      return value !== null && Number.isFinite(value) ? { ...resolved, currentValue: String(value) } : unavailable();
     } catch {
       return unavailable();
     }

@@ -514,8 +514,8 @@ export default function TrendAnalysis() {
     if ([users, sessions, conversions, engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
     return {
       users, sessions, conversions, engagedSessions,
-      engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : 0,
-      cvr: sessions > 0 ? (conversions / sessions) * 100 : 0,
+      engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : null,
+      cvr: sessions > 0 ? (conversions / sessions) * 100 : null,
     };
   })();
   const exactTrafficComparison = exactCumulativeTraffic;
@@ -1587,9 +1587,9 @@ export default function TrendAnalysis() {
                         authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpc") || { label: 'CPC', value: null, change: null, invertColor: true },
                         authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpm") || { label: 'CPM', value: null, change: null, invertColor: true },
                         { label: 'Sessions', value: authoritativeHeadlineCurrent.sessions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.sessions), change: headlineComparison.sessions },
-                        { label: 'Users', value: authoritativeHeadlineCurrent.users === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.users), change: headlineComparison.users },
+                        { label: usesCumulativeGA4Consumer || responseTrendAggregate?.sources?.some((source: any) => source.id === 'ga4') ? 'Users (daily sum)' : 'Users', value: authoritativeHeadlineCurrent.users === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.users), change: headlineComparison.users },
                         { label: 'CVR', value: authoritativeHeadlineCurrent.cvr === null ? null : formatPct(authoritativeHeadlineCurrent.cvr), change: headlineComparison.cvr },
-                        { label: 'Engagement Rate', value: authoritativeHeadlineCurrent.engagementRate === null ? null : formatPct(normalizeRateToPercent(authoritativeHeadlineCurrent.engagementRate)), change: headlineComparison.engagementRate },
+                        { label: 'Engagement Rate', value: authoritativeHeadlineCurrent.engagementRate === null ? null : formatPct(authoritativeHeadlineCurrent.engagementRate), change: headlineComparison.engagementRate },
                         { label: 'CTR', value: authoritativeHeadlineCurrent.ctr === null ? null : formatPct(authoritativeHeadlineCurrent.ctr), change: headlineComparison.ctr },
                       ].filter((card) => card.value !== null || (usesCumulativeGA4Consumer && schedulerFinancialCardLabels.has(card.label))).map((card, i) => {
                         const schedulerFinancialUnavailable = usesCumulativeGA4Consumer

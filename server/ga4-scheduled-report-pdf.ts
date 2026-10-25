@@ -1,3 +1,4 @@
+import { buildGA4InsightsRollups } from "../shared/ga4-insights";
 import { conversionCreditsMatch } from "../shared/metric-math";
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
@@ -287,59 +288,12 @@ const withTokenRefresh = async <T>(connection: any, fn: (token: string) => Promi
   }
 };
 
-const buildTrendRollups = (dailyRows: any[]) => {
-  const rows = [...dailyRows]
-    .map((row: any) => ({
-      date: String(row?.date || ""),
-      sessions: Number(row?.sessions || 0),
-      users: Number(row?.users || 0),
-      conversions: Number(row?.conversions || 0),
-      revenue: Number(row?.revenue || 0),
-      engagedSessions: Number(row?.engagedSessions || 0),
-      pageviews: Number(row?.pageviews || 0),
-    }))
-    .filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(row.date))
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const sumWindow = (items: any[]) => {
-    const sessions = items.reduce((sum, row) => sum + row.sessions, 0);
-    const conversions = items.reduce((sum, row) => sum + row.conversions, 0);
-    const revenue = Number(items.reduce((sum, row) => sum + row.revenue, 0).toFixed(2));
-    const engagedSessions = items.reduce((sum, row) => sum + row.engagedSessions, 0);
-    const pageviews = items.reduce((sum, row) => sum + row.pageviews, 0);
-    return {
-      sessions,
-      conversions,
-      revenue,
-      engagementRate: sessions > 0 ? engagedSessions / sessions : 0,
-      cr: sessions > 0 ? (conversions / sessions) * 100 : 0,
-      pvps: sessions > 0 ? pageviews / sessions : 0,
-    };
-  };
-  const last7 = sumWindow(rows.slice(-7));
-  const prior7 = sumWindow(rows.slice(-14, -7));
-  const last30 = sumWindow(rows.slice(-30));
-  const prior30 = sumWindow(rows.slice(-60, -30));
-  const last3 = sumWindow(rows.slice(-3));
-  const prior3 = sumWindow(rows.slice(-6, -3));
-  const pctDelta = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : 0;
-  return {
-    availableDays: rows.length,
-    rows,
-    last7,
-    prior7,
-    last30,
-    prior30,
-    last3,
-    prior3,
-    deltas: {
-      sessions7: pctDelta(last7.sessions, prior7.sessions),
-      revenue7: pctDelta(last7.revenue, prior7.revenue),
-      conversions7: pctDelta(last7.conversions, prior7.conversions),
-      sessions3: pctDelta(last3.sessions, prior3.sessions),
-      revenue3: pctDelta(last3.revenue, prior3.revenue),
-      conversions3: pctDelta(last3.conversions, prior3.conversions),
-    },
-  };
+const buildTrendRollups = (dailyRows: any[], dataThroughDate?: string) => {
+  const rollups = buildGA4InsightsRollups(dailyRows, dataThroughDate || null);
+  // Preserve the report's fraction unit while sharing exact calendar coverage with Insights.
+  const fraction = (window: typeof rollups.last7) => ({ ...window, engagementRate: window.engagementRate / 100 });
+  return { ...rollups, last7: fraction(rollups.last7), prior7: fraction(rollups.prior7),
+    last30: fraction(rollups.last30), prior30: fraction(rollups.prior30), last3: fraction(rollups.last3), prior3: fraction(rollups.prior3) };
 };
 
 const buildInsightsItems = (payload: any) => {
@@ -358,7 +312,7 @@ const buildInsightsItems = (payload: any) => {
       confidence: "High",
     });
   }
-  if (rollups.prior7.revenue > 0 && rollups.deltas.revenue7 <= -25) {
+  if (rollups.last7.complete && rollups.prior7.complete && rollups.prior7.revenue > 0 && rollups.deltas.revenue7 <= -25) {
     items.push({
       severity: "high",
       title: "Revenue down vs prior 7 days",
@@ -369,7 +323,7 @@ const buildInsightsItems = (payload: any) => {
       confidence: "Medium",
     });
   }
-  if (rollups.prior7.sessions > 0 && rollups.deltas.sessions7 <= -20) {
+  if (rollups.last7.complete && rollups.prior7.complete && rollups.prior7.sessions > 0 && rollups.deltas.sessions7 <= -20) {
     items.push({
       severity: "medium",
       title: "Traffic drop detected",
@@ -380,7 +334,7 @@ const buildInsightsItems = (payload: any) => {
       confidence: "Medium",
     });
   }
-  if (rollups.prior7.conversions > 0 && rollups.deltas.conversions7 <= -20) {
+  if (rollups.last7.complete && rollups.prior7.complete && rollups.prior7.conversions > 0 && rollups.deltas.conversions7 <= -20) {
     items.push({
       severity: "medium",
       title: "Conversions down vs prior 7 days",
@@ -391,7 +345,7 @@ const buildInsightsItems = (payload: any) => {
       confidence: "Medium",
     });
   }
-  if (rollups.prior7.revenue > 0 && rollups.deltas.revenue7 >= 20) {
+  if (rollups.last7.complete && rollups.prior7.complete && rollups.prior7.revenue > 0 && rollups.deltas.revenue7 >= 20) {
     items.push({
       severity: "positive",
       title: "Revenue momentum improving",
@@ -461,9 +415,9 @@ const buildInsightsActionDescription = (availableDays: number) => {
     return `Only ${dayLabel} available. Trend and anomaly checks need at least 6 days; setup and KPI/Benchmark checks still run.`;
   }
   if (days < 14) {
-    return `${dayLabel} available. Short-window trend checks are active; full 7-day vs prior 7-day analysis starts after 14 days.`;
+    return `${dayLabel} available. Trend checks require consecutive recorded dates; a 7-day comparison needs two complete adjacent windows.`;
   }
-  return `${dayLabel} available. We compare the last 7 days vs the previous 7 days and cross-check KPI/Benchmark performance.`;
+  return `${dayLabel} available. Comparisons are shown only for complete adjacent windows; missing dates are unavailable. KPI/Benchmark performance is checked separately.`;
 };
 
 async function buildGA4ReportPayload(report: any) {
@@ -971,7 +925,7 @@ async function buildGA4ReportPayload(report: any) {
         Number(totals.reduce((sum: number, item: any) => sum + Number(item.revenue), 0).toFixed(2)) === Number(source.revenue) ? totals : []];
     })
   );
-  const insightsRollups = buildTrendRollups(dailyRows);
+  const insightsRollups = buildTrendRollups(dailyRows, reportingWindow.dataThroughDate);
   const currency = String((campaign as any)?.currency || "USD");
   const formatMoney = (value: number) => `${currency} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatNumber = (value: number) => `${Math.round(Number(value || 0)).toLocaleString()}`;
@@ -1257,8 +1211,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["Sessions", formatNumber(payload.breakdownTotals.sessions)],
         ["Users", formatNumber(payload.breakdownTotals.users)],
         ["Conversions", formatConversionCredit(payload.breakdownTotals.conversions)],
-        ["Engagement Rate", formatPct(normalizeRateToPercent(payload.breakdownTotals.engagementRate))],
-        ["Conv. Rate", formatPct(payload.breakdownTotals.sessions > 0 ? (payload.breakdownTotals.conversions / payload.breakdownTotals.sessions) * 100 : 0)],
+        ["Engagement Rate", payload.breakdownTotals.sessions > 0 ? formatPct(normalizeRateToPercent(payload.breakdownTotals.engagementRate)) : "Unavailable"],
+        ["Conv. Rate", payload.breakdownTotals.sessions > 0 ? formatPct((payload.breakdownTotals.conversions / payload.breakdownTotals.sessions) * 100) : "Unavailable"],
       ], 3);
     }
     if (includeRevenue || includeSpend || includePerformance) subheading("Revenue & Financial", 10);
@@ -1564,7 +1518,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       ], 3);
     }
     if (includeTrends) {
-      const trendNoteLines = doc.splitTextToSize("Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.", CW) as string[];
+      const trendNoteLines = doc.splitTextToSize("Daily shows recorded values; missing dates are unavailable. 7d/30d require consecutive recorded days. Monthly comparisons require adjacent complete months.", CW) as string[];
       checkPage(trendNoteLines.length * 4.5 + 6);
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
@@ -1595,7 +1549,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["METRIC", "VALUE", "NOTE"],
         [
           ["Sessions", formatNumber(payload.breakdownTotals.sessions), "Current GA4 total"],
-          ["Users", formatNumber(payload.breakdownTotals.users), ""],
+          ["Users", formatNumber(payload.breakdownTotals.users), "Sum of daily users"],
           ["Conversions", formatConversionCredit(payload.breakdownTotals.conversions), ""],
           ["Revenue", formatMoney(payload.financialRevenue), "Total across revenue sources"],
           ...(payload.financialSpend > 0 ? [["Total Spend", formatMoney(payload.financialSpend), ""]] : []),

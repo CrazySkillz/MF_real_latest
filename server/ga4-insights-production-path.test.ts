@@ -247,13 +247,14 @@ describe("GA4 Insights production calendar paths", () => {
     const end = source.indexOf("async getGA4DailyMetrics", start);
     const method = source.slice(start, end);
 
-    expect(method).toContain("await db.transaction(async (tx: any) =>");
+    expect(method).toContain("await transaction(async (tx: any) =>");
+    expect(method).toContain("this.withGA4RefreshTransaction.bind(this) : db.transaction.bind(db)");
     expect(method).toContain("eq(ga4DailyMetrics.campaignId, cid)");
     expect(method).toContain("eq(ga4DailyMetrics.propertyId, pid)");
     expect(method).toContain("ga4DailyMetrics.date} >= ${start} AND ${ga4DailyMetrics.date} <= ${end}");
     expect(method.indexOf("await tx.delete(ga4DailyMetrics)")).toBeLessThan(method.indexOf("await tx.insert(ga4DailyMetrics)"));
     expect(method).toContain('if (normalizedRows.some((row) => !row)) throw new Error("GA4 daily replacement contains an invalid metric value")');
-    expect(method.indexOf("GA4 daily replacement contains an invalid metric value")).toBeLessThan(method.indexOf("await db.transaction"));
+    expect(method.indexOf("GA4 daily replacement contains an invalid metric value")).toBeLessThan(method.indexOf("await transaction"));
     expect(method).toContain("if (scoped.length !== inputRows.length)");
     expect(method).toContain('throw new Error("GA4 daily replacement row scope mismatch")');
   });

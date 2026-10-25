@@ -2118,16 +2118,8 @@ export default function GA4Metrics() {
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
   const trendsDailyRows = useMemo(() => {
     if (!trendsCampaignStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate) || trendsCampaignStartDate > trendsDataThroughDate) return [];
-    const rowsByDate = new Map(
-      ga4InsightsTimeSeries
-        .filter((row: any) => String(row.date) >= trendsCampaignStartDate && String(row.date) <= trendsDataThroughDate)
-        .map((row: any) => [String(row.date), row]),
-    );
-    const campaignRows: any[] = [];
-    for (let date: string | null = trendsCampaignStartDate; date && date <= trendsDataThroughDate; date = addGA4InsightsDateDays(date, 1)) {
-      campaignRows.push(rowsByDate.get(date) || { date, sessions: 0, users: 0, conversions: 0, revenue: 0, pageviews: 0, engagedSessions: 0, engagementRate: 0 });
-    }
-    return campaignRows;
+    return ga4InsightsTimeSeries.filter((row: any) =>
+      String(row.date) >= trendsCampaignStartDate && String(row.date) <= trendsDataThroughDate);
   }, [ga4InsightsTimeSeries, trendsDataThroughDate, trendsCampaignStartDate]);
   const trendsImportedRows = ga4InsightsTimeSeries
     .filter((row: any) => trendsCampaignStartDate && String(row?.date || "") >= trendsCampaignStartDate && String(row?.date || "") <= trendsDataThroughDate);
@@ -3719,6 +3711,7 @@ export default function GA4Metrics() {
       const includeOverviewLandingPages = reportType !== "custom" || overviewSubsections.landingPages !== false;
       const includeOverviewConversionEvents = reportType !== "custom" || overviewSubsections.conversionEvents !== false;
       const reportingNotes = [
+        "Users are summed daily counts, not unique people across the reporting window.",
         `GA4 metrics (Summary and tables): ${overviewGA4ReportingDate ? `${overviewGA4ReportingStartDate ? `Data from ${formatReportingDateLabel(overviewGA4ReportingStartDate)} through` : "Data through"} ${formatReportingDateLabel(overviewGA4ReportingDate)} (${overviewGA4ReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: ${overviewGA4UpdatedAt}.`,
         ...(includeOverviewRevenue || includeOverviewSpend || includeOverviewPerformance ? [
           `Revenue, Spend, ROAS, ROI and CPA: ${overviewFinancialReportingDate ? `Data through ${formatReportingDateLabel(overviewFinancialReportingDate)} (${overviewFinancialReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: ${overviewFinancialUpdatedAt}. Applies to available figures.`,
@@ -3802,8 +3795,8 @@ export default function GA4Metrics() {
           ["Sessions", fN(sess)],
           ["Users", fN(users)],
           ["Conversions", formatConversionCredit(conv)],
-          ["Engagement Rate", fP(engRate)],
-          ["Conv. Rate", fP(cr)],
+          ["Engagement Rate", sess > 0 ? fP(engRate) : "Unavailable"],
+          ["Conv. Rate", sess > 0 ? fP(cr) : "Unavailable"],
         ], 3);
         y += 2;
       }
@@ -4254,52 +4247,30 @@ export default function GA4Metrics() {
       }
 
       if (includeInsightsTrends && trendSorted.length >= 2) {
-        const trendChartData: { date: string; value: number }[] = [];
+        const trendChartData: { date: string; value: number; recordedDate?: string; month?: string; partial?: boolean }[] = [];
         if (insightsTrendMode === "daily") {
-          let dailyChartRows = trendSorted.slice(-30);
-          while (dailyChartRows.length > 0 && Number(dailyChartRows[0]?.[trendMetric] || 0) === 0) dailyChartRows = dailyChartRows.slice(1);
-          dailyChartRows.forEach((r: any) => trendChartData.push({
-            date: String(r.date || "").slice(5),
+          trendSorted.slice(-30).forEach((r: any) => trendChartData.push({
+            date: String(r.date || "").slice(5), recordedDate: String(r.date),
             value: trendIsRate ? Number((Number(r[trendMetric] || 0) * 100).toFixed(2)) : Number(r[trendMetric] || 0),
           }));
         } else if (insightsTrendMode === "monthly") {
-          const monthMap = new Map<string, any[]>();
-          for (const r of trendSorted) {
-            const ym = String(r.date).slice(0, 7);
-            if (!monthMap.has(ym)) monthMap.set(ym, []);
-            monthMap.get(ym)!.push(r);
-          }
-          Array.from(monthMap.keys()).sort().forEach((ym) => {
-            const rows = monthMap.get(ym)!;
-            const value = trendIsRate
-              ? (() => {
-                  const totalSessions = rows.reduce((s: number, r: any) => s + Number(r.sessions || 0), 0);
-                  const totalEngaged = rows.reduce((s: number, r: any) => s + Number(r.engagedSessions || r.sessions * Number(r.engagementRate || 0) || 0), 0);
-                  return totalSessions > 0 ? (totalEngaged / totalSessions) * 100 : 0;
-                })()
-              : rows.reduce((s: number, r: any) => s + Number(r[trendMetric] || 0), 0);
-            const [yr, mo] = ym.split("-");
-            trendChartData.push({ date: `${new Date(Number(yr), Number(mo) - 1).toLocaleString("en-US", { month: "short" })} '${yr.slice(2)}`, value: Number(value.toFixed(2)) });
+          buildGA4InsightsMonthlySeries(trendSorted, trendsDataThroughDate, trendMetric).forEach(row => {
+            const [yr, mo] = row.month.split("-");
+            trendChartData.push({ date: `${new Date(Number(yr), Number(mo) - 1).toLocaleString("en-US", { month: "short" })} '${yr.slice(2)}`, value: Number(row.value.toFixed(2)), month: row.month, partial: row.partial });
           });
         } else {
           const windowDays = insightsTrendMode === "7d" ? 7 : 30;
-          const chartRows = trendSorted.slice(Math.max(0, trendSorted.length - windowDays * 2));
-          for (let i = windowDays - 1; i < chartRows.length; i++) {
-            const slice = chartRows.slice(i - windowDays + 1, i + 1);
-            const value = trendIsRate
-              ? (() => {
-                  const totalSessions = slice.reduce((s: number, r: any) => s + Number(r.sessions || 0), 0);
-                  const totalEngaged = slice.reduce((s: number, r: any) => s + Number(r.engagedSessions || r.sessions * Number(r.engagementRate || 0) || 0), 0);
-                  return totalSessions > 0 ? (totalEngaged / totalSessions) * 100 : 0;
-                })()
-              : slice.reduce((s: number, r: any) => s + Number(r[trendMetric] || 0), 0);
-            trendChartData.push({ date: String(chartRows[i].date || "").slice(5), value: Number(value.toFixed(2)) });
+          for (const row of trendSorted.slice(-windowDays * 2)) {
+            const rollup = buildGA4InsightsCalendarRollup(trendSorted, String(row.date), windowDays);
+            if (!rollup.complete) continue;
+            const value = trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
+            trendChartData.push({ date: String(row.date).slice(5), recordedDate: String(row.date), value: Number(value.toFixed(2)) });
           }
         }
 
         if (trendChartData.length > 1) {
           sectionTitle("Trends", C.insights);
-          const trendNoteLines = wrapPdfText("Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.", CW - 8);
+          const trendNoteLines = wrapPdfText("Daily shows recorded values; missing dates are unavailable. 7d/30d require consecutive recorded days. Monthly comparisons require adjacent complete months.", CW - 8);
           checkPage(trendNoteLines.length * 4.5 + 77);
           doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
           for (const line of trendNoteLines) { doc.text(line, MX + 4, y); y += 4.5; }
@@ -4342,7 +4313,7 @@ export default function GA4Metrics() {
             trendChartData.forEach((p, idx) => {
               const px = xFor(idx);
               const py = yFor(Number(p.value || 0));
-              if (idx > 0) {
+              if (idx > 0 && addGA4InsightsDateDays(String(trendChartData[idx - 1].recordedDate || ""), 1) === p.recordedDate) {
                 const prev = trendChartData[idx - 1];
                 doc.line(xFor(idx - 1), yFor(Number(prev.value || 0)), px, py);
               }
@@ -4357,7 +4328,8 @@ export default function GA4Metrics() {
             ? trendSorted.slice(-14).reverse().map((r: any, idx: number) => {
                 const curVal = trendIsRate ? Number(r[trendMetric] || 0) * 100 : Number(r[trendMetric] || 0);
                 const sortedIdx = trendSorted.length - 1 - idx;
-                const prevRow = sortedIdx > 0 ? trendSorted[sortedIdx - 1] : null;
+                const previous = sortedIdx > 0 ? trendSorted[sortedIdx - 1] : null;
+                const prevRow = previous && addGA4InsightsDateDays(String(previous.date), 1) === String(r.date) ? previous : null;
                 const prevVal = prevRow ? (trendIsRate ? Number(prevRow[trendMetric] || 0) * 100 : Number(prevRow[trendMetric] || 0)) : 0;
                 const delta = prevRow ? trendDeltaPct(curVal, prevVal) : NaN;
                 return [String(r.date || ""), trendFmtValue(curVal), prevRow ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
@@ -4365,18 +4337,19 @@ export default function GA4Metrics() {
             : insightsTrendMode === "monthly"
               ? trendChartData.slice().reverse().slice(0, 12).map((row, idx, arr) => {
                   const prev = idx < arr.length - 1 ? arr[idx + 1] : null;
-                  const delta = prev ? trendDeltaPct(row.value, prev.value) : NaN;
-                  return [row.date, trendFmtValue(row.value), prev ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
+                  const comparable = prev && !row.partial && !prev.partial && areGA4InsightsMonthsAdjacent(String(row.month), String(prev.month));
+                  const delta = comparable ? trendDeltaPct(row.value, prev!.value) : NaN;
+                  return [row.date, trendFmtValue(row.value), comparable ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
                 })
               : (() => {
                   const cur = insightsTrendMode === "7d" ? trendsRollups.last7 : trendsRollups.last30;
                   const prior = insightsTrendMode === "7d" ? trendsRollups.prior7 : trendsRollups.prior30;
                   const getVal = (rollup: any) => trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
                   const curVal = getVal(cur), priorVal = getVal(prior);
-                  const delta = trendDeltaPct(curVal, priorVal);
+                  const delta = cur.complete && prior.complete ? trendDeltaPct(curVal, priorVal) : null;
                   return [
-                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, trendFmtValue(curVal), `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`],
-                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, trendFmtValue(priorVal), "baseline"],
+                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, cur.complete ? trendFmtValue(curVal) : "Unavailable", delta === null ? "Not comparable" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`],
+                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, prior.complete ? trendFmtValue(priorVal) : "Unavailable", prior.complete ? "baseline" : "Not comparable"],
                   ];
                 })();
           if (trendRows.length > 0) {
@@ -5208,7 +5181,7 @@ export default function GA4Metrics() {
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
     if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
-      return "GA4 completed daily history from campaign creation, with no-activity dates counted as 0";
+      return "GA4 recorded completed daily history; missing dates are unavailable";
     }
     if (id === "integrity:analytics_history_primary_property_only") return "KPI/Benchmark snapshot history + selected property";
     return "Current campaign data";
@@ -5500,7 +5473,7 @@ export default function GA4Metrics() {
       out.push({
         id: "financial:spend_no_revenue",
         severity: "high",
-        title: "Spend recorded, but connected-source revenue is $0",
+        title: `Spend recorded, but connected-source revenue is ${formatMoney(0)}`,
         description: `Connected-source spend is ${formatMoney(Number(financialSpend || 0))}, but connected-source revenue is ${formatMoney(0)} (${toDateRangeLabel}).`,
         recommendation: "Verify revenue events and connected revenue source records for this campaign and reporting window.",
       });
@@ -5510,7 +5483,7 @@ export default function GA4Metrics() {
       out.push({
         id: "financial:revenue_no_spend",
         severity: "medium",
-        title: "Revenue exists, but connected-source spend is $0",
+        title: `Revenue exists, but connected-source spend is ${formatMoney(0)}`,
         description: `Connected-source revenue is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}), but connected-source spend is ${formatMoney(0)}.`,
         recommendation: "Verify the connected spend source and reporting window before acting on ROI, ROAS, or CPA.",
       });
@@ -5743,10 +5716,10 @@ export default function GA4Metrics() {
       });
     }
 
-    // 3) Anomaly detection uses the same scheduler-synchronized, zero-filled calendar dates as Trends.
+    // 3) Anomaly detection uses only recorded completed dates, including explicit zero rows.
     const dates = findingRollups.rows.map((row) => row.date);
     const historyCoverageLabel = "completed";
-    const historyRowsLabel = `${dates.length} campaign dates are available`;
+    const historyRowsLabel = `${dates.length} recorded campaign dates are available`;
     const sevenDayComparisonReady = findingRollups.last7.complete && findingRollups.prior7.complete;
     if (sevenDayComparisonReady) {
       const a = findingRollups.last7;
@@ -5947,7 +5920,7 @@ export default function GA4Metrics() {
         severity: "low",
         title: "Trend signals need more history",
         description: `Current 7-day window ${findingRollups.last7.startDate} to ${findingRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${findingRollups.prior7.startDate} to ${findingRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior window ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
-        recommendation: "Wait until the campaign has enough completed calendar days for a reliable comparison.",
+        recommendation: "Check the daily refresh. Comparisons require recorded data for every day in both windows.",
       });
     }
 
@@ -6877,7 +6850,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Engagement Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatPercentage(rateToPercent(overviewSummaryEngagementRate)))}
+                              {renderSummaryValue(overviewSummaryTotals.sessions > 0 ? formatPercentage(rateToPercent(overviewSummaryEngagementRate)) : "Unavailable")}
                             </p>
                           </CardContent>
                         </Card>
@@ -6885,9 +6858,9 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Conv. Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatPct((overviewSummaryTotals.sessions || 0) > 0
-                                ? ((overviewSummaryTotals.conversions || 0) / (overviewSummaryTotals.sessions || 1)) * 100
-                                : 0))}
+                              {renderSummaryValue(overviewSummaryTotals.sessions > 0
+                                ? formatPct((overviewSummaryTotals.conversions / overviewSummaryTotals.sessions) * 100)
+                                : "Unavailable")}
                             </p>
                           </CardContent>
                         </Card>
@@ -9558,7 +9531,7 @@ export default function GA4Metrics() {
                             if (rollingWindow) {
                               return (
                                 <div className="text-sm text-muted-foreground/70 py-4">
-                                  {rollingWindow.label} comparison unavailable. The campaign does not yet contain enough completed calendar days for both adjacent windows.{intradayHistoryNote}
+                                  {rollingWindow.label} comparison unavailable. Recorded daily history does not cover both adjacent windows.{intradayHistoryNote}
                                 </div>
                               );
                             }
@@ -9595,7 +9568,7 @@ export default function GA4Metrics() {
                               const row: any = dailyRowsByDate.get(cursor);
                               chartData.push({
                                 date: cursor.slice(5),
-                                value: row ? (isRate ? Number((Number(row[metric] || 0) * 100).toFixed(2)) : Number(row[metric] || 0)) : 0,
+                                value: row ? (isRate ? Number((Number(row[metric] || 0) * 100).toFixed(2)) : Number(row[metric] || 0)) : null,
                                 idx: chartData.length,
                               });
                               cursor = addGA4InsightsDateDays(cursor, 1) || "";
@@ -9702,12 +9675,12 @@ export default function GA4Metrics() {
                               </div>
                               {insightsTrendMode === "daily" && (
                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
-                                  Missing stored dates are shown as 0.
+                                  Missing stored dates are unavailable; recorded zero values remain 0.
                                 </div>
                               )}
                               {insightsTrendMode === "7d" && (
                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-7d-chart-coverage">
-                                  {chartData.length > 0 ? <>7-day chart {rollingChartStartDate} {"\u2192"} {rollingChartEndDate}: {chartData.filter((row) => row.value !== null).length} complete rolling window{chartData.filter((row) => row.value !== null).length === 1 ? "" : "s"}.</> : <>7-day chart: no complete rolling windows in the displayed range.</>} Each point totals 7 consecutive calendar days; no-activity dates count as 0.
+                                  {chartData.length > 0 ? <>7-day chart {rollingChartStartDate} {"\u2192"} {rollingChartEndDate}: {chartData.filter((row) => row.value !== null).length} complete rolling window{chartData.filter((row) => row.value !== null).length === 1 ? "" : "s"}.</> : <>7-day chart: no complete rolling windows in the displayed range.</>} Each point requires 7 recorded consecutive calendar days, including recorded zero values.
                                 </div>
                               )}
                               {insightsTrendMode === "monthly" && (

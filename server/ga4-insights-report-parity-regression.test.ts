@@ -33,7 +33,7 @@ describe("GA4 Insights report parity", () => {
     expect(scheduledEnd).toBeGreaterThan(scheduledStart);
 
     const reportTrendCopy =
-      "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.";
+      "Daily shows recorded values; missing dates are unavailable. 7d/30d require consecutive recorded days. Monthly comparisons require adjacent complete months.";
     expect(liveSection).not.toContain("Completed-day cutoff");
     for (const section of [reportSection, scheduledSection]) {
       expect(section).toContain("Completed-day cutoff");

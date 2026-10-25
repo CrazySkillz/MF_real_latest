@@ -267,7 +267,7 @@ export default function ExecutiveSummary() {
     sessions: "Sessions",
     users: "Users",
   };
-  const conversionRateLabel = aggregateMetricAvailable("clicks") ? "Click-Through CVR" : "Conversion Rate";
+  const conversionRateLabel = performanceSummary?.totals?.cvr?.sources?.includes("clicks") ? "Click-Through CVR" : "Conversion Rate";
   const roiAvailable = aggregateMetricAvailable("roi");
   const roiValue = aggregateMetricValue("roi");
   const executiveMetricParts: string[] = [];
@@ -606,6 +606,7 @@ export default function ExecutiveSummary() {
                             </div>
                             <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
                               {aggregateMetricSourceLabel(reachMetricKey)}
+                              {reachMetricKey === "users" && performanceSummary?.totals?.users?.sources?.includes("ga4") && <span className="block">Summed daily users; not unique people across the reporting window.</span>}
                             </div>
                           </div>
                         </div>

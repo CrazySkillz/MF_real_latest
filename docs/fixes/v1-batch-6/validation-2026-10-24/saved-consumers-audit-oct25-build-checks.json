@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-25T14:34:26.412Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "saved-consumers-audit-oct25-typecheck.log"
+    }
+  ]
+}

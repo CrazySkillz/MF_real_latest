@@ -1,0 +1,207 @@
+{
+  "at": "2026-10-25T15:12:03.920Z",
+  "baseCommit": "9f7a40db5be72b89d256c44d94db730ae279d399",
+  "committed": false,
+  "deployed": false,
+  "newAcceptance": {
+    "passed": 72,
+    "failed": 0,
+    "packet": "goal-values-ownership-oct25.json"
+  },
+  "expanded": {
+    "passed": 426,
+    "failed": 4,
+    "skipped": 0,
+    "packet": "goal-values-final-oct25.json"
+  },
+  "finalGuardAndGA4Neighbors": {
+    "passed": 177,
+    "failed": 0,
+    "packet": "goal-values-ownership-oct25.json"
+  },
+  "baseline": {
+    "commit": "9f7a40db5be72b89d256c44d94db730ae279d399",
+    "packet": "goal-neighbor-baseline-oct25.json",
+    "matchingFailures": [
+      "Google Ads revenue platform context adds Google Ads to storage revenue context filtering without routing non-GA4 totals through LinkedIn",
+      "Google Ads revenue platform context permits Google Ads on revenue read and manual source endpoints",
+      "Google Ads revenue scheduler flow includes Google Ads revenue sources in refreshable provider context loops",
+      "Google Ads revenue scheduler flow keeps Google Ads auto-refresh source-scoped with stable source IDs"
+    ]
+  },
+  "latestPerFile": [
+    {
+      "file": "alert-disabled-save-latency-regression.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "alert-email-regression.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "campaign-alert-current-value-regression.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "ga4-alert-publication-retention.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "ga4-google-ads-scheduler-regression.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "ga4-kpi-alert-contract-regression.test.ts",
+      "packet": "goal-values-ownership-oct25.json",
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "ga4-kpi-saved-overview.test.ts",
+      "packet": "goal-values-ownership-oct25.json",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "google-ads-ga4-spend-disconnect-transaction.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "google-ads-goal-values.test.ts",
+      "packet": "goal-values-ownership-oct25.json",
+      "passed": 72,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "google-ads-revenue-kpi-benchmark-ui.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "google-ads-revenue-platform-context.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 0,
+      "failed": 2,
+      "skipped": 0
+    },
+    {
+      "file": "google-ads-revenue-scheduler-flow.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 0,
+      "failed": 2,
+      "skipped": 0
+    },
+    {
+      "file": "google-ads-revenue-wizard-context.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "google-ads-service-account.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "notification-alert-concurrency-regression.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "v1-batch6-google-ads-enrichment.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "v1-batch6-google-ads-saved-consumers.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "v1-batch6-google-ads-values.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 76,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "v1-batch6-paid-isolation.test.ts",
+      "packet": "goal-values-final-oct25.json",
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "latestPerFileTotals": {
+    "passed": 427,
+    "failed": 4,
+    "skipped": 0
+  },
+  "characterizationWarning": "17 passing cases reproduce the pre-fix mismatch, not current feature acceptance. Latest-per-file totals combine two runs, not a fresh whole-repository run. Six separate earlier source-safety failures remain open.",
+  "buildPackets": [
+    "goal-values-build-oct25-build-checks.json",
+    "goal-values-ownership-oct25-build-checks.json"
+  ],
+  "access": {
+    "userBrowser": false,
+    "provider": false,
+    "productionDatabase": false,
+    "realEmail": false,
+    "databaseMigration": false,
+    "existingDataRepair": false
+  },
+  "remaining": [
+    "Full persisted goal lifecycle and deployed interaction",
+    "Provider truth and historical data",
+    "All report templates and rendered PDF layout",
+    "Immutable historical reports: V1-060, Batch 7",
+    "Remaining Batch 6 inventory; all nine release acceptances remain OPEN"
+  ],
+  "sha256": {
+    "client/src/pages/google-ads-analytics.tsx": "b2ef7b391c233136d0c1e2c0394e1ea7eb840a8446d74e10ff159ce7c0a84c8f",
+    "client/src/pages/google-ads-analytics/GoogleAdsKpiModal.tsx": "0f58691b0170982036701b9113eefa20193153808b1d3a59dce381b356fb7cd8",
+    "client/src/pages/google-ads-analytics/GoogleAdsBenchmarkModal.tsx": "7cbe8e12f4f200f79737093b7ca15e379dd134c06f80150d9c65c953c42eac36",
+    "server/utils/ga4-alert-current-value.ts": "bea60e4a27502b31be18cdfbe8c4a4b612c3d6c8c686b1b56b8e1c82ca00b6aa",
+    "server/routes-oauth.ts": "2e568d017874e6bc3b6767161b8b177b75205567e1fb0c8393190d99287bd1a1",
+    "server/storage.ts": "c06ef7e0f208ac2b9795cba997e7bb345c10edb3b11d6206075d2ec8fc9658b3",
+    "server/report-scheduler.ts": "943854cb86ea402306a2620a8213ab0375f2f84516e58772394c0c4301309718",
+    "server/google-ads-goal-values.test.ts": "b2ca71e72d7ff30e192dc86112cc2537bb033528d14980ff52bfc97799ed0699",
+    "server/v1-batch6-google-ads-values.test.ts": "4d5c24a8fa2b4b2e2840b9cd6868f2b61e946cb1c916ad2b060da9ae6dd02021",
+    "server/v1-batch6-google-ads-saved-consumers.test.ts": "fd5b53bbea5f366fb97681bd52b80ca2990432132533bb56aaf24b6bc0f5a71f",
+    "server/google-ads-revenue-kpi-benchmark-ui.test.ts": "d22ae893c354dd69b219c125dacaaa1041dce13b9ca8c1313d94aca1d695cb2a",
+    "docs/fixes/v1-batch-6/README.md": "8e4c018a7f06fe2e8c81b2403e3045b12d89dfdd640417c05f124414e9def6ac",
+    "docs/V1_RELEASE_READINESS.md": "0fcf23155cff288b0cf2924e96c0d586e7c0c555fe7eb9102baa10ba27933e03"
+  }
+}

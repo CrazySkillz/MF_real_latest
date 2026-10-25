@@ -1,0 +1,68 @@
+{
+    "observedAt":  "2026-10-25T14:34:07.7920208Z",
+    "currentRevision":  "9f7a40db5be72b89d256c44d94db730ae279d399",
+    "originalAuditRevision":  "777aae6f6353e998d60b635d3e66b413093117c2",
+    "scope":  "Google Ads stored/live goal value and scheduled KPI/Benchmark renderer characterization; existing V1-128, with V1-106 report availability dependency.",
+    "classification":  "Pre-change reproduction, not fixed-flow or production acceptance.",
+    "packet":  "saved-consumers-audit-final-oct25.json",
+    "execution":  {
+                      "files":  4,
+                      "skipped":  0,
+                      "failed":  0,
+                      "passed":  35
+                  },
+    "characterizationCases":  17,
+    "neighboringRegressionCases":  18,
+    "findings":  [
+                     "Current and original-audit resolvers return the saved Google Ads value without resolving current Ads metrics. Synthetic cases demonstrate both false-positive and false-negative alert decisions relative to the displayed current value.",
+                     "Current and original-audit KPI/Benchmark report builders render the stored 137 while the actual page resolver returns 10.",
+                     "Current and original-audit KPI/Benchmark report formatters render null as zero.",
+                     "Current page CPC is unavailable with no clicks, but a previously stored zero remains eligible for the tested below-threshold alert decision."
+                 ],
+    "preservationBoundary":  "Current-value inputs are user-editable and save payloads do not distinguish automatic prefill from manual overrides. A correction must preserve intentional manual values and must not guess the origin of existing stored numbers.",
+    "hashes":  [
+                   {
+                       "sha256":  "b8d173831854d34693697a7ecb3c70ccbb3019d3ee8cc1123f737f473987b507",
+                       "file":  "server/v1-batch6-google-ads-saved-consumers.test.ts"
+                   },
+                   {
+                       "sha256":  "da1a2b2397499439b5473aee7e32c578ea182ba48e19cbaec6fa1b02e8a8ea6d",
+                       "file":  "client/src/pages/google-ads-analytics.tsx"
+                   },
+                   {
+                       "sha256":  "6b40323b0feba190703ec9d04f9d5b65893addcdd952a6e763c9a4a004d42a17",
+                       "file":  "client/src/pages/google-ads-analytics/GoogleAdsKpiModal.tsx"
+                   },
+                   {
+                       "sha256":  "b41b72c9637474d2741465e21fba2641d1b32c1a9e4f8976521cf757f6912bf2",
+                       "file":  "client/src/pages/google-ads-analytics/GoogleAdsBenchmarkModal.tsx"
+                   },
+                   {
+                       "sha256":  "4d1dfa2a25e31379b9d62bccfb71fe2aa602cf8fc60c3557ec2c7d1a67cf484a",
+                       "file":  "server/utils/campaign-current-values.ts"
+                   },
+                   {
+                       "sha256":  "9210c31bf1cc6bf8505a91b71045797fc531d4d1dba3fb50aab4c21cbd875985",
+                       "file":  "server/utils/ga4-alert-current-value.ts"
+                   },
+                   {
+                       "sha256":  "1ba84a2a5644ba2972fa6518e7d12079bb96c6d6987d3411fd62854f92c7ad40",
+                       "file":  "server/utils/alert-evaluation.ts"
+                   },
+                   {
+                       "sha256":  "3b1ae1d1283aa30c9cd13a76c72f7113616a241a27931587d90e0fccc7126577",
+                       "file":  "server/utils/alert-decision.ts"
+                   },
+                   {
+                       "sha256":  "7dc3f5a94ab985abab761c6df07c0d87d24eea6c2e09415b730dbaa33c8b225e",
+                       "file":  "server/report-scheduler.ts"
+                   }
+               ],
+    "limits":  [
+                   "No application code, persisted data, provider, browser or email access.",
+                   "Synthetic goals and captured renderer text, not real PDF layout or delivery validation.",
+                   "No actual live false alert or report occurrence is claimed.",
+                   "Add/edit/delete goal handlers, full scheduled execution, other templates and report snapshot lifecycle remain unverified in this packet.",
+                   "Existing audit assignments are unchanged; these are not new finding IDs or evidence of a regression introduced by the latest deployment."
+               ]
+}

@@ -22,6 +22,7 @@ import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFina
 import { deriveTrendFinancialRatios, formatTrendComparison, resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 import { getCampaignMetricTotals } from "./utils/campaign-current-values";
+import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
 import { getLatestCompleteReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
@@ -3833,6 +3834,13 @@ export async function buildPdfAttachmentForReport(args: {
     };
 
     addGoogleAdsRevenueSemantics();
+    if (platformType === "google_ads" && ["kpis", "benchmarks"].includes(reportType.toLowerCase())) {
+      ensureSpace(18);
+      text("Automatic goals: current 90 completed days, bounded by campaign start.", left, y, 9, "normal", [71, 85, 105]);
+      y += 6;
+      text("Saved goals: the entered current value. These values are not historical snapshots.", left, y, 9, "normal", [71, 85, 105]);
+      y += 12;
+    }
 
     // Content by report type (start with high-signal types; fall back gracefully).
     if (reportType.toLowerCase() === "kpis") {
@@ -3845,6 +3853,10 @@ export async function buildPdfAttachmentForReport(args: {
       let kpis: any[] = [];
       try {
         kpis = await storage.getPlatformKPIs(platformType, campaignId);
+        if (platformType === "google_ads") {
+          const cache = new Map<string, Promise<any>>();
+          kpis = await Promise.all(kpis.map(row => resolveAlertCurrentValueForDecision(row, cache)));
+        }
       } catch {
         kpis = [];
       }
@@ -3880,7 +3892,8 @@ export async function buildPdfAttachmentForReport(args: {
           const name = safeText(kpi?.name || "KPI");
           const metric = safeText(kpi?.metricKey || kpi?.metric || "");
           const status = safeText(kpi?.status || "");
-          const cur = safeText(formatWithUnit(kpi?.currentValue, kpi?.unit));
+          const cur = platformType === "google_ads" && (kpi?.currentValue == null || String(kpi.currentValue).trim() === '' || !Number.isFinite(Number(kpi.currentValue)))
+            ? "Unavailable" : safeText(formatWithUnit(kpi?.currentValue, kpi?.unit));
           const tgt = safeText(formatWithUnit(kpi?.targetValue, kpi?.unit));
 
           // Truncate long names so columns don't collide
@@ -3902,9 +3915,13 @@ export async function buildPdfAttachmentForReport(args: {
 
       let benchmarks: any[] = [];
       try {
-        benchmarks = campaignId
+        benchmarks = platformType === "google_ads" ? await storage.getPlatformBenchmarks(platformType, campaignId) : campaignId
           ? await storage.getCampaignBenchmarks(campaignId)
           : await storage.getPlatformBenchmarks(platformType);
+        if (platformType === "google_ads") {
+          const cache = new Map<string, Promise<any>>();
+          benchmarks = await Promise.all(benchmarks.map(row => resolveAlertCurrentValueForDecision(row, cache)));
+        }
       } catch {
         benchmarks = [];
       }
@@ -3936,7 +3953,8 @@ export async function buildPdfAttachmentForReport(args: {
           }
           const name = safeText(b?.name || "Benchmark");
           const metric = safeText(b?.metric || "");
-          const cur = safeText(formatWithUnit(b?.currentValue, b?.unit));
+          const cur = platformType === "google_ads" && (b?.currentValue == null || String(b.currentValue).trim() === '' || !Number.isFinite(Number(b.currentValue)))
+            ? "Unavailable" : safeText(formatWithUnit(b?.currentValue, b?.unit));
           const tgt = safeText(formatWithUnit(b?.benchmarkValue, b?.unit));
           const nameShort = name.length > 30 ? `${name.slice(0, 29)}…` : name;
 

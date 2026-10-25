@@ -127,7 +127,7 @@ export default function GoogleAdsAnalytics() {
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [editingKPI, setEditingKPI] = useState<any>(null);
   const [kpiForm, setKpiForm] = useState({
-    name: '', metric: '', targetValue: '', description: '', currentValue: '', unit: '',
+    name: '', metric: '', targetValue: '', description: '', currentValue: '', currentValueMode: 'automatic', unit: '',
     priority: 'high', status: 'active', category: '', timeframe: 'monthly', trackingPeriod: '30',
     alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
     alertThreshold: '', alertCondition: 'below', emailRecipients: '',
@@ -137,7 +137,7 @@ export default function GoogleAdsAnalytics() {
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const [benchmarkForm, setBenchmarkForm] = useState({
-    name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '',
+    name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', currentValueMode: 'automatic', unit: '',
     benchmarkType: 'custom' as 'industry' | 'custom',
     alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
     alertThreshold: '', alertCondition: 'below', emailRecipients: '',
@@ -807,6 +807,13 @@ export default function GoogleAdsAnalytics() {
     return map[key] ?? Number.NaN;
   };
 
+  // Goal endpoints resolve automatic values for the page, alerts and reports alike.
+  const getGoalCurrentValue = (goal: any): number => {
+    const value = goal?.currentValue;
+    return goal?.__alertDecisionEligible === false || value == null || String(value).trim() === ''
+      ? Number.NaN : Number(value);
+  };
+
   // Helper: compute KPI/Benchmark progress
   const computeProgress = (current: number, target: number, metricKey: string) => {
     if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return { pct: 0, status: 'unknown' as const };
@@ -828,7 +835,7 @@ export default function GoogleAdsAnalytics() {
     const items = Array.isArray(kpisData) ? kpisData : [];
     let onTrack = 0, needsAttention = 0, behind = 0, totalPct = 0;
     items.forEach((kpi: any) => {
-      const current = getLiveMetricValue(kpi.metric || kpi.metricKey || '');
+      const current = getGoalCurrentValue(kpi);
       const target = parseFloat(kpi.targetValue || '0');
       const p = computeProgress(current, target, kpi.metric || kpi.metricKey || '');
       if (p.status === 'on_track') onTrack++;
@@ -845,7 +852,7 @@ export default function GoogleAdsAnalytics() {
     const items = Array.isArray(benchmarksData) ? benchmarksData : [];
     let onTrack = 0, needsAttention = 0, behind = 0, totalPct = 0;
     items.forEach((b: any) => {
-      const current = getLiveMetricValue(b.metric || '');
+      const current = getGoalCurrentValue(b);
       const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
       const p = computeProgress(current, benchVal, b.metric || '');
       if (p.status === 'on_track') onTrack++;
@@ -1115,7 +1122,7 @@ export default function GoogleAdsAnalytics() {
     const kpis = Array.isArray(kpisData) ? kpisData : [];
     kpis.forEach((kpi: any) => {
       const metricKey = kpi.metric || kpi.metricKey || '';
-      const current = getLiveMetricValue(metricKey);
+      const current = getGoalCurrentValue(kpi);
       const target = parseFloat(kpi.targetValue || '0');
       const p = computeProgress(current, target, metricKey);
       const def = getGoogleAdsMetricDef(metricKey, currency);
@@ -1145,7 +1152,7 @@ export default function GoogleAdsAnalytics() {
     const benchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
     benchmarks.forEach((b: any) => {
       const metricKey = b.metric || '';
-      const current = getLiveMetricValue(metricKey);
+      const current = getGoalCurrentValue(b);
       const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
       const p = computeProgress(current, benchVal, metricKey);
       const def = getGoogleAdsMetricDef(metricKey, currency);
@@ -1232,13 +1239,15 @@ export default function GoogleAdsAnalytics() {
         }
       }
     }
-    const currentValue = stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric));
-    if (!Number.isFinite(Number(currentValue))) {
+    const currentValue = kpiForm.currentValueMode === 'automatic'
+      ? String(getLiveMetricValue(kpiForm.metric)) : stripNumberFormatting(kpiForm.currentValue);
+    if (!currentValue.trim() || !Number.isFinite(Number(currentValue))) {
       toast({ title: 'Current value unavailable', description: 'Enter a verified current value or wait for source data.', variant: 'destructive' });
       return;
     }
     const payload = {
       name: kpiForm.name, metric: kpiForm.metric, metricKey: kpiForm.metric,
+      calculationConfig: { ...editingKPI?.calculationConfig, currentValueMode: kpiForm.currentValueMode || 'manual' },
       targetValue: kpiForm.targetValue,
       currentValue,
       description: kpiForm.description,
@@ -1272,13 +1281,15 @@ export default function GoogleAdsAnalytics() {
         }
       }
     }
-    const currentValue = stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric));
-    if (!Number.isFinite(Number(currentValue))) {
+    const currentValue = benchmarkForm.currentValueMode === 'automatic'
+      ? String(getLiveMetricValue(benchmarkForm.metric)) : stripNumberFormatting(benchmarkForm.currentValue);
+    if (!currentValue.trim() || !Number.isFinite(Number(currentValue))) {
       toast({ title: 'Current value unavailable', description: 'Enter a verified current value or wait for source data.', variant: 'destructive' });
       return;
     }
     const payload = {
       name: benchmarkForm.name, metric: benchmarkForm.metric,
+      calculationConfig: { ...editingBenchmark?.calculationConfig, currentValueMode: benchmarkForm.currentValueMode || 'manual' },
       benchmarkValue: benchmarkForm.benchmarkValue, targetValue: benchmarkForm.benchmarkValue,
       currentValue,
       description: benchmarkForm.description, industry: benchmarkForm.industry,
@@ -1675,7 +1686,7 @@ export default function GoogleAdsAnalytics() {
                 <Button
                   onClick={() => {
                     setEditingKPI(null);
-                    setKpiForm({ name: '', metric: '', targetValue: '', description: '', currentValue: '', unit: '', priority: 'high', status: 'active', category: '', timeframe: 'monthly', trackingPeriod: '30', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' });
+                    setKpiForm({ name: '', metric: '', targetValue: '', description: '', currentValue: '', currentValueMode: 'automatic', unit: '', priority: 'high', status: 'active', category: '', timeframe: 'monthly', trackingPeriod: '30', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' });
                     setIsKPIModalOpen(true);
                   }}
                   variant="outline" size="sm" className="border-border"
@@ -1710,7 +1721,7 @@ export default function GoogleAdsAnalytics() {
                   {kpisData.map((kpi: any) => {
                     const metricKey = kpi.metric || kpi.metricKey || '';
                     const metricDef = getGoogleAdsMetricDef(metricKey, currency);
-                    const currentVal = getLiveMetricValue(metricKey);
+                      const currentVal = getGoalCurrentValue(kpi);
                     const targetVal = parseFloat(kpi.targetValue || '0');
                     const progress = computeProgress(currentVal, targetVal, metricKey);
                     const progressFill = Math.min(progress.pct, 100);
@@ -1727,6 +1738,7 @@ export default function GoogleAdsAnalytics() {
                                 {metricKey && <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono">{metricKey.toUpperCase()}</Badge>}
                               </div>
                               <CardDescription className="text-sm">{kpi.description || `Track ${metricDef.label} performance against target`}</CardDescription>
+                              <p className="text-xs text-muted-foreground">{kpi.calculationConfig?.currentValueMode === 'automatic' ? 'Automatic · 90 completed days' : 'Saved current value'}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
@@ -1734,6 +1746,7 @@ export default function GoogleAdsAnalytics() {
                                   setEditingKPI(kpi);
                                   setKpiForm({
                                     name: kpi.name || '',
+                                    currentValueMode: kpi.calculationConfig?.currentValueMode === 'automatic' ? 'automatic' : 'manual',
                                     metric: metricKey,
                                     targetValue: kpi.targetValue || '',
                                     description: kpi.description || '',
@@ -1810,7 +1823,7 @@ export default function GoogleAdsAnalytics() {
                 <Button
                   onClick={() => {
                     setEditingBenchmark(null);
-                    setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '', benchmarkType: 'custom', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' });
+                    setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', currentValueMode: 'automatic', unit: '', benchmarkType: 'custom', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' });
                     setIsBenchmarkModalOpen(true);
                   }}
                   variant="outline" size="sm" className="border-border"
@@ -1836,7 +1849,7 @@ export default function GoogleAdsAnalytics() {
                   {benchmarksData.map((b: any) => {
                     const metricKey = b.metric || '';
                     const metricDef = getGoogleAdsMetricDef(metricKey, currency);
-                    const currentVal = getLiveMetricValue(metricKey);
+                      const currentVal = getGoalCurrentValue(b);
                     const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
                     const progress = computeProgress(currentVal, benchVal, metricKey);
                     const progressFill = Math.min(progress.pct, 100);
@@ -1853,6 +1866,7 @@ export default function GoogleAdsAnalytics() {
                                 {b.industry && <Badge variant="secondary" className="text-xs">{b.industry}</Badge>}
                               </div>
                               <CardDescription className="text-sm">{b.description || `Benchmark ${metricDef.label} against industry standards`}</CardDescription>
+                              <p className="text-xs text-muted-foreground">{b.calculationConfig?.currentValueMode === 'automatic' ? 'Automatic · 90 completed days' : 'Saved current value'}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
@@ -1860,6 +1874,7 @@ export default function GoogleAdsAnalytics() {
                                   setEditingBenchmark(b);
                                   setBenchmarkForm({
                                     name: b.name || '',
+                                    currentValueMode: b.calculationConfig?.currentValueMode === 'automatic' ? 'automatic' : 'manual',
                                     metric: metricKey,
                                     benchmarkValue: b.benchmarkValue || b.targetValue || '',
                                     description: b.description || '',
@@ -2413,7 +2428,7 @@ export default function GoogleAdsAnalytics() {
                             <div className="space-y-2">
                               {(Array.isArray(kpisData) ? kpisData : []).slice(0, 5).map((kpi: any) => {
                                 const metricKey = kpi.metric || kpi.metricKey || '';
-                                const current = getLiveMetricValue(metricKey);
+                                const current = getGoalCurrentValue(kpi);
                                 const target = parseFloat(kpi.targetValue || '0');
                                 const p = computeProgress(current, target, metricKey);
                                 const def = getGoogleAdsMetricDef(metricKey, currency);
@@ -2446,7 +2461,7 @@ export default function GoogleAdsAnalytics() {
                             <div className="space-y-2">
                               {(Array.isArray(benchmarksData) ? benchmarksData : []).slice(0, 5).map((b: any) => {
                                 const metricKey = b.metric || '';
-                                const current = getLiveMetricValue(metricKey);
+                                const current = getGoalCurrentValue(b);
                                 const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
                                 const p = computeProgress(current, benchVal, metricKey);
                                 const def = getGoogleAdsMetricDef(metricKey, currency);
@@ -2484,7 +2499,7 @@ export default function GoogleAdsAnalytics() {
                               <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-1">KPIs on track ({kpiTracker.onTrack})</div>
                               {(Array.isArray(kpisData) ? kpisData : []).map((kpi: any) => {
                                 const metricKey = kpi.metric || kpi.metricKey || '';
-                                const current = getLiveMetricValue(metricKey);
+                                const current = getGoalCurrentValue(kpi);
                                 const target = parseFloat(kpi.targetValue || '0');
                                 const p = computeProgress(current, target, metricKey);
                                 if (p.status !== 'on_track') return null;
@@ -2502,7 +2517,7 @@ export default function GoogleAdsAnalytics() {
                               <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-1">Benchmarks on track ({benchmarkTracker.onTrack})</div>
                               {(Array.isArray(benchmarksData) ? benchmarksData : []).map((b: any) => {
                                 const metricKey = b.metric || '';
-                                const current = getLiveMetricValue(metricKey);
+                                const current = getGoalCurrentValue(b);
                                 const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
                                 const p = computeProgress(current, benchVal, metricKey);
                                 if (p.status !== 'on_track') return null;

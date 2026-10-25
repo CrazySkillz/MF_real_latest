@@ -111,6 +111,7 @@ describe('Google Ads ratio availability propagates through page consumers', () =
       formatGoogleAdsMetricValue: bind(page.declarations.get('formatGoogleAdsMetricValue')!, 'formatGoogleAdsMetricValue', { getGoogleAdsMetricDef }),
       fmt: value('fmt'), fmtCurrency: (n: number) => getGoogleAdsMetricDef('spend', 'EUR').format(n), fmtPct: value('fmtPct', { formatPct }),
       getLiveMetricValue: value('getLiveMetricValue', { summary: f.summary, hasGoogleAdsAttributedRevenue: false }),
+      getGoalCurrentValue: value('getGoalCurrentValue'),
       computeProgress: value('computeProgress', { LOWER_IS_BETTER_METRICS: value('LOWER_IS_BETTER_METRICS') }),
       computeGadsReliability: () => 'low', kpisData: [{ id: 'missing-share', metric: 'searchImpressionShare', targetValue: 50 }, { id: 'clicks', metric: 'clicks', targetValue: 100 }], benchmarksData: [] };
     const insights = value('googleAdsInsights', env);
@@ -244,6 +245,7 @@ describe('Google Ads unavailable inputs and currency propagate into goals', () =
     const env: Record<string, any> = { summary, hasGoogleAdsAttributedRevenue: false, googleAdsAttributedRevenue: Number.NaN,
       googleAdsAttributedProfit: Number.NaN, googleAdsAttributedRoas: Number.NaN, googleAdsAttributedRoi: Number.NaN, ...overrides };
     env.getLiveMetricValue = value('getLiveMetricValue', env);
+    env.getGoalCurrentValue = value('getGoalCurrentValue');
     env.computeProgress = value('computeProgress', { LOWER_IS_BETTER_METRICS: value('LOWER_IS_BETTER_METRICS') });
     return env;
   }
@@ -261,7 +263,7 @@ describe('Google Ads unavailable inputs and currency propagate into goals', () =
   for (const [tracker, itemsKey] of [['kpiTracker', 'kpisData'], ['benchmarkTracker', 'benchmarksData']]) {
     it(`${tracker} counts unknown separately and excludes it from the average`, () => {
       const env = goalEnv();
-      const result = value(tracker, { ...env, [itemsKey]: [{ metric: 'cpc', targetValue: 2 }, { metric: 'impressions', targetValue: 100 }] });
+      const result = value(tracker, { ...env, [itemsKey]: [{ metric: 'cpc', currentValue: null, targetValue: 2 }, { metric: 'impressions', currentValue: '100', targetValue: 100 }] });
       expect(result).toMatchObject({ total: 2, unavailable: 1, onTrack: 1, behind: 0, avgPct: 100 });
     });
   }
@@ -285,11 +287,11 @@ describe('Google Ads unavailable inputs and currency propagate into goals', () =
   it.each(['KPI', 'Benchmark'])('%s save refuses unavailable automatic values and accepts explicit zero', kind => {
     const lower = kind === 'KPI' ? 'kpi' : 'benchmark';
     const mutate = vi.fn(), toast = vi.fn();
-    const form = { metric: 'totalRevenue', currentValue: '', name: 'Revenue', targetValue: '100', benchmarkValue: '100', unit: 'EUR' };
+    const form = { metric: 'totalRevenue', currentValue: '', currentValueMode: 'automatic', name: 'Revenue', targetValue: '100', benchmarkValue: '100', unit: 'EUR' };
     const env = { ...goalEnv(), [`${lower}Form`]: form, [`editing${kind}`]: null, [`create${kind === 'KPI' ? 'Kpi' : kind}Mutation`]: { mutate }, toast, currency: 'EUR',
       stripNumberFormatting: value('stripNumberFormatting') };
     const save = value(`handleCreate${kind}`, env);
     save(); expect(mutate).not.toHaveBeenCalled(); expect(toast).toHaveBeenCalledOnce();
-    form.currentValue = '0'; save(); expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ currentValue: '0' }));
+    form.currentValueMode = 'manual'; form.currentValue = '0'; save(); expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ currentValue: '0' }));
   });
 });

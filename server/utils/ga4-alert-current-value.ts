@@ -22,7 +22,7 @@ import {
 import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 import { getCampaignMetricTotals, resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
-import { getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, resolveGA4DailyFreshness } from "./reporting-timezone";
+import { getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getReportingDateWindow, resolveGA4DailyFreshness } from "./reporting-timezone";
 import { isSupportedGA4ConnectionMethod } from "./ga4-service-account";
 
 const isGA4Platform = (value: unknown) => {
@@ -120,6 +120,81 @@ export async function resolveAlertCurrentValueForDecision<T extends {
   options: { allowCredentialRefresh?: boolean; requireCurrentTrafficFreshness?: boolean; providerCoverageThroughDate?: string | null; useSavedOverview?: boolean } = {},
 ): Promise<T & Record<string, any>> {
   const resolved = await resolveCampaignCurrentValueForAlert(row, cache, options.useSavedOverview === true);
+  if (String(resolved.platformType || "").toLowerCase() === "google_ads"
+    && (resolved.calculationConfig as any)?.currentValueMode === "automatic") {
+    // Read current, campaign-scoped data for every consumer. Never overwrite a saved/manual goal.
+    const unavailable = () => ({ ...blockAlertDecision(resolved, "unavailable"), currentValue: null }) as T & Record<string, any>;
+    const campaignId = String(resolved.campaignId || "");
+    if (!campaignId) return unavailable();
+    try {
+      const [campaign, connection] = await Promise.all([
+        storage.getCampaign(campaignId),
+        storage.getGoogleAdsConnection(campaignId, { migrateLegacyTokens: false }),
+      ]);
+      if (!campaign || campaign.status !== "active" || !connection || connection.campaignId !== campaignId || connection.spendOnly
+        || !["oauth", "service_account", "test_mode"].includes(connection.method)
+        || (connection.method === "test_mode" && process.env.NODE_ENV === "production")) return unavailable();
+      const sourceScope = (parent: any, source: any) => JSON.stringify([parent?.id, parent?.ownerId, parent?.clientId, parent?.status, parent?.startDate, parent?.currency,
+        parent?.reportingTimeZone, source?.id, source?.campaignId, source?.customerId, source?.managerAccountId,
+        source?.method, source?.spendOnly, source?.selectedCampaignIds, source?.lastRefreshAt]);
+      const expectedScope = sourceScope(campaign, connection);
+      const window = getReportingDateWindow(90, campaign.reportingTimeZone);
+      const campaignStart = new Date(campaign.startDate || "1900-01-01");
+      if (!Number.isFinite(campaignStart.getTime())) return unavailable();
+      const startDate = [window.startDate, campaignStart.toISOString().slice(0, 10)].sort().pop()!;
+      const refreshedAt = new Date(connection.lastRefreshAt || "");
+      if (startDate > window.endDate) return unavailable();
+      if (connection.method !== "test_mode" && (!Number.isFinite(refreshedAt.getTime())
+        || getReportingDateWindow(1, campaign.reportingTimeZone, refreshedAt).endDate < window.endDate)) return unavailable();
+      const selected = JSON.parse(connection.selectedCampaignIds || "[]");
+      if (!Array.isArray(selected) || selected.some(id => typeof id !== "string" || !id.trim())) return unavailable();
+      const key = JSON.stringify(["google-ads-goal", campaignId, connection.id, connection.lastRefreshAt,
+        connection.selectedCampaignIds, startDate, window.endDate]);
+      let pending = cache?.get(key);
+      if (!pending) {
+        pending = storage.getGoogleAdsDailyMetrics(campaignId, startDate, window.endDate);
+        cache?.set(key, pending);
+      }
+      const daily = (await pending).filter((item: any) => selected.length === 0 || selected.includes(item.googleCampaignId));
+      if (!daily.length || daily.some((item: any) => item.campaignId !== campaignId
+        || item.date < startDate || item.date > window.endDate)) return unavailable();
+      // Refreshes replace the complete selected window; do not interpret absent rows as zero.
+      const sum = (field: string): number => daily.reduce((total: number, item: any) => {
+        const raw = item[field];
+        const value = raw == null || String(raw).trim() === "" ? NaN : Number(raw);
+        return total + (Number.isFinite(value) && value >= 0 ? value : NaN);
+      }, 0);
+      const metric = String(resolved.metric || (resolved as any).metricKey || "").toLowerCase();
+      const divide = (numerator: number, denominator: number, scale = 1) => denominator > 0 ? numerator / denominator * scale : NaN;
+      let value = NaN;
+      const additive: Record<string, string> = { impressions: "impressions", clicks: "clicks", spend: "spend",
+        conversions: "conversions", conversionvalue: "conversionValue", videoviews: "videoViews" };
+      if (additive[metric]) value = sum(additive[metric]);
+      else if (metric === "ctr") value = divide(sum("clicks"), sum("impressions"), 100);
+      else if (metric === "cpc") value = divide(sum("spend"), sum("clicks"));
+      else if (metric === "cpm") value = divide(sum("spend"), sum("impressions"), 1000);
+      else if (metric === "conversionrate") value = divide(sum("conversions"), sum("clicks"), 100);
+      else if (metric === "costperconversion") value = divide(sum("spend"), sum("conversions"));
+      else if (metric === "searchimpressionshare") {
+        const share = Number(daily[0].searchImpressionShare);
+        value = daily.length === 1 && share >= 10 && share <= 100 ? share : NaN;
+      } else if (["totalrevenue", "revenue", "profit", "roas", "roi"].includes(metric)) {
+        const revenue = await storage.getRevenueTotalForRange(campaignId, startDate, window.endDate, "google_ads");
+        const amount = revenue.totalRevenue;
+        if (!revenue.sourceIds.length || !Number.isFinite(amount) || revenue.currency !== campaign.currency) return unavailable();
+        const spend = sum("spend");
+        value = metric === "profit" ? amount - spend : metric === "roas" ? divide(amount, spend)
+          : metric === "roi" ? divide(amount - spend, spend, 100) : amount;
+      }
+      const [currentCampaign, currentConnection] = await Promise.all([
+        storage.getCampaign(campaignId), storage.getGoogleAdsConnection(campaignId, { migrateLegacyTokens: false }),
+      ]);
+      if (sourceScope(currentCampaign, currentConnection) !== expectedScope) return unavailable();
+      return Number.isFinite(value) ? { ...resolved, currentValue: String(value) } as T & Record<string, any> : unavailable();
+    } catch {
+      return unavailable();
+    }
+  }
   if (!isGA4Platform((resolved as any)?.platformType)) return resolved as T & Record<string, any>;
 
   const campaignId = String((resolved as any)?.campaignId || "").trim();

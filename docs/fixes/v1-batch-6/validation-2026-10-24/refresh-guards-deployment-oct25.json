@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-10-25T13:44:53.3848677Z",
+  "endpoint": "https://marketforensics.onrender.com/api/health",
+  "status": 200,
+  "body": {
+    "ok": true,
+    "commit": "9f7a40db5be72b89d256c44d94db730ae279d399",
+    "nodeEnv": "production",
+    "ts": "2026-10-25T13:44:51.537Z"
+  },
+  "scope": "Public deployed revision and health only; user reported deployment.",
+  "limits": [
+    "No user browser, authenticated account, provider account or production database accessed.",
+    "Does not prove deployed analytics behavior or close Batch 6 acceptance."
+  ]
+}

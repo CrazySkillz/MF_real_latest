@@ -417,7 +417,7 @@ export interface IStorage {
   upsertTikTokDailyMetrics(metrics: InsertTikTokDailyMetric[]): Promise<{ upserted: number }>;
 
   // Google Ads Connections
-  getGoogleAdsConnection(campaignId: string, options?: GA4RefreshWriteInput): Promise<GoogleAdsConnection | undefined>;
+  getGoogleAdsConnection(campaignId: string, options?: GA4RefreshWriteInput & { migrateLegacyTokens?: boolean }): Promise<GoogleAdsConnection | undefined>;
   createGoogleAdsConnection(connection: InsertGoogleAdsConnection): Promise<GoogleAdsConnection>;
   replaceGoogleAdsConnection(connection: InsertGoogleAdsConnection, dailyMetrics?: InsertGoogleAdsDailyMetric[]): Promise<GoogleAdsConnection>;
   updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>, options?: GA4RefreshConnectionWriteInput): Promise<GoogleAdsConnection | undefined>;
@@ -5541,13 +5541,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Google Ads Connection methods
-  async getGoogleAdsConnection(campaignId: string, options: GA4RefreshWriteInput = {}): Promise<GoogleAdsConnection | undefined> {
+  async getGoogleAdsConnection(campaignId: string, options: GA4RefreshWriteInput & { migrateLegacyTokens?: boolean } = {}): Promise<GoogleAdsConnection | undefined> {
     const [connection] = await db.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
     if (!connection) return undefined;
     const hydrated = hydrateDecryptedTokens(connection) as any;
     const hasPlain = Boolean((connection as any).accessToken) || Boolean((connection as any).refreshToken) || Boolean((connection as any).clientSecret);
     const hasEnc = Boolean((connection as any).encryptedTokens);
-    if (!("refreshScope" in options) && hasPlain && !hasEnc) {
+    if (options.migrateLegacyTokens !== false && !("refreshScope" in options) && hasPlain && !hasEnc) {
       try {
         const nextEnc = buildEncryptedTokens({
           accessToken: (connection as any).accessToken,

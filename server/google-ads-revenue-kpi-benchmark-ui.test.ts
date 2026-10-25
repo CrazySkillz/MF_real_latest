@@ -96,9 +96,9 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(kpiModal).toContain("useGrouping: true");
     expect(benchmarkModal).toContain("useGrouping: true");
     expect(page).toContain("function stripNumberFormatting(value: any): any");
-    expect(page).toContain("const currentValue = stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric))");
-    expect(page).toContain("const currentValue = stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric))");
-    expect(page).toContain("if (!Number.isFinite(Number(currentValue)))");
+    expect(page).toContain("const currentValue = kpiForm.currentValueMode === 'automatic'");
+    expect(page).toContain("const currentValue = benchmarkForm.currentValueMode === 'automatic'");
+    expect(page).toContain("if (!currentValue.trim() || !Number.isFinite(Number(currentValue)))");
   });
 
   it("exposes attributed revenue metrics in Google Ads KPI and Benchmark pickers", () => {

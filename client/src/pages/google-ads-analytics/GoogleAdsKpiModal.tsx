@@ -224,6 +224,7 @@ export function GoogleAdsKpiModal(props: any) {
             metric: "",
             targetValue: "",
             currentValue: "",
+            currentValueMode: "automatic",
             priority: "high",
             status: "active",
             category: "",
@@ -326,11 +327,24 @@ export function GoogleAdsKpiModal(props: any) {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox id="kpi-automatic" checked={kpiForm.currentValueMode === 'automatic'}
+                onCheckedChange={(checked) => setKpiForm({ ...kpiForm,
+                  ...(checked === true ? recalculateCurrentValue(kpiForm.metric) : {}),
+                  currentValueMode: checked === true ? 'automatic' : 'manual' })} />
+              <Label htmlFor="kpi-automatic">Update automatically from Google Ads</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">{kpiForm.currentValueMode === 'automatic'
+              ? 'Uses the last 90 completed days, starting no earlier than the campaign start date.'
+              : 'Keeps your saved current value until you edit it.'}</p>
+          </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="kpi-current">Current Value</Label>
               <Input
                 id="kpi-current"
+                disabled={kpiForm.currentValueMode === 'automatic'}
                 type="text"
                 placeholder="0"
                 inputMode="decimal"

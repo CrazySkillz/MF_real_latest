@@ -28112,6 +28112,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const kpis = await storage.getPlatformKPIs(platformType, campaignId as string | undefined);
+      if (platformType === "google_ads") {
+        const cache = new Map<string, Promise<any>>();
+        return res.json(await Promise.all(kpis.map(row => resolveAlertCurrentValueForDecision(row, cache))));
+      }
       res.json(kpis);
     } catch (error) {
       console.error('Platform KPI fetch error:', error);
@@ -28958,6 +28962,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn("[Benchmark Fetch] Instagram Benchmark refresh failed:", e?.message || e);
       });
       const benchmarks = await storage.getPlatformBenchmarks(platformType, campaignId as string | undefined);
+      if (platformType === "google_ads") {
+        const cache = new Map<string, Promise<any>>();
+        return res.json(await Promise.all(benchmarks.map(row => resolveAlertCurrentValueForDecision(row, cache))));
+      }
       res.json(benchmarks);
     } catch (error) {
       console.error('Platform benchmarks fetch error:', error);

@@ -447,11 +447,24 @@ export function GoogleAdsBenchmarkModal(props: any) {
           </div>
 
           {/* Current Value / Benchmark Value / Unit */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox id="benchmark-automatic" checked={benchmarkForm.currentValueMode === 'automatic'}
+                onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm,
+                  ...(checked === true ? autoPopulateCurrentValue(benchmarkForm.metric) : {}),
+                  currentValueMode: checked === true ? 'automatic' : 'manual' })} />
+              <Label htmlFor="benchmark-automatic">Update automatically from Google Ads</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">{benchmarkForm.currentValueMode === 'automatic'
+              ? 'Uses the last 90 completed days, starting no earlier than the campaign start date.'
+              : 'Keeps your saved current value until you edit it.'}</p>
+          </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="benchmark-current">Current Value</Label>
               <Input
                 id="benchmark-current"
+                disabled={benchmarkForm.currentValueMode === 'automatic'}
                 type="text"
                 placeholder="0"
                 inputMode="decimal"
@@ -609,6 +622,7 @@ export function GoogleAdsBenchmarkModal(props: any) {
                   unit: "",
                   benchmarkValue: "",
                   currentValue: "",
+                  currentValueMode: "automatic",
                   benchmarkType: "custom",
                   industry: "",
                   description: DEFAULT_BENCHMARK_DESCRIPTION,

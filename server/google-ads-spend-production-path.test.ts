@@ -159,7 +159,8 @@ describe("Google Ads GA4 Overview spend production path", () => {
       "campaign-1",
       expect.objectContaining({ accessToken: "fresh-token" }), expect.objectContaining({ googleAdsRefresh: expect.any(Object) })
     );
-    expect(mocks.storage.updateGoogleAdsConnection).toHaveBeenCalledWith(
+    // Ordinary freshness is committed by the fact replacement transaction (PostgreSQL suite).
+    expect(mocks.storage.updateGoogleAdsConnection).not.toHaveBeenCalledWith(
       "campaign-1",
       expect.objectContaining({ lastRefreshAt: expect.any(Date) }), expect.objectContaining({ googleAdsRefresh: expect.any(Object) })
     );
@@ -172,6 +173,8 @@ describe("Google Ads GA4 Overview spend production path", () => {
     mocks.storage.getGA4GoogleAdsSpendConnection.mockResolvedValue(connection);
     await refreshGoogleAdsForCampaign("campaign-1", connection, { ga4SpendConnection: dedicated, deferDownstream: true, refreshScope });
     const facts = dedicated ? mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow : mocks.storage.replaceGoogleAdsDailyMetricsForWindow;
+    const metadata = dedicated ? mocks.storage.updateGA4GoogleAdsSpendConnection : mocks.storage.updateGoogleAdsConnection;
+    expect(metadata).toHaveBeenCalledWith("campaign-1", { lastRefreshAt: expect.any(Date) }, expect.objectContaining({ refreshScope }));
     expect(facts).toHaveBeenCalledWith("campaign-1", "2026-07-01", "2026-08-05", expect.any(Array), expect.objectContaining({ refreshScope, expectedConnection: connection, expectedSource: { id: "source-1", mappingConfig: JSON.stringify({ platform: "google_ads", selectedCampaignIds: ["google-campaign-1"] }) } }));
     expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledWith("campaign-1", "source-1", "ad_platforms", "ga4", expect.any(Array), expect.any(String), expect.objectContaining({ refreshScope }));
     expect(mocks.storage.updateCampaign).toHaveBeenCalledWith("campaign-1", { spend: "123.45" }, expect.objectContaining({ refreshScope }));

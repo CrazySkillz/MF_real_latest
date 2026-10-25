@@ -226,13 +226,10 @@ async function fetchRealGoogleAdsData(
     : await storage.replaceGoogleAdsDailyMetricsForWindow(campaignId, startDateIso, endDateIso, metricsToUpsert as any, writeOptions);
   console.log(`[Google Ads] Replaced ${replaced} daily metrics for campaign ${campaignId}`);
 
-  // Update lastRefreshAt
-  const updated = dedicatedSpend
-    ? await storage.updateGA4GoogleAdsSpendConnection(campaignId, { lastRefreshAt: new Date() } as any, writeOptions)
-    : await storage.updateGoogleAdsConnection(campaignId, { lastRefreshAt: new Date() } as any, writeOptions);
-  if (refreshWriteInput.googleAdsRefresh) {
-    if (!updated) throw new Error('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
-    refreshWriteInput.googleAdsRefresh.connection = { ...updated };
+  // Ordinary refresh publishes freshness with its facts; durable refresh retains its owned completion path.
+  if (!refreshWriteInput.googleAdsRefresh) {
+    if (dedicatedSpend) await storage.updateGA4GoogleAdsSpendConnection(campaignId, { lastRefreshAt: new Date() } as any, writeOptions);
+    else await storage.updateGoogleAdsConnection(campaignId, { lastRefreshAt: new Date() } as any, writeOptions);
   }
 }
 

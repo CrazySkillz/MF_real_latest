@@ -5516,6 +5516,7 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Google Ads Spend replacement rows are outside the campaign window");
     }
     const guarded = "refreshScope" in options;
+    let completedAt: Date | undefined;
     const write = async (tx: any) => {
       if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(tx, campaignId, options, true);
       if (guarded) {
@@ -5535,9 +5536,17 @@ export class DatabaseStorage implements IStorage {
         campaignId, googleCampaignId: row.googleCampaignId, googleCampaignName: row.googleCampaignName,
         date: row.date, impressions: row.impressions, clicks: row.clicks, spend: row.spend,
       })) as any);
+      if (options.googleAdsRefresh) {
+        completedAt = new Date(Math.max(Date.now(), new Date(options.googleAdsRefresh.connection.lastRefreshAt || 0).getTime() + 1));
+        const updated = await tx.update(ga4GoogleAdsSpendConnections).set({ lastRefreshAt: completedAt })
+          .where(eq(ga4GoogleAdsSpendConnections.id, options.googleAdsRefresh!.connection.id)).returning({ id: ga4GoogleAdsSpendConnections.id });
+        if (updated.length !== 1) throw new Error('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+      }
       return { replaced: metrics.length };
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : db.transaction(write);
+    const result = await (guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : db.transaction(write));
+    if (completedAt) options.googleAdsRefresh!.connection = { ...options.googleAdsRefresh!.connection, lastRefreshAt: completedAt };
+    return result;
   }
 
   // Google Ads Connection methods
@@ -5741,6 +5750,7 @@ export class DatabaseStorage implements IStorage {
       String(metric.date) < startDate || String(metric.date) > endDate
     )) throw new Error("Google Ads replacement row is outside the authorized scope");
     const guarded = "refreshScope" in options;
+    let completedAt: Date | undefined;
     const write = async (tx: any) => {
       if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(tx, campaignId, options, false);
       if (guarded) {
@@ -5759,9 +5769,17 @@ export class DatabaseStorage implements IStorage {
       if (metrics.length > 0) {
         await tx.insert(googleAdsDailyMetrics).values(metrics.map((metric: any) => ({ ...metric, campaignId })) as any);
       }
+      if (options.googleAdsRefresh) {
+        completedAt = new Date(Math.max(Date.now(), new Date(options.googleAdsRefresh.connection.lastRefreshAt || 0).getTime() + 1));
+        const updated = await tx.update(googleAdsConnections).set({ lastRefreshAt: completedAt })
+          .where(eq(googleAdsConnections.id, options.googleAdsRefresh!.connection.id)).returning({ id: googleAdsConnections.id });
+        if (updated.length !== 1) throw new Error('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+      }
       return { replaced: metrics.length };
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : db.transaction(write);
+    const result = await (guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : db.transaction(write));
+    if (completedAt) options.googleAdsRefresh!.connection = { ...options.googleAdsRefresh!.connection, lastRefreshAt: completedAt };
+    return result;
   }
 
   async updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {

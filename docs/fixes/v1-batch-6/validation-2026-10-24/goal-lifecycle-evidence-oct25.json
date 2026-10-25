@@ -1,0 +1,107 @@
+{
+  "at": "2026-10-25T15:41:01.234Z",
+  "commit": "3e285b9df14bb8be2a8e4acf79262c684a3e8ae0",
+  "applicationCodeUnchanged": true,
+  "deployment": {
+    "file": "goal-values-deployment-oct25.json",
+    "verified": "public revision and health only"
+  },
+  "tests": {
+    "file": "goal-lifecycle-complete-oct25.json",
+    "passed": 266,
+    "failed": 0,
+    "skipped": 0,
+    "files": [
+      {
+        "file": "server/ga4-kpi-alert-contract-regression.test.ts",
+        "assertions": 62,
+        "status": "passed"
+      },
+      {
+        "file": "server/ga4-kpi-saved-overview.test.ts",
+        "assertions": 43,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-goal-lifecycle-postgres.test.ts",
+        "assertions": 34,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-goal-values.test.ts",
+        "assertions": 72,
+        "status": "passed"
+      },
+      {
+        "file": "server/notification-alert-concurrency-regression.test.ts",
+        "assertions": 9,
+        "status": "passed"
+      },
+      {
+        "file": "server/notification-alert-postgres-concurrency.test.ts",
+        "assertions": 2,
+        "status": "passed"
+      },
+      {
+        "file": "server/notification-visibility-regression.test.ts",
+        "assertions": 44,
+        "status": "passed"
+      }
+    ]
+  },
+  "typecheck": {
+    "at": "2026-10-25T15:37:40.995Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "goal-lifecycle-complete-oct25-typecheck.log"
+      }
+    ]
+  },
+  "cleanup": {
+    "databases": [
+      {
+        "database": "ga4_alignment_test",
+        "remainingFixtureSchemas": 0,
+        "otherClientConnections": 0,
+        "remainingAdvisoryLocks": 0
+      },
+      {
+        "database": "notifications_test",
+        "remainingFixtureSchemas": 0,
+        "otherClientConnections": 0,
+        "remainingAdvisoryLocks": 0
+      }
+    ],
+    "localPostgresStopped": true
+  },
+  "fileHashes": {
+    "client/src/pages/google-ads-analytics.tsx": "b2ef7b391c233136d0c1e2c0394e1ea7eb840a8446d74e10ff159ce7c0a84c8f",
+    "client/src/pages/google-ads-analytics/GoogleAdsKpiModal.tsx": "0f58691b0170982036701b9113eefa20193153808b1d3a59dce381b356fb7cd8",
+    "client/src/pages/google-ads-analytics/GoogleAdsBenchmarkModal.tsx": "7cbe8e12f4f200f79737093b7ca15e379dd134c06f80150d9c65c953c42eac36",
+    "server/utils/ga4-alert-current-value.ts": "bea60e4a27502b31be18cdfbe8c4a4b612c3d6c8c686b1b56b8e1c82ca00b6aa",
+    "server/routes-oauth.ts": "2e568d017874e6bc3b6767161b8b177b75205567e1fb0c8393190d99287bd1a1",
+    "server/storage.ts": "c06ef7e0f208ac2b9795cba997e7bb345c10edb3b11d6206075d2ec8fc9658b3",
+    "server/report-scheduler.ts": "943854cb86ea402306a2620a8213ab0375f2f84516e58772394c0c4301309718",
+    "server/google-ads-goal-lifecycle-postgres.test.ts": "1efa82dd77d8dcac2d9eca816662f93c1e08a2ef40670adeca77a6a710aac71d",
+    "server/notification-alert-postgres-concurrency.test.ts": "786dbaf2140306ac4dc1ba7df23e0790e271df26e07f3e69fe42a63ef5d7eb93",
+    "docs/fixes/v1-batch-6/README.md": "cddb841fc50749904c1aa6cc481b95980ddfb45d907c775b7166f5fd52fe7414",
+    "docs/V1_RELEASE_READINESS.md": "f1bb5c5dd74d2c3ebf2340b6aa1b57c07a870536a7bd7f21925059878f1b1453"
+  },
+  "scope": "Actual extracted HTTP handlers/helpers, schemas, storage SQL, goal resolver and actual scheduled decision-to-notification functions; isolated local fixtures.",
+  "limits": [
+    "No authenticated deployed UI/API, real Clerk middleware, provider or production database acceptance.",
+    "No production migrations/catalog, full source lifecycle, independent-worker delete race, timer/restart or email delivery acceptance.",
+    "All report templates/rendered layout, historical data/snapshots and full Batch 6 release acceptance remain open.",
+    "The four earlier goal-neighbor and six source-safety static failures remain open outside this seven-file packet."
+  ],
+  "status": {
+    "testChangesCommitted": false,
+    "newRuntimeDeploymentRequired": false,
+    "batch6ReleaseAcceptancesOpen": 9,
+    "wholeAppReleaseDecision": "NO-GO"
+  }
+}

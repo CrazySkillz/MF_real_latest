@@ -154,6 +154,48 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       await expect(write('a', day, day, [{ ...fact, spend: 'invalid-number' }], scope)).rejects.toThrow();
       expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
     });
+    it('publishes facts and freshness together so an overlapping old response cannot overwrite the winner', async () => {
+      const winner = await capture(dedicated), stale = await capture(dedicated);
+      const originalRefresh = stale.googleAdsRefresh.connection.lastRefreshAt;
+      await replace(dedicated, winner);
+      const write = dedicated ? storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow.bind(storage) : storage.replaceGoogleAdsDailyMetricsForWindow.bind(storage);
+      await expect(write('a', day, day, [{ ...fact, spend: '5' }], stale)).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+      const persisted = dedicated ? await storage.getGA4GoogleAdsSpendConnection('a') : await storage.getGoogleAdsConnection('a');
+      expect(persisted!.lastRefreshAt!.getTime()).toBeGreaterThan(originalRefresh.getTime());
+      expect(winner.googleAdsRefresh.connection.lastRefreshAt).toEqual(persisted!.lastRefreshAt);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.00' }]);
+    });
+    it.each(['throw', 'suppress'])('rolls back facts if the matching success timestamp cannot be saved (%s)', async failure => {
+      const scope = await capture(dedicated), before = scope.googleAdsRefresh.connection.lastRefreshAt;
+      const table = getTableName(connectionTable(dedicated));
+      await pool.query(`CREATE FUNCTION deny_fixture_freshness() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN ${failure === 'throw' ? "RAISE EXCEPTION 'fixture freshness failure'" : 'RETURN NULL'}; END $$`);
+      await pool.query(`CREATE TRIGGER deny_freshness BEFORE UPDATE OF last_refresh_at ON "${table}" FOR EACH ROW EXECUTE FUNCTION deny_fixture_freshness()`);
+      try {
+        await expect(replace(dedicated, scope)).rejects.toThrow();
+        expect(scope.googleAdsRefresh.connection.lastRefreshAt).toEqual(before);
+        expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+      } finally {
+        await pool.query(`DROP TRIGGER deny_freshness ON "${table}"`); await pool.query('DROP FUNCTION deny_fixture_freshness()');
+      }
+    });
+    it('advances the freshness marker for consecutive commits within the same millisecond', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-25T12:00:00Z'));
+      try {
+        const first = await capture(dedicated); await replace(dedicated, first);
+        const second = await capture(dedicated), stale = await capture(dedicated);
+        await replace(dedicated, second);
+        expect(second.googleAdsRefresh.connection.lastRefreshAt.getTime()).toBe(first.googleAdsRefresh.connection.lastRefreshAt.getTime() + 1);
+        await expect(replace(dedicated, stale)).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+      } finally { vi.useRealTimers(); }
+    });
+    it('preserves successful empty-window replacement and prevents stale data resurrection', async () => {
+      const winner = await capture(dedicated), stale = await capture(dedicated);
+      const write = dedicated ? storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow.bind(storage) : storage.replaceGoogleAdsDailyMetricsForWindow.bind(storage);
+      await expect(write('a', day, day, [], winner)).resolves.toEqual({ replaced: 0 });
+      await expect(replace(dedicated, stale)).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'b'`)).rows).toEqual([{ spend: '10.00' }]);
+    });
   });
 
   it('rejects a changed provider campaign selection', async () => {
@@ -246,6 +288,40 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
     expect(result.providerRefreshed).toBe(true);
     expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.00' }]);
     if (dedicated) expect(result.spendMaterialization).toMatchObject({ sourceId: 'source-a', updated: true, totalSpend: 25 });
+  });
+  it.each([false, true])('actual overlapping schedulers preserve the committed newer response (dedicated=%s)', async dedicated => {
+    let startOlder!: () => void, releaseOlder!: () => void, commitWinner!: () => void, releaseWinner!: () => void;
+    const olderStarted = new Promise<void>(resolve => { startOlder = resolve; });
+    const olderRelease = new Promise<void>(resolve => { releaseOlder = resolve; });
+    const winnerCommitted = new Promise<void>(resolve => { commitWinner = resolve; });
+    const winnerRelease = new Promise<void>(resolve => { releaseWinner = resolve; });
+    const response = (costMicros: number) => [{ campaignId: 'selected', date: day, costMicros, impressions: 100, clicks: 10, conversions: 1, conversionsValue: 50,
+      ctr: 0.1, averageCpc: 2_500_000, averageCpm: 250_000_000, interactionRate: 0.1, videoViews: 0, searchImpressionShare: 0.5 }];
+    provider.daily.mockImplementationOnce(async () => { startOlder(); await olderRelease; return response(5_000_000); });
+    provider.daily.mockResolvedValueOnce(response(25_000_000));
+    const method = dedicated ? 'replaceGA4GoogleAdsSpendDailyMetricsForWindow' : 'replaceGoogleAdsDailyMetricsForWindow';
+    const original = runtimeStorage[method].bind(runtimeStorage);
+    const spy = vi.spyOn(runtimeStorage, method).mockImplementation(async (...args) => {
+      const result = await original(...args);
+      if (Number(args[3][0].spend) === 25) { commitWinner(); await winnerRelease; }
+      return result;
+    });
+    const run = () => refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: dedicated, deferDownstream: true })
+      .then(value => ({ value, error: undefined }), error => ({ value: undefined, error }));
+    let older: ReturnType<typeof run> | undefined, winner: ReturnType<typeof run> | undefined;
+    try {
+      older = run(); await olderStarted;
+      winner = run(); await winnerCommitted;
+      releaseOlder();
+      const olderResult = await older;
+      expect(olderResult.error?.message).toBe('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+      releaseWinner();
+      const winnerResult = await winner;
+      expect(winnerResult.error).toBeUndefined(); expect(winnerResult.value?.providerRefreshed).toBe(true);
+      if (dedicated) expect(winnerResult.value?.spendMaterialization).toMatchObject({ updated: true, totalSpend: 25 });
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.00' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+    } finally { releaseOlder(); releaseWinner(); await older; await winner; spy.mockRestore(); }
   });
   it('reproduces the deployed unguarded-write boundary with the same PostgreSQL fixture', async () => {
     const baseline = execFileSync('git', ['show', '8a9da324:server/storage.ts'], { encoding: 'utf8', windowsHide: true });

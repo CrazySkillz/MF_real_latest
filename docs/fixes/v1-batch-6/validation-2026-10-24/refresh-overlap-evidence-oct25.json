@@ -1,0 +1,147 @@
+{
+  "at": "2026-10-25T15:58:58.491Z",
+  "baseCommit": "3e285b9df14bb8be2a8e4acf79262c684a3e8ae0",
+  "runtimeFilesChanged": [
+    "server/google-ads-scheduler.ts",
+    "server/storage.ts"
+  ],
+  "rootCause": "Ordinary daily facts committed before a separate lastRefreshAt update, admitting overlapping responses with the same captured freshness marker.",
+  "correction": "Atomically replace facts and advance their connection freshness within the existing transaction; update caller expectations only after commit.",
+  "before": {
+    "file": "refresh-overlap-caller-before-oct25.json",
+    "passed": 57,
+    "failed": 6,
+    "skipped": 0,
+    "failingCases": [
+      "Google Ads ordinary refresh transaction ownership main platform publishes facts and freshness together so an overlapping old response cannot overwrite the winner",
+      "Google Ads ordinary refresh transaction ownership main platform rolls back facts if the matching success timestamp cannot be saved",
+      "Google Ads ordinary refresh transaction ownership dedicated Spend publishes facts and freshness together so an overlapping old response cannot overwrite the winner",
+      "Google Ads ordinary refresh transaction ownership dedicated Spend rolls back facts if the matching success timestamp cannot be saved",
+      "Google Ads ordinary refresh transaction ownership actual overlapping schedulers preserve the committed newer response (dedicated=false)",
+      "Google Ads ordinary refresh transaction ownership actual overlapping schedulers preserve the committed newer response (dedicated=true)"
+    ],
+    "runtimeGitBlobHashes": {
+      "server/google-ads-scheduler.ts": "91dfe537063f022a32d51dc21c4c6e8774126e7477e8141d0c75fe67e7d79ece",
+      "server/storage.ts": "c06ef7e0f208ac2b9795cba997e7bb345c10edb3b11d6206075d2ec8fc9658b3"
+    }
+  },
+  "tests": {
+    "file": "refresh-overlap-final-oct25.json",
+    "passed": 232,
+    "failed": 0,
+    "skipped": 0,
+    "newCases": 12,
+    "files": [
+      {
+        "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+        "assertions": 5,
+        "status": "passed"
+      },
+      {
+        "file": "server/ga4-google-ads-spend-pipeline-regression.test.ts",
+        "assertions": 2,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-ga4-spend-disconnect-transaction.test.ts",
+        "assertions": 5,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-goal-lifecycle-postgres.test.ts",
+        "assertions": 34,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-goal-values.test.ts",
+        "assertions": 72,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-spend-lifecycle-downstream.test.ts",
+        "assertions": 7,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-spend-production-path.test.ts",
+        "assertions": 23,
+        "status": "passed"
+      },
+      {
+        "file": "server/v1-batch3-google-ads-timeouts.test.ts",
+        "assertions": 15,
+        "status": "passed"
+      },
+      {
+        "file": "server/v1-batch6-google-ads-refresh-postgres.test.ts",
+        "assertions": 69,
+        "status": "passed"
+      }
+    ],
+    "includesHistoricalCharacterizationCases": 1
+  },
+  "build": {
+    "at": "2026-10-25T15:54:58.498Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "refresh-overlap-oct25-typecheck.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "refresh-overlap-oct25-server-build.log"
+      }
+    ]
+  },
+  "cleanup": {
+    "databases": [
+      {
+        "database": "ga4_alignment_test",
+        "remainingFixtureSchemas": 0,
+        "otherClientConnections": 0,
+        "remainingAdvisoryLocks": 0
+      },
+      {
+        "database": "notifications_test",
+        "remainingFixtureSchemas": 0,
+        "otherClientConnections": 0,
+        "remainingAdvisoryLocks": 0
+      }
+    ],
+    "localPostgresStopped": true
+  },
+  "fileHashes": {
+    "server/google-ads-scheduler.ts": "6eacf2680fafad4ff9be513b7b8068a5c67fb9029e54a10570c76ae24c001733",
+    "server/storage.ts": "b989ae5f442900573f66fcc1134c325d42a29bad27d073f2e03c6f8026810841",
+    "server/ga4-google-ads-scheduler-regression.test.ts": "b7c76f98b0f76ccae97c079b989b485999076716810005413c67e6f1efff6bbb",
+    "server/ga4-google-ads-spend-pipeline-regression.test.ts": "92814effaa099a12e652eb3a9cfdad782ba89c22f7658741a88bb48b68e00a7c",
+    "server/google-ads-ga4-spend-disconnect-transaction.test.ts": "57adeb922c181626ed1fe0e8c04e972f57bfd2f99c57c2851059bdf8b98de20c",
+    "server/google-ads-goal-lifecycle-postgres.test.ts": "1efa82dd77d8dcac2d9eca816662f93c1e08a2ef40670adeca77a6a710aac71d",
+    "server/google-ads-goal-values.test.ts": "b2ca71e72d7ff30e192dc86112cc2537bb033528d14980ff52bfc97799ed0699",
+    "server/google-ads-spend-lifecycle-downstream.test.ts": "1e5a690d5947f701a0b8ebdfa231d1486039842b66586468e0d79240e7956987",
+    "server/google-ads-spend-production-path.test.ts": "ed3edfee0edf40fb78ff0eeb596224f9ea2c4d343c03d8a6f524a758a649dde6",
+    "server/v1-batch3-google-ads-timeouts.test.ts": "3a84f810c9cc398d69da9806a1aea082f3fd32ec48c65fe7414c1de60b264df2",
+    "server/v1-batch6-google-ads-refresh-postgres.test.ts": "9a28e279812d1dcffb9363f53d21c00a4c5e33da6b322fd2ea0087815f87b2ee",
+    "server/notification-alert-postgres-concurrency.test.ts": "786dbaf2140306ac4dc1ba7df23e0790e271df26e07f3e69fe42a63ef5d7eb93",
+    "docs/fixes/v1-batch-6/README.md": "bcffac4ff6eede8f52b429643f454d175e1f9525a10c3ad8d123ab1dd5b51185",
+    "docs/V1_RELEASE_READINESS.md": "e4a384561a9f62f0d7da62088de997874878c4ebdd00140d137c47fb03138e24"
+  },
+  "limits": [
+    "No production occurrence, provider account, user browser, production database or email accessed.",
+    "Does not certify every source lifecycle, later-stage concurrent worker, edit-then-restore, restart/retry or retained import.",
+    "Historical data, provider completeness, authenticated deployed behavior and every report template remain unverified.",
+    "Four earlier goal-neighbor and six source-safety static failures remain open outside this nine-file packet."
+  ],
+  "status": {
+    "committed": false,
+    "deployed": false,
+    "requiresDeployment": true,
+    "batch6ReleaseAcceptancesOpen": 9,
+    "wholeAppReleaseDecision": "NO-GO"
+  }
+}

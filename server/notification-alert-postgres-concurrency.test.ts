@@ -12,6 +12,10 @@ vi.mock("./storage", () => ({
     getCampaign: vi.fn(async (id: string) => ({ id, name: "Test Campaign", ownerId: "test-owner" })),
     getLinkedInConnection: vi.fn(async () => undefined),
     updateNotification: vi.fn(),
+    // This fixture covers notification locks; publication ownership has its own
+    // storage tests. Run the current caller's callback in a real transaction.
+    getGA4PublicationVersion: vi.fn(async () => 0),
+    writeGA4DerivedChange: vi.fn(async (_campaignId: string, _options: unknown, run: (tx: any) => Promise<unknown>) => mockDb.current.transaction(run)),
   },
 }));
 vi.mock("./utils/ga4-alert-current-value", () => ({

@@ -904,7 +904,8 @@ describe("source safety regression guards", () => {
     expect(reportScheduler).not.toContain("if (String((report as any)?.platformType || \"\") === \"google_sheets\") {\n    const { jsPDF }");
 
     expect(routesSource).toContain('sourceBackedReportPlatform === "google_analytics" || sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration"');
-    expect(routesSource).toContain('sourceBackedReportPlatform === "google_analytics" ? "GA4" : sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "google_sheets" ? "Google Sheets"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration"');
   });
 
   it("Google Sheets-only Add Dataset connections append instead of replacing existing tabs", () => {
@@ -2082,7 +2083,7 @@ describe("source safety regression guards", () => {
 
     expect(routesSource).toContain('...(normalizedPlatformType === "custom-integration" ? ["summary"] : [])');
     expect(routesSource).toContain('sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration"');
-    expect(routesSource).toContain('sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration"');
   });
 
   it("Custom Integration campaign aggregates require imported fields before advertising availability", () => {

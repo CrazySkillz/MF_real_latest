@@ -6,7 +6,43 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 7 status
 
-**QUEUED.** 29 V1 findings remain open. No implementation or post-fix validation is recorded for this batch.
+**Publication packet, October 25:** The three tested report-history/Meta corrections and their evidence accompany the user-authorized commit and push. Deployment and live acceptance remain unverified. Statements below saying uncommitted describe the validation-time state; the remaining 26 findings and all 29 release acceptances remain OPEN.
+
+**IN PROGRESS, October 25.** Three original forward defects (V1-060, V1-074, V1-119) are corrected and verified locally. **412 checks pass in 10 files**, with TypeScript and the server build passing. Changes are uncommitted and undeployed. The other 26 findings and all 29 release acceptances remain OPEN. No production records, user browser, provider account or email service were accessed.
+
+The user postponed Batch 6 live sign-off after Google account verification blocked login and requested Batch 7 work. Batch 6 is not certified or excluded; live Google Ads validation remains pending. The prior public health observation of `4cd498cf` proves deployment only.
+
+## Report history checkpoint, October 25
+
+**Root causes.** Non-GA4/non-Diagnostics historical PDF downloads rebuilt output from mutable current report/source data, and their producers did not retain original bytes. The reader also compared an immutable snapshot template with the editable current report template. Separately, retained Meta PATCH/DELETE ignored the actual storage mutation result after access checks. [Frozen deployed-baseline tests](validation-2026-10-25/history-baseline-final.json) reproduce these boundaries: 18 passed / 42 failed / 0 skipped at `4cd498cf`. All the same 60 cases pass after correction.
+
+| Finding | Exact changed path | Correction and compatibility |
+|---|---|---|
+| V1-060 | `routes-oauth.ts` manual snapshot POST/PDF GET; `report-scheduler.ts` scheduled artifact capture | Supported manual snapshots and scheduled PDFs preserve validated original bytes in the existing JSON format. Downloads never rebuild from today's data. Old history without original bytes returns 422; its metadata is preserved. No production backfill or cleanup. |
+| V1-119 | `routes-oauth.ts` snapshot PDF identity checks | Current owner/campaign/platform checks remain. Payload report/campaign/platform/template/window must match the immutable row. Later name/template/configuration edits cannot change a valid original PDF. Deleted parents/reports still fail closed; owner-accessible archived history remains readable. |
+| V1-074 | `routes-oauth.ts` retained Meta PATCH/DELETE | Return 404 if the actual mutation changed no row. Preserve owned success shapes and foreign/anonymous denial. These legacy endpoints remain registered; current Meta UI uses generic platform report endpoints. |
+
+Only two runtime files change. No schema, dependency, UI layout, financial formula, source import, email body or schedule changes. GA4/Diagnostics artifact semantics are reused. The incomplete generic Ads overview/ads/custom PDF body remains a separate report-content issue; storing bytes does not certify their content.
+
+**Validation.** [Final packet](validation-2026-10-25/history-final.json): **412 passed / 0 failed / 0 skipped across 10 files**. [The new 60-case suite](../../../server/v1-batch7-report-history-postgres.test.ts) covers ten stored platform identifiers, manual/scheduled capture, subsequent edited versions, repeated scheduled-slot suppression, byte equality, missing/invalid artifacts, corrupted identity, owner/anonymous/foreign access, missing parent/report, archives, and Meta disappearance/retry/success outcomes. Neighbors cover source isolation, report access, saved GA4 publication, Campaign Diagnostics report limits/windows, Google Ads reports and artifact validation. [TypeScript/server build](validation-2026-10-25/history-final-build-checks.json) pass. Client code is unchanged.
+
+Tests mount actual extracted HTTP/access callbacks in local Express, execute real `DatabaseStorage` SQL and the actual scheduled checker, and use disposable PostgreSQL tables from shared schema columns/defaults/CHECKs plus the report-slot unique index. Actor, PDF builder and delivery adapters are controlled. Synthetic PDF bytes prove preservation, not rendered values/layout, provider truth, delivery or production migrations. No email was sent.
+
+Initial fixture issues (required Meta fields, a date override changing both sides, and DELETE Content-Length) were corrected before the final baseline/fixed runs. Structural assertions requiring regeneration/template rejection were updated to the immutable contract. One stale LinkedIn assertion was independently compared with unchanged `4cd498cf:server/scheduler.ts` and updated to include its existing production-test guard; that runtime file is unchanged. Intermediate failing packets remain evidence, not acceptance.
+
+**Remaining acceptance.** Browser edit/download, actual template rendering/attachment parity, full source lifecycle propagation, independent-worker races, corrupt snapshot-list rows, production historical inventory, missing-original recovery and natural scheduled delivery remain unverified. Existing absent bytes cannot be reconstructed truthfully from current values. V1-021/022/058/059 are traced but not fixed by this packet. Their claim, confirmed-send persistence, exact-attempt delivery and late-recovery requirements remain open.
+
+### Complete remaining Batch 7 inventory
+
+| Work area | Original IDs still OPEN | Current boundary |
+|---|---|---|
+| Delivery/recovery | V1-021, V1-022, V1-058, V1-059 | Current scheduler/audit code traced; correction and worker/crash/recovery tests remain. |
+| Report content/layout | V1-015, V1-085, V1-086 | Browser/scheduled/download value parity, rendered layout and confirmed delivery unverified. |
+| Diagnostics/GA4 values | V1-056, V1-077, V1-084, V1-094, V1-095, V1-096, V1-097, V1-098, V1-099, V1-100, V1-101 | Original evidence inventoried; current complete value/fallback/downstream review and fixes remain. |
+| Notifications/source-backed goals | V1-110, V1-122 | Original lifecycle evidence read; correction and decision/history/email-episode validation remain. |
+| Retained pages | V1-061, V1-062, V1-064, V1-125, V1-129, V1-130 | Functional correction or agreed effective exclusion remains; no new exclusion is assumed. |
+
+This is three locally verified forward corrections, not Batch 7 completion or production sign-off.
 
 ## Scope and acceptance
 
@@ -39,11 +75,11 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-056](#v1-056) | P1 | OPEN | OPEN |
 | [V1-058](#v1-058) | P1 | OPEN | OPEN |
 | [V1-059](#v1-059) | P1 | OPEN | OPEN |
-| [V1-060](#v1-060) | P1 | OPEN | OPEN |
+| [V1-060](#v1-060) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-061](#v1-061) | P1 | OPEN | OPEN |
 | [V1-062](#v1-062) | P1 | OPEN | OPEN |
 | [V1-064](#v1-064) | P1 | OPEN | OPEN |
-| [V1-074](#v1-074) | P2 | OPEN | OPEN |
+| [V1-074](#v1-074) | P2 | VERIFIED LOCALLY | OPEN |
 | [V1-077](#v1-077) | P1 | OPEN | OPEN |
 | [V1-084](#v1-084) | P2 | OPEN | OPEN |
 | [V1-085](#v1-085) | P1 | OPEN | OPEN |
@@ -57,7 +93,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-100](#v1-100) | P1 | OPEN | OPEN |
 | [V1-101](#v1-101) | P1 | OPEN | OPEN |
 | [V1-110](#v1-110) | P1 | OPEN | OPEN |
-| [V1-119](#v1-119) | P1 | OPEN | OPEN |
+| [V1-119](#v1-119) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-122](#v1-122) | P1 | OPEN | OPEN |
 | [V1-125](#v1-125) | P1 | OPEN | OPEN |
 | [V1-129](#v1-129) | P1 | OPEN | OPEN |
@@ -141,7 +177,7 @@ Browser PDFs, immutable snapshots, scheduled server artifacts and confirmed deli
 
 ### V1-060
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -149,7 +185,7 @@ Browser PDFs, immutable snapshots, scheduled server artifacts and confirmed deli
 
 `routes-oauth.ts:30488–30500` regenerates non-GA4/non-Diagnostics snapshot PDFs from current report/source data using the historical window. Later import/edit/delete can change a historical download. GA4/Diagnostics return immutable PDF artifacts and are not included in this defect.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [October 25 report-history checkpoint](#report-history-checkpoint-october-25) records the root cause, localized correction and 60 actual HTTP/storage/scheduled-checker cases, plus 352 neighboring checks. The forward correction is VERIFIED LOCALLY; deployment, provider/artifact parity, historical inventory and the explicitly listed lifecycle gaps remain unverified. No production data repair or full-section certification.
 
 ### V1-061
 
@@ -189,7 +225,7 @@ Registered Audiences page `audiences.tsx:17–83,134–135` renders hard-coded a
 
 ### V1-074
 
-**Severity:** P2. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P2. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -197,7 +233,7 @@ Registered Audiences page `audiences.tsx:17–83,134–135` renders hard-coded a
 
 Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns success when storage returns false after an authorization/read race. Two exact fixtures reproduced. Current UI uses generic platform report routes, but legacy pair remains registered. Return actual mutation outcome and cover disappearance/retry without removing untraced historical dependencies.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [October 25 report-history checkpoint](#report-history-checkpoint-october-25) records the root cause, localized correction and 60 actual HTTP/storage/scheduled-checker cases, plus 352 neighboring checks. The forward correction is VERIFIED LOCALLY; deployment, provider/artifact parity, historical inventory and the explicitly listed lifecycle gaps remain unverified. No production data repair or full-section certification.
 
 ### V1-077
 
@@ -357,7 +393,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 ### V1-119
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -365,7 +401,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `routes-oauth.ts:30460–30465` requires snapshot.reportType equal current report.reportType. Current GA4 edit UI10749–10768 and PATCH30090–30126 permit template changes; fixture changes Overview→Insights while preserving owner/campaign/platform and stored PDF. Old snapshot JSON still returns200, PDF becomes404. [Twenty access/artifact controls and reachability limit](../../audits/v1-2026-10-19/REPORT_SNAPSHOT_ACCESS_LIFECYCLE.md). Define stable historical report identity/version semantics without weakening owner/campaign/platform validation; current immediate-download callers create new snapshots.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [October 25 report-history checkpoint](#report-history-checkpoint-october-25) records the root cause, localized correction and 60 actual HTTP/storage/scheduled-checker cases, plus 352 neighboring checks. The forward correction is VERIFIED LOCALLY; deployment, provider/artifact parity, historical inventory and the explicitly listed lifecycle gaps remain unverified. No production data repair or full-section certification.
 
 ### V1-122
 

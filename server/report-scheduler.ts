@@ -4503,10 +4503,10 @@ export async function checkScheduledReports(): Promise<void> {
         isTest: false,
       });
       console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
-      const customReportPdfArtifact = (snapshotPlatformType === "campaign_deepdive" || snapshotPlatformType === "google_analytics") && pdfBuffer
+      const customReportPdfArtifact = pdfBuffer
         ? createReportPdfArtifact(pdfBuffer)
         : null;
-      if (platformRequiresSourceBackedReportOutput(snapshotPlatformType) && (!pdfBuffer || ((snapshotPlatformType === "campaign_deepdive" || snapshotPlatformType === "google_analytics") && !customReportPdfArtifact))) {
+      if (!customReportPdfArtifact) {
         const error = `${sourceBackedReportOutputUnavailableMessage(snapshotPlatformType)}; skipped scheduled report`;
         console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
         await db

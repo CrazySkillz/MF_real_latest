@@ -1,5 +1,9 @@
 # Finding-by-finding fix queue
 
+**October 25 Batch 7 publication packet:** The [three locally verified report-history/Meta corrections](../../fixes/v1-batch-7/README.md#current-batch-7-status) accompany the user-authorized commit and push. Deployment remains unverified; earlier uncommitted statements are validation-time records. All finding assignments and release acceptance counts remain unchanged.
+
+**October 25 Batch 7 checkpoint:** [Report history](../../fixes/v1-batch-7/README.md#report-history-checkpoint-october-25) verifies V1-060/074/119 locally with 412 passing checks, TypeScript and server build. Two runtime files change; work is uncommitted/undeployed. Twenty-six Batch 7 findings and every release acceptance remain OPEN. Batch 6 live sign-off is postponed at the user's request; no new exclusions or certification.
+
 **October 25 Batch 6 publication:** The consolidated correction/evidence packet accompanies the user-authorized commit and push; deployment remains unverified. The local checkpoint below retains its validation-time state. No release acceptance row is closed by publication alone.
 
 **October 25 Batch 6 consolidated local checkpoint:** [Disposition](../../fixes/v1-batch-6/README.md#consolidated-local-disposition-october-25) records 848 passing checks in 37 files, zero failed/skipped, with TypeScript/server build passing. Eighteen checks are explicitly historical characterization; 830 exercise current behavior. The nine included original forward defects have implemented corrections and local evidence. Final retained production-test/legacy-writer guards await commit/deployment. Broader source lifecycle, retained-route concurrency, provider/deployed/historical and Batch 7/8 report acceptance are not closed. Release counts remain 130 findings / 120 OPEN / 10 DEFERRED / 0 CLOSED; whole-app NO-GO is unchanged. This checkpoint prevents the nine release-OPEN rows from being mistaken for nine further speculative code fixes.
@@ -121,7 +125,7 @@ Update this checklist, the affected batch record and the index summary in the sa
 | [V1-057](../../fixes/v1-batch-1/README.md#v1-057) | P1 | 1 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-058](../../fixes/v1-batch-7/README.md#v1-058) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-059](../../fixes/v1-batch-7/README.md#v1-059) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
-| [V1-060](../../fixes/v1-batch-7/README.md#v1-060) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
+| [V1-060](../../fixes/v1-batch-7/README.md#v1-060) | P1 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-061](../../fixes/v1-batch-7/README.md#v1-061) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-062](../../fixes/v1-batch-7/README.md#v1-062) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-063](../../fixes/v1-batch-1/README.md#v1-063) | P0 | 1 | VERIFIED LOCALLY | OPEN | Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred |
@@ -135,7 +139,7 @@ Update this checklist, the affected batch record and the index summary in the sa
 | [V1-071](../../fixes/v1-batch-4/README.md#v1-071) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-072](../../fixes/v1-batch-4/README.md#v1-072) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-073](../../fixes/v1-batch-4/README.md#v1-073) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
-| [V1-074](../../fixes/v1-batch-7/README.md#v1-074) | P2 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
+| [V1-074](../../fixes/v1-batch-7/README.md#v1-074) | P2 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-075](../../fixes/v1-batch-1/README.md#v1-075) | P0 | 1 | VERIFIED LOCALLY | OPEN | Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred |
 | [V1-076](../../fixes/v1-batch-2/README.md#v1-076) | P1 | 2 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-077](../../fixes/v1-batch-7/README.md#v1-077) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
@@ -180,7 +184,7 @@ Update this checklist, the affected batch record and the index summary in the sa
 | [V1-116](../../fixes/v1-batch-6/README.md#v1-116) | P1 | 6 | DEFERRED | DEFERRED | Deferred provider functionality; retained for future enablement, not a V1 provider implementation task |
 | [V1-117](../../fixes/v1-batch-6/README.md#v1-117) | P1 | 6 | DEFERRED | DEFERRED | Deferred provider functionality; retained for future enablement, not a V1 provider implementation task |
 | [V1-118](../../fixes/v1-batch-6/README.md#v1-118) | P1 | 6 | DEFERRED | DEFERRED | Deferred provider functionality; retained for future enablement, not a V1 provider implementation task |
-| [V1-119](../../fixes/v1-batch-7/README.md#v1-119) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
+| [V1-119](../../fixes/v1-batch-7/README.md#v1-119) | P1 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-120](../../fixes/v1-batch-4/README.md#v1-120) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-121](../../fixes/v1-batch-6/README.md#v1-121) | P1 | 6 | OPEN | OPEN | Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred |
 | [V1-122](../../fixes/v1-batch-7/README.md#v1-122) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |

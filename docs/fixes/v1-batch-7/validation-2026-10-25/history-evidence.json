@@ -1,0 +1,191 @@
+{
+  "at": "2026-10-25T21:32:18.770Z",
+  "baseCommit": "4cd498cfbcaf3d82af035fa0f6d41ad0b723e062",
+  "status": "uncommitted, undeployed",
+  "scope": [
+    "V1-060",
+    "V1-074",
+    "V1-119"
+  ],
+  "runtimeFiles": [
+    "server/routes-oauth.ts",
+    "server/report-scheduler.ts"
+  ],
+  "baseline": {
+    "passed": 18,
+    "failed": 42,
+    "skipped": 0
+  },
+  "current": {
+    "passed": 412,
+    "failed": 0,
+    "skipped": 0
+  },
+  "suites": [
+    {
+      "file": "server/campaign-deepdive-report-concurrency.test.ts",
+      "count": 2,
+      "status": "passed"
+    },
+    {
+      "file": "server/custom-report-regression.test.ts",
+      "count": 45,
+      "status": "passed"
+    },
+    {
+      "file": "server/custom-report-window-metadata.test.ts",
+      "count": 4,
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-report-saved-publication.test.ts",
+      "count": 48,
+      "status": "passed"
+    },
+    {
+      "file": "server/google-ads-report-regression.test.ts",
+      "count": 4,
+      "status": "passed"
+    },
+    {
+      "file": "server/report-email-regression.test.ts",
+      "count": 28,
+      "status": "passed"
+    },
+    {
+      "file": "server/report-pdf-artifact.test.ts",
+      "count": 2,
+      "status": "passed"
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "count": 88,
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch6-paid-isolation.test.ts",
+      "count": 131,
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch7-report-history-postgres.test.ts",
+      "count": 60,
+      "status": "passed"
+    }
+  ],
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "history-final-typecheck.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "history-final-server-build.log"
+    }
+  ],
+  "staleNeighbor": {
+    "file": "server/scheduler.ts",
+    "baselineEqualsCurrent": true,
+    "obsoleteAssertion": "missing existing isProductionTestConnection guard"
+  },
+  "cleanup": {
+    "host": "127.0.0.1",
+    "port": 55444,
+    "database": "ga4_alignment_test",
+    "remainingFixtureSchemas": 0,
+    "remainingFixtureSessions": 0
+  },
+  "compatibility": "Old snapshots without original bytes remain metadata-only and return PDF 422; no reconstruction/backfill or deletion.",
+  "limitations": [
+    "Local actor, PDF-builder and delivery adapters; no real provider/network/email/browser or production schema/data.",
+    "Immutable synthetic bytes, not report layout/value completeness.",
+    "Independent-worker delivery/recovery and remaining 26 Batch 7 findings open.",
+    "Batch 6 live Google Ads sign-off postponed by user; no certification."
+  ],
+  "files": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "324bd398b20c3f85dcb99cc197cd9b1d7c23529c2a8541caf396a11e55710aa2"
+    },
+    {
+      "file": "server/report-scheduler.ts",
+      "sha256": "776e43ea5b297a457bb2ed41f84d57527c1a9257cbc50f0dfba633137db085ae"
+    },
+    {
+      "file": "server/v1-batch7-report-history-postgres.test.ts",
+      "sha256": "956951767497f12124b138c826c38aa8a2ecdb511dd603eca7c0f8e5d8601421"
+    },
+    {
+      "file": "server/report-email-regression.test.ts",
+      "sha256": "aeec69ec0eda38903c1f5d29622f9d8636f392b7f726ac1b01132815ed2d075b"
+    },
+    {
+      "file": "server/custom-report-regression.test.ts",
+      "sha256": "3edddea539f99422c2dd3ccfd10bd1a6ac2c69ae6634548d37d03457ca018b55"
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "sha256": "2d552795b0ef1f5caa2d6ef256810130b14c9de6b0eb0a2d3c7f3140e073c2be"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/README.md",
+      "sha256": "abbf6b736fd111c481298dec87df1e55316bf20bfa64f4d3fa7faedd5e3bd9e9"
+    },
+    {
+      "file": "docs/fixes/v1-batch-6/README.md",
+      "sha256": "a64e42c50719c16f136728aac22e0be54247d82d5dfa40f1be7908b9f91811ff"
+    },
+    {
+      "file": "docs/V1_RELEASE_READINESS.md",
+      "sha256": "fd9f8ff55dfc6b177314eb5de2a1c5ffd4628e109b1ae9405eb2967e2f038100"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+      "sha256": "eacf2b312ee5f4af413f7399ec637f1d1f3ec8a6adac5a93e0a4e7551ca32be5"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/history-final.json",
+      "sha256": "3a2b1630b91ed35b687b214806a92cf716f7b2b14db598a40fabe901d520ed05"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/history-final.log",
+      "sha256": "c6656eacfcc6b6a91074c99cf6bb47475f36d55d04f8815d5d05a761b1f5b0e5"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/history-baseline-final.json",
+      "sha256": "156af18815e0aa4a4b961f00e36b47db8359c5d6500bea0c9c82594fe735f609"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/history-baseline-final.log",
+      "sha256": "8f9df5ab277716cc63ea2e3b6fc549023791dbdf898d585b3f5e3b0ca1458d80"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/history-final-build-checks.json",
+      "sha256": "e10b47ad9f25a307b762cdec8cd408a0c13a1f7ef8d028bb8810f214e8f3c1c9"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/history-final-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/history-final-server-build.log",
+      "sha256": "a693692e346ca4a2ab50093a1909a9974da1358e0ed2f375b5d440222155c132"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/run-tests.cjs",
+      "sha256": "020ebfabe47f64075bedb765dfc8843b8e81e6f33c1e70007d4c354d2949e0a2"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/run-build-checks.cjs",
+      "sha256": "84776d1e36dcfd86eddb772bdf700473c8247ab159a3a32d49abd03cf88e2464"
+    },
+    {
+      "file": "docs/fixes/v1-batch-7/validation-2026-10-25/record-history-evidence.cjs",
+      "sha256": "b811581bbb02fcec233ad23724314250a3b18265b64e9c124595f09b39806e5c"
+    }
+  ]
+}

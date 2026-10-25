@@ -27135,6 +27135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete updates.updatedAt;
 
       const updatedReport = await storage.updateMetaReport(reportId, updates);
+      if (!updatedReport) return res.status(404).json({ error: "Report not found" });
       res.json({ report: updatedReport });
     } catch (error: any) {
       console.error('[Meta Reports] Update error:', error);
@@ -27158,7 +27159,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, existingReport.campaignId);
       if (!ok) return;
 
-      await storage.deleteMetaReport(reportId);
+      const deleted = await storage.deleteMetaReport(reportId);
+      if (!deleted) return res.status(404).json({ error: "Report not found" });
       res.json({ success: true });
     } catch (error: any) {
       console.error('[Meta Reports] Delete error:', error);
@@ -29716,7 +29718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const sourceBackedReportPlatform = String(payload.platformType || "").trim().toLowerCase();
-      if (sourceBackedReportPlatform === "campaign_deepdive" || sourceBackedReportPlatform === "google_analytics" || sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration") {
+      if (sourceBackedReportPlatform === "campaign_deepdive" || sourceBackedReportPlatform === "google_analytics" || sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" || sourceBackedReportPlatform === "google_ads" || sourceBackedReportPlatform === "linkedin" || sourceBackedReportPlatform === "meta") {
         const { buildPdfAttachmentForReport, preflightGA4ReportKPIConsumers } = await import("./report-scheduler.js");
         const ga4Preflight = await preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true });
         if (!ga4Preflight.ok) {
@@ -29733,13 +29735,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isTest: true,
         });
         if (!buf) {
-          const label = sourceBackedReportPlatform === "campaign_deepdive" ? "Custom Report" : sourceBackedReportPlatform === "google_analytics" ? "GA4" : sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram";
+          const label = sourceBackedReportPlatform === "campaign_deepdive" ? "Custom Report" : sourceBackedReportPlatform === "google_analytics" ? "GA4" : sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : sourceBackedReportPlatform === "google_ads" ? "Google Ads" : sourceBackedReportPlatform === "linkedin" ? "LinkedIn" : sourceBackedReportPlatform === "meta" ? "Meta" : "Instagram";
           return res.status(422).json({ success: false, error: `${label} source-backed PDF output unavailable; snapshot not created` });
         }
-        if (sourceBackedReportPlatform === "campaign_deepdive" || sourceBackedReportPlatform === "google_analytics") {
+        {
           const pdfArtifact = createReportPdfArtifact(buf);
           if (!pdfArtifact) {
-            const label = sourceBackedReportPlatform === "google_analytics" ? "GA4 Report" : "Custom Report";
+            const label = sourceBackedReportPlatform === "google_analytics" ? "GA4 Report" : sourceBackedReportPlatform === "campaign_deepdive" ? "Custom Report" : "Report";
             return res.status(422).json({ success: false, error: `${label} PDF artifact is invalid; snapshot not created` });
           }
           (payload as any).pdfArtifact = pdfArtifact;
@@ -29823,8 +29825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const snapshotPlatform = String((row as any).platformType || (row as any).platform_type || "").trim().toLowerCase();
       const reportPlatform = String((okReport as any).platformType || "").trim().toLowerCase();
       const snapshotReportType = String((row as any).reportType || (row as any).report_type || "").trim().toLowerCase();
-      const reportReportType = String((okReport as any).reportType || "").trim().toLowerCase();
-      if (snapshotCampaignId !== reportCampaignId || snapshotPlatform !== reportPlatform || snapshotReportType !== reportReportType) {
+      if (snapshotCampaignId !== reportCampaignId || snapshotPlatform !== reportPlatform) {
         return res.status(404).json({ success: false, error: "Snapshot not found" });
       }
 
@@ -29835,35 +29836,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payload = {};
       }
 
-      const windowStart = String((row as any).windowStart || (row as any).window_start || payload?.windowStart || "");
-      const windowEnd = String((row as any).windowEnd || (row as any).window_end || payload?.windowEnd || "");
-      if (snapshotPlatform === "campaign_deepdive" || snapshotPlatform === "google_analytics") {
-        const immutablePdf = readReportPdfArtifact(payload);
-        if (!immutablePdf) {
-          const error = snapshotPlatform === "google_analytics"
-            ? "Immutable GA4 Report PDF artifact unavailable"
-            : "Immutable Custom Report PDF artifact unavailable";
-          return res.status(422).json({ success: false, error });
-        }
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `attachment; filename="mimosaas_report_${snapshotId}.pdf"`);
-        return res.send(immutablePdf);
+      // The snapshot owns its historical template and window; the live report can be edited.
+      if (String(payload?.reportId || "") !== String((row as any).reportId || "")
+        || String(payload?.campaignId || "").trim() !== snapshotCampaignId
+        || String(payload?.platformType || "").trim().toLowerCase() !== snapshotPlatform
+        || !snapshotReportType || String(payload?.reportType || "").trim().toLowerCase() !== snapshotReportType
+        || String(payload?.windowStart || "") !== String((row as any).windowStart || (row as any).window_start || "")
+        || String(payload?.windowEnd || "") !== String((row as any).windowEnd || (row as any).window_end || "")) {
+        return res.status(404).json({ success: false, error: "Snapshot not found" });
       }
-      const { buildPdfAttachmentForReport, preflightGA4ReportKPIConsumers } = await import("./report-scheduler.js");
-      const ga4Preflight = await preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true });
-      if (!ga4Preflight.ok) {
-        return res.status(422).json({ success: false, error: `${ga4Preflight.error}; snapshot PDF not generated` });
+      const immutablePdf = readReportPdfArtifact(payload);
+      if (!immutablePdf) {
+        const label = snapshotPlatform === "google_analytics" ? "GA4 Report" : snapshotPlatform === "campaign_deepdive" ? "Custom Report" : "Report";
+        return res.status(422).json({ success: false, error: `Immutable ${label} PDF artifact unavailable` });
       }
-      const buf = await buildPdfAttachmentForReport({
-        report: okReport,
-        windowStart,
-        windowEnd,
-        campaignName: payload?.campaignName || null,
-      });
-      if (!buf) return res.status(500).json({ success: false, error: "Failed to generate snapshot PDF" });
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="mimosaas_report_${snapshotId}.pdf"`);
-      res.send(buf);
+      return res.send(immutablePdf);
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to generate snapshot PDF" });
     }

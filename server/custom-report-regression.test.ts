@@ -454,16 +454,16 @@ describe("campaign Custom Report regression guard", () => {
       routes.indexOf("// Get single benchmark"),
     );
 
-    expect(scheduledSend).toContain('snapshotPlatformType === "campaign_deepdive"');
+    expect(scheduledSend).toContain('if (!customReportPdfArtifact)');
     expect(scheduledSend).toContain("createReportPdfArtifact(pdfBuffer)");
     expect(scheduledSend).toContain("(snapshotPayload as any).pdfArtifact = customReportPdfArtifact");
     expect(scheduledSend.indexOf("createReportPdfArtifact(pdfBuffer)"))
       .toBeLessThan(scheduledSend.indexOf("sendReportEmailWithRetry"));
     expect(snapshotPdfRoute).toContain('snapshotPlatform === "campaign_deepdive"');
     expect(snapshotPdfRoute).toContain("readReportPdfArtifact(payload)");
-    expect(snapshotPdfRoute).toContain("Immutable Custom Report PDF artifact unavailable");
-    expect(snapshotPdfRoute.indexOf("readReportPdfArtifact(payload)"))
-      .toBeLessThan(snapshotPdfRoute.indexOf('import("./report-scheduler.js")'));
+    expect(snapshotPdfRoute).toContain('snapshotPlatform === "campaign_deepdive" ? "Custom Report"');
+    expect(snapshotPdfRoute).toContain('Immutable ${label} PDF artifact unavailable');
+    expect(snapshotPdfRoute).not.toContain('import("./report-scheduler.js")');
   });
 
   it("keeps scheduled Budget & Financial PDFs aligned with campaign pacing metadata", () => {
@@ -531,7 +531,7 @@ describe("campaign Custom Report regression guard", () => {
     const linkedInBlock = metricsScheduler.slice(linkedInStart, linkedInEnd);
 
     expect(linkedInBlock).toContain("const linkedInConnection = await storage.getLinkedInConnection(campaignId);");
-    expect(linkedInBlock).toContain("const latestSession = linkedInConnection && !(linkedInConnection as any).spendOnly");
+    expect(linkedInBlock).toContain("const latestSession = linkedInConnection && !isProductionTestConnection(linkedInConnection) && !(linkedInConnection as any).spendOnly");
     expect(linkedInBlock).toContain("await storage.getLatestLinkedInImportSession(campaignId)");
     expect(linkedInBlock).toContain("linkedinConnected = true;");
     expect(linkedInBlock).toContain("linkedinLastImportedAt = (latestSession as any).importedAt || null;");

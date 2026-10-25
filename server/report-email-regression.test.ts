@@ -256,30 +256,32 @@ describe("scheduled report email regression guard", () => {
     }
   });
 
-  it("keeps direct snapshot PDF downloads on the shared report PDF builder", () => {
+  it("returns stored snapshot PDF bytes without rebuilding from current sources", () => {
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const snapshotPdfRoute = routesSource.slice(
       routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId/pdf"'),
       routesSource.indexOf("// Get single benchmark")
     );
 
-    expect(snapshotPdfRoute).toContain("buildPdfAttachmentForReport");
+    expect(snapshotPdfRoute).toContain("readReportPdfArtifact(payload)");
+    expect(snapshotPdfRoute).not.toContain("buildPdfAttachmentForReport");
     expect(snapshotPdfRoute).toContain('filename="mimosaas_report_${snapshotId}.pdf"');
     expect(snapshotPdfRoute).not.toContain("MetricMind Report Snapshot");
     expect(snapshotPdfRoute).not.toContain("metricmind_report_");
     expect(snapshotPdfRoute).not.toContain("This PDF is generated from an immutable snapshot.");
   });
 
-  it("fails closed before rebuilding a snapshot PDF after its report type changes", () => {
+  it("validates the immutable template identity independently of later report edits", () => {
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const snapshotPdfRoute = routesSource.slice(
       routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId/pdf"'),
       routesSource.indexOf("// Get single benchmark")
     );
 
-    expect(snapshotPdfRoute).toContain("snapshotReportType !== reportReportType");
-    expect(snapshotPdfRoute.indexOf("snapshotReportType !== reportReportType"))
-      .toBeLessThan(snapshotPdfRoute.indexOf("preflightGA4ReportKPIConsumers"));
+    expect(snapshotPdfRoute).not.toContain("snapshotReportType !== reportReportType");
+    expect(snapshotPdfRoute).toContain('String(payload?.reportType || "").trim().toLowerCase() !== snapshotReportType');
+    expect(snapshotPdfRoute.indexOf('String(payload?.reportType || "")'))
+      .toBeLessThan(snapshotPdfRoute.indexOf("readReportPdfArtifact(payload)"));
   });
 
   it("proves source-backed manual report snapshots have PDF output before insertion", () => {

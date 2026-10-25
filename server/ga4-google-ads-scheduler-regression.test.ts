@@ -88,8 +88,8 @@ describe("GA4 Google Ads scheduler materialization", () => {
       [expect.objectContaining({ date: "2026-08-04", spend: "12.34", currency: "USD" })],
     );
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-08-05", "ga4");
-    expect(storageMock.updateCampaign).toHaveBeenCalledWith(campaign.id, { spend: "12.34" });
-    expect(storageMock.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledWith(campaign.id, "2026-08-05");
+    expect(storageMock.updateCampaign).toHaveBeenCalledWith(campaign.id, { spend: "12.34" }, {});
+    expect(storageMock.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledWith(campaign.id, "2026-08-05", {});
     expect(runJobsMock).toHaveBeenCalledWith({ campaignId: campaign.id, useSavedOverview: true });
   });
 

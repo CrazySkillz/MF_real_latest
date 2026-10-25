@@ -125,7 +125,7 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(page).toContain("const insightsRoiValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : summary.roi;");
     expect(page).toContain("This uses imported Google Ads attributed revenue, not native Google Ads conversion value.");
     expect(page).toContain("This is conversion-value efficiency, not business revenue.");
-    expect(page).toContain("Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI");
+    expect(page).toContain("Conversion-value ROAS (${formatGoogleAdsMetricValue('roas', summary.roas, currency)}) and conversion-value ROI");
     expect(page).toContain("Spend, native conversion value, and imported Google Ads attributed revenue when connected.");
     expect(page).toContain("{hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : 'N/A'}");
     expect(page).toContain("{hasGoogleAdsAttributedRevenue ? formatGoogleAdsMetricValue('roas', googleAdsAttributedRoas) : 'N/A'}");

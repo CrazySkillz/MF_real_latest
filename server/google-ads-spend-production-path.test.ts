@@ -83,7 +83,10 @@ describe("Google Ads GA4 Overview spend production path", () => {
     vi.setSystemTime(new Date("2026-08-06T12:00:00.000Z"));
     vi.clearAllMocks();
     mocks.storage.getCampaign.mockResolvedValue({ id: "campaign-1", ownerId: "owner-1", status: "active", startDate: "2026-07-01", reportingTimeZone: "Europe/Amsterdam", currency: "USD" });
-    mocks.storage.updateGoogleAdsConnection.mockResolvedValue({ id: "conn-1" });
+    const savedConnection = async (_id: string, patch: any, options?: any) => ({ ...options?.googleAdsRefresh?.connection, ...patch });
+    mocks.storage.updateGoogleAdsConnection.mockImplementation(savedConnection);
+    mocks.storage.updateGA4GoogleAdsSpendConnection.mockImplementation(savedConnection);
+    mocks.storage.updateCampaign.mockImplementation(async (_id, patch) => ({ id: 'campaign-1', ...patch }));
     mocks.storage.replaceGoogleAdsDailyMetricsForWindow.mockResolvedValue({ replaced: 1 });
     mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow.mockResolvedValue({ replaced: 1 });
     mocks.storage.getGoogleAdsConnection.mockResolvedValue({ method: "oauth", spendOnly: true, customerName: "Account", selectedCampaignIds: JSON.stringify(["google-campaign-1"]), lastRefreshAt: new Date() });
@@ -145,18 +148,20 @@ describe("Google Ads GA4 Overview spend production path", () => {
         conversions: "2",
       }),
       ],
+      expect.objectContaining({ googleAdsRefresh: expect.objectContaining({ dedicatedSpend: false }) }),
     );
     expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledWith(
       "campaign-1", "source-1", "ad_platforms", "ga4",
       [expect.objectContaining({ date: "2026-07-01", spend: "123.45", currency: "USD" })],
+      expect.any(String), expect.objectContaining({ googleAdsRefresh: expect.any(Object) }),
     );
     expect(mocks.storage.updateGoogleAdsConnection).toHaveBeenCalledWith(
       "campaign-1",
-      expect.objectContaining({ accessToken: "fresh-token" })
+      expect.objectContaining({ accessToken: "fresh-token" }), expect.objectContaining({ googleAdsRefresh: expect.any(Object) })
     );
     expect(mocks.storage.updateGoogleAdsConnection).toHaveBeenCalledWith(
       "campaign-1",
-      expect.objectContaining({ lastRefreshAt: expect.any(Date) })
+      expect.objectContaining({ lastRefreshAt: expect.any(Date) }), expect.objectContaining({ googleAdsRefresh: expect.any(Object) })
     );
   });
 
@@ -325,7 +330,7 @@ describe("Google Ads GA4 Overview spend production path", () => {
     expect(mocks.storage.getGoogleAdsDailyMetrics).not.toHaveBeenCalled();
     expect(mocks.storage.replaceGoogleAdsDailyMetricsForWindow).not.toHaveBeenCalled();
     expect(mocks.storage.updateGoogleAdsConnection).not.toHaveBeenCalled();
-    expect(mocks.storage.updateGA4GoogleAdsSpendConnection).toHaveBeenCalledWith("campaign-1", expect.objectContaining({ accessToken: "fresh-token" }));
+    expect(mocks.storage.updateGA4GoogleAdsSpendConnection).toHaveBeenCalledWith("campaign-1", expect.objectContaining({ accessToken: "fresh-token" }), expect.objectContaining({ googleAdsRefresh: expect.objectContaining({ dedicatedSpend: true }) }));
     expect(mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow).toHaveBeenCalledOnce();
     expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledOnce();
     expect(mocks.runGA4DailyKPIAndBenchmarkJobs).toHaveBeenCalledOnce();

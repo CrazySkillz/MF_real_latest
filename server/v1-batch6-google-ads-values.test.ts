@@ -6,15 +6,19 @@ import { getReportingDateWindow } from './utils/reporting-timezone';
 // Execute the actual page calculations and handlers; no DB, credentials or provider I/O.
 function parse(file: string) {
   const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const declarations = new Map<string, string>(), routes = new Map<string, string>();
+  const declarations = new Map<string, string>(), routes = new Map<string, string>(), chartKeys = new Map<string, string>();
   function walk(node: ts.Node) {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && !declarations.has(node.name.text)) declarations.set(node.name.text, `const ${node.getText(source)};`);
     if (ts.isFunctionDeclaration(node) && node.name) declarations.set(node.name.text, node.getText(source));
     if (ts.isCallExpression(node) && node.expression.getText(source) === 'app.get' && ts.isStringLiteral(node.arguments[0])) routes.set(node.arguments[0].text, node.arguments.at(-1)!.getText(source));
+    if (ts.isJsxSelfClosingElement(node) && ['Line', 'Bar'].includes(node.tagName.getText(source))) {
+      const key = node.attributes.properties.find(p => ts.isJsxAttribute(p) && p.name.getText(source) === 'dataKey') as ts.JsxAttribute | undefined;
+      if (key?.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression) chartKeys.set(node.tagName.getText(source), key.initializer.expression.getText(source));
+    }
     ts.forEachChild(node, walk);
   }
   walk(source);
-  return { declarations, routes };
+  return { declarations, routes, chartKeys };
 }
 const page = parse('client/src/pages/google-ads-analytics.tsx'), api = parse('server/routes-oauth.ts');
 function bind(code: string, name: string, env: Record<string, any> = {}) {
@@ -22,6 +26,99 @@ function bind(code: string, name: string, env: Record<string, any> = {}) {
   return new Function(...Object.keys(env), `${js}\nreturn ${name};`)(...Object.values(env));
 }
 function value(name: string, env: Record<string, any> = {}) { return bind(page.declarations.get(name)!, name, { useMemo: (fn: any) => fn(), ...env }); }
+
+describe('Google Ads ratio availability propagates through page consumers', () => {
+  const row = (extra: Record<string, any> = {}) => ({ date: '2026-10-24', googleCampaignId: 'selected', googleCampaignName: 'Selected', impressions: 0, clicks: 0, conversions: '0', spend: '0', conversionValue: '0', videoViews: 0, searchImpressionShare: null, ...extra });
+  const fields = ['ctr', 'cpc', 'cpm', 'conversionRate', 'costPerConversion', 'roas'];
+  const calculations = (metrics: any[]) => {
+    const summary = value('summary', { metrics });
+    const chartData = value('chartData', { metrics });
+    const dailySeries = value('dailySeries', { chartData });
+    const insightsRollups = value('insightsRollups', { dailySeries, metricsData: { endDate: '2026-10-24' } });
+    const campaignBreakdown = value('campaignBreakdown', { metrics, googleAdsCampaignRevenueById: new Map() });
+    return { summary, chartData, dailySeries, insightsRollups, campaignBreakdown };
+  };
+  it('keeps undefined ratios unavailable at summary, daily, campaign, rolling and comparison boundaries', () => {
+    const metrics = Array.from({ length: 60 }, (_, i) => row({ date: new Date(Date.UTC(2026, 7, 26 + i)).toISOString().slice(0, 10) }));
+    const f = calculations(metrics);
+    for (const key of ['ctr', 'cpc', 'cpm', 'convRate', 'costPerConv', 'roas', 'roi']) expect(f.summary[key], `summary ${key}`).toBeNaN();
+    for (const result of [f.chartData[0], f.campaignBreakdown[0], f.dailySeries.rolling7.at(-1), f.dailySeries.rolling30.at(-1), f.insightsRollups.last7, f.insightsRollups.last30]) {
+      for (const key of fields) expect(result[key], key).toBeNaN();
+    }
+    for (const delta of Object.values(f.insightsRollups.deltas)) expect(delta).toBeNaN();
+  });
+  it('calculates daily Cost/Conversion from summed spend and fractional conversions', () => {
+    const f = calculations([row({ spend: '50', conversions: '0.5' }), row({ spend: '100', conversions: '1' })]);
+    expect(f.chartData[0].costPerConversion).toBe(100);
+    expect(f.summary.costPerConv).toBe(100);
+    expect(f.campaignBreakdown[0].costPerConversion).toBe(100);
+  });
+  it('preserves measured zero ratios with positive denominators', () => {
+    const f = calculations([row({ impressions: 100, clicks: 10, conversions: '2' })]);
+    expect(f.summary).toMatchObject({ ctr: 10, cpc: 0, cpm: 0, convRate: 20, costPerConv: 0 });
+    expect(f.chartData[0]).toMatchObject({ ctr: 10, cpc: 0, cpm: 0, conversionRate: 20, costPerConversion: 0 });
+    expect(calculations([row({ impressions: 100, spend: '50' })]).summary).toMatchObject({ ctr: 0, roas: 0, roi: -100 });
+  });
+  it.each([null, '', '0', '9.99', '101', 'Infinity', 'bad'])('does not claim an exact Search Impression Share for %s', share => {
+    const f = calculations([row({ searchImpressionShare: share })]);
+    expect(f.summary.searchImpressionShare).toBeNaN();
+    expect(f.chartData[0].searchImpressionShare).toBeNaN();
+    expect(value('getLiveMetricValue', { summary: f.summary, hasGoogleAdsAttributedRevenue: false })('searchImpressionShare')).toBeNaN();
+  });
+  it.each(['10', '25', '100'])('preserves a single exact provider Search Impression Share of %s%%', share => {
+    const f = calculations([row({ searchImpressionShare: share })]);
+    expect(f.summary.searchImpressionShare).toBe(Number(share));
+    expect(f.chartData[0].searchImpressionShare).toBe(Number(share));
+  });
+  it.each([['25', '75'], ['25', null], ['25', '25']])('does not average multiple Search Impression Share observations %j', (first, second) => {
+    const f = calculations([row({ searchImpressionShare: first }), row({ googleCampaignId: 'other', searchImpressionShare: second })]);
+    expect(f.summary.searchImpressionShare).toBeNaN();
+    expect(f.chartData[0].searchImpressionShare).toBeNaN();
+  });
+  it('keeps single-day shares while refusing an unsupported multi-day share', () => {
+    const f = calculations([row({ date: '2026-10-23', searchImpressionShare: '25' }), row({ searchImpressionShare: '75' })]);
+    expect(f.summary.searchImpressionShare).toBeNaN();
+    expect(f.chartData.map((r: any) => r.searchImpressionShare)).toEqual([25, 75]);
+  });
+  it.each(['spend', 'ctr', 'cpc', 'costPerConversion', 'roas', 'clicks'])('keeps unknown %s chart/table values unavailable and measured zero visible', metric => {
+    const format = value('formatChartValue', { insightsTrendMetric: metric, fmtCurrency: (n: number) => `EUR ${n}`, formatPct: (n: number) => `${n}%` });
+    for (const n of [undefined, null, NaN, Infinity]) expect(format(n)).toBe('Unavailable');
+    expect(format(0)).not.toBe('Unavailable');
+  });
+  it('refuses a percentage change from a zero or unknown baseline', () => {
+    const delta = bind(page.declarations.get('deltaPct')!, 'deltaPct');
+    expect(delta(10, 0)).toBeNaN(); expect(delta(0, 0)).toBeNaN(); expect(delta(NaN, 10)).toBeNaN();
+    expect(delta(0, 10)).toBe(-100); expect(delta(20, 10)).toBe(100);
+  });
+  it('does not present a missing daily value or comparison as zero', () => {
+    const curVal = value('curVal', { r: {}, insightsTrendMetric: 'costPerConversion' });
+    expect(curVal).toBeNaN();
+    expect(value('showDelta', { prev: { date: '2026-10-23' }, r: { date: '2026-10-24' }, curVal, prevVal: 10 })).toBe(false);
+  });
+  it.each(['Line', 'Bar'])('%s passes a gap to the chart for unavailable values, while retaining measured zero', tag => {
+    const read = bind(`const read = ${page.chartKeys.get(tag)};`, 'read', { insightsTrendMetric: 'costPerConversion' });
+    for (const n of [undefined, null, NaN, Infinity]) expect(read({ value: n, costPerConversion: n })).toBeNull();
+    for (const n of [0, 12.5]) expect(read({ value: n, costPerConversion: n })).toBe(n);
+  });
+  it('does not generate fabricated trends, share insights, or NaN text from unavailable ratios', () => {
+    const metrics = Array.from({ length: 14 }, (_, i) => row({ date: `2026-10-${i + 11}`, conversions: '2' }));
+    const f = calculations(metrics);
+    const formatPct = (n: number) => `${n}%`;
+    const defs = value('GOOGLE_ADS_METRICS', { formatPct });
+    const getGoogleAdsMetricDef = bind(page.declarations.get('getGoogleAdsMetricDef')!, 'getGoogleAdsMetricDef', { GOOGLE_ADS_METRICS: defs });
+    const env = { ...f, currency: 'EUR', hasGoogleAdsAttributedRevenue: false,
+      GADS_THRESHOLDS: value('GADS_THRESHOLDS'), getGoogleAdsMetricDef,
+      formatGoogleAdsMetricValue: bind(page.declarations.get('formatGoogleAdsMetricValue')!, 'formatGoogleAdsMetricValue', { getGoogleAdsMetricDef }),
+      fmt: value('fmt'), fmtCurrency: (n: number) => getGoogleAdsMetricDef('spend', 'EUR').format(n), fmtPct: value('fmtPct', { formatPct }),
+      getLiveMetricValue: value('getLiveMetricValue', { summary: f.summary, hasGoogleAdsAttributedRevenue: false }),
+      computeProgress: value('computeProgress', { LOWER_IS_BETTER_METRICS: value('LOWER_IS_BETTER_METRICS') }),
+      computeGadsReliability: () => 'low', kpisData: [{ id: 'missing-share', metric: 'searchImpressionShare', targetValue: 50 }, { id: 'clicks', metric: 'clicks', targetValue: 100 }], benchmarksData: [] };
+    const insights = value('googleAdsInsights', env);
+    expect(insights.some((i: any) => i.id === 'integrity:conv-value-zero')).toBe(true);
+    expect(insights.some((i: any) => /missing-share|search-imp-share-low/.test(i.id))).toBe(false);
+    expect(JSON.stringify(insights)).not.toMatch(/NaN|Infinity|Week-over-week trend:/);
+  });
+});
 const parent = { id: 'campaign-a', ownerId: 'owner-a', currency: 'EUR', reportingTimeZone: 'Europe/Amsterdam', startDate: '2026-01-01' };
 function context(overrides: Record<string, any> = {}, campaign: any = parent) {
   const storage = { getRevenueSources: vi.fn(async () => [{ id: 'source-a', currency: 'EUR', isActive: true, mappingConfig: '{"lastTotalRevenue":9999}' }]),

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-25T13:20:25.506Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "refresh-guards-first-oct25-typecheck.log"
+    }
+  ]
+}

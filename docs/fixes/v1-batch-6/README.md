@@ -6,7 +6,78 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 6 status
 
-**IN PROGRESS.** The [October 25 retained-boundary checkpoint](#retained-attribution-and-spend-boundaries-october-25) adds Google Ads unverified-attribution exclusion and retained spend-import guards to the earlier value/isolation corrections. The latest executed result per file is **542 passed, 6 failed, zero skipped, 22 files**. All six failures are independently reproduced static assertions on the deployed revision; they remain unresolved, not waived. All 9 V1 release acceptances remain OPEN; 10 provider-functional findings remain DEFERRED. These changes accompany the user-authorized October 25 commit and push; deployment remains unverified. This is not Batch 6 completion or a production-readiness certificate.
+**IN PROGRESS.** Last verified public deployment: `8a9da324343967925aae52ffd114c30447702edc` (revision/health only). The [ordinary-refresh correction](#ordinary-google-ads-refresh-write-guards-october-25) and earlier ratio corrections accompany this checkpoint's commit; deployment verification is pending. **436 focused checks pass in 11 freshly executed files**, including 57 new PostgreSQL/caller/baseline controls; TypeScript and both builds pass. A separate fresh source-safety run retains the same **82 passed / 6 failed** static assertions. Latest evidence per file including earlier packets is **705 passed, 6 failed, zero skipped, 27 files**. All 9 V1 release acceptances remain OPEN; 10 provider-functional findings remain DEFERRED. This is not Batch 6 completion or a production-readiness certificate.
+
+## Ordinary Google Ads refresh write guards, October 25
+
+### Root cause and exact path
+
+The ordinary `refreshAllGoogleAdsMetrics` / manual refresh -> `refreshGoogleAdsForCampaign` -> `fetchRealGoogleAdsData` path checked campaign eligibility before provider I/O. Its token, daily-fact replacement and metadata writes did not recheck the original connection/campaign under the write transaction. The later Spend materialization/cache path also omitted the original source mapping/connection identity. A reconnect, disconnect, owner/status change or mapping edit during provider I/O could therefore be followed by an old response writing into the current campaign. The new PostgreSQL suite executes the deployed `8a9da324` replacement method against the same disposable fixture and reproduces a write after connection deletion; no production occurrence is claimed.
+
+### Localized correction
+
+- The ordinary scheduler passes internal campaign, connection, dedicated/main identity and (for Spend) source snapshots through the existing storage options. The independent durable `refreshScope` path retains its existing ownership rules.
+- A private Google Ads assertion in `server/storage.ts` checks current values under parent -> source -> connection row locks. Parent checks cover identity, owner/client, active status, currency, timezone, start date and creation identity. Connection checks cover a single exact identity, provider account/manager, mode, selection, credentials and last successful refresh. Source checks cover exact active same-campaign GA4 Google Ads identity, mapping and currency, including absence during setup preview.
+- The checks run before token renewal saves, main/dedicated daily replacements, successful-refresh metadata, normalized Spend replacement, campaign Spend cache writes and downstream snapshot invalidation. A changed boundary throws `GOOGLE_ADS_REFRESH_INPUTS_CHANGED` before that write; the existing caller error path prevents subsequent materialization/jobs. Previously committed valid stages are not silently deleted or rolled back across transactions.
+- Successful token/metadata saves advance the in-memory expected connection. Hydrated credential comparison tolerates legacy encryption migration; legacy plaintext refresh credentials are preserved when saving renewed tokens. Temporary service-account access tokens remain runtime-only and the configured manager fallback is normalized consistently with the existing hydrator.
+- Main platform, dedicated Spend and legacy main-table Spend stay distinct. The explicit same-campaign Spend draft-preview exception remains; ordinary draft refresh is rejected. Existing source definitions, provider queries, formulas, schedules, API response shapes and schema are unchanged.
+
+Runtime files: `server/google-ads-scheduler.ts`, `server/storage.ts`. The private assertion stays in the existing persistence layer and reuses existing transactions/locks; it is not a replacement refresh pipeline. Tests: new `server/v1-batch6-google-ads-refresh-postgres.test.ts`; existing `google-ads-spend-production-path.test.ts` and `ga4-google-ads-scheduler-regression.test.ts` mocks/assertions now include the internal options and actual successful storage return shape. The same commit includes the earlier page corrections documented separately below.
+
+### Executed evidence
+
+- [Manifest with runtime/test hashes and per-file packets](validation-2026-10-24/refresh-guards-evidence-oct25.json).
+- [Database packet](validation-2026-10-24/refresh-guards-pg-final-oct25.json): **210 passed / 0 failed / 0 skipped**. Includes the 57 new cases plus 64 existing durable input-invalidation cases, 84 revenue-publication cases and 5 disconnect transaction controls. New cases cover current-value changes to owner/client/status/currency/timezone/start/parent, disconnect/reconnect/account/credential/refresh-time changes, mapping/source deletion/deactivation/recreation, duplicate connections, selected campaigns, main/dedicated separation, rollback, other-campaign preservation, draft preview, legacy Spend, service-account credential/manager behavior, real scheduler calls and cache/downstream stopping. Concurrent edit tests observe PostgreSQL lock waiting before allowing the edit to commit, then prove the old save is rejected.
+- [Neighbor packet](validation-2026-10-24/refresh-guards-neighbors-final-oct25.json): **226 passed / 0 failed / 0 skipped** across 7 files, including production Spend flow, service-account controls, deferred-source isolation, retained import and the earlier 76 page-value cases.
+- [Fresh source-safety packet](validation-2026-10-24/refresh-guards-source-safety-oct25.json): **82 passed / 6 failed**, the same six previously reproduced static failures. They remain unresolved; no new failure is hidden by the focused 436-pass count.
+- [TypeScript, production client/server builds](validation-2026-10-24/refresh-guards-final-oct25-build-checks.json) pass. `git diff --check` passes. Disposable schema count verified **0** and the local PostgreSQL fixture stopped. Provider responses were synthetic; no user browser, provider account or production data was accessed.
+- Initial fixture-only failures were corrected: provider stubs omitted required response fields; a Spend source created today was correctly excluded from completed-day totals; old mocks returned no saved connection or omitted the newly required internal options. Runtime behavior was not weakened to make those cases pass.
+
+### Acceptance limits and next boundary
+
+The ordinary checks compare **current input values under locks**, not a persisted input revision or job lease. Edit-then-restore, ordering of simultaneous provider responses with otherwise identical inputs, and every restart/retry remain unproven. Changes between snapshot invalidation and independently scheduled downstream computation still require the full job-level ownership matrix. Resource-grant revocation during service-account I/O is not certified by these fixtures. The separate retained spend-import endpoint and deferred-provider writers have not acquired this new ordinary Google Ads guard.
+
+No historical fact/source/snapshot repair was attempted. Add/edit/delete are exercised as boundary changes around this refresh, not certified as entire source lifecycles. Source-list/report/browser acceptance, scheduled goals/alerts/reports, full financial propagation and provider truth retain the earlier open inventory. V1-024 and V1-055 receive partial local evidence, not release closure; all nine Batch 6 findings and whole-app **NO-GO** remain.
+
+## Google Ads ratio availability, October 25
+
+### Root causes, trace and correction
+
+`GoogleAdsClient.getDailyMetrics` -> `mapGoogleAdsDailyInsights` -> stored daily rows -> existing daily-metrics endpoint -> `google-ads-analytics.tsx` was traced for these values. The page calculates ratios independently in its summary, daily chart, campaign breakdown, rolling series and period comparisons. Each used zero when its denominator was zero; the daily chart additionally omitted Cost/Conversion. Several render/live-goal branches then converted unavailable inputs back to zero. Comparisons manufactured a percentage change when the prior value was zero.
+
+The existing calculations now retain unavailable ratios; finite formatters display `Unavailable`, chart callbacks emit `null` gaps, and undefined comparisons have a neutral dash. Actual zero numerators with positive denominators remain zero. Daily Cost/Conversion uses summed spend / summed conversions, including fractional conversions (150 / 1.5 = 100). Summary, daily, campaign, rolling and comparison formulas are preserved for valid inputs. The live goal resolver, Insights wording and trend guards preserve availability instead of scoring or describing a fabricated value.
+
+Search Impression Share previously used a simple average across campaign/date observations. The provider query and saved schema have no eligible-search-impression denominator. [Google's field definition](https://developers.google.com/google-ads/api/fields/v25/metrics#metrics.search_impression_share) also specifies that values below 0.1 are returned as 0.0999; the existing mapper stores that as 9.99%. The page now preserves a single exact observation from 10% through 100%, and keeps combined, missing, censored or out-of-range shares unavailable. **Multi-row Search Impression Share will display Unavailable** until an exact provider aggregate or suitable denominator exists; this change deliberately does not estimate one or treat 9.99% as an exact share. Its unavailable state reaches the live goal resolver and suppresses unsupported share Insights.
+
+Runtime change: only `client/src/pages/google-ads-analytics.tsx`. Regression changes: `server/v1-batch6-google-ads-values.test.ts` and one expected formatter expression in `server/google-ads-revenue-kpi-benchmark-ui.test.ts`. No server/provider/storage/schema/connection/scheduler behavior or persisted data changed in this checkpoint. The diff spans each existing calculation and consumer to prevent one corrected card from still feeding false zeros to another display; it adds no new runtime abstraction.
+
+### Validation
+
+- [Evidence manifest](validation-2026-10-24/ratios-evidence-oct25.json), including code hashes, deployment revision observation, packet identity and explicit inherited evidence boundaries.
+- Before correction: **51 passed / 22 failed** in the 73-case actual-code calculation packet. The expanded final page suite has **76 passing cases**, 28 more than the deployed baseline, covering zero and positive denominators, fractional Cost/Conversion, missing/censored/exact/multiple shares, finite formatting, chart gaps, comparison availability and Insights propagation.
+- [Final fresh packet](validation-2026-10-24/ratios-final-oct25.json): **253 passed / 0 failed / 0 skipped in 12 files**, including page/goal/Overview/connection semantics, provider mapping, dedicated Spend, retained import, isolation and scheduler neighbors. Actual page declarations and chart callbacks execute with synthetic inputs; this is not rendered-browser or provider acceptance. One old exact-string assertion was updated for the new finite formatter; the actual Insights calculation has separate executable coverage.
+- [TypeScript, production client and server builds](validation-2026-10-24/ratios-final-oct25-build-checks.json) pass. Credentials were removed and test outbound access restricted to loopback. No user browser, provider account, production database or historical data was accessed. No commit, push or deployment performed for this new checkpoint.
+- The six earlier source-safety static failures remain unresolved. The **579/6/0** latest-per-file total includes retained earlier evidence, not a fresh 24-file or whole-repository run.
+
+### Scheduler boundary traced at the ratio checkpoint
+
+Read-only trace: `refreshAllGoogleAdsMetrics` reloads connections through storage and calls `refreshGoogleAdsForCampaign`; its parent/owner/status checks run before `fetchRealGoogleAdsData`. Ordinary refreshes supply no `refreshScope`. `fetchRealGoogleAdsData` therefore omits expected connection options from token, daily-replacement and final-refresh-time writes. In `storage.replaceGoogleAdsDailyMetricsForWindow`, source/connection checks and the ownership wrapper run only when `refreshScope` is present; the ordinary branch performs its replacement in a transaction without rechecking the parent or connection. The corresponding dedicated Spend ordinary-refresh branch must be included in the eventual correction.
+
+This identified an unguarded final-write boundary after provider I/O. The subsequent [ordinary refresh checkpoint](#ordinary-google-ads-refresh-write-guards-october-25) corrects the current-value transaction boundary with PostgreSQL/caller evidence. It does **not** prove a production race occurred, or certify all job/revision/response-ordering paths. V1-024/V1-055 remain open.
+
+### Lifecycle and remaining acceptance
+
+| Path | Current evidence and limits |
+|---|---|
+| Add/edit | Live page resolver and existing goal-form/save tests pass; not all source lifecycle/provenance paths |
+| Delete/deactivate | No delete mutation changed; earlier transaction/publication controls remain, ordinary in-flight refresh boundary unresolved |
+| Refresh/scheduler/reprocess | Existing guard neighbors pass; final-write race, retry/restart and full source matrix remain unverified |
+| Source/modal/list and cards | Existing revenue UI neighbors pass; corrected page calculations/formatters run locally, no authenticated browser acceptance |
+| Totals/KPIs/benchmarks | Corrected local ratios and live-goal propagation tested; saved/manual provenance and scheduled recomputation remain open |
+| Reports/alerts/export | Complete propagation and historical outputs remain unverified; no readiness inferred from page tests |
+| Existing damaged data | No data cleanup attempted; historical synthetic/unverified attribution and saved outputs still need exact inventory |
+
+Other open value paths include provider zero-row completeness, historical numeric/currency validity, midnight/reprocess behavior and remaining fractional-conversion display rounding. All nine Batch 6 acceptance rows below stay OPEN. Whole-app status remains **NO-GO**.
 
 ## Retained attribution and spend boundaries, October 25
 
@@ -61,15 +132,15 @@ Runtime files in this checkpoint: `server/routes-oauth.ts`, `client/src/pages/go
 
 | Finding | Proven in current local evidence | Still open |
 |---|---|---|
-| V1-024 | Earlier owner/status/connection dispatch guards and positive controls | In-flight owner/connection changes, every worker restart/retry, complete lifecycle, historical rows |
+| V1-024 | Dispatch guards; ordinary Google Ads current-value transaction checks for in-flight campaign/connection/source changes, with PostgreSQL/caller controls | Edit-then-restore, overlapping response ordering, other provider workers, every restart/retry, complete lifecycle and historical rows |
 | V1-046 | Google Ads unverified enrichment excluded at utility/writer/current storage reads and aggregate descriptors; native/imported controls pass | Complete saved/report/goal propagation, historical outputs, deployed acceptance; deferred provider enrichment unchanged |
-| V1-055 | Retained route selection/currency/date/scope guards and atomic replacement; GA4 cache preserved; unverified-currency legacy facts refused | In-flight parent/connection races, historical sources, every retained scheduler/downstream path and unknown external callers |
+| V1-055 | Retained route selection/currency/date/scope guards and atomic replacement; GA4 cache preserved; ordinary Google Ads materialization transaction guards | Retained-route in-flight races, historical sources, every other retained scheduler/downstream path and unknown external callers |
 | V1-104 | Main page and bounded total/campaign-read window, real SQL and zero/refund controls | Every import/edit/delete/reprocess path, saved report/export parity and old unmapped/undated records |
 | V1-106 | Main page/form currency, explicit Google Ads read failures, matching-currency SQL guards | Provider truth for historical saved facts; all source write/refresh failure states, reports and other consumers |
-| V1-107 | Daily count-weighted CTR | Search Impression Share denominator, censoring and downstream availability |
+| V1-107 | Daily count-weighted CTR; exact-only Search Impression Share and live availability propagation in the ratio checkpoint | Exact aggregate provider share/denominator remains unavailable; complete saved/report/alert propagation and provider acceptance |
 | V1-121 | Earlier production generator/dispatch/shared-aggregate exclusions | Retained direct reads, shared legacy writers, historical synthetic rows and saved outputs |
 | V1-127 | Main-page contiguous rolling/current/prior periods and comparison gates | Provider zero-row completeness, refresh/midnight transitions, export/report parity |
-| V1-128 | Live resolver, finite progress, trackers, forms and finite saves | Raw overview/chart cost availability (including daily Cost/Conversion), manual versus saved provenance, scheduled recompute, alerts and reports |
+| V1-128 | Live resolver, finite progress, trackers, forms/saves; ratio checkpoint adds cards/chart/table availability and daily Cost/Conversion | Manual versus saved provenance, scheduled recompute, alerts, reports, complete historical/provider numeric validity |
 
 All nine findings remain OPEN for release acceptance. Add/create and edit/save are only covered at the tested handlers/form boundaries; delete has neighboring transaction/publication controls, not every paid-source lifecycle; refresh/recovery retains the October 24 limits; source displays/calculations have local evidence; full reports/provider/deployed acceptance and historical-data inventory remain unproven. Whole-app status remains **NO-GO**. No claim of “no possible side effects” is made.
 
@@ -170,7 +241,7 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 Instagram18/TikTok70 and LinkedIn672/Ads347 refresh wrappers lack owner/active-status eligibility; Meta303 omits parent lookup. All connection IDs are scheduled by dedicated jobs. Four wrapper fixtures prove Meta dispatch without parent and LinkedIn/Ads dispatch for paused ownerless parents; LinkedIn missing-parent control rejects. These prove dispatch, not DB persistence. TikTok live refresh is deferred while test-mode scheduled writes simulated USD. Require fail-closed eligibility/simulation gating and actual recovery tests.
 
-**Implementation / validation:** Partial local correction in the [October 24 isolation checkpoint](#initial-isolation-checkpoint-october-24): owner/active-parent/connection dispatch guards and production mock exclusion, with targeted positive and negative controls. In-flight ownership changes, all-worker recovery, historical data and deployed/provider acceptance remain open; this finding is not closed.
+**Implementation / validation:** The [isolation checkpoint](#initial-isolation-checkpoint-october-24) covers owner/active-parent/connection dispatch and production mock exclusion. The [ordinary Google Ads refresh checkpoint](#ordinary-google-ads-refresh-write-guards-october-25) adds current-value transaction guards and PostgreSQL/caller controls for campaign, connection and source changes during refresh. Edit-then-restore, overlapping-response ordering, other provider workers, all-worker recovery, historical data and deployed/provider acceptance remain open; this finding is not closed.
 
 ### V1-046
 
@@ -302,7 +373,7 @@ Instagram374–382, Google Ads499–508 and Meta658–668 page expressions prefe
 
 `google-ads-analytics.tsx:492,532,536` averages row rates; same-day fixture CTR50.5% conflicts with count-derived1.9802%. Search share also lacks its eligible denominator, and provider306 loses below10% bound semantics. [Fixture/provider contract](../../audits/v1-2026-10-19/RETAINED_PAID_VALUE_BOUNDARIES.md). Use verified aggregate grains and preserve censoring; do not reconstruct provider eligibility from rounded shares.
 
-**Implementation / validation:** Daily CTR corrected and tested in the [October 25 checkpoint](#google-ads-value-checkpoint-october-25). Search Impression Share aggregation, eligible denominator and below-10% censoring remain uncorrected; the finding is not closed.
+**Implementation / validation:** Daily CTR corrected and tested in the [value checkpoint](#google-ads-value-checkpoint-october-25). The [ratio checkpoint](#google-ads-ratio-availability-october-25) preserves exact single-row shares and excludes unsupported aggregates/censored values at page/live-goal/Insights boundaries. No exact combined denominator or provider aggregate is introduced. Complete saved/report/alert propagation and provider acceptance remain open; the finding is not closed.
 
 ### V1-115
 
@@ -386,4 +457,4 @@ Instagram374–382, Google Ads499–508 and Meta658–668 page expressions prefe
 
 `google-ads-analytics.tsx:487–491,776–843`: no clicks/conversions becomes zero cost; target/current produces Infinity/on_track, capped200% in trackers. Absent imported Revenue returns numeric0; unknown target statuses count behind. [Exact cases and downstream limits](../../audits/v1-2026-10-19/GOOGLE_ADS_CURRENT_VALUES.md). Source/denominator availability and finite scoring must survive goals, Insights, reports and alert resolver acceptance.
 
-**Implementation / validation:** Live resolver, finite progress, trackers, modal prefill and save guards corrected in the [October 25 checkpoint](#google-ads-value-checkpoint-october-25). Raw card/chart ratios, saved/manual provenance, scheduled jobs, alerts and report consumers remain open. This is not complete goal-system acceptance.
+**Implementation / validation:** Live resolver, finite progress, trackers, modal prefill and save guards corrected in the [value checkpoint](#google-ads-value-checkpoint-october-25). The [ratio checkpoint](#google-ads-ratio-availability-october-25) covers local raw card/chart/table ratios, daily Cost/Conversion and dependent Insights/live-goal availability. Saved/manual provenance, scheduled jobs, alerts, reports and historical/provider truth remain open. This is not complete goal-system acceptance.

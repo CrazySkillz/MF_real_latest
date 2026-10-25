@@ -12,7 +12,7 @@ import { isDeepStrictEqual } from "node:util";
 import { inboundWebhookReceipts, serviceAccountResourceGrants, campaignCreationRequests } from "@shared/schema";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
-import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
+import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, getGoogleAdsServiceAccountLoginCustomerId, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
@@ -190,6 +190,7 @@ export type GA4OverviewSnapshotInput = {
 export type GA4RefreshWriteInput = {
   refreshScope?: { campaignId: string; ownerId: string; reportingDate: string; work: { id: string; leaseToken: string } };
   publicationVersion?: { campaignId: string; version: string | null };
+  googleAdsRefresh?: { campaign: Record<string, any>; connection: Record<string, any>; dedicatedSpend: boolean; allowDraftPreview?: boolean; source?: Record<string, any> | null };
 };
 
 export type GA4RefreshConnectionWriteInput = GA4RefreshWriteInput & { expectedConnection?: Record<string, any> };
@@ -804,6 +805,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateCampaign(id: string, updateData: Partial<InsertCampaign>, options: GA4RefreshWriteInput = {}): Promise<Campaign | undefined> {
     const write = async (db: any) => {
+    if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(db, id, options);
     const previous = updateData.currency !== undefined
       ? (await db.select({ currency: campaigns.currency }).from(campaigns).where(eq(campaigns.id, id)))[0] : undefined;
     const [campaign] = await db
@@ -1623,12 +1625,13 @@ export class DatabaseStorage implements IStorage {
   async writeGA4DerivedChange<T>(campaignId: string | null | undefined, options: GA4RefreshWriteInput, write: (tx: any) => Promise<T>): Promise<T> {
     if ("refreshScope" in options) return this.writeWithGA4RefreshOwnership(options.refreshScope, write);
     if (!campaignId) {
-      if ("publicationVersion" in options) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      if ("publicationVersion" in options || "googleAdsRefresh" in options) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       return db.transaction(write);
     }
     return this.withGA4RefreshTransaction(async tx => {
       const [campaign] = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).for("update");
       if (!campaign) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(tx, campaignId, options);
       const version = await this.readGA4PublicationVersion(tx, campaignId);
       if ("publicationVersion" in options) {
         if (options.publicationVersion?.campaignId !== campaignId || options.publicationVersion.version !== version) throw new Error("GA4_REFRESH_PUBLICATION_CHANGED");
@@ -2524,6 +2527,8 @@ export class DatabaseStorage implements IStorage {
     const guarded = "refreshScope" in options;
     if (guarded && (options.refreshScope?.campaignId !== campaignId || platformContext !== 'ga4' || !sourceId || expectedSourceMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     const save = async (tx: any) => {
+      if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(tx, campaignId, options);
+      if (options.googleAdsRefresh && (platformContext !== 'ga4' || sourceType !== 'ad_platforms' || sourceId !== options.googleAdsRefresh.source?.id)) throw new Error('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
       const contextCondition = platformContext === "ga4"
         ? or(eq(spendSources.platformContext, "ga4" as any), isNull(spendSources.platformContext))
         : eq(spendSources.platformContext, platformContext as any);
@@ -5391,6 +5396,39 @@ export class DatabaseStorage implements IStorage {
     return { upserted: metrics.length };
   }
 
+  // The parent lock serializes these checks with source edits, reconnects and deletion.
+  // Compare hydrated credentials so a legacy encryption migration is not a reconnect.
+  private async assertGoogleAdsRefreshInputs(tx: any, campaignId: string, options: GA4RefreshWriteInput, dedicatedSpend?: boolean): Promise<void> {
+    if (!("googleAdsRefresh" in options)) return;
+    const scope = options.googleAdsRefresh;
+    const fail = () => { throw new Error('GOOGLE_ADS_REFRESH_INPUTS_CHANGED'); };
+    if (!scope?.campaign?.ownerId || !scope.connection?.id || scope.campaign.id !== campaignId || scope.connection.campaignId !== campaignId
+      || (dedicatedSpend !== undefined && scope.dedicatedSpend !== dedicatedSpend)) fail();
+    const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, campaignId)).for('update');
+    if (!campaign || !filterActiveSchedulerCampaigns([campaign], scope!.allowDraftPreview && scope!.connection.spendOnly ? campaignId : '').length
+      || ['id', 'ownerId', 'clientId', 'status', 'currency', 'reportingTimeZone', 'startDate', 'createdAt'].some(key => !isDeepStrictEqual(campaign[key] ?? null, scope!.campaign[key] ?? null))) fail();
+    if (scope!.connection.spendOnly && scope!.source !== undefined) {
+      const sources = (await tx.select().from(spendSources).where(and(eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, true),
+        eq(spendSources.sourceType, 'ad_platforms'), or(eq(spendSources.platformContext, 'ga4'), isNull(spendSources.platformContext)))).for('update')).filter((source: any) => {
+          try { return String(JSON.parse(source.mappingConfig || '{}').platform || '').trim().toLowerCase() === 'google_ads' || String(source.displayName || '').trim() === 'Google Ads'; } catch { return String(source.displayName || '').trim() === 'Google Ads'; }
+        });
+      if (scope!.source === null ? sources.length !== 0 : sources.length !== 1 || ['id', 'campaignId', 'mappingConfig', 'currency', 'createdAt'].some(key => !isDeepStrictEqual(sources[0][key] ?? null, scope!.source![key] ?? null))) fail();
+    }
+    const table = scope!.dedicatedSpend ? ga4GoogleAdsSpendConnections : googleAdsConnections;
+    const connections = await tx.select().from(table).where(eq(table.campaignId, campaignId)).for('update');
+    if (connections.length !== 1) fail();
+    const current = hydrateDecryptedTokens(connections[0]) as any;
+    const expected = { ...scope!.connection };
+    if (current.method === 'service_account') {
+      const managerAccountId = getGoogleAdsServiceAccountLoginCustomerId();
+      current.managerAccountId ||= managerAccountId;
+      expected.managerAccountId ||= managerAccountId;
+    }
+    const fields = ['id', 'campaignId', 'customerId', 'customerName', 'managerAccountId', 'method', 'spendOnly', 'selectedCampaignIds', 'clientId', 'developerToken', 'connectedAt', 'createdAt', 'lastRefreshAt'];
+    if (current.method !== 'service_account') fields.push('accessToken', 'refreshToken', 'clientSecret');
+    if (fields.some(key => !isDeepStrictEqual(current[key] ?? null, expected[key] ?? null))) fail();
+  }
+
   // GA4 Google Ads Spend connection and daily facts stay separate from the main Google Ads platform.
   async getGA4GoogleAdsSpendConnection(campaignId: string): Promise<GA4GoogleAdsSpendConnection | undefined> {
     const [connection] = await db.select().from(ga4GoogleAdsSpendConnections)
@@ -5429,6 +5467,7 @@ export class DatabaseStorage implements IStorage {
   async updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GA4GoogleAdsSpendConnection | undefined> {
     const guarded = "refreshScope" in options;
     const write = async (db: any) => {
+    if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(db, campaignId, options, true);
     const existingQuery = db.select().from(ga4GoogleAdsSpendConnections)
       .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId));
     const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
@@ -5450,7 +5489,7 @@ export class DatabaseStorage implements IStorage {
         accessToken: (connection as any).accessToken,
         refreshToken: (connection as any).refreshToken,
         clientSecret: (connection as any).clientSecret,
-        prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
+        prev: (existing as any).encryptedTokens || (guarded || options.googleAdsRefresh ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
       });
       setObj.accessToken = null;
       setObj.refreshToken = null;
@@ -5478,6 +5517,7 @@ export class DatabaseStorage implements IStorage {
     }
     const guarded = "refreshScope" in options;
     const write = async (tx: any) => {
+      if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(tx, campaignId, options, true);
       if (guarded) {
         if (options.refreshScope?.campaignId !== campaignId || !options.expectedSource || !options.expectedConnection) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
         const [source] = await tx.select().from(spendSources).where(and(eq(spendSources.id, options.expectedSource.id), eq(spendSources.campaignId, campaignId))).for("update");
@@ -5578,6 +5618,7 @@ export class DatabaseStorage implements IStorage {
   async updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GoogleAdsConnection | undefined> {
     const guarded = "refreshScope" in options;
     const write = async (db: any) => {
+    if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(db, campaignId, options, false);
     const existingQuery = db.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
     const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
     if (guarded) {
@@ -5602,7 +5643,7 @@ export class DatabaseStorage implements IStorage {
         accessToken: (connection as any).accessToken,
         refreshToken: (connection as any).refreshToken,
         clientSecret: (connection as any).clientSecret,
-        prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
+        prev: (existing as any).encryptedTokens || (guarded || options.googleAdsRefresh ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
       });
       setObj.accessToken = null;
       setObj.refreshToken = null;
@@ -5701,6 +5742,7 @@ export class DatabaseStorage implements IStorage {
     )) throw new Error("Google Ads replacement row is outside the authorized scope");
     const guarded = "refreshScope" in options;
     const write = async (tx: any) => {
+      if ("googleAdsRefresh" in options) await this.assertGoogleAdsRefreshInputs(tx, campaignId, options, false);
       if (guarded) {
         if (options.refreshScope?.campaignId !== campaignId || !options.expectedSource || !options.expectedConnection) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
         const [source] = await tx.select().from(spendSources).where(and(eq(spendSources.id, options.expectedSource.id), eq(spendSources.campaignId, campaignId))).for("update");

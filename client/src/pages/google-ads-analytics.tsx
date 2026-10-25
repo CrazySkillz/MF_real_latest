@@ -482,19 +482,19 @@ export default function GoogleAdsAnalytics() {
         conversions: acc.conversions + parseFloat(m.conversions || "0"),
         conversionValue: acc.conversionValue + parseFloat(m.conversionValue || "0"),
         videoViews: acc.videoViews + (m.videoViews || 0),
-        searchImpressionShareSum: acc.searchImpressionShareSum + parseFloat(m.searchImpressionShare || "0"),
-        searchImpressionShareCount: acc.searchImpressionShareCount + (parseFloat(m.searchImpressionShare || "0") > 0 ? 1 : 0),
       }),
-      { impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, videoViews: 0, searchImpressionShareSum: 0, searchImpressionShareCount: 0 }
+      { impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, videoViews: 0 }
     );
-    const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
-    const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
-    const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0;
-    const convRate = totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0;
-    const costPerConv = totals.conversions > 0 ? totals.spend / totals.conversions : 0;
-    const searchImpressionShare = totals.searchImpressionShareCount > 0 ? totals.searchImpressionShareSum / totals.searchImpressionShareCount : 0;
-    const roas = totals.spend > 0 ? totals.conversionValue / totals.spend : 0;
-    const roi = totals.spend > 0 ? ((totals.conversionValue - totals.spend) / totals.spend) * 100 : 0;
+    const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : Number.NaN;
+    const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : Number.NaN;
+    const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : Number.NaN;
+    const convRate = totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : Number.NaN;
+    const costPerConv = totals.conversions > 0 ? totals.spend / totals.conversions : Number.NaN;
+    // No eligible-search-impression denominator is stored for combining rows; 9.99 means <10%.
+    const share = Number(metrics[0].searchImpressionShare);
+    const searchImpressionShare = metrics.length === 1 && share >= 10 && share <= 100 ? share : Number.NaN;
+    const roas = totals.spend > 0 ? totals.conversionValue / totals.spend : Number.NaN;
+    const roi = totals.spend > 0 ? ((totals.conversionValue - totals.spend) / totals.spend) * 100 : Number.NaN;
     return { ...totals, ctr, cpc, cpm, convRate, costPerConv, searchImpressionShare, roas, roi };
   }, [metrics]);
 
@@ -521,19 +521,20 @@ export default function GoogleAdsAnalytics() {
       existing.conversions += parseFloat(m.conversions || "0");
       existing.conversionValue += parseFloat(m.conversionValue || "0");
       existing.videoViews += m.videoViews || 0;
-      existing.searchImpressionShare += parseFloat(m.searchImpressionShare || "0");
+      existing.searchImpressionShare = Number(m.searchImpressionShare);
       existing._count += 1;
       byDate.set(m.date, existing);
     }
     return Array.from(byDate.values())
       .map((d) => ({
         ...d,
-        ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
-        cpc: d.clicks > 0 ? d.spend / d.clicks : 0,
-        cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
-        conversionRate: d.clicks > 0 ? (d.conversions / d.clicks) * 100 : 0,
-        searchImpressionShare: d._count > 0 ? d.searchImpressionShare / d._count : 0,
-        roas: d.spend > 0 ? d.conversionValue / d.spend : 0,
+        ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : Number.NaN,
+        cpc: d.clicks > 0 ? d.spend / d.clicks : Number.NaN,
+        cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : Number.NaN,
+        conversionRate: d.clicks > 0 ? (d.conversions / d.clicks) * 100 : Number.NaN,
+        costPerConversion: d.conversions > 0 ? d.spend / d.conversions : Number.NaN,
+        searchImpressionShare: d._count === 1 && d.searchImpressionShare >= 10 && d.searchImpressionShare <= 100 ? d.searchImpressionShare : Number.NaN,
+        roas: d.spend > 0 ? d.conversionValue / d.spend : Number.NaN,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [metrics]);
@@ -565,13 +566,13 @@ export default function GoogleAdsAnalytics() {
         ...c,
         attributedRevenue,
         hasAttributedRevenue: googleAdsCampaignRevenueById.has(String(c.id || '')),
-        ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
-        cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
-        cpm: c.impressions > 0 ? (c.spend / c.impressions) * 1000 : 0,
-        conversionRate: c.clicks > 0 ? (c.conversions / c.clicks) * 100 : 0,
-        costPerConversion: c.conversions > 0 ? c.spend / c.conversions : 0,
-        roas: c.spend > 0 ? c.conversionValue / c.spend : 0,
-        roi: c.spend > 0 ? ((c.conversionValue - c.spend) / c.spend) * 100 : 0,
+        ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : Number.NaN,
+        cpc: c.clicks > 0 ? c.spend / c.clicks : Number.NaN,
+        cpm: c.impressions > 0 ? (c.spend / c.impressions) * 1000 : Number.NaN,
+        conversionRate: c.clicks > 0 ? (c.conversions / c.clicks) * 100 : Number.NaN,
+        costPerConversion: c.conversions > 0 ? c.spend / c.conversions : Number.NaN,
+        roas: c.spend > 0 ? c.conversionValue / c.spend : Number.NaN,
+        roi: c.spend > 0 ? ((c.conversionValue - c.spend) / c.spend) * 100 : Number.NaN,
         attributedRoas: googleAdsCampaignRevenueById.has(String(c.id || '')) && c.spend > 0 ? attributedRevenue / c.spend : null,
         attributedRoi: googleAdsCampaignRevenueById.has(String(c.id || '')) && c.spend > 0 ? ((attributedRevenue - c.spend) / c.spend) * 100 : null,
         ga4Roas: c.hasGa4Revenue && c.spend > 0 ? c.ga4Revenue / c.spend : null,
@@ -609,12 +610,12 @@ export default function GoogleAdsAnalytics() {
           },
           { impressions: 0, clicks: 0, conversions: 0, spend: 0, conversionValue: 0 }
         );
-        const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0;
-        const cpc = sums.clicks > 0 ? sums.spend / sums.clicks : 0;
-        const cpm = sums.impressions > 0 ? (sums.spend / sums.impressions) * 1000 : 0;
-        const conversionRate = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : 0;
-        const costPerConversion = sums.conversions > 0 ? sums.spend / sums.conversions : 0;
-        const roas = sums.spend > 0 ? sums.conversionValue / sums.spend : 0;
+        const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : Number.NaN;
+        const cpc = sums.clicks > 0 ? sums.spend / sums.clicks : Number.NaN;
+        const cpm = sums.impressions > 0 ? (sums.spend / sums.impressions) * 1000 : Number.NaN;
+        const conversionRate = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : Number.NaN;
+        const costPerConversion = sums.conversions > 0 ? sums.spend / sums.conversions : Number.NaN;
+        const roas = sums.spend > 0 ? sums.conversionValue / sums.spend : Number.NaN;
         out.push({ date: byDate[i].date, ...sums, ctr, cpc, cpm, conversionRate, costPerConversion, roas });
       }
       return out;
@@ -649,12 +650,12 @@ export default function GoogleAdsAnalytics() {
         },
         { impressions: 0, clicks: 0, conversions: 0, spend: 0, conversionValue: 0 }
       );
-      const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0;
-      const cpc = sums.clicks > 0 ? sums.spend / sums.clicks : 0;
-      const cpm = sums.impressions > 0 ? (sums.spend / sums.impressions) * 1000 : 0;
-      const conversionRate = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : 0;
-      const costPerConversion = sums.conversions > 0 ? sums.spend / sums.conversions : 0;
-      const roas = sums.spend > 0 ? sums.conversionValue / sums.spend : 0;
+      const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : Number.NaN;
+      const cpc = sums.clicks > 0 ? sums.spend / sums.clicks : Number.NaN;
+      const cpm = sums.impressions > 0 ? (sums.spend / sums.impressions) * 1000 : Number.NaN;
+      const conversionRate = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : Number.NaN;
+      const costPerConversion = sums.conversions > 0 ? sums.spend / sums.conversions : Number.NaN;
+      const roas = sums.spend > 0 ? sums.conversionValue / sums.spend : Number.NaN;
       return { ...sums, ctr, cpc, cpm, conversionRate, costPerConversion, roas, startDate: slice[0]?.date || null, endDate: slice[slice.length - 1]?.date || null, days: slice.length };
     };
 
@@ -662,7 +663,7 @@ export default function GoogleAdsAnalytics() {
     const prior7 = rollup(7, 7);
     const last30 = rollup(30, 0);
     const prior30 = rollup(30, 30);
-    const deltaPct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
+    const deltaPct = (cur: number, prev: number) => (Number.isFinite(cur) && Number.isFinite(prev) && prev > 0 ? ((cur - prev) / prev) * 100 : Number.NaN);
 
     return {
       availableDays,
@@ -672,22 +673,22 @@ export default function GoogleAdsAnalytics() {
         clicks7: deltaPct(last7.clicks, prior7.clicks),
         conversions7: deltaPct(last7.conversions, prior7.conversions),
         spend7: deltaPct(last7.spend, prior7.spend),
-        ctr7: prior7.ctr > 0 ? ((last7.ctr - prior7.ctr) / prior7.ctr) * 100 : 0,
-        cpc7: prior7.cpc > 0 ? ((last7.cpc - prior7.cpc) / prior7.cpc) * 100 : 0,
-        cpm7: prior7.cpm > 0 ? ((last7.cpm - prior7.cpm) / prior7.cpm) * 100 : 0,
-        conversionRate7: prior7.conversionRate > 0 ? ((last7.conversionRate - prior7.conversionRate) / prior7.conversionRate) * 100 : 0,
-        costPerConversion7: prior7.costPerConversion > 0 ? ((last7.costPerConversion - prior7.costPerConversion) / prior7.costPerConversion) * 100 : 0,
-        roas7: prior7.roas > 0 ? ((last7.roas - prior7.roas) / prior7.roas) * 100 : 0,
+        ctr7: deltaPct(last7.ctr, prior7.ctr),
+        cpc7: deltaPct(last7.cpc, prior7.cpc),
+        cpm7: deltaPct(last7.cpm, prior7.cpm),
+        conversionRate7: deltaPct(last7.conversionRate, prior7.conversionRate),
+        costPerConversion7: deltaPct(last7.costPerConversion, prior7.costPerConversion),
+        roas7: deltaPct(last7.roas, prior7.roas),
         impressions30: deltaPct(last30.impressions, prior30.impressions),
         clicks30: deltaPct(last30.clicks, prior30.clicks),
         conversions30: deltaPct(last30.conversions, prior30.conversions),
         spend30: deltaPct(last30.spend, prior30.spend),
-        ctr30: prior30.ctr > 0 ? ((last30.ctr - prior30.ctr) / prior30.ctr) * 100 : 0,
-        cpc30: prior30.cpc > 0 ? ((last30.cpc - prior30.cpc) / prior30.cpc) * 100 : 0,
-        cpm30: prior30.cpm > 0 ? ((last30.cpm - prior30.cpm) / prior30.cpm) * 100 : 0,
-        conversionRate30: prior30.conversionRate > 0 ? ((last30.conversionRate - prior30.conversionRate) / prior30.conversionRate) * 100 : 0,
-        costPerConversion30: prior30.costPerConversion > 0 ? ((last30.costPerConversion - prior30.costPerConversion) / prior30.costPerConversion) * 100 : 0,
-        roas30: prior30.roas > 0 ? ((last30.roas - prior30.roas) / prior30.roas) * 100 : 0,
+        ctr30: deltaPct(last30.ctr, prior30.ctr),
+        cpc30: deltaPct(last30.cpc, prior30.cpc),
+        cpm30: deltaPct(last30.cpm, prior30.cpm),
+        conversionRate30: deltaPct(last30.conversionRate, prior30.conversionRate),
+        costPerConversion30: deltaPct(last30.costPerConversion, prior30.costPerConversion),
+        roas30: deltaPct(last30.roas, prior30.roas),
       },
     };
   }, [dailySeries, metricsData?.endDate]);
@@ -700,9 +701,9 @@ export default function GoogleAdsAnalytics() {
     return `'${m[1].slice(-2)}-${m[2]}-${m[3]}`;
   };
 
-  const fmt = (v: number) => v.toLocaleString();
+  const fmt = (v: number) => Number.isFinite(v) ? v.toLocaleString() : 'Unavailable';
   const fmtCurrency = (v: number) => getGoogleAdsMetricDef('spend', currency).format(v);
-  const fmtPct = formatPct;
+  const fmtPct = (v: number) => Number.isFinite(v) ? formatPct(v) : 'Unavailable';
 
   const parseRevenueSourceConfig = (source: any): any => {
     try {
@@ -795,12 +796,12 @@ export default function GoogleAdsAnalytics() {
       conversions: summary.conversions || 0,
       spend: summary.spend || 0,
       videoViews: summary.videoViews || 0,
-      ctr: summary.ctr || 0,
-      cpc: summary.cpc || 0,
-      cpm: summary.cpm || 0,
-      conversionRate: summary.convRate || 0,
-      costPerConversion: summary.costPerConv || 0,
-      searchImpressionShare: summary.searchImpressionShare || 0,
+      ctr: summary.ctr,
+      cpc: summary.cpc,
+      cpm: summary.cpm,
+      conversionRate: summary.convRate,
+      costPerConversion: summary.costPerConv,
+      searchImpressionShare: summary.searchImpressionShare,
       conversionValue: summary.conversionValue || 0,
     };
     return map[key] ?? Number.NaN;
@@ -907,9 +908,9 @@ export default function GoogleAdsAnalytics() {
       all.push({
         id: 'integrity:conv-value-zero', severity: 'high', group: 'integrity', reliability: 'high',
         title: `Conversions tracked but conversion value is ${fmtCurrency(0)}`,
-        description: `${Math.round(summary.conversions)} conversions recorded, but native Google Ads conversion value is ${fmtCurrency(0)}. Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI (${summary.roi.toFixed(1)}%) cannot be trusted until values are assigned in Google Ads.`,
+        description: `${Math.round(summary.conversions)} conversions recorded, but native Google Ads conversion value is ${fmtCurrency(0)}. Conversion-value ROAS (${formatGoogleAdsMetricValue('roas', summary.roas, currency)}) and conversion-value ROI (${fmtPct(summary.roi)}) cannot be trusted until values are assigned in Google Ads.`,
         recommendation: 'Assign conversion values in Google Ads > Goals > Conversions > Settings. For e-commerce, use dynamic values from your checkout. For lead gen, assign estimated values per lead type. Imported Google Ads attributed revenue remains separate when connected.',
-        evidence: [Math.round(summary.conversions) + ' conversions', fmtCurrency(0) + ' conversion value', 'Conversion-value ROAS: ' + summary.roas.toFixed(2) + 'x (unreliable)'],
+        evidence: [Math.round(summary.conversions) + ' conversions', fmtCurrency(0) + ' conversion value', 'Conversion-value ROAS: ' + formatGoogleAdsMetricValue('roas', summary.roas, currency) + ' (unreliable)'],
       });
     }
 
@@ -1008,7 +1009,7 @@ export default function GoogleAdsAnalytics() {
       }
 
       // Rule 10: General CVR drop (CTR not stable) — only if Rule 9 didn't fire
-      if (!firedLandingPageRegression && d.conversionRate7 <= -GADS_THRESHOLDS.cvrDropPct && p7.clicks >= GADS_THRESHOLDS.minClicks7d && p7.conversions >= GADS_THRESHOLDS.minConversions7d) {
+      if (!firedLandingPageRegression && Number.isFinite(d.ctr7) && d.conversionRate7 <= -GADS_THRESHOLDS.cvrDropPct && p7.clicks >= GADS_THRESHOLDS.minClicks7d && p7.conversions >= GADS_THRESHOLDS.minConversions7d) {
         all.push({
           id: 'anomaly:cvr-drop', severity: Math.abs(d.conversionRate7) >= 40 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('conversionrate'),
           title: `Conversion rate dropped ${Math.abs(d.conversionRate7).toFixed(0)}% week-over-week`,
@@ -1119,7 +1120,7 @@ export default function GoogleAdsAnalytics() {
       const p = computeProgress(current, target, metricKey);
       const def = getGoogleAdsMetricDef(metricKey, currency);
       const trendKey = (metricKey + '7') as keyof typeof d;
-      const wowTrend = hasWoW && d[trendKey] !== undefined ? ` Week-over-week trend: ${(d[trendKey] as number) >= 0 ? '+' : ''}${(d[trendKey] as number).toFixed(1)}%.` : '';
+      const wowTrend = hasWoW && Number.isFinite(d[trendKey]) ? ` Week-over-week trend: ${(d[trendKey] as number) >= 0 ? '+' : ''}${(d[trendKey] as number).toFixed(1)}%.` : '';
 
       if (p.status === 'behind') {
         all.push({
@@ -1552,12 +1553,12 @@ export default function GoogleAdsAnalytics() {
                       </div>
                       <div className="p-4 bg-muted rounded-lg">
                         <p className="text-sm text-muted-foreground/70 mb-1">Conversion Value ROAS</p>
-                        <p className="text-2xl font-bold text-foreground">{summary.roas.toFixed(2)}x</p>
+                        <p className="text-2xl font-bold text-foreground">{formatGoogleAdsMetricValue('roas', summary.roas, currency)}</p>
                         <p className="text-xs text-muted-foreground/70 mt-1">Conversion value / spend</p>
                       </div>
                       <div className="p-4 bg-muted rounded-lg">
                         <p className="text-sm text-muted-foreground/70 mb-1">Conversion Value ROI</p>
-                        <p className="text-2xl font-bold text-foreground">{summary.roi.toFixed(1)}%</p>
+                        <p className="text-2xl font-bold text-foreground">{fmtPct(summary.roi)}</p>
                         <p className="text-xs text-muted-foreground/70 mt-1">(Conversion value - spend) / spend</p>
                       </div>
                     </div>
@@ -2005,14 +2006,14 @@ export default function GoogleAdsAnalytics() {
                         <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} width={180} tick={{ fontSize: 11 }} />
                         <Tooltip
                           formatter={(value: any) => {
-                            const v = Number(value || 0);
+                            const v = value == null ? Number.NaN : Number(value);
                             if (sortBy === 'spend') return [fmtCurrency(v), campaignChartLabel];
                             if (sortBy === 'ctr') return [fmtPct(v), campaignChartLabel];
                             return [fmt(Math.round(v)), campaignChartLabel];
                           }}
                           labelFormatter={(label) => label}
                         />
-                        <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name={campaignChartLabel} />
+                        <Bar dataKey={(row: any) => Number.isFinite(row.value) ? row.value : null} fill="#3b82f6" radius={[0, 4, 4, 0]} name={campaignChartLabel} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -2098,7 +2099,7 @@ export default function GoogleAdsAnalytics() {
                                 <td className="px-2 py-2 text-right tabular-nums">{fmt(Math.round(c.conversions))}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtPct(c.conversionRate)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.cpc)}</td>
-                                <td className="px-2 py-2 text-right tabular-nums">{c.roas.toFixed(2)}x</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{formatGoogleAdsMetricValue('roas', c.roas, currency)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{c.hasAttributedRevenue ? fmtCurrency(c.attributedRevenue) : <span className="text-muted-foreground/70">—</span>}</td>
                                 <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.attributedRoas === null ? "text-muted-foreground/70" : c.attributedRoas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
                                   {c.attributedRoas !== null ? `${c.attributedRoas.toFixed(2)}x` : "—"}
@@ -2228,7 +2229,8 @@ export default function GoogleAdsAnalytics() {
                     if (available < minRequired) return <div className="text-sm text-muted-foreground/70">Need at least {minRequired} days for this view. Available: {available}.</div>;
 
                     const formatChartValue = (v: any) => {
-                      const n = Number(v || 0) || 0;
+                      const n = v == null ? Number.NaN : Number(v);
+                      if (!Number.isFinite(n)) return 'Unavailable';
                       if (['spend', 'cpc', 'cpm', 'costPerConversion'].includes(insightsTrendMetric)) return fmtCurrency(n);
                       if (['ctr', 'conversionRate'].includes(insightsTrendMetric)) return `${formatPct(n)}`;
                       if (insightsTrendMetric === 'roas') return `${n.toFixed(2)}x`;
@@ -2247,7 +2249,7 @@ export default function GoogleAdsAnalytics() {
                               <YAxis tick={{ fontSize: 12 }} />
                               <Tooltip formatter={(value: any) => formatChartValue(value)} />
                               <Legend />
-                              <Line type="monotone" dataKey={insightsTrendMetric} stroke="#7c3aed" strokeWidth={2} dot={false} name={labels[insightsTrendMetric] || insightsTrendMetric} />
+                              <Line type="monotone" dataKey={(row: any) => Number.isFinite(row[insightsTrendMetric]) ? row[insightsTrendMetric] : null} stroke="#7c3aed" strokeWidth={2} dot={false} name={labels[insightsTrendMetric] || insightsTrendMetric} />
                             </LineChart>
                           </ResponsiveContainer>
                         </div>
@@ -2272,10 +2274,10 @@ export default function GoogleAdsAnalytics() {
                                     if (rows.length === 0) return <tr><td colSpan={3} className="p-4 text-sm text-muted-foreground/70">No daily records available yet.</td></tr>;
                                     return rows.map((r: any, idx: number, arr: any[]) => {
                                       const prev = idx > 0 ? arr[idx - 1] : null;
-                                      const curVal = Number(r?.[insightsTrendMetric] ?? 0) || 0;
-                                      const prevVal = Number(prev?.[insightsTrendMetric] ?? 0) || 0;
-                                      const deltaPctVal = prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : 0;
-                                      const showDelta = !!prev && prevVal > 0 && Date.parse(r.date) - Date.parse(prev.date) === 86400000;
+                                      const curVal = Number(r?.[insightsTrendMetric] ?? Number.NaN);
+                                      const prevVal = Number(prev?.[insightsTrendMetric] ?? Number.NaN);
+                                      const deltaPctVal = prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : Number.NaN;
+                                      const showDelta = !!prev && Number.isFinite(curVal) && Number.isFinite(prevVal) && prevVal > 0 && Date.parse(r.date) - Date.parse(prev.date) === 86400000;
                                       return (
                                         <tr key={r.date} className="border-b">
                                           <td className="p-3"><div className="font-medium text-foreground">{formatShortDate(String(r.date || ''))}</div></td>
@@ -2311,18 +2313,18 @@ export default function GoogleAdsAnalytics() {
                                     ? { key: '7d', cur: insightsRollups.last7, d: insightsRollups.deltas, label: 'Last 7d vs prior 7d' }
                                     : { key: '30d', cur: insightsRollups.last30, d: insightsRollups.deltas, label: 'Last 30d vs prior 30d' };
                                   const valueFor = (obj: any) => {
-                                    const v = Number(obj?.[insightsTrendMetric] ?? 0) || 0;
+                                    const v = Number(obj?.[insightsTrendMetric] ?? Number.NaN);
                                     return formatChartValue(v);
                                   };
                                   const suffix = is7 ? '7' : '30';
                                   const deltaKey = `${insightsTrendMetric}${suffix}` as keyof typeof row.d;
-                                  const delta = Number(row.d[deltaKey] ?? 0);
-                                  const deltaColor = delta >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300';
+                                  const delta = Number(row.d[deltaKey] ?? Number.NaN);
+                                  const deltaColor = !Number.isFinite(delta) ? 'text-muted-foreground/70' : delta >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300';
                                   return (
                                     <tr key={row.key} className="border-b">
                                       <td className="p-3"><div className="font-medium text-foreground">{row.cur.endDate}</div><div className="text-xs text-muted-foreground/70 mt-0.5">{row.cur.startDate} → {row.cur.endDate} ({row.label})</div></td>
                                       <td className="p-3 text-right"><div className="font-medium text-foreground">{valueFor(row.cur)}</div></td>
-                                      <td className="p-3 text-right"><div className={`text-xs ${deltaColor}`}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}%</div></td>
+                                      <td className="p-3 text-right"><div className={`text-xs ${deltaColor}`}>{Number.isFinite(delta) ? `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%` : '—'}</div></td>
                                     </tr>
                                   );
                                 })()}

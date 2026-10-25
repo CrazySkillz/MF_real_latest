@@ -1,0 +1,305 @@
+{
+  "at": "2026-10-25T13:31:41.266Z",
+  "baseline": "8a9da324343967925aae52ffd114c30447702edc",
+  "scope": "Ordinary Google Ads main/legacy Spend and dedicated GA4 Spend refresh writes recheck current campaign, connection and source inputs under transaction locks.",
+  "deployment": {
+    "userReported": true,
+    "publicHealthObserved": {
+      "ok": true,
+      "commit": "8a9da324343967925aae52ffd114c30447702edc"
+    },
+    "behavioralAcceptance": false
+  },
+  "runs": [
+    {
+      "packet": "refresh-guards-pg-final-oct25",
+      "files": 4,
+      "passed": 210,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "packet": "refresh-guards-neighbors-final-oct25",
+      "files": 7,
+      "passed": 226,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "packet": "refresh-guards-source-safety-oct25",
+      "files": 1,
+      "passed": 82,
+      "failed": 6,
+      "skipped": 0
+    }
+  ],
+  "files": [
+    {
+      "file": "server/campaign-scheduler-eligibility.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 2,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/executive-summary-snapshot-scheduler.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 6,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-aggregate-saved-overview.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 25,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+      "packet": "refresh-guards-neighbors-final-oct25",
+      "passed": 5,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-google-ads-spend-pipeline-regression.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 2,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-google-ads-spend.test.ts",
+      "packet": "ratios-final-oct25",
+      "passed": 4,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "packet": "refresh-guards-pg-final-oct25",
+      "passed": 64,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "packet": "refresh-guards-pg-final-oct25",
+      "passed": 84,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-ga4-spend-disconnect-transaction.test.ts",
+      "packet": "refresh-guards-pg-final-oct25",
+      "passed": 5,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-production-regression.test.ts",
+      "packet": "ratios-final-oct25",
+      "passed": 7,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-revenue-kpi-benchmark-ui.test.ts",
+      "packet": "ratios-final-oct25",
+      "passed": 11,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-revenue-overview-ui.test.ts",
+      "packet": "ratios-final-oct25",
+      "passed": 6,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-revenue-wizard-context.test.ts",
+      "packet": "ratios-final-oct25",
+      "passed": 3,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-service-account.test.ts",
+      "packet": "refresh-guards-neighbors-final-oct25",
+      "passed": 5,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-spend-lifecycle-downstream.test.ts",
+      "packet": "refresh-guards-neighbors-final-oct25",
+      "passed": 7,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-spend-production-path.test.ts",
+      "packet": "refresh-guards-neighbors-final-oct25",
+      "passed": 23,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/googleAdsClient.test.ts",
+      "packet": "ratios-final-oct25",
+      "passed": 5,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/performance-summary-aggregate.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 22,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "packet": "refresh-guards-source-safety-oct25",
+      "passed": 82,
+      "failed": [
+        "source safety regression guards individual revenue source delete proves campaign ownership before deleting source records",
+        "source safety regression guards Google Sheets main platform feeds Campaign DeepDive aggregate without raw sheet revenue/spend rows",
+        "source safety regression guards Google Sheets KPIs use source-backed mapped metrics without blocking explicit sheet financial columns",
+        "source safety regression guards Google Sheets Reports follow the GA4 Reports template with source-backed output guards",
+        "source safety regression guards Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted",
+        "source safety regression guards Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections"
+      ],
+      "skipped": 0
+    },
+    {
+      "file": "server/trend-analysis-aggregate.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 4,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch1-access-regression.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 78,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-google-ads-enrichment.test.ts",
+      "packet": "ratios-final-oct25",
+      "passed": 3,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-google-ads-refresh-postgres.test.ts",
+      "packet": "refresh-guards-pg-final-oct25",
+      "passed": 57,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-google-ads-revenue-postgres.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 9,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-google-ads-values.test.ts",
+      "packet": "refresh-guards-neighbors-final-oct25",
+      "passed": 76,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-paid-isolation.test.ts",
+      "packet": "refresh-guards-neighbors-final-oct25",
+      "passed": 82,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-retained-spend-import.test.ts",
+      "packet": "refresh-guards-neighbors-final-oct25",
+      "passed": 28,
+      "failed": [],
+      "skipped": 0
+    }
+  ],
+  "latestPerFileTotals": {
+    "files": 27,
+    "passed": 705,
+    "failed": 6,
+    "skipped": 0
+  },
+  "builds": {
+    "at": "2026-10-25T13:27:24.308Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "refresh-guards-final-oct25-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "refresh-guards-final-oct25-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "refresh-guards-final-oct25-server-build.log"
+      }
+    ]
+  },
+  "hashes": [
+    {
+      "file": "server/google-ads-scheduler.ts",
+      "sha256": "63e173ee75e07167166dfb3eb6d0fc3ad8960aa4951214b361388ef338c28804"
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "42583bb95f0887ace029a96070effe7ecdd4a9777ec6c004b569f41ed1f75d30"
+    },
+    {
+      "file": "server/v1-batch6-google-ads-refresh-postgres.test.ts",
+      "sha256": "53a1300c1ab5c4631a892848f6adec1b779d8209ad155f44a386f4a56b0fee44"
+    },
+    {
+      "file": "server/google-ads-spend-production-path.test.ts",
+      "sha256": "b5f83de9ca53d66e785f3dc94775a08159d6be45c24ce043e4b44defaac9fa17"
+    },
+    {
+      "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+      "sha256": "b7c76f98b0f76ccae97c079b989b485999076716810005413c67e6f1efff6bbb"
+    },
+    {
+      "file": "client/src/pages/google-ads-analytics.tsx",
+      "sha256": "da1a2b2397499439b5473aee7e32c578ea182ba48e19cbaec6fa1b02e8a8ea6d"
+    },
+    {
+      "file": "server/v1-batch6-google-ads-values.test.ts",
+      "sha256": "1e638772f4e915e4cb6ed0bcc82ce271af098107c1e8bc70aba5930799fdd863"
+    }
+  ],
+  "cleanup": {
+    "remainingOwnedSchemas": 0,
+    "postgresFixture": "127.0.0.1:55444/ga4_alignment_test",
+    "stopped": true
+  },
+  "limits": [
+    "Synthetic provider responses; no user browser, authenticated provider, production data or historical cleanup.",
+    "Ordinary checks compare current input values under locks, not an input revision or job lease. Edit-then-restore and overlapping response ordering are not certified.",
+    "The separate retained spend-import route, every deferred-provider writer/retry/restart, scheduled goal/alert/report propagation and historical data remain open.",
+    "No live provider deployment acceptance; whole-app and Batch 6 readiness remain open."
+  ]
+}

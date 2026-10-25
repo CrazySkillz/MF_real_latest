@@ -79,6 +79,10 @@ function firstNonZero(obj: Record<string, any>, keys: string[]): number {
  */
 async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<string, number> | null> {
   try {
+    if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") {
+      const connection = await storage.getLinkedInConnection(campaignId);
+      if (String(connection?.method || "").toLowerCase().includes("test") || String(connection?.accessToken || "").startsWith("test")) return null;
+    }
     // Canonical latest session selection (DB-ordered, deterministic)
     const latestSession = await (storage as any).getLatestLinkedInImportSession?.(campaignId);
     if (!latestSession) {
@@ -170,6 +174,10 @@ async function getCampaignSpecificMetrics(
   linkedInCampaignName: string
 ): Promise<Record<string, number> | null> {
   try {
+    if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") {
+      const connection = await storage.getLinkedInConnection(campaignId);
+      if (String(connection?.method || "").toLowerCase().includes("test") || String(connection?.accessToken || "").startsWith("test")) return null;
+    }
     const latestSession = await (storage as any).getLatestLinkedInImportSession?.(campaignId);
     if (!latestSession) return null;
 
@@ -360,6 +368,7 @@ function mapKPIMetricToTikTokKey(kpiMetric: string): string {
 
 async function getInstagramMetricsForTarget(campaignId: string, target: KPI | Benchmark): Promise<Record<string, number> | null> {
   const connection = await storage.getInstagramConnection(campaignId).catch(() => null);
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return null;
   if (!connection || (connection as any).spendOnly) return null;
 
   const selectedCampaignIds = (() => {
@@ -423,6 +432,7 @@ async function getInstagramMetricsForTarget(campaignId: string, target: KPI | Be
 
 async function getTikTokMetricsForTarget(campaignId: string, target: KPI | Benchmark): Promise<Record<string, number> | null> {
   const connection = await storage.getTikTokConnection(campaignId).catch(() => null);
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return null;
   if (!connection || (connection as any).spendOnly) return null;
 
   const selectedCampaignIds = (() => {
@@ -445,6 +455,7 @@ async function getTikTokMetricsForTarget(campaignId: string, target: KPI | Bench
   if (specificId && !selectedSet.has(specificId)) return null;
 
   const rows = (await storage.getTikTokDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]))
+    .filter((row: any) => String(process.env.NODE_ENV || "").trim().toLowerCase() !== "production" || !row.isSimulated)
     .filter((row: any) => selectedSet.has(String(row?.tiktokCampaignId || "")))
     .filter((row: any) => !specificId || String(row?.tiktokCampaignId || "") === specificId);
   if (rows.length === 0) return null;

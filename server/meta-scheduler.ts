@@ -433,6 +433,7 @@ export async function enrichMetaWithGA4Revenue(
     connection = await storage.getMetaConnection(campaignId);
   }
   if (!connection) return { enriched: 0, matched: 0, unmatched: [] };
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection.method || "").toLowerCase().includes("test")) throw new Error("Test-mode data is unavailable in production");
 
   return enrichPlatformWithGA4Revenue({
     campaignId,

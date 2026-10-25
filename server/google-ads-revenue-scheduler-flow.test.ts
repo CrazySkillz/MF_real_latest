@@ -10,18 +10,18 @@ describe("Google Ads revenue scheduler flow", () => {
 
     expect(scheduler).toContain('const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads", "google_sheets"] as const;');
     expect(scheduler).toContain('const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;');
-    expect(scheduler).toContain("for (const ctx of crmRevenueContexts)");
-    expect(scheduler).toContain("for (const ctx of refreshableRevenueContexts)");
+    expect(scheduler).toContain('for (const ctx of (guarded ? ["ga4"] as const : crmRevenueContexts))');
+    expect(scheduler).toContain('for (const ctx of (guarded ? ["ga4"] as const : refreshableRevenueContexts))');
     expect(scheduler).toContain("storage.getRevenueSources(campaignId, ctx)");
   });
 
   it("keeps Google Ads auto-refresh source-scoped with stable source IDs", () => {
     const scheduler = readSource("server", "auto-refresh-scheduler.ts");
 
-    expect(scheduler).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
-    expect(scheduler).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id))");
-    expect(scheduler).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id))");
-    expect(scheduler).toContain("reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg)");
+    expect(scheduler).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id), refreshWriteInput)");
+    expect(scheduler).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id), refreshWriteInput)");
+    expect(scheduler).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id), refreshWriteInput)");
+    expect(scheduler).toContain("reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg, refreshWriteInput)");
     expect(scheduler).toContain("platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx");
     expect(scheduler).toContain("platformContext: sfCfgRaw.platformContext || salesforceSource.platformContext || ctx");
     expect(scheduler).toContain("platformContext: shopCfgRaw.platformContext || shopifySource.platformContext || ctx");

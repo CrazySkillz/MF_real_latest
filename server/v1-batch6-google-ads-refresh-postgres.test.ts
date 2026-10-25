@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { getTableColumns, getTableName, SQL, sql, and, eq, gte, lte } from 'drizzle-orm';
-import { PgDialect } from 'drizzle-orm/pg-core';
+import { getTableConfig, PgDialect } from 'drizzle-orm/pg-core';
 import ts from 'typescript';
 import * as schema from '../shared/schema';
 
@@ -26,7 +26,7 @@ if (testUrl) {
 }
 const schemaName = `v1_ads_refresh_${randomUUID().replace(/-/g, '')}`;
 const tables = [schema.campaigns, schema.googleAdsConnections, schema.ga4GoogleAdsSpendConnections,
-  schema.googleAdsDailyMetrics, schema.ga4GoogleAdsSpendDailyMetrics, schema.spendSources, schema.spendRecords, schema.metricSnapshots];
+  schema.googleAdsDailyMetrics, schema.ga4GoogleAdsSpendDailyMetrics, schema.spendSources, schema.spendRecords, schema.metricSnapshots, schema.ga4RefreshWork];
 const storage = new DatabaseStorage();
 const day = '2026-10-24';
 const fact = { campaignId: 'a', googleCampaignId: 'selected', date: day, spend: '25', impressions: 100, clicks: 10 };
@@ -60,7 +60,8 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
         const defaultSql = v instanceof SQL ? dialect.sqlToQuery(v).sql : typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : String(v);
         return `"${column.name}" ${column.getSQLType()}${column.notNull ? ' NOT NULL' : ''}${v !== undefined ? ` DEFAULT ${defaultSql}` : ''}${column.primary ? ' PRIMARY KEY' : ''}`;
       });
-      await pool.query(`CREATE TABLE "${getTableName(table)}" (${columns.join(', ')})`);
+      const checks = getTableConfig(table).checks.map(check => `CONSTRAINT "${check.name}" CHECK (${dialect.sqlToQuery(check.value).sql})`);
+      await pool.query(`CREATE TABLE "${getTableName(table)}" (${[...columns, ...checks].join(', ')})`);
     }
   });
   afterAll(async () => { await pool?.end(); if (created) await admin.query(`DROP SCHEMA "${schemaName}" CASCADE`); await admin?.end(); vi.unstubAllEnvs(); });
@@ -322,6 +323,119 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.00' }]);
       expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
     } finally { releaseOlder(); releaseWinner(); await older; await winner; spy.mockRestore(); }
+  });
+  it.each([false, true])('actual disconnect during provider I/O cannot resurrect facts (dedicated=%s)', async dedicated => {
+    const response = await provider.daily();
+    provider.daily.mockImplementationOnce(async () => {
+      if (dedicated) await storage.disconnectGa4GoogleAdsSpend('a');
+      else await storage.deleteGoogleAdsConnection('a');
+      return response;
+    });
+    await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: dedicated })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+    expect((await pool.query(`SELECT * FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([]);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'b'`)).rows).toEqual([{ spend: '10.00' }]);
+    expect(provider.jobs).not.toHaveBeenCalled();
+  });
+  it.each([false, true])('actual reconnect with identical settings invalidates the old request (dedicated=%s)', async dedicated => {
+    const response = await provider.daily();
+    provider.daily.mockImplementationOnce(async () => {
+      const old = (await capture(dedicated)).googleAdsRefresh.connection;
+      const { id: _id, createdAt: _created, connectedAt: _connected, ...settings } = old;
+      if (dedicated) await storage.replaceGA4GoogleAdsSpendConnection(settings, [{ ...fact, spend: '70' }]);
+      else await storage.replaceGoogleAdsConnection(settings, [{ ...fact, spend: '70' }]);
+      return response;
+    });
+    await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: dedicated })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '70.00' }]);
+    expect(provider.jobs).not.toHaveBeenCalled();
+  });
+  it.each([false, true])('connection replacement rolls back all prior facts on insertion failure (dedicated=%s)', async dedicated => {
+    const previous = (await capture(dedicated)).googleAdsRefresh.connection;
+    const persistedBefore = (await pool.query(`SELECT * FROM "${getTableName(connectionTable(dedicated))}" WHERE campaign_id = 'a'`)).rows;
+    const save = dedicated ? storage.replaceGA4GoogleAdsSpendConnection.bind(storage) : storage.replaceGoogleAdsConnection.bind(storage);
+    await expect(save({ ...previous, id: 'replacement' }, [{ ...fact, spend: 'invalid' }])).rejects.toThrow();
+    expect((await pool.query(`SELECT * FROM "${getTableName(connectionTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual(persistedBefore);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+  });
+  it('actual source edit during provider I/O preserves the edited records and source identity', async () => {
+    const response = await provider.daily();
+    provider.daily.mockImplementationOnce(async () => {
+      const source = (await capture(true)).googleAdsRefresh.source;
+      const saved = await storage.replaceSpendSourceWithRecords('a', source.id, 'ad_platforms', 'ga4',
+        { ...source, mappingConfig: '{"platform":"google_ads","selectedCampaignIds":["other"]}' },
+        [{ campaignId: 'a', date: day, spend: '70', currency: 'EUR', sourceType: 'ad_platforms' }]);
+      expect(saved.id).toBe(source.id);
+      return response;
+    });
+    await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: true })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+    expect((await storage.getSpendSources('a', 'ga4')).map(row => row.id)).toEqual(['source-a']);
+    expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '70.00' }]);
+    expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'b'")).rows).toEqual([{ spend: '10.00' }]);
+    expect(provider.jobs).not.toHaveBeenCalled();
+  });
+  it.each(['materialization', 'cache'])('a newer refresh prevents stale later-stage %s writes', async boundary => {
+    const response = await provider.daily();
+    provider.daily.mockResolvedValueOnce(response.map((row: any) => ({ ...row, costMicros: 15_000_000 })))
+      .mockResolvedValueOnce(response.map((row: any) => ({ ...row, costMicros: 70_000_000 })));
+    const method = boundary === 'materialization' ? 'getGA4GoogleAdsSpendDailyMetrics' : 'getSpendTotalForRange';
+    const original = runtimeStorage[method].bind(runtimeStorage);
+    const spy = vi.spyOn(runtimeStorage, method).mockImplementationOnce(async (...args: any[]) => {
+      const old = await (original as any)(...args);
+      const next = await refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: true, deferDownstream: true });
+      expect(next.spendMaterialization?.totalSpend).toBe(70);
+      return old;
+    });
+    try {
+      await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: true })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
+      expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '70.00' }]);
+      expect((await storage.getCampaign('a'))?.spend).toBe('70.00');
+      expect((await storage.getCampaign('b'))?.spend).toBe('10.00');
+      expect(provider.jobs).not.toHaveBeenCalled();
+    } finally { spy.mockRestore(); }
+  });
+  it('source add, edit, list, totals and exact deletion preserve adjacent sources', async () => {
+    const source = await storage.getSpendSource('a', 'source-a', 'ga4');
+    const { id: _id, ...fields } = source!;
+    const records = (spend: string) => [{ campaignId: 'a', date: day, spend, currency: 'EUR', sourceType: 'ad_platforms' }];
+    const created = await storage.replaceSpendSourceWithRecords('a', null, 'ad_platforms', 'ga4', { ...fields, displayName: 'Second fixture' }, records('5'));
+    expect((await storage.getSpendTotalForRange('a', day, day, 'ga4')).totalSpend).toBe(15);
+    const edited = await storage.replaceSpendSourceWithRecords('a', created.id, 'ad_platforms', 'ga4', { ...fields, displayName: 'Second fixture edited' }, records('8'));
+    expect(edited.id).toBe(created.id);
+    expect((await storage.getSpendSources('a', 'ga4')).map(row => row.id).sort()).toEqual(['source-a', created.id].sort());
+    expect((await storage.getSpendBreakdownBySource('a', day, day, 'ga4')).map(row => row.spend).sort()).toEqual([10, 8].sort());
+    expect((await storage.getSpendTotalForRange('a', day, day, 'ga4')).totalSpend).toBe(18);
+    await expect(storage.deleteSpendSourceWithRecords('b', created.id, 'ga4')).resolves.toBe(false);
+    await expect(storage.deleteSpendSourceWithRecords('a', created.id, 'google_ads')).resolves.toBe(false);
+    await expect(storage.deleteSpendSourceWithRecords('a', created.id, 'ga4')).resolves.toBe(true);
+    await expect(storage.deleteSpendSourceWithRecords('a', created.id, 'ga4')).resolves.toBe(false);
+    expect(await storage.getSpendSource('a', created.id, 'ga4')).toBeUndefined();
+    expect((await storage.getSpendTotalForRange('a', day, day, 'ga4')).totalSpend).toBe(10);
+    expect((await storage.getSpendTotalForRange('b', day, day, 'ga4')).totalSpend).toBe(10);
+    await expect(storage.replaceSpendSourceWithRecords('a', created.id, 'ad_platforms', 'ga4', fields, records('99'))).rejects.toThrow('Spend source not found');
+  });
+  it.each(['source', 'connection'])('failed %s deletion rolls back source visibility, records and pending work', async kind => {
+    await database.current.insert(schema.ga4RefreshWork).values({ id: 'work-a', campaignId: 'a', dueAt: new Date(), reportingDate: day, scopeHash: 'original', scope: {}, status: 'pending' });
+    const snapshot = async () => {
+      const result: Record<string, any> = {};
+      for (const table of tables) result[getTableName(table)] = (await pool.query(`SELECT * FROM "${getTableName(table)}" ORDER BY id`)).rows;
+      return result;
+    };
+    const before = await snapshot();
+    const table = kind === 'source' ? 'spend_records' : 'ga4_google_ads_spend_connections';
+    await pool.query("CREATE FUNCTION deny_fixture_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture delete failed'; END $$");
+    await pool.query(`CREATE TRIGGER deny_delete BEFORE DELETE ON "${table}" FOR EACH ROW EXECUTE FUNCTION deny_fixture_delete()`);
+    try {
+      await expect(kind === 'source' ? storage.deleteSpendSourceWithRecords('a', 'source-a', 'ga4') : storage.disconnectGa4GoogleAdsSpend('a')).rejects.toThrow('fixture delete failed');
+      expect(await snapshot()).toEqual(before);
+    } finally { await pool.query(`DROP TRIGGER deny_delete ON "${table}"`); await pool.query('DROP FUNCTION deny_fixture_delete()'); }
+  });
+  it('ordinary source changes invalidate only the affected campaign durable work', async () => {
+    for (const campaignId of ['a', 'b']) await database.current.insert(schema.ga4RefreshWork).values({ id: `work-${campaignId}`, campaignId, dueAt: new Date(), reportingDate: day, scopeHash: 'original', scope: {}, status: 'pending' });
+    await storage.deleteSpendSourceWithRecords('a', 'source-a', 'ga4');
+    expect((await pool.query('SELECT id, scope_hash FROM ga4_refresh_work ORDER BY id')).rows).toEqual([
+      { id: 'work-a', scope_hash: 'invalidated:work-a' }, { id: 'work-b', scope_hash: 'original' },
+    ]);
   });
   it('reproduces the deployed unguarded-write boundary with the same PostgreSQL fixture', async () => {
     const baseline = execFileSync('git', ['show', '8a9da324:server/storage.ts'], { encoding: 'utf8', windowsHide: true });

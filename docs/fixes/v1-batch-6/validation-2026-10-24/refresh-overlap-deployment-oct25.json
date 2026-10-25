@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-25T16:17:28.1783099Z",
+  "endpoint": "https://marketforensics.onrender.com/api/health",
+  "status": 200,
+  "body": {
+    "ok": true,
+    "commit": "35c16c1ea9e7513aba07b014677dca28bf0b71a5",
+    "nodeEnv": "production",
+    "ts": "2026-10-25T16:17:26.064Z"
+  },
+  "boundary": "Public health and exact revision only; no authenticated UI, provider, production database or email access."
+}

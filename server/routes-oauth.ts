@@ -396,6 +396,7 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
 
   try {
     const googleAdsConn = await storage.getGoogleAdsConnection(campaignId).catch(() => null);
+    if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(googleAdsConn?.method || "").toLowerCase().includes("test")) return { googleAds, googleAdsSpend, googleAdsLastUpdate };
     hasGoogleAdsConnection = !!googleAdsConn;
     if (googleAdsConn && !(googleAdsConn as any).spendOnly) {
       const selectedCampaignIds = (() => {
@@ -489,6 +490,7 @@ async function buildInstagramPlatformSourceForAggregate(campaignId: string, star
 
   try {
     const instagramConn = await storage.getInstagramConnection(campaignId).catch(() => null);
+    if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(instagramConn?.method || "").toLowerCase().includes("test")) return { instagram, instagramSpend, instagramLastUpdate };
     hasInstagramConnection = !!instagramConn;
     const selectedCampaignIds = (() => {
       try {
@@ -571,6 +573,7 @@ async function buildTikTokPlatformSourceForAggregate(
 
   try {
     const tiktokConn = await storage.getTikTokConnection(campaignId).catch(() => null);
+    if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(tiktokConn?.method || "").toLowerCase().includes("test")) return { tiktok, tiktokSpend, tiktokLastUpdate };
     hasTikTokConnection = !!tiktokConn;
     const selectedCampaignIds = (() => {
       try {
@@ -583,6 +586,7 @@ async function buildTikTokPlatformSourceForAggregate(
     if (tiktokConn && !(tiktokConn as any).spendOnly && selectedCampaignIds.length > 0) {
       const selectedSet = new Set(selectedCampaignIds);
       const tiktokRows = (await storage.getTikTokDailyMetrics(campaignId, startDate, endDate))
+        .filter((row: any) => String(process.env.NODE_ENV || "").trim().toLowerCase() !== "production" || !row.isSimulated)
         .filter((row: any) => selectedSet.has(String(row?.tiktokCampaignId)));
       const coveredCampaignIds = new Set(tiktokRows
         .filter((row: any) => String(row?.date || "") === endDate)
@@ -660,6 +664,7 @@ async function buildLinkedInPlatformSourceForAggregate(
 
   try {
     const connection = linkedInConn ?? await storage.getLinkedInConnection(campaignId).catch(() => null);
+    if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && (String(connection?.method || "").toLowerCase().includes("test") || String(connection?.accessToken || "").startsWith("test"))) return { linkedIn, linkedInSpend, linkedInLastUpdate };
     if (connection && connection.adAccountId && !(connection as any).spendOnly) {
       if (exactWindow) {
         const rows = await storage.getLinkedInDailyMetrics(campaignId, exactWindow.startDate, exactWindow.endDate);
@@ -15113,7 +15118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let meta: any = { connected: false };
       let metaSpend = 0;
       try {
-        if (metaConn && !(metaConn as any).spendOnly) {
+        if (metaConn && !(metaConn as any).spendOnly && !(String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(metaConn.method || "").toLowerCase().includes("test"))) {
           let spend = 0, clicks = 0, impressions = 0, conversions = 0;
           let metaWindowAvailable = !currentValueWindow;
           const selectedMetaCampaignIds = parseMetaSelectedCampaignIds(metaConn);
@@ -24116,6 +24121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const connection = await storage.getInstagramConnection(parsedId.data);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) {
         return res.status(404).json({ error: "Instagram connection not found" });
       }
@@ -24363,6 +24369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const connection = await storage.getTikTokConnection(parsedId.data);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) {
         return res.status(404).json({ error: "TikTok connection not found" });
       }
@@ -24543,6 +24550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const connection = await storage.getTikTokConnection(parsedId.data);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) {
         return res.status(404).json({ error: "TikTok connection not found" });
       }
@@ -24563,6 +24571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = getDateRangeBounds(dateRange);
       const selected = new Set(selectedCampaignIds);
       const rows = (await storage.getTikTokDailyMetrics(parsedId.data, startDate, endDate).catch(() => []))
+        .filter((row: any) => String(process.env.NODE_ENV || "").trim().toLowerCase() !== "production" || !row.isSimulated)
         .filter((row: any) => selected.has(String(row.tiktokCampaignId)))
         .map((row: any) => ({
           date: row.date,
@@ -24633,6 +24642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const connection = await storage.getInstagramConnection(parsedId.data);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) {
         return res.json({ success: true, connected: false, hasRows: false, metrics: null });
       }
@@ -24701,6 +24711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const connection = await storage.getInstagramConnection(parsedId.data);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) {
         return res.status(404).json({ error: "Instagram connection not found" });
       }
@@ -24721,9 +24732,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = getDateRangeBounds(dateRange);
       const selected = new Set(selectedCampaignIds);
       let persistedRows = await storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate).catch(() => []);
-      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection.method || "").toLowerCase().includes("test")) {
-        return res.status(409).json({ error: "Test-mode data is unavailable in production" });
-      }
       if (persistedRows.length === 0 && String((connection as any).method || "") === "test_mode" && !(connection as any).spendOnly) {
         const date = yesterdayUTC();
         const seedRows = selectedCampaignIds.map((id: string, index: number) => {
@@ -24999,6 +25007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Meta Analytics] Fetching analytics for campaign ${campaignId}`);
 
       const connection = await storage.getMetaConnection(campaignId);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && (useMock === '1' || String(connection?.method || "").toLowerCase().includes("test"))) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
 
       if (!connection) {
         return res.status(404).json({ error: "Meta connection not found for this campaign" });
@@ -25357,6 +25366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const connection = await storage.getMetaConnection(parsedId.data);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) {
         return res.status(404).json({ error: "Meta connection not found" });
       }
@@ -25412,6 +25422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const connection = await storage.getMetaConnection(parsedId.data);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) {
         return res.status(404).json({ error: "Meta connection not found" });
       }
@@ -26462,6 +26473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dedicatedConnection = spendPreview ? await storage.getGA4GoogleAdsSpendConnection(campaignId) : null;
       const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId);
       const connection = spendPreview ? dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null) : legacyConnection;
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) return res.json({ success: true, metrics: [] });
       if ((connection as any).spendOnly && !spendPreview) return res.json({ success: true, metrics: [] });
       if ((connection as any).spendOnly && String((connection as any).method || "") === "test_mode") return res.json({ success: true, metrics: [] });
@@ -26526,6 +26538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const connection: any = await storage.getGoogleAdsConnection(campaignId);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
       const selectedIds: string[] = connection.selectedCampaignIds ? JSON.parse(connection.selectedCampaignIds) : [];
@@ -26655,6 +26668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
       const connection: any = await storage.getMetaConnection(campaignId);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!connection || connection.spendOnly) return res.json({ success: true, metrics: [] });
       const selectedCampaignIds = parseMetaSelectedCampaignIds(connection);
       if (selectedCampaignIds.length === 0) {
@@ -26814,6 +26828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && (String(linkedInConnection?.method || "").toLowerCase().includes("test") || String(linkedInConnection?.accessToken || "").startsWith("test"))) return res.status(409).json({ error: "Test-mode data is unavailable in production" });
       if (!linkedInConnection) return res.json({ success: true, metrics: [] });
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);

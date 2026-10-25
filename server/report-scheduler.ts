@@ -761,6 +761,7 @@ async function validateInstagramScheduledReportScope(report: any): Promise<{ ok:
   const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1).catch(() => []);
   if (!campaign) return { ok: false, message: "Campaign not found; skipped scheduled report", disableSchedule: true };
   const connection = await storage.getInstagramConnection(campaignId).catch(() => null as any);
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return { ok: false, message: "Test-mode data is unavailable in production", disableSchedule: true };
   const selectedCampaignIds = (() => {
     try {
       const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
@@ -782,6 +783,7 @@ async function validateTikTokScheduledReportScope(report: any): Promise<{ ok: bo
   const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1).catch(() => []);
   if (!campaign) return { ok: false, message: "Campaign not found; skipped scheduled report", disableSchedule: true };
   const connection = await storage.getTikTokConnection(campaignId).catch(() => null as any);
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return { ok: false, message: "Test-mode data is unavailable in production", disableSchedule: true };
   const selectedCampaignIds = (() => {
     try {
       const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
@@ -806,6 +808,7 @@ async function buildInstagramScheduledPdfAttachment(args: {
   const campaignId = String(report?.campaignId || "").trim();
   if (!campaignId) return null;
   const connection = await storage.getInstagramConnection(campaignId).catch(() => null as any);
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return null;
   const selectedCampaignIds = (() => {
     try {
       const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
@@ -914,6 +917,7 @@ async function buildTikTokScheduledPdfAttachment(args: {
   const campaignId = String(report?.campaignId || "").trim();
   if (!campaignId) return null;
   const connection = await storage.getTikTokConnection(campaignId).catch(() => null as any);
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection?.method || "").toLowerCase().includes("test")) return null;
   const selectedCampaignIds = (() => {
     try {
       const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
@@ -925,6 +929,7 @@ async function buildTikTokScheduledPdfAttachment(args: {
   const selectedIds = new Set(selectedCampaignIds);
   if (!connection || selectedIds.size === 0) return null;
   const rows = (await storage.getTikTokDailyMetrics(campaignId, windowStart, windowEnd).catch(() => []))
+    .filter((row: any) => String(process.env.NODE_ENV || "").trim().toLowerCase() !== "production" || !row.isSimulated)
     .filter((row: any) => selectedIds.has(String(row?.tiktokCampaignId || "")));
   if (rows.length === 0) return null;
 

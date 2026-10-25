@@ -16,9 +16,9 @@ describe("Google Ads report regression guard", () => {
   it("keeps scheduled Google Ads reports discoverable by the scheduler", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
 
-    expect(scheduler).toContain("storage.getPlatformReports('google_ads')");
-    expect(scheduler).toContain("Found ${googleAdsReports.length} Google Ads platform reports");
-    expect(scheduler).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets']");
+    expect(scheduler).toContain("storage.getScheduledPlatformReports([...SCHEDULED_REPORT_PLATFORM_TYPES])");
+    expect(scheduler).toContain("new Map(allReports.map(report => [String(report.id), report])).values()");
+    expect(scheduler).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets', 'custom-integration', 'campaign_deepdive']");
   });
 
   it("persists Google Ads report revenue semantics and source provenance", () => {

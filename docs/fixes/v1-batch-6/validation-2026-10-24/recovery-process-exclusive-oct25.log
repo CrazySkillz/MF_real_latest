@@ -1,0 +1,3 @@
+(node:19212) [DEP0129] DeprecationWarning: _channel is deprecated. Use ChildProcess.channel instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-6/validation-2026-10-24/recovery-process-exclusive-oct25.json

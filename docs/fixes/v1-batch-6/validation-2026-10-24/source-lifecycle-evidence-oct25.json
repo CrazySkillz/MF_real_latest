@@ -1,0 +1,185 @@
+{
+  "at": "2026-10-25T16:30:52.702Z",
+  "baseCommit": "35c16c1ea9e7513aba07b014677dca28bf0b71a5",
+  "deployment": {
+    "at": "2026-10-25T16:17:28.1783099Z",
+    "endpoint": "https://marketforensics.onrender.com/api/health",
+    "status": 200,
+    "body": {
+      "ok": true,
+      "commit": "35c16c1ea9e7513aba07b014677dca28bf0b71a5",
+      "nodeEnv": "production",
+      "ts": "2026-10-25T16:17:26.064Z"
+    },
+    "boundary": "Public health and exact revision only; no authenticated UI, provider, production database or email access."
+  },
+  "runtimeFilesChanged": [],
+  "testFilesChanged": [
+    "server/google-ads-report-regression.test.ts",
+    "server/google-ads-revenue-platform-context.test.ts",
+    "server/google-ads-revenue-scheduler-flow.test.ts",
+    "server/report-email-regression.test.ts",
+    "server/source-safety-regression.test.ts",
+    "server/spend-source-transaction.test.ts",
+    "server/v1-batch6-google-ads-refresh-postgres.test.ts"
+  ],
+  "tests": {
+    "file": "source-lifecycle-complete-oct25.json",
+    "passed": 480,
+    "failed": 0,
+    "skipped": 0,
+    "newCases": 13,
+    "includesHistoricalCharacterizationCases": 1,
+    "files": [
+      {
+        "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+        "assertions": 5,
+        "status": "passed"
+      },
+      {
+        "file": "server/ga4-google-ads-spend-pipeline-regression.test.ts",
+        "assertions": 2,
+        "status": "passed"
+      },
+      {
+        "file": "server/ga4-source-lifecycle-recompute-regression.test.ts",
+        "assertions": 18,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-goal-values.test.ts",
+        "assertions": 72,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-report-regression.test.ts",
+        "assertions": 4,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-revenue-platform-context.test.ts",
+        "assertions": 2,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-revenue-scheduler-flow.test.ts",
+        "assertions": 2,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-spend-lifecycle-downstream.test.ts",
+        "assertions": 7,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-ads-spend-production-path.test.ts",
+        "assertions": 23,
+        "status": "passed"
+      },
+      {
+        "file": "server/google-sheets-aggregate-source.test.ts",
+        "assertions": 12,
+        "status": "passed"
+      },
+      {
+        "file": "server/report-email-regression.test.ts",
+        "assertions": 28,
+        "status": "passed"
+      },
+      {
+        "file": "server/source-safety-regression.test.ts",
+        "assertions": 88,
+        "status": "passed"
+      },
+      {
+        "file": "server/spend-source-transaction.test.ts",
+        "assertions": 4,
+        "status": "passed"
+      },
+      {
+        "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+        "assertions": 103,
+        "status": "passed"
+      },
+      {
+        "file": "server/v1-batch6-google-ads-refresh-postgres.test.ts",
+        "assertions": 82,
+        "status": "passed"
+      },
+      {
+        "file": "server/v1-batch6-retained-spend-import.test.ts",
+        "assertions": 28,
+        "status": "passed"
+      }
+    ]
+  },
+  "build": {
+    "at": "2026-10-25T16:26:56.104Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "source-lifecycle-final-oct25-typecheck.log"
+      }
+    ]
+  },
+  "cleanup": {
+    "databases": [
+      {
+        "database": "ga4_alignment_test",
+        "remainingFixtureSchemas": 0,
+        "otherClientConnections": 0,
+        "remainingAdvisoryLocks": 0
+      },
+      {
+        "database": "notifications_test",
+        "remainingFixtureSchemas": 0,
+        "otherClientConnections": 0,
+        "remainingAdvisoryLocks": 0
+      }
+    ],
+    "localPostgresStopped": true
+  },
+  "fileHashes": {
+    "server/storage.ts": "b989ae5f442900573f66fcc1134c325d42a29bad27d073f2e03c6f8026810841",
+    "server/routes-oauth.ts": "2e568d017874e6bc3b6767161b8b177b75205567e1fb0c8393190d99287bd1a1",
+    "server/google-ads-scheduler.ts": "6eacf2680fafad4ff9be513b7b8068a5c67fb9029e54a10570c76ae24c001733",
+    "server/auto-refresh-scheduler.ts": "4370f0abf1384724a19df6ba832bd24b1e3bf055ca78e2eac2c41e6933d63c86",
+    "server/report-scheduler.ts": "943854cb86ea402306a2620a8213ab0375f2f84516e58772394c0c4301309718",
+    "server/ga4-scheduled-report-pdf.ts": "693e054943d9da2b1f4bf29b902810c7afc86053a6937d4e6d2d2563b6b074ef",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96",
+    "client/src/pages/google-sheets-data.tsx": "ba396fce0300a4af96500571f54cfcc8636f3d659306b7ff7f29b1bbd38bd281",
+    "server/ga4-google-ads-scheduler-regression.test.ts": "b7c76f98b0f76ccae97c079b989b485999076716810005413c67e6f1efff6bbb",
+    "server/ga4-google-ads-spend-pipeline-regression.test.ts": "92814effaa099a12e652eb3a9cfdad782ba89c22f7658741a88bb48b68e00a7c",
+    "server/ga4-source-lifecycle-recompute-regression.test.ts": "d1301f9d7b4bde1ed1338f987eeddb0ab8669811728f930cab0b9f1d80a588a5",
+    "server/google-ads-goal-values.test.ts": "b2ca71e72d7ff30e192dc86112cc2537bb033528d14980ff52bfc97799ed0699",
+    "server/google-ads-report-regression.test.ts": "43bf348c3a989f04d433464b4905a95456604dee6070948ddc3b1a56b6a14d67",
+    "server/google-ads-revenue-platform-context.test.ts": "39de0faf3784b6ab953515119d835cee35b1554d424befff3df12ea26df6da38",
+    "server/google-ads-revenue-scheduler-flow.test.ts": "be8e32bd26d55237aebb3387189a119a3ad66678fe5c49992e2d9e41e53c8961",
+    "server/google-ads-spend-lifecycle-downstream.test.ts": "1e5a690d5947f701a0b8ebdfa231d1486039842b66586468e0d79240e7956987",
+    "server/google-ads-spend-production-path.test.ts": "ed3edfee0edf40fb78ff0eeb596224f9ea2c4d343c03d8a6f524a758a649dde6",
+    "server/google-sheets-aggregate-source.test.ts": "7a2e4002bca2dbb65b0f2a9c940afe2387eff3551fdff12a699c68bda95bf211",
+    "server/report-email-regression.test.ts": "8e5d5a127fc6c20a07f63cc10ddcbc1bce559dfce049fe839fd260af0ae13c8c",
+    "server/source-safety-regression.test.ts": "df61e44b3227d8cb285cc81d2278d676f6513b722fe60921b76d2a3fb5f0e778",
+    "server/spend-source-transaction.test.ts": "1c2e807ff27ff1c2e865c50f47e4b1bd728b4954e95054f07aa506a39400f1e9",
+    "server/v1-batch4-standalone-sheets-values.test.ts": "e99c52158a642d080f0ef3832fba10497df94013c64595a719e953a0b5fa98ae",
+    "server/v1-batch6-google-ads-refresh-postgres.test.ts": "3902e20bd7b7a6d15365c938a0bf02cfcfc485fd1c6a60cead16752f62605b1b",
+    "server/v1-batch6-retained-spend-import.test.ts": "1f3e7a8ba414cb697b35f2e8695364c6fe5d92fdd9a6183306ca61004cb66c5b",
+    "docs/fixes/v1-batch-6/README.md": "9752f12d82f2a018beb84c6bfe432dbd42a7c2534b48d69118e42e96db2eea16",
+    "docs/V1_RELEASE_READINESS.md": "96229f7b0780fdde64a7bdab47b9b86b790d5d5cc0a3de47a703e325df0484d9"
+  },
+  "limits": [
+    "Public deployment health/revision only; no authenticated provider, browser, production database or email access.",
+    "Source mutation tests exercise actual storage and overlapping scheduler callers with deterministic provider adapters, not the full HTTP/OAuth/source-modal journey.",
+    "Historical data, every rendered report template, edit-restore, independent-process restarts/retries and natural deployed schedule acceptance remain unverified.",
+    "Declared table checks/defaults are included; full production migrations/indexes/catalog are not certified."
+  ],
+  "status": {
+    "testsCommitted": false,
+    "runtimeChangeRequiresDeployment": false,
+    "batch6ReleaseAcceptancesOpen": 9,
+    "wholeAppReleaseDecision": "NO-GO"
+  }
+}

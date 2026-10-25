@@ -1304,6 +1304,11 @@ export async function runDailyAutoRefreshOnce(
               rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];
               rows = rows.filter((r: any) => selectedIds.has(String(r?.googleCampaignId || "").trim()));
             } else if (displayName.includes("Meta")) {
+              const connection = await storage.getMetaConnection(campaignId);
+              const connectedIds = safeJsonParse(connection?.selectedCampaignIds);
+              if (!connection || connection.campaignId !== campaignId || !selectedIds?.size || !Array.isArray(connectedIds)
+                || Array.from(selectedIds).some(id => !connectedIds.map(String).includes(String(id)))
+                || (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection.method || "").toLowerCase().includes("test"))) { skipped++; continue; }
               rows = (await storage.getMetaDailyMetrics(campaignId, startDate, endDate)) || [];
               if (selectedIds && selectedIds.size > 0) rows = rows.filter((r: any) => selectedIds.has(String(r?.metaCampaignId || "").trim()));
             } else {
@@ -1311,6 +1316,10 @@ export async function runDailyAutoRefreshOnce(
             }
 
             if (rows.length === 0 && !providerFresh) continue;
+            const currency = String((src as any)?.currency || (campaign as any)?.currency || "").trim().toUpperCase();
+            if (!currency || currency !== String((campaign as any)?.currency || "").trim().toUpperCase() || rows.some(row => row.campaignId !== campaignId || row.isSimulated
+              || String(row.currency || "").trim().toUpperCase() !== currency || !/^\d{4}-\d{2}-\d{2}$/.test(String(row.date || "")) || row.date < startDate || row.date > endDate
+              || row.spend == null || String(row.spend).trim() === '' || !Number.isFinite(Number(row.spend)) || Number(row.spend) < 0)) { skipped++; continue; }
 
             const spendByDate = new Map<string, number>();
             for (const r of rows) {
@@ -1329,9 +1338,7 @@ export async function runDailyAutoRefreshOnce(
             if (records.length > 0 || providerFresh) {
               attempted++;
               try {
-                await storage.replaceSpendRecordsForSource(campaignId, String((src as any).id), "ad_platforms", platformContext, records);
-                const allSpend = await storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate);
-                await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);
+                await storage.replaceSpendRecordsForSource(campaignId, String((src as any).id), "ad_platforms", platformContext, records, src.mappingConfig);
                 succeeded++;
                 anyUpdated = true;
                 console.log(`[Auto Refresh] ✅ ${displayName} spend refreshed for campaign ${campaignId}: ${records.length} days`);

@@ -237,7 +237,7 @@ describe("source safety regression guards", () => {
     const deleteMethodStart = storageSource.indexOf("async deleteRevenueSourceWithRecords(");
     const deleteMethodEnd = storageSource.indexOf("async createRevenueRecords", deleteMethodStart);
     const deleteMethod = storageSource.slice(deleteMethodStart, deleteMethodEnd);
-    expect(deleteMethod).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId)");
+    expect(deleteMethod).toContain("this.writeGA4RefreshInputChange(campaignId, write, 0, true)");
     expect(deleteMethod).toContain("return await transaction(async (tx: any) => {");
     expect(deleteMethod).toContain("eq(revenueSources.campaignId, campaignId)");
     expect(deleteMethod).toContain("eq(revenueSources.isActive, true)");
@@ -673,7 +673,7 @@ describe("source safety regression guards", () => {
     const outcomeEnd = routesSource.indexOf('// New route: Get all GA4 connections for a campaign', outcomeStart);
     const outcomeRoute = routesSource.slice(outcomeStart, outcomeEnd);
 
-    expect(routesSource).toContain('import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";');
+    expect(routesSource).toMatch(/import \{ buildGoogleSheetsPlatformSourceForAggregate, [^}]+\} from "\.\/utils\/google-sheets-aggregate-source";/);
     expect(outcomeRoute).toContain("storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[])");
     expect(outcomeRoute).toContain("const googleSheetsFinancials = await getGoogleSheetsConfirmedFinancialsForAggregate(campaignId, aggregateStartDate, aggregateEndDate);");
     expect(outcomeRoute).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials, !currentValueWindow);");
@@ -749,7 +749,8 @@ describe("source safety regression guards", () => {
     expect(page).toContain("computeAttainmentFillPct");
     expect(page).toContain("const available = !!key && sourceValue !== null;");
     expect(page).toContain("GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN.test(key)");
-    expect(page).toContain('/roas|return on/i.test(key)');
+    expect(page).toContain('/roas|return on ad spend/i.test(key)');
+    expect(page).toContain('/rate|ctr|cvr|roi|return on investment/i.test(key)');
     expect(page).toContain('? "ratio"');
     expect(page).toContain('? "$"');
     expect(page).toContain("currentValue: sourceValue");
@@ -889,15 +890,17 @@ describe("source safety regression guards", () => {
     expect(reportScheduler).toContain("function isGoogleSheetsConfirmedFinancialMetric");
     expect(reportScheduler).toContain("async function buildGoogleSheetsConfirmedFinancialMetricSummary");
     expect(reportScheduler).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_sheets")');
-    expect(reportScheduler).toContain('String(source?.platformContext || "").trim().toLowerCase() === "google_sheets"');
+    expect(reportScheduler).toContain('storage.getSpendTotalForRange(campaignId, startDate, endDate, "google_sheets")');
+    expect(reportScheduler).toContain('storage.getSpendSources(campaignId, "google_sheets")');
+    expect(reportScheduler).toContain('spendSources.filter(s => s.isActive !== false).every(s => spend.sourceIds.includes(String(s.id)))');
     expect(reportScheduler).toContain("function googleSheetsConnectionMatchesSavedScope");
     expect(reportScheduler).toContain("if (!reportSourceScope) return null;");
-    expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary(connections, reportSourceScope)");
+    expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary(connections, reportSourceScope, campaign.name, window)");
     expect(reportScheduler).toContain("const rowScope = getGoogleSheetsReportSourceScope(row?.calculationConfig)");
-    expect(reportScheduler).toContain("storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[])");
+    expect(reportScheduler).toContain("(await storage.getGoogleSheetsConnections(campaignId)).filter(conn => conn.campaignId === campaignId)");
     expect(reportScheduler).toContain("storage.getPlatformKPIs(\"google_sheets\", campaignId)");
     expect(reportScheduler).toContain("storage.getPlatformBenchmarks(\"google_sheets\", campaignId)");
-    expect(reportScheduler).toContain("return buildGoogleSheetsScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });");
+    expect(reportScheduler).toContain("return await buildGoogleSheetsScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });");
     expect(reportScheduler).not.toContain("if (String((report as any)?.platformType || \"\") === \"google_sheets\") {\n    const { jsPDF }");
 
     expect(routesSource).toContain('sourceBackedReportPlatform === "google_analytics" || sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration"');
@@ -1384,23 +1387,23 @@ describe("source safety regression guards", () => {
     expect(routesSource).toContain("await storage.deleteRevenueRecordsBySource(sid);");
     expect(selectRoute).toContain("ensureCampaignAccess");
     expect(selectRoute).toContain("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)");
-    expect(selectRoute).toContain("storage.deleteGoogleAdsDailyMetrics(campaignId)");
-    expect(selectRoute.indexOf("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)")).toBeLessThan(selectRoute.indexOf("storage.createGoogleAdsConnection"));
-    expect(selectRoute.indexOf("storage.deleteGoogleAdsDailyMetrics(campaignId)")).toBeLessThan(selectRoute.indexOf("storage.createGoogleAdsConnection"));
+    expect(selectRoute).toContain("storage.replaceGoogleAdsConnection(connectionData, initialDailyMetrics as any)");
+    expect(selectRoute).toContain("storage.replaceGA4GoogleAdsSpendConnection(connectionData, initialDailyMetrics as any)");
+    expect(selectRoute.indexOf("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)")).toBeLessThan(selectRoute.indexOf("storage.replaceGoogleAdsConnection"));
     expect(testRoute).toContain("ensureCampaignAccess");
     expect(testRoute).toContain("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)");
-    expect(testRoute).toContain("storage.deleteGoogleAdsDailyMetrics(campaignId)");
-    expect(testRoute.indexOf("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)")).toBeLessThan(testRoute.indexOf("storage.createGoogleAdsConnection"));
-    expect(testRoute.indexOf("storage.deleteGoogleAdsDailyMetrics(campaignId)")).toBeLessThan(testRoute.indexOf("storage.createGoogleAdsConnection"));
+    expect(testRoute).toContain("storage.replaceGoogleAdsConnection({");
+    expect(testRoute.indexOf("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)")).toBeLessThan(testRoute.indexOf("storage.replaceGoogleAdsConnection"));
     expect(selectedRoute).toContain("const selectionChanged = previousSelectedCampaignIds.join(\"\\n\") !== nextSelectedCampaignIds.join(\"\\n\");");
     expect(selectedRoute).toContain("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)");
     expect(selectedRoute.indexOf("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)")).toBeLessThan(selectedRoute.indexOf("storage.updateGoogleAdsConnection"));
     expect(dailyRoute).toContain("ensureCampaignAccess");
-    expect(dailyRoute).toContain("const connection = await storage.getGoogleAdsConnection(campaignId);");
+    expect(dailyRoute).toContain("const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId);");
+    expect(dailyRoute).toContain("const connection = spendPreview ? dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null) : legacyConnection;");
     expect(dailyRoute.indexOf("storage.getGoogleAdsConnection(campaignId)")).toBeLessThan(dailyRoute.indexOf("storage.getGoogleAdsDailyMetrics"));
     expect(dailyRoute).toContain("const selectedCampaignIds = (() => {");
     expect(dailyRoute).toContain("const selectedSet = new Set(selectedCampaignIds);");
-    expect(dailyRoute.indexOf("const selectedSet = new Set(selectedCampaignIds);")).toBeLessThan(dailyRoute.indexOf("res.json({ success: true, metrics })"));
+    expect(dailyRoute.indexOf("const selectedSet = new Set(selectedCampaignIds);")).toBeLessThan(dailyRoute.indexOf("res.json({ success: true, metrics, startDate:"));
     expect(dailyRoute).toContain('selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId || ""))');
     expect(dailyRoute).toContain("if (!connection) return res.json({ success: true, metrics: [] });");
     expect(dailyRoute).toContain("const spendPreview =");
@@ -1412,10 +1415,10 @@ describe("source safety regression guards", () => {
     const methodEnd = storageSource.indexOf("async getGoogleAdsDailyMetrics", methodStart);
     const method = storageSource.slice(methodStart, methodEnd);
 
-    expect(method).toContain("db.transaction");
+    expect(method).toContain("this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {");
     expect(method).toContain("eq(googleAdsConnections.campaignId, campaignId)");
     expect(method).toContain("tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId))");
-    expect(method.indexOf("tx.delete(googleAdsConnections)")).toBeLessThan(method.indexOf("tx.delete(googleAdsDailyMetrics)"));
+    expect(method.indexOf(".delete(googleAdsConnections)")).toBeLessThan(method.indexOf("tx.delete(googleAdsDailyMetrics)"));
   });
 
   it("Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections", () => {
@@ -1426,10 +1429,10 @@ describe("source safety regression guards", () => {
 
     expect(refreshRoute).toContain("const isSpendOnly = !!(connection as any).spendOnly;");
     expect(refreshRoute).toContain('const isTestMode = String((connection as any).method || "") === "test_mode";');
-    expect(refreshRoute).toContain("if (isSpendOnly && isTestMode) return;");
+    expect(refreshRoute).toContain("if (isSpendOnly && isTestMode) return { providerRefreshed: false, spendMaterialization: null };");
     expect(refreshRoute).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => null);");
-    expect(refreshRoute).toContain("Skipping refresh for missing campaign");
-    expect(refreshRoute.indexOf("if (isSpendOnly && isTestMode) return;")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
+    expect(refreshRoute).toContain("Google Ads campaign scope is unavailable for campaign");
+    expect(refreshRoute.indexOf("if (isSpendOnly && isTestMode) return {")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
     expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
     expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("fetchRealGoogleAdsData"));
   });

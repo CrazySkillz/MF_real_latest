@@ -59,6 +59,7 @@ const mocks = vi.hoisted(() => {
         // separately exercise active work invalidation and campaign lock contention.
         select: (...args: any[]) => ({ from: (table: any) => table[Symbol.for('drizzle:Name')] === 'campaigns'
           ? { where: () => ({ orderBy: () => ({ for: async () => [{ id: 'campaign-1' }] }) }) }
+          : table[Symbol.for('drizzle:Name')] === 'ga4_refresh_work' ? { where: async () => [] }
           : (tx as any).select(...args).from(table) }),
         update: (table: any) => table[Symbol.for('drizzle:Name')] === 'ga4_refresh_work'
           ? { set: () => ({ where: () => ({ returning: async () => [] }) }) }

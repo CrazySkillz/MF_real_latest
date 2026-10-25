@@ -26,8 +26,8 @@ describe("Google Ads revenue Google Sheets flow", () => {
       'const deactivateSpendSourcesForCampaign'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
-    expect(routes).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routes).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
     expect(previewRoute).toContain("platformContext: zSheetsRevenuePlatformContext.optional()");
     expect(processRoute).toContain("platformContext: zSheetsRevenuePlatformContext.optional()");
   });
@@ -83,8 +83,9 @@ describe("Google Ads revenue Google Sheets flow", () => {
     const modal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
     const sheetsAuth = readSource("client", "src", "components", "SimpleGoogleSheetsAuth.tsx");
 
-    expect(modal).toContain("platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : platformContext === 'google_sheets' ? 'google_sheets_revenue' : 'revenue'");
-    expect(modal).toContain("body: JSON.stringify({ connectionId: cid, platformContext })");
+    expect(modal).toContain("platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : platformContext === 'google_sheets' ? 'google_sheets_revenue' : platformContext === 'custom_integration' ? 'custom_integration_revenue' : 'revenue'");
+    expect(modal).toMatch(/connectionId: cid,\s+platformContext,/);
+    expect(modal).toContain("...(requestedCampaignColumn ? { campaignColumn: requestedCampaignColumn } : {})");
     expect(modal).toContain("body: JSON.stringify({ connectionId: sheetsConnectionId, mapping, platformContext })");
     expect(modal).toContain("...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {})");
     expect(modal).toContain("campaignColumn: hasCampaignScope ? sheetsCampaignCol : null");
@@ -92,7 +93,7 @@ describe("Google Ads revenue Google Sheets flow", () => {
     expect(modal).toContain("dateColumn: sheetsDateCol || null");
     expect(modal).toContain("const campaignMappings = mappedRevenueCampaignsForValues(sheetsCampaignValues);");
     expect(modal).toContain("renderPlatformCampaignMapping");
-    expect(sheetsAuth).toContain("purpose?: 'spend' | 'revenue' | 'general' | 'linkedin_revenue' | 'meta_revenue' | 'google_ads_revenue' | 'instagram_revenue' | 'tiktok_revenue' | 'google_sheets_revenue';");
-    expect(sheetsAuth).toContain("purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue' || purpose === 'google_sheets_revenue'");
+    expect(sheetsAuth).toContain("purpose?: 'spend' | 'revenue' | 'general' | 'linkedin_revenue' | 'meta_revenue' | 'google_ads_revenue' | 'instagram_revenue' | 'tiktok_revenue' | 'google_sheets_revenue' | 'custom_integration_revenue';");
+    expect(sheetsAuth).toContain("purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'meta_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue' || purpose === 'google_sheets_revenue' || purpose === 'custom_integration_revenue'");
   });
 });

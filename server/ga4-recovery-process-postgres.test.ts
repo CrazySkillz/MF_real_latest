@@ -95,7 +95,9 @@ describe.skipIf(!testUrl)("GA4 publication across real worker termination and re
     }
   }, 45000);
   it.each(['external', 'derived', 'complete'])('replays external financial records after termination at %s', async stage => {
-    await storage.createRevenueSource({ id: 'external-a', campaignId: 'a', sourceType: 'csv', platformContext: 'ga4', currency: 'EUR', mappingConfig: '{"selected":"sale"}' });
+    // Seed the existing source; a user save now queues newer publication work,
+    // correctly superseding the deliberately older ordinary slot under test.
+    await database.current.insert(schema.revenueSources).values({ id: 'external-a', campaignId: 'a', sourceType: 'csv', platformContext: 'ga4', currency: 'EUR', mappingConfig: '{"selected":"sale"}' });
     const first = worker(stage, 'a', true);
     await first.until('stage'); first.child.kill(); await first.exited; await expire();
     const restarted = worker('', 'a', true);

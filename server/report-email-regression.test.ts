@@ -140,7 +140,8 @@ describe("scheduled report email regression guard", () => {
 
     expect(guardStart).toBeGreaterThan(-1);
     expect(guardEnd).toBeGreaterThan(guardStart);
-    expect(guardSection).toContain("const activeRevenueSources = revenueSources.filter(");
+    expect(guardSection).toContain("let activeRevenueSources = revenueSources.filter(");
+    expect(guardSection).toContain("activeRevenueSources = activeRevenueSources.filter((source: any) => revenueBreakdownSourceIds.has(String(source.id)) || !futureSourceIds.has(String(source.id)))");
     expect(guardSection).toContain("const hasMaterializedRevenue = (row: any) => row?.revenue != null && Number.isFinite(Number(row.revenue));");
     expect(guardSection).toContain("revenueBreakdown.filter(hasMaterializedRevenue).map");
     expect(guardSection).toContain("adComparisonRevenueBreakdown.filter(hasMaterializedRevenue).map");

@@ -840,6 +840,7 @@ export async function enrichLinkedInWithGA4Revenue(
     connection = await storage.getLinkedInConnection(campaignId);
   }
   if (!connection) return { enriched: 0, matched: 0, unmatched: [] };
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && (String(connection.method || "").toLowerCase().includes("test") || String(connection.accessToken || "").startsWith("test"))) throw new Error("Test-mode data is unavailable in production");
 
   return enrichPlatformWithGA4Revenue({
     campaignId,

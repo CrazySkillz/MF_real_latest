@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { storage } from "./storage";
 import { tiktokConnections } from "../shared/schema";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -75,13 +76,15 @@ export async function refreshTikTokForCampaign(
     connection = await storage.getTikTokConnection(campaignId);
   }
   if (!connection) return { refreshed: false, reason: "missing_connection", upserted: 0, selectedCampaignIds: [] };
+  if (connection.campaignId && connection.campaignId !== campaignId) return { refreshed: false, reason: "connection_scope_mismatch", upserted: 0, selectedCampaignIds: [] };
   if ((connection as any).spendOnly) return { refreshed: false, reason: "spend_only", upserted: 0, selectedCampaignIds: [] };
 
   const campaign = await storage.getCampaign(campaignId).catch(() => null);
-  if (!campaign) {
-    await markTikTokRefreshFailure(campaignId, "missing_campaign");
-    return { refreshed: false, reason: "missing_campaign", upserted: 0, selectedCampaignIds: [] };
+  if (!campaign || !String(campaign.ownerId || "").trim() || !filterActiveSchedulerCampaigns([campaign]).length) {
+    return { refreshed: false, reason: "ineligible_campaign", upserted: 0, selectedCampaignIds: [] };
   }
+  if (String(connection.method || "").toLowerCase().includes("test") && String(process.env.NODE_ENV || "").trim().toLowerCase() === "production")
+    return { refreshed: false, reason: "test_mode_disabled", upserted: 0, selectedCampaignIds: [] };
 
   if (!String((connection as any).advertiserId || "").trim()) {
     await markTikTokRefreshFailure(campaignId, "missing_advertiser");

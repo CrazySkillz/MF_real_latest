@@ -1321,11 +1321,14 @@ describe("source safety regression guards", () => {
     expect(importRoute).toContain("storage.getTikTokConnection(campaignId)");
     expect(importRoute).toContain("selectedCampaignIds.length === 0");
     expect(importRoute).toContain("storage.getTikTokDailyMetrics(campaignId, startDate, endDate)");
-    expect(importRoute).toContain('selectedSet.has(String(row?.tiktokCampaignId || ""))');
+    expect(importRoute).toContain('providerCampaignField = "tiktokCampaignId"');
+    expect(importRoute).toContain('selectedSet.has(String(row?.[providerCampaignField] || ""))');
     expect(importRoute).toContain("sourceType: platformSourceType");
     expect(importRoute).toContain("platformContext,");
     expect(importRoute).toContain("`${platformLabel} spend source not found`");
-    expect(importRoute.indexOf("storage.deleteSpendRecordsBySource")).toBeGreaterThan(importRoute.indexOf("requestedSourceId"));
+    expect(importRoute.indexOf("storage.replaceSpendSourceWithRecords")).toBeGreaterThan(importRoute.indexOf("requestedSourceId"));
+    expect(importRoute).not.toContain("storage.deleteSpendRecordsBySource");
+    expect(importRoute).not.toContain("storage.updateCampaign");
   });
 
   it("TikTok attributed revenue maps only exact selected TikTok campaign IDs", () => {
@@ -1470,7 +1473,8 @@ describe("source safety regression guards", () => {
     expect(refreshStart).toBeGreaterThanOrEqual(0);
     expect(refreshFn).toContain("if ((connection as any).spendOnly) return");
     expect(refreshFn).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => null);");
-    expect(refreshFn).toContain('markTikTokRefreshFailure(campaignId, "missing_campaign")');
+    expect(refreshFn).toContain('!filterActiveSchedulerCampaigns([campaign]).length');
+    expect(refreshFn).not.toContain('markTikTokRefreshFailure(campaignId, "missing_campaign")');
     expect(refreshFn).toContain('markTikTokRefreshFailure(campaignId, "missing_advertiser")');
     expect(refreshFn).toContain("selectedCampaignIds.length === 0");
     expect(refreshFn).toContain('markTikTokRefreshFailure(campaignId, "missing_selected_campaigns")');

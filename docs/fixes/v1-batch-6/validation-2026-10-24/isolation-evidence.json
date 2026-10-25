@@ -1,0 +1,136 @@
+{
+  "at": "2026-10-24T21:58:05.202Z",
+  "baselineCommit": "2c3097bc13dc5206ae158a5ef505eee2b30d2ba0",
+  "deployment": {
+    "observedAt": "2026-10-24T21:40:28.1664200Z",
+    "endpoint": "https://marketforensics.onrender.com/api/health",
+    "ok": true,
+    "commit": "2c3097bc13dc5206ae158a5ef505eee2b30d2ba0"
+  },
+  "scope": "First Batch 6 dispatch/test-generation/shared-aggregate correction only; partial V1-024/V1-121; no release acceptance or full Batch 6 completion.",
+  "counts": {
+    "passed": 251,
+    "failed": 4,
+    "skipped": 0
+  },
+  "files": [
+    {
+      "file": "server/campaign-scheduler-eligibility.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/executive-summary-snapshot-scheduler.test.ts",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-aggregate-saved-overview.test.ts",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-google-ads-spend-pipeline-regression.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-spend-production-path.test.ts",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/performance-summary-aggregate.test.ts",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/trend-analysis-aggregate.test.ts",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch1-access-regression.test.ts",
+      "passed": 78,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-paid-isolation.test.ts",
+      "passed": 81,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-production-regression.test.ts",
+      "passed": 3,
+      "failed": 4,
+      "skipped": 0
+    }
+  ],
+  "remainingStaticFailures": [
+    "Google Ads production readiness regression guard keeps GA4 Overview Google Ads spend production-only and out of test mode",
+    "Google Ads production readiness regression guard keeps disconnect and reconnect campaign-scoped so stale Google Ads rows cannot reseed the source",
+    "Google Ads production readiness regression guard preserves selected Google Ads campaign filtering across UI, API, aggregate, scheduler, and snapshots",
+    "Google Ads production readiness regression guard routes GA4 Overview Google Ads spend through production OAuth customer selection and provider refresh"
+  ],
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "isolation-types-final-typecheck.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "isolation-final-server-build.log"
+    }
+  ],
+  "hashes": {
+    "server/google-ads-scheduler.ts": "da1b25e98ef877dfb0e7a4b04d825b01f10c67b795826a311cfc8d37d9b62ee3",
+    "server/instagram-scheduler.ts": "32f3b6cf70b1f75576be012a3bf3433f06bfb9528d5e1c0622a70b98060c142c",
+    "server/linkedin-scheduler.ts": "e020500a739156ac4b616e2eb0bda13b332f8a115aced5e1ff25116537d3c8cd",
+    "server/meta-scheduler.ts": "e37a964cc2b101c150b12f9b2cb56b4ceaf83c574aea50a02d9018eb03ed3202",
+    "server/tiktok-scheduler.ts": "5fe34ed7d1e5ce28cbc516404d4ec8b5685b9cb6553dc257e17f71da09707720",
+    "server/routes-oauth.ts": "43c0d290bb7124aa227f6a26b9e3ae66c4c9273e219cb5669aa7289854206f5f",
+    "server/scheduler.ts": "11f9ee0211c10a1aad5a5ce0c89da980ae798ce6b5a2ec10b63f9fe8b9a537be",
+    "server/campaign-scheduler-eligibility.test.ts": "5b592dfe79984a27fd471ab2fe22ab0ca0ae54036f7a3bd4562164a3441fc2ff",
+    "server/executive-summary-snapshot-scheduler.test.ts": "e89f21ba11e3c22d1a7fe37c44e31de4bf322ad9b1f732e5edee7ac93e2c7e1e",
+    "server/ga4-aggregate-saved-overview.test.ts": "28c886aa7810f28d0cdd640896d762cab30aeb5bd44afa9ce71e9271e5f356d6",
+    "server/ga4-google-ads-scheduler-regression.test.ts": "bc90bc58ee811d40d8562efa3656af1bb88e80726e32b106e5964b7dc527c8f1",
+    "server/ga4-google-ads-spend-pipeline-regression.test.ts": "92814effaa099a12e652eb3a9cfdad782ba89c22f7658741a88bb48b68e00a7c",
+    "server/google-ads-spend-production-path.test.ts": "9f423b9f90f5ae19e968f7da68b06f4829f23eda1c1194686c6cf926fac320e1",
+    "server/performance-summary-aggregate.test.ts": "47f0257c0f14a5d00a9e69b88752ee014f2f62d6a6b759286c485ac9fb5f2529",
+    "server/trend-analysis-aggregate.test.ts": "56811f65704b51aa1fb3a693bdb2925d491fd027162d15e80c6097595be8b933",
+    "server/v1-batch1-access-regression.test.ts": "cc85d84c2996f72259bf522a68da99f78a18502ae01d7e92560c767c23eb6563",
+    "server/v1-batch6-paid-isolation.test.ts": "71d397a924fe683800316d45637703f56ab18e8ddfdf8752e59f365d021947ef",
+    "server/google-ads-production-regression.test.ts": "f1d634912e8c5d079b6a3840405f973baa543a96393c88a1daf514930b39bb52",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96",
+    "tsconfig.json": "7ab79cf0b65a51172593b516da44104bcda9f281dfb5d496000340a1526a5109",
+    "package.json": "783db34cba29c8b958e677c03a7f9ff725070b746caf7394bc0171016e9f1ba4",
+    "package-lock.json": "56fa973ee7b388426a45262ae5a7a604b45417b668fe80baa038ffcf83059eff"
+  },
+  "limits": [
+    "Synthetic storage/provider fixtures, no external network or provider credentials.",
+    "No user browser, production mutation, or production database access.",
+    "No historical synthetic-data cleanup; unmarked persisted records require an exact separate inventory.",
+    "Retained direct reads, financial imports, other downstream consumers and worker recovery remain open.",
+    "Seven other included Batch 6 findings uncorrected; four prior static test failures retained.",
+    "No commit or push performed for this local correction."
+  ]
+}

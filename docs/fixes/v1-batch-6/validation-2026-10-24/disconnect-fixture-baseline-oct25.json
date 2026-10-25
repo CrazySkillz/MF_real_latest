@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-24T22:37:11.234Z",
+  "rows": [
+    {
+      "file": "server/storage.ts",
+      "baseline": "bf9cd489bcfcbf4b1da02fd5b9a2ec4c9ae9eda668679fd5d913fe759f19e2b6",
+      "current": "bf9cd489bcfcbf4b1da02fd5b9a2ec4c9ae9eda668679fd5d913fe759f19e2b6",
+      "unchanged": true
+    },
+    {
+      "file": "server/google-ads-ga4-spend-disconnect-transaction.test.ts",
+      "baseline": "bdefb077d978fc921e567d92b6f75513317ff9d63d81f8661033b525388be6ba",
+      "current": "bdefb077d978fc921e567d92b6f75513317ff9d63d81f8661033b525388be6ba",
+      "unchanged": true
+    }
+  ],
+  "limit": "Identical stored implementation and unit-test source, not independent provider acceptance."
+}

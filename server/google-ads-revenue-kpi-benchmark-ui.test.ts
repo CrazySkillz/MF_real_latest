@@ -11,10 +11,10 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(page).toContain("{ key: 'totalRevenue', label: 'Total Revenue'");
     expect(page).toContain("{ key: 'profit', label: 'Profit'");
     expect(page).toContain("{ key: 'roi', label: 'ROI'");
-    expect(page).toContain("if (normalizedKey === 'totalrevenue' || normalizedKey === 'revenue') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : 0;");
-    expect(page).toContain("if (normalizedKey === 'profit') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedProfit : 0;");
-    expect(page).toContain("if (normalizedKey === 'roas') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : 0;");
-    expect(page).toContain("if (normalizedKey === 'roi') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : 0;");
+    expect(page).toContain("if (normalizedKey === 'totalrevenue' || normalizedKey === 'revenue') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : Number.NaN;");
+    expect(page).toContain("if (normalizedKey === 'profit') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedProfit : Number.NaN;");
+    expect(page).toContain("if (normalizedKey === 'roas') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : Number.NaN;");
+    expect(page).toContain("if (normalizedKey === 'roi') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : Number.NaN;");
     expect(page).not.toContain("roas: summary.roas || 0");
     expect(page).not.toContain("roi: summary.roi || 0");
   });
@@ -47,7 +47,7 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
     const kpiModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsKpiModal.tsx");
 
-    expect(page).toContain("currentValue: String(currentVal)");
+    expect(page).toContain("currentValue: Number.isFinite(currentVal) ? String(currentVal) : ''");
     expect(page).toContain("unit: kpi.unit || metricDef.unit || ''");
     expect(page).toContain("trackingPeriod: String(kpi.trackingPeriod || 30)");
     expect(kpiModal).toContain("onOpenAutoFocus={(event) => {");
@@ -81,7 +81,7 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
     const benchmarkModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsBenchmarkModal.tsx");
 
-    expect(page).toContain("currentValue: String(currentVal)");
+    expect(page).toContain("currentValue: Number.isFinite(currentVal) ? String(currentVal) : ''");
     expect(page).toContain("unit: b.unit || metricDef.unit || ''");
     expect(page).toContain("benchmarkType: b.benchmarkType || 'custom'");
     expect(benchmarkModal).toContain("onOpenAutoFocus={(event) => {");
@@ -96,8 +96,9 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(kpiModal).toContain("useGrouping: true");
     expect(benchmarkModal).toContain("useGrouping: true");
     expect(page).toContain("function stripNumberFormatting(value: any): any");
-    expect(page).toContain("currentValue: stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric))");
-    expect(page).toContain("currentValue: stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric))");
+    expect(page).toContain("const currentValue = stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric))");
+    expect(page).toContain("const currentValue = stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric))");
+    expect(page).toContain("if (!Number.isFinite(Number(currentValue)))");
   });
 
   it("exposes attributed revenue metrics in Google Ads KPI and Benchmark pickers", () => {
@@ -127,7 +128,7 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(page).toContain("Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI");
     expect(page).toContain("Spend, native conversion value, and imported Google Ads attributed revenue when connected.");
     expect(page).toContain("{hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : 'N/A'}");
-    expect(page).toContain("{hasGoogleAdsAttributedRevenue ? `${googleAdsAttributedRoas.toFixed(2)}x` : 'N/A'}");
+    expect(page).toContain("{hasGoogleAdsAttributedRevenue ? formatGoogleAdsMetricValue('roas', googleAdsAttributedRoas) : 'N/A'}");
     expect(page).toContain("{hasGoogleAdsAttributedRevenue ? fmtPct(googleAdsAttributedRoi) : 'N/A'}");
     expect(page).toContain("Conversion Value ROAS");
     expect(page).toContain("Conversion-value ROAS declined");

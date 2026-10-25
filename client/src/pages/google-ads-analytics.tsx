@@ -77,12 +77,16 @@ const METRIC_OPTIONS = [
   { key: "roas", label: "ROAS", format: (v: number) => `${v.toFixed(2)}x`, color: "#059669" },
 ];
 
-function getGoogleAdsMetricDef(metricKey: string) {
-  return GOOGLE_ADS_METRICS.find(m => m.key === metricKey || m.key.toLowerCase() === String(metricKey || '').toLowerCase()) || { key: metricKey, label: metricKey, unit: '', format: (v: number) => String(v) };
+function getGoogleAdsMetricDef(metricKey: string, currency?: string) {
+  const def = GOOGLE_ADS_METRICS.find(m => m.key === metricKey || m.key.toLowerCase() === String(metricKey || '').toLowerCase()) || { key: metricKey, label: metricKey, unit: '', format: (v: number) => String(v) };
+  return { ...def, unit: def.unit === '$' ? currency || '' : def.unit,
+    format: (v: number) => !Number.isFinite(v) ? 'Unavailable' : def.unit === '$'
+      ? currency ? new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(v) : 'Unavailable'
+      : def.format(v) };
 }
 
-function formatGoogleAdsMetricValue(metricKey: string, value: number): string {
-  return getGoogleAdsMetricDef(metricKey).format(value);
+function formatGoogleAdsMetricValue(metricKey: string, value: number, currency?: string): string {
+  return getGoogleAdsMetricDef(metricKey, currency).format(value);
 }
 
 function stripNumberFormatting(value: any): any {
@@ -180,19 +184,18 @@ export default function GoogleAdsAnalytics() {
   });
 
   // Fetch daily metrics (hardcoded 90-day window)
-  const { data: metricsData, isLoading } = useQuery({
+  const { data: metricsData, isLoading, isError: metricsError } = useQuery({
     queryKey: ["/api/google-ads", campaignId, "daily-metrics"],
     queryFn: async () => {
-      const end = new Date().toISOString().slice(0, 10);
-      const start = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-      const res = await fetch(`/api/google-ads/${campaignId}/daily-metrics?startDate=${start}&endDate=${end}`);
-      if (!res.ok) return { metrics: [] };
+      const res = await fetch(`/api/google-ads/${campaignId}/daily-metrics?dateRange=90days`);
+      if (!res.ok) throw new Error('Google Ads metrics could not be loaded');
       return res.json();
     },
     enabled: !!campaignId,
   });
 
   const metrics: DailyMetric[] = metricsData?.metrics || [];
+  const currency = String(metricsData?.currency || connection?.currency || '').trim().toUpperCase();
 
   // Fetch KPIs
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
@@ -340,7 +343,7 @@ export default function GoogleAdsAnalytics() {
     },
   });
 
-  const { data: googleAdsRevenueTotalsData } = useQuery<{ success: boolean; totalRevenue: number }>({
+  const { data: googleAdsRevenueTotalsData } = useQuery<{ success: boolean; totalRevenue: number | null; currency?: string }>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`],
     enabled: !!campaignId,
     staleTime: 0,
@@ -350,7 +353,7 @@ export default function GoogleAdsAnalytics() {
       const res = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`);
       if (!res.ok) return { success: false, totalRevenue: 0 };
       const json = await res.json().catch(() => ({}));
-      return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0) };
+      return { success: !!json?.success, totalRevenue: json?.totalRevenue == null ? null : Number(json.totalRevenue), currency: json?.currency };
     },
   });
 
@@ -496,16 +499,13 @@ export default function GoogleAdsAnalytics() {
   }, [metrics]);
 
   const hasGoogleAdsAttributedRevenue = activeGoogleAdsRevenueSources.length > 0;
-  const googleAdsAttributedRevenueFromSources = activeGoogleAdsRevenueSources.reduce(
-    (sum: number, source: any) => sum + Number(source?.lastTotalRevenue || 0),
-    0
-  );
-  const googleAdsAttributedRevenue = googleAdsAttributedRevenueFromSources > 0
-    ? googleAdsAttributedRevenueFromSources
-    : Number(googleAdsRevenueTotalsData?.totalRevenue || 0);
+  const googleAdsAttributedRevenue = googleAdsRevenueTotalsData?.success && googleAdsRevenueTotalsData.totalRevenue != null
+    && Number.isFinite(googleAdsRevenueTotalsData.totalRevenue)
+    && (googleAdsRevenueTotalsData.currency === currency || (!googleAdsRevenueTotalsData.currency && googleAdsRevenueTotalsData.totalRevenue === 0))
+      ? googleAdsRevenueTotalsData.totalRevenue : Number.NaN;
   const googleAdsAttributedProfit = summary ? googleAdsAttributedRevenue - summary.spend : 0;
-  const googleAdsAttributedRoas = summary && summary.spend > 0 ? googleAdsAttributedRevenue / summary.spend : 0;
-  const googleAdsAttributedRoi = summary && summary.spend > 0 ? ((googleAdsAttributedRevenue - summary.spend) / summary.spend) * 100 : 0;
+  const googleAdsAttributedRoas = summary && summary.spend > 0 ? googleAdsAttributedRevenue / summary.spend : Number.NaN;
+  const googleAdsAttributedRoi = summary && summary.spend > 0 ? ((googleAdsAttributedRevenue - summary.spend) / summary.spend) * 100 : Number.NaN;
 
   // Chart data (aggregated by date)
   const chartData = useMemo(() => {
@@ -521,7 +521,6 @@ export default function GoogleAdsAnalytics() {
       existing.conversions += parseFloat(m.conversions || "0");
       existing.conversionValue += parseFloat(m.conversionValue || "0");
       existing.videoViews += m.videoViews || 0;
-      existing.ctr += parseFloat(m.ctr || "0");
       existing.searchImpressionShare += parseFloat(m.searchImpressionShare || "0");
       existing._count += 1;
       byDate.set(m.date, existing);
@@ -529,7 +528,7 @@ export default function GoogleAdsAnalytics() {
     return Array.from(byDate.values())
       .map((d) => ({
         ...d,
-        ctr: d._count > 0 ? d.ctr / d._count : 0,
+        ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
         cpc: d.clicks > 0 ? d.spend / d.clicks : 0,
         cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
         conversionRate: d.clicks > 0 ? (d.conversions / d.clicks) * 100 : 0,
@@ -565,7 +564,7 @@ export default function GoogleAdsAnalytics() {
       return {
         ...c,
         attributedRevenue,
-        hasAttributedRevenue: attributedRevenue > 0,
+        hasAttributedRevenue: googleAdsCampaignRevenueById.has(String(c.id || '')),
         ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
         cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
         cpm: c.impressions > 0 ? (c.spend / c.impressions) * 1000 : 0,
@@ -573,8 +572,8 @@ export default function GoogleAdsAnalytics() {
         costPerConversion: c.conversions > 0 ? c.spend / c.conversions : 0,
         roas: c.spend > 0 ? c.conversionValue / c.spend : 0,
         roi: c.spend > 0 ? ((c.conversionValue - c.spend) / c.spend) * 100 : 0,
-        attributedRoas: attributedRevenue > 0 && c.spend > 0 ? attributedRevenue / c.spend : null,
-        attributedRoi: attributedRevenue > 0 && c.spend > 0 ? ((attributedRevenue - c.spend) / c.spend) * 100 : null,
+        attributedRoas: googleAdsCampaignRevenueById.has(String(c.id || '')) && c.spend > 0 ? attributedRevenue / c.spend : null,
+        attributedRoi: googleAdsCampaignRevenueById.has(String(c.id || '')) && c.spend > 0 ? ((attributedRevenue - c.spend) / c.spend) * 100 : null,
         ga4Roas: c.hasGa4Revenue && c.spend > 0 ? c.ga4Revenue / c.spend : null,
       };
     });
@@ -598,7 +597,7 @@ export default function GoogleAdsAnalytics() {
       for (let i = 0; i < byDate.length; i++) {
         const startIdx = Math.max(0, i - windowDays + 1);
         const slice = byDate.slice(startIdx, i + 1);
-        if (slice.length < windowDays) continue;
+        if (slice.length < windowDays || Date.parse(slice[slice.length - 1].date) - Date.parse(slice[0].date) !== (windowDays - 1) * 86400000) continue;
         const sums = slice.reduce(
           (acc: any, r: any) => {
             acc.impressions += r.impressions;
@@ -628,11 +627,17 @@ export default function GoogleAdsAnalytics() {
   const insightsRollups = useMemo(() => {
     const byDate = dailySeries.daily;
     const dates = byDate.map((r: any) => r.date);
+    const reportingEndDate = metricsData?.endDate;
+    let availableDays = 0;
+    const observedDates = new Set(dates);
+    if (reportingEndDate) {
+      for (let date = Date.parse(reportingEndDate); observedDates.has(new Date(date).toISOString().slice(0, 10)); date -= 86400000) availableDays++;
+    }
 
     const rollup = (n: number, offsetFromEnd: number = 0) => {
-      const endIdx = Math.max(0, dates.length - offsetFromEnd);
-      const startIdx = Math.max(0, endIdx - n);
-      const slice = byDate.slice(startIdx, endIdx);
+      const end = Date.parse(reportingEndDate || '') - offsetFromEnd * 86400000;
+      const start = end - (n - 1) * 86400000;
+      const slice = byDate.filter((row: any) => Date.parse(row.date) >= start && Date.parse(row.date) <= end);
       const sums = slice.reduce(
         (acc: any, r: any) => {
           acc.impressions += r.impressions;
@@ -660,7 +665,7 @@ export default function GoogleAdsAnalytics() {
     const deltaPct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
     return {
-      availableDays: dates.length,
+      availableDays,
       last7, prior7, last30, prior30,
       deltas: {
         impressions7: deltaPct(last7.impressions, prior7.impressions),
@@ -685,7 +690,7 @@ export default function GoogleAdsAnalytics() {
         roas30: prior30.roas > 0 ? ((last30.roas - prior30.roas) / prior30.roas) * 100 : 0,
       },
     };
-  }, [dailySeries]);
+  }, [dailySeries, metricsData?.endDate]);
 
   // Format date helper
   const formatShortDate = (yyyyMmDd: string) => {
@@ -696,7 +701,7 @@ export default function GoogleAdsAnalytics() {
   };
 
   const fmt = (v: number) => v.toLocaleString();
-  const fmtCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmtCurrency = (v: number) => getGoogleAdsMetricDef('spend', currency).format(v);
   const fmtPct = formatPct;
 
   const parseRevenueSourceConfig = (source: any): any => {
@@ -763,8 +768,8 @@ export default function GoogleAdsAnalytics() {
             </div>
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
-                <p className="text-lg font-medium">No data yet</p>
-                <p className="text-sm mt-1">Metrics will appear after the connected Google Ads source refreshes.</p>
+                <p className="text-lg font-medium">{metricsError ? 'Google Ads metrics unavailable' : 'No data yet'}</p>
+                <p className="text-sm mt-1">{metricsError ? 'The metrics could not be loaded. Please try again.' : 'Metrics will appear after the connected Google Ads source refreshes.'}</p>
               </CardContent>
             </Card>
           </main>
@@ -777,10 +782,13 @@ export default function GoogleAdsAnalytics() {
   const getLiveMetricValue = (metricKey: string): number => {
     const key = String(metricKey || '').trim();
     const normalizedKey = key.toLowerCase();
-    if (normalizedKey === 'totalrevenue' || normalizedKey === 'revenue') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : 0;
-    if (normalizedKey === 'profit') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedProfit : 0;
-    if (normalizedKey === 'roas') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : 0;
-    if (normalizedKey === 'roi') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : 0;
+    if (normalizedKey === 'totalrevenue' || normalizedKey === 'revenue') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : Number.NaN;
+    if (normalizedKey === 'profit') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedProfit : Number.NaN;
+    if (normalizedKey === 'roas') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : Number.NaN;
+    if (normalizedKey === 'roi') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : Number.NaN;
+    if (['cpc', 'conversionrate'].includes(normalizedKey) && summary.clicks <= 0) return Number.NaN;
+    if (['cpm', 'ctr'].includes(normalizedKey) && summary.impressions <= 0) return Number.NaN;
+    if (normalizedKey === 'costperconversion' && summary.conversions <= 0) return Number.NaN;
     const map: Record<string, number> = {
       impressions: summary.impressions || 0,
       clicks: summary.clicks || 0,
@@ -795,13 +803,14 @@ export default function GoogleAdsAnalytics() {
       searchImpressionShare: summary.searchImpressionShare || 0,
       conversionValue: summary.conversionValue || 0,
     };
-    return map[key] ?? 0;
+    return map[key] ?? Number.NaN;
   };
 
   // Helper: compute KPI/Benchmark progress
   const computeProgress = (current: number, target: number, metricKey: string) => {
-    if (!target || target === 0) return { pct: 0, status: 'unknown' as const };
+    if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return { pct: 0, status: 'unknown' as const };
     const lowerIsBetter = LOWER_IS_BETTER_METRICS.includes(metricKey);
+    if (lowerIsBetter && current <= 0) return { pct: 0, status: 'unknown' as const };
     let ratio: number;
     if (lowerIsBetter) {
       ratio = target / current;
@@ -823,10 +832,11 @@ export default function GoogleAdsAnalytics() {
       const p = computeProgress(current, target, kpi.metric || kpi.metricKey || '');
       if (p.status === 'on_track') onTrack++;
       else if (p.status === 'needs_attention') needsAttention++;
-      else behind++;
-      totalPct += Math.min(p.pct, 200);
+      else if (p.status === 'behind') behind++;
+      if (p.status !== 'unknown') totalPct += Math.min(p.pct, 200);
     });
-    return { total: items.length, onTrack, needsAttention, behind, avgPct: items.length > 0 ? totalPct / items.length : 0 };
+    const scored = onTrack + needsAttention + behind;
+    return { total: items.length, onTrack, needsAttention, behind, unavailable: items.length - scored, avgPct: scored > 0 ? totalPct / scored : Number.NaN };
   })();
 
   // Benchmark tracker stats
@@ -839,10 +849,11 @@ export default function GoogleAdsAnalytics() {
       const p = computeProgress(current, benchVal, b.metric || '');
       if (p.status === 'on_track') onTrack++;
       else if (p.status === 'needs_attention') needsAttention++;
-      else behind++;
-      totalPct += Math.min(p.pct, 200);
+      else if (p.status === 'behind') behind++;
+      if (p.status !== 'unknown') totalPct += Math.min(p.pct, 200);
     });
-    return { total: items.length, onTrack, needsAttention, behind, avgPct: items.length > 0 ? totalPct / items.length : 0 };
+    const scored = onTrack + needsAttention + behind;
+    return { total: items.length, onTrack, needsAttention, behind, unavailable: items.length - scored, avgPct: scored > 0 ? totalPct / scored : Number.NaN };
   })();
 
   // Reliability scoring: determines how much to trust an insight based on data volume
@@ -895,10 +906,10 @@ export default function GoogleAdsAnalytics() {
     if (summary.conversions > 0 && summary.conversionValue === 0) {
       all.push({
         id: 'integrity:conv-value-zero', severity: 'high', group: 'integrity', reliability: 'high',
-        title: 'Conversions tracked but conversion value is $0',
-        description: `${Math.round(summary.conversions)} conversions recorded, but native Google Ads conversion value is $0. Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI (${summary.roi.toFixed(1)}%) cannot be trusted until values are assigned in Google Ads.`,
+        title: `Conversions tracked but conversion value is ${fmtCurrency(0)}`,
+        description: `${Math.round(summary.conversions)} conversions recorded, but native Google Ads conversion value is ${fmtCurrency(0)}. Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI (${summary.roi.toFixed(1)}%) cannot be trusted until values are assigned in Google Ads.`,
         recommendation: 'Assign conversion values in Google Ads > Goals > Conversions > Settings. For e-commerce, use dynamic values from your checkout. For lead gen, assign estimated values per lead type. Imported Google Ads attributed revenue remains separate when connected.',
-        evidence: [Math.round(summary.conversions) + ' conversions', '$0 conversion value', 'Conversion-value ROAS: ' + summary.roas.toFixed(2) + 'x (unreliable)'],
+        evidence: [Math.round(summary.conversions) + ' conversions', fmtCurrency(0) + ' conversion value', 'Conversion-value ROAS: ' + summary.roas.toFixed(2) + 'x (unreliable)'],
       });
     }
 
@@ -918,9 +929,9 @@ export default function GoogleAdsAnalytics() {
       all.push({
         id: 'integrity:zero-spend', severity: 'medium', group: 'integrity', reliability: 'high',
         title: 'Campaigns exist but no spend or impressions recorded',
-        description: `${campaignBreakdown.length} campaign(s) found but $0 spend and 0 impressions in the reporting window. Campaigns may be paused, budgets exhausted, or ads disapproved.`,
+        description: `${campaignBreakdown.length} campaign(s) found but ${fmtCurrency(0)} spend and 0 impressions in the reporting window. Campaigns may be paused, budgets exhausted, or ads disapproved.`,
         recommendation: 'Check campaign status in the Google Ads UI. Verify: (1) Campaigns are not paused/removed, (2) Daily budgets are set, (3) Ads are approved, (4) Billing is active.',
-        evidence: [campaignBreakdown.length + ' campaigns', '$0 spend', '0 impressions'],
+        evidence: [campaignBreakdown.length + ' campaigns', fmtCurrency(0) + ' spend', '0 impressions'],
       });
     }
 
@@ -952,7 +963,7 @@ export default function GoogleAdsAnalytics() {
       all.push({
         id: 'financial:roas-below-1', severity: insightsRoasValue < 0.5 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roas'),
         title: `${insightsRoasTitlePrefix} ROAS is ${insightsRoasValue.toFixed(2)}x`,
-        description: `Every $1 spent returns ${fmtCurrency(insightsRoasValue)} in ${insightsRevenueLabel}. This is below a 1.0x value-to-spend ratio.`,
+        description: `Every ${fmtCurrency(1)} spent returns ${fmtCurrency(insightsRoasValue)} in ${insightsRevenueLabel}. This is below a 1.0x value-to-spend ratio.`,
         recommendation: `${insightsRevenueRecommendation} Audit campaign-level efficiency in the Ad Comparison tab. For underperforming campaigns, review keyword match types, negative keywords, audience segments, and bid strategy.`,
         evidence: ['ROAS: ' + insightsRoasValue.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(summary.spend), insightsRevenueEvidenceLabel + ': ' + fmtCurrency(insightsRevenueValue)],
       });
@@ -1047,7 +1058,7 @@ export default function GoogleAdsAnalytics() {
         all.push({
           id: 'anomaly:roas-drop', severity: l7.roas < 1 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roas'),
           title: `Conversion-value ROAS declined ${Math.abs(d.roas7).toFixed(0)}% week-over-week`,
-          description: `ROAS dropped from ${p7.roas.toFixed(2)}x to ${l7.roas.toFixed(2)}x (${d.roas7.toFixed(1)}%). Each dollar of ad spend is now returning ${fmtCurrency(l7.roas)} in conversion value, down from ${fmtCurrency(p7.roas)}.`,
+          description: `ROAS dropped from ${p7.roas.toFixed(2)}x to ${l7.roas.toFixed(2)}x (${d.roas7.toFixed(1)}%). Each ${fmtCurrency(1)} of ad spend is now returning ${fmtCurrency(l7.roas)} in conversion value, down from ${fmtCurrency(p7.roas)}.`,
           recommendation: 'Decompose the ROAS decline: Is conversion volume down, conversion value per conversion down, or CPC up? Use the Ad Comparison tab to identify which campaigns\' ROAS degraded most and prioritize those for review.',
           evidence: ['ROAS: ' + p7.roas.toFixed(2) + 'x → ' + l7.roas.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(p7.spend) + ' → ' + fmtCurrency(l7.spend), 'Conv value: ' + fmtCurrency(p7.conversionValue) + ' → ' + fmtCurrency(l7.conversionValue)],
         });
@@ -1106,7 +1117,7 @@ export default function GoogleAdsAnalytics() {
       const current = getLiveMetricValue(metricKey);
       const target = parseFloat(kpi.targetValue || '0');
       const p = computeProgress(current, target, metricKey);
-      const def = getGoogleAdsMetricDef(metricKey);
+      const def = getGoogleAdsMetricDef(metricKey, currency);
       const trendKey = (metricKey + '7') as keyof typeof d;
       const wowTrend = hasWoW && d[trendKey] !== undefined ? ` Week-over-week trend: ${(d[trendKey] as number) >= 0 ? '+' : ''}${(d[trendKey] as number).toFixed(1)}%.` : '';
 
@@ -1136,7 +1147,7 @@ export default function GoogleAdsAnalytics() {
       const current = getLiveMetricValue(metricKey);
       const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
       const p = computeProgress(current, benchVal, metricKey);
-      const def = getGoogleAdsMetricDef(metricKey);
+      const def = getGoogleAdsMetricDef(metricKey, currency);
 
       if (p.status === 'behind') {
         all.push({
@@ -1197,7 +1208,7 @@ export default function GoogleAdsAnalytics() {
         : Math.round((c as any)[campaignPerformanceChartMetric] * 100) / 100,
     }));
 
-  const campaignChartLabel = sortBy === 'spend' ? 'Spend ($)' : sortBy === 'impressions' ? 'Impressions' : sortBy === 'clicks' ? 'Clicks' : sortBy === 'conversions' ? 'Conversions' : sortBy === 'ctr' ? 'CTR (%)' : sortBy;
+  const campaignChartLabel = sortBy === 'spend' ? `Spend (${currency})` : sortBy === 'impressions' ? 'Impressions' : sortBy === 'clicks' ? 'Clicks' : sortBy === 'conversions' ? 'Conversions' : sortBy === 'ctr' ? 'CTR (%)' : sortBy;
 
   // Ad comparison performance rankings
   const bestPerforming = [...campaignBreakdown].sort((a, b) => b.conversions - a.conversions)[0];
@@ -1220,12 +1231,17 @@ export default function GoogleAdsAnalytics() {
         }
       }
     }
+    const currentValue = stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric));
+    if (!Number.isFinite(Number(currentValue))) {
+      toast({ title: 'Current value unavailable', description: 'Enter a verified current value or wait for source data.', variant: 'destructive' });
+      return;
+    }
     const payload = {
       name: kpiForm.name, metric: kpiForm.metric, metricKey: kpiForm.metric,
       targetValue: kpiForm.targetValue,
-      currentValue: stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric)),
+      currentValue,
       description: kpiForm.description,
-      unit: kpiForm.unit || getGoogleAdsMetricDef(kpiForm.metric).unit,
+      unit: kpiForm.unit || getGoogleAdsMetricDef(kpiForm.metric, currency).unit,
       priority: kpiForm.priority, status: 'active', category: kpiForm.category,
       timeframe: kpiForm.timeframe, trackingPeriod: Number(kpiForm.trackingPeriod || 30),
       alertsEnabled: kpiForm.alertsEnabled, emailNotifications: kpiForm.emailNotifications,
@@ -1255,12 +1271,17 @@ export default function GoogleAdsAnalytics() {
         }
       }
     }
+    const currentValue = stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric));
+    if (!Number.isFinite(Number(currentValue))) {
+      toast({ title: 'Current value unavailable', description: 'Enter a verified current value or wait for source data.', variant: 'destructive' });
+      return;
+    }
     const payload = {
       name: benchmarkForm.name, metric: benchmarkForm.metric,
       benchmarkValue: benchmarkForm.benchmarkValue, targetValue: benchmarkForm.benchmarkValue,
-      currentValue: stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric)),
+      currentValue,
       description: benchmarkForm.description, industry: benchmarkForm.industry,
-      unit: benchmarkForm.unit || getGoogleAdsMetricDef(benchmarkForm.metric).unit,
+      unit: benchmarkForm.unit || getGoogleAdsMetricDef(benchmarkForm.metric, currency).unit,
       benchmarkType: benchmarkForm.benchmarkType || 'custom',
       category: 'performance',
       alertsEnabled: benchmarkForm.alertsEnabled, emailNotifications: benchmarkForm.emailNotifications,
@@ -1464,7 +1485,7 @@ export default function GoogleAdsAnalytics() {
                     </button>
                   </div>
                   <p className="text-2xl font-bold text-foreground">
-                    {hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : "Not connected"}
+                    {hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : googleAdsRevenueSourcesData?.success === false ? 'Unavailable' : 'Not connected'}
                   </p>
                   {!hasGoogleAdsAttributedRevenue && (
                     <p className="text-xs text-muted-foreground mt-1">Connect attributed revenue</p>
@@ -1492,12 +1513,12 @@ export default function GoogleAdsAnalytics() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground/70">ROAS</p>
-                        <p className="text-2xl font-bold text-foreground">{googleAdsAttributedRoas.toFixed(2)}x</p>
+                        <p className="text-2xl font-bold text-foreground">{formatGoogleAdsMetricValue('roas', googleAdsAttributedRoas)}</p>
                         <p className="text-xs text-muted-foreground/70 mt-1">Attributed revenue / spend</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground/70">ROI</p>
-                        <p className="text-2xl font-bold text-foreground">{googleAdsAttributedRoi.toFixed(1)}%</p>
+                        <p className="text-2xl font-bold text-foreground">{formatGoogleAdsMetricValue('roi', googleAdsAttributedRoi)}</p>
                         <p className="text-xs text-muted-foreground/70 mt-1">Attributed revenue ROI</p>
                       </div>
                       <div>
@@ -1677,7 +1698,7 @@ export default function GoogleAdsAnalytics() {
                 <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">On Track</p><p className="text-2xl font-bold text-green-600">{kpiTracker.onTrack}</p><p className="text-xs text-muted-foreground">meeting or exceeding target</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{kpiTracker.needsAttention}</p><p className="text-xs text-muted-foreground">within 70-90% of target</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Behind</p><p className="text-2xl font-bold text-red-600">{kpiTracker.behind}</p><p className="text-xs text-muted-foreground">below 70% of target</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{kpiTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{formatGoogleAdsMetricValue('roi', kpiTracker.avgPct)}</p>{kpiTracker.unavailable > 0 && <p className="text-xs text-muted-foreground">{kpiTracker.unavailable} unavailable</p>}</div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
               </div>
 
               {/* KPI Cards */}
@@ -1687,7 +1708,7 @@ export default function GoogleAdsAnalytics() {
                 <div className="grid gap-6 lg:grid-cols-2">
                   {kpisData.map((kpi: any) => {
                     const metricKey = kpi.metric || kpi.metricKey || '';
-                    const metricDef = getGoogleAdsMetricDef(metricKey);
+                    const metricDef = getGoogleAdsMetricDef(metricKey, currency);
                     const currentVal = getLiveMetricValue(metricKey);
                     const targetVal = parseFloat(kpi.targetValue || '0');
                     const progress = computeProgress(currentVal, targetVal, metricKey);
@@ -1715,7 +1736,7 @@ export default function GoogleAdsAnalytics() {
                                     metric: metricKey,
                                     targetValue: kpi.targetValue || '',
                                     description: kpi.description || '',
-                                    currentValue: String(currentVal),
+                                    currentValue: Number.isFinite(currentVal) ? String(currentVal) : '',
                                     unit: kpi.unit || metricDef.unit || '',
                                     priority: kpi.priority || 'high',
                                     status: kpi.status || 'active',
@@ -1749,20 +1770,21 @@ export default function GoogleAdsAnalytics() {
                           <div className="grid grid-cols-2 gap-4">
                             <div className="p-3 bg-muted rounded-lg">
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
-                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, currentVal)}</div>
+                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, currentVal, currency)}</div>
                             </div>
                             <div className="p-3 bg-muted rounded-lg">
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
-                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, targetVal)}</div>
+                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, targetVal, currency)}</div>
                             </div>
                           </div>
-                          {targetVal > 0 && (
+                          {progress.status === 'unknown' && <p className="text-xs text-muted-foreground">Progress unavailable</p>}
+                          {targetVal > 0 && progress.status !== 'unknown' && (
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-xs text-muted-foreground/70"><span>Progress</span><span>{Math.round(progress.pct)}%</span></div>
                               <Progress value={progressFill} className="h-2" indicatorClassName={progressColor} />
                             </div>
                           )}
-                          {targetVal > 0 && (
+                          {targetVal > 0 && progress.status !== 'unknown' && (
                             <div className="text-xs text-muted-foreground/70">
                               {Math.abs(deltaPct) < 0.01 ? 'At target' : deltaPct > 0 ? `${Math.round(Math.abs(deltaPct))}% above target (+${deltaPct.toFixed(1)}%)` : `${Math.round(Math.abs(deltaPct))}% below target (${deltaPct.toFixed(1)}%)`}
                             </div>
@@ -1802,7 +1824,7 @@ export default function GoogleAdsAnalytics() {
                 <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">On Track</p><p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p><p className="text-xs text-muted-foreground">meeting or exceeding benchmark</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p><p className="text-xs text-muted-foreground">within 70-90% of benchmark</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Behind</p><p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p><p className="text-xs text-muted-foreground">below 70% of benchmark</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{benchmarkTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{formatGoogleAdsMetricValue('roi', benchmarkTracker.avgPct)}</p>{benchmarkTracker.unavailable > 0 && <p className="text-xs text-muted-foreground">{benchmarkTracker.unavailable} unavailable</p>}</div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
               </div>
 
               {/* Benchmark Cards */}
@@ -1812,7 +1834,7 @@ export default function GoogleAdsAnalytics() {
                 <div className="grid gap-6 lg:grid-cols-2">
                   {benchmarksData.map((b: any) => {
                     const metricKey = b.metric || '';
-                    const metricDef = getGoogleAdsMetricDef(metricKey);
+                    const metricDef = getGoogleAdsMetricDef(metricKey, currency);
                     const currentVal = getLiveMetricValue(metricKey);
                     const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
                     const progress = computeProgress(currentVal, benchVal, metricKey);
@@ -1841,7 +1863,7 @@ export default function GoogleAdsAnalytics() {
                                     benchmarkValue: b.benchmarkValue || b.targetValue || '',
                                     description: b.description || '',
                                     industry: b.industry || '',
-                                    currentValue: String(currentVal),
+                                    currentValue: Number.isFinite(currentVal) ? String(currentVal) : '',
                                     unit: b.unit || metricDef.unit || '',
                                     benchmarkType: b.benchmarkType || 'custom',
                                     alertsEnabled: !!b.alertsEnabled,
@@ -1871,14 +1893,15 @@ export default function GoogleAdsAnalytics() {
                           <div className="grid grid-cols-2 gap-4">
                             <div className="p-3 bg-muted rounded-lg">
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
-                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, currentVal)}</div>
+                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, currentVal, currency)}</div>
                             </div>
                             <div className="p-3 bg-muted rounded-lg">
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">Benchmark</div>
-                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, benchVal)}</div>
+                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, benchVal, currency)}</div>
                             </div>
                           </div>
-                          {benchVal > 0 && (
+                          {progress.status === 'unknown' && <p className="text-xs text-muted-foreground">Progress unavailable</p>}
+                          {benchVal > 0 && progress.status !== 'unknown' && (
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-xs text-muted-foreground/70"><span>Progress</span><span>{Math.round(progress.pct)}%</span></div>
                               <Progress value={progressFill} className="h-2" indicatorClassName={progressColor} />
@@ -2134,7 +2157,7 @@ export default function GoogleAdsAnalytics() {
                     <Card>
                       <CardContent className="p-5">
                         <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
-                        <div className="text-2xl font-bold text-foreground">{hasGoogleAdsAttributedRevenue ? `${googleAdsAttributedRoas.toFixed(2)}x` : 'N/A'}</div>
+                        <div className="text-2xl font-bold text-foreground">{hasGoogleAdsAttributedRevenue ? formatGoogleAdsMetricValue('roas', googleAdsAttributedRoas) : 'N/A'}</div>
                         <div className="text-xs text-muted-foreground/70 mt-1">{hasGoogleAdsAttributedRevenue ? 'Attributed revenue / spend' : 'Connect attributed revenue'}</div>
                       </CardContent>
                     </Card>
@@ -2206,7 +2229,7 @@ export default function GoogleAdsAnalytics() {
 
                     const formatChartValue = (v: any) => {
                       const n = Number(v || 0) || 0;
-                      if (['spend', 'cpc', 'cpm', 'costPerConversion'].includes(insightsTrendMetric)) return `$${n.toFixed(2)}`;
+                      if (['spend', 'cpc', 'cpm', 'costPerConversion'].includes(insightsTrendMetric)) return fmtCurrency(n);
                       if (['ctr', 'conversionRate'].includes(insightsTrendMetric)) return `${formatPct(n)}`;
                       if (insightsTrendMetric === 'roas') return `${n.toFixed(2)}x`;
                       return n.toLocaleString();
@@ -2252,7 +2275,7 @@ export default function GoogleAdsAnalytics() {
                                       const curVal = Number(r?.[insightsTrendMetric] ?? 0) || 0;
                                       const prevVal = Number(prev?.[insightsTrendMetric] ?? 0) || 0;
                                       const deltaPctVal = prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : 0;
-                                      const showDelta = !!prev && prevVal > 0;
+                                      const showDelta = !!prev && prevVal > 0 && Date.parse(r.date) - Date.parse(prev.date) === 86400000;
                                       return (
                                         <tr key={r.date} className="border-b">
                                           <td className="p-3"><div className="font-medium text-foreground">{formatShortDate(String(r.date || ''))}</div></td>
@@ -2382,7 +2405,7 @@ export default function GoogleAdsAnalytics() {
                           </div>
                           {kpiTracker.total === 0 ? (
                             <p className="text-xs text-muted-foreground/70">No KPIs configured yet.</p>
-                          ) : kpiTracker.behind === 0 && kpiTracker.needsAttention === 0 ? (
+                          ) : kpiTracker.onTrack === kpiTracker.total ? (
                             <p className="text-xs text-emerald-600 dark:text-emerald-400">All KPIs on track.</p>
                           ) : (
                             <div className="space-y-2">
@@ -2391,7 +2414,7 @@ export default function GoogleAdsAnalytics() {
                                 const current = getLiveMetricValue(metricKey);
                                 const target = parseFloat(kpi.targetValue || '0');
                                 const p = computeProgress(current, target, metricKey);
-                                const def = getGoogleAdsMetricDef(metricKey);
+                                const def = getGoogleAdsMetricDef(metricKey, currency);
                                 if (p.status === 'on_track') return null;
                                 return (
                                   <div key={kpi.id} className="flex items-center justify-between text-xs">
@@ -2415,7 +2438,7 @@ export default function GoogleAdsAnalytics() {
                           </div>
                           {benchmarkTracker.total === 0 ? (
                             <p className="text-xs text-muted-foreground/70">No benchmarks configured yet.</p>
-                          ) : benchmarkTracker.behind === 0 && benchmarkTracker.needsAttention === 0 ? (
+                          ) : benchmarkTracker.onTrack === benchmarkTracker.total ? (
                             <p className="text-xs text-emerald-600 dark:text-emerald-400">All benchmarks on track.</p>
                           ) : (
                             <div className="space-y-2">
@@ -2424,7 +2447,7 @@ export default function GoogleAdsAnalytics() {
                                 const current = getLiveMetricValue(metricKey);
                                 const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
                                 const p = computeProgress(current, benchVal, metricKey);
-                                const def = getGoogleAdsMetricDef(metricKey);
+                                const def = getGoogleAdsMetricDef(metricKey, currency);
                                 if (p.status === 'on_track') return null;
                                 return (
                                   <div key={b.id} className="flex items-center justify-between text-xs">
@@ -2694,6 +2717,8 @@ export default function GoogleAdsAnalytics() {
 
           {/* KPI Modal */}
           <GoogleAdsKpiModal
+            getLiveMetricValue={getLiveMetricValue}
+            currency={currency}
             isKPIModalOpen={isKPIModalOpen}
             setIsKPIModalOpen={setIsKPIModalOpen}
             editingKPI={editingKPI}
@@ -2713,6 +2738,8 @@ export default function GoogleAdsAnalytics() {
 
           {/* Benchmark Modal */}
           <GoogleAdsBenchmarkModal
+            getLiveMetricValue={getLiveMetricValue}
+            currency={currency}
             isBenchmarkModalOpen={isBenchmarkModalOpen}
             setIsBenchmarkModalOpen={setIsBenchmarkModalOpen}
             editingBenchmark={editingBenchmark}
@@ -2780,7 +2807,7 @@ export default function GoogleAdsAnalytics() {
               <DialogHeader>
                 <DialogTitle className="text-foreground">Google Ads Revenue Sources</DialogTitle>
                 <DialogDescription className="text-muted-foreground/70">
-                  Sources contributing to Google Ads Total Revenue.
+                  Latest imported source totals. The Overview uses only revenue within its reporting window.
                 </DialogDescription>
               </DialogHeader>
               <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">

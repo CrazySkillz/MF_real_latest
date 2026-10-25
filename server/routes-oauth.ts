@@ -429,7 +429,7 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
         ? (importedRevenueTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
         : [];
       const hasImportedAttributedRevenue = !requirePersistedRows && importedAttributedRevenue > 0;
-      const ga4AttributedRevenue = parseNum(totals.ga4AttributedRevenue);
+      const ga4AttributedRevenue = null;
       const conversionValue = parseNum(totals.conversionValue);
       const attributedRevenueSource = hasImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";
       const attributedRevenue = hasImportedAttributedRevenue ? importedAttributedRevenue : 0;
@@ -463,7 +463,7 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
           attributedRevenueLabel: hasImportedAttributedRevenue ? "Google Ads imported attributed revenue" : "Unavailable",
           importedRevenueSourceIds,
           conversionValueLabel: "Native Google Ads conversion value",
-          ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Google Ads Total Revenue",
+          ga4AttributedRevenueLabel: "Unavailable: Google Ads source and date attribution is unverified",
         },
         freshness: { selectedCampaignIds },
       };
@@ -1560,7 +1560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return null;
   };
 
-  const getDateRangeBounds = (dateRange: string) => {
+  const getDateRangeBounds = (dateRange: string, completedCampaign?: any) => {
     const normalizedDateRange = String(dateRange).toLowerCase();
     if (normalizedDateRange === "all" || normalizedDateRange === "lifetime") {
       return { startDate: "1900-01-01", endDate: "2999-12-31" };
@@ -1570,6 +1570,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const days =
       normalizedDateRange === "7days" ? 7 :
         normalizedDateRange === "90days" ? 90 : 30;
+    if (completedCampaign) {
+      const window = getReportingDateWindow(days, completedCampaign.reportingTimeZone);
+      const campaignStart = normalizeDate(completedCampaign.startDate);
+      return { startDate: campaignStart && campaignStart > window.startDate ? campaignStart : window.startDate, endDate: window.endDate };
+    }
     const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
     const fmt = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
     return { startDate: fmt(start), endDate: fmt(end) };
@@ -3140,7 +3145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ...(hasGoogleAdsImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
             ],
             dailyRows: googleAdsRows.map((row: any) => {
-              const ga4AttributedRevenue = parseNum(row.ga4Revenue);
+              const ga4AttributedRevenue = null;
               const conversionValue = parseNum(row.conversionValue);
               const importedAttributedRevenue = parseNum(googleAdsImportedRevenueByDate.get(String(row.date || "").slice(0, 10)));
               return {
@@ -3757,6 +3762,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .then((rows: any[]) => ({ rows, succeeded: true }))
           .catch(() => ({ rows: [] as any[], succeeded: false })),
       ]);
+      if (platformContext === 'google_ads' && (!boundedBreakdownResult.succeeded || !latestBreakdownResult.succeeded)) {
+        throw new Error('Google Ads revenue is unavailable. The saved revenue records could not be verified.');
+      }
+      if (platformContext === 'google_ads' && [...sources, ...latestBreakdownResult.rows].some((row: any) => row.currency !== campaign.currency)) {
+        throw new Error('Google Ads revenue currency does not match campaign currency');
+      }
       const breakdown = boundedBreakdownResult.rows;
       const publicationStatus = platformContext === 'ga4'
         ? await storage.getGA4RevenuePublicationStatus(campaignId, breakdownEndDate) : {};
@@ -3775,7 +3786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const pendingCompletedDay = isGa4RevenueSource && boundedBreakdownResult.succeeded && latestBreakdownResult.succeeded
           && hasLatestRevenue && (!hasCompletedDayRevenue || latestTotalsBySource.get(sourceId) !== totalsBySource.get(sourceId));
         const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null);
-        const latestRevenue = hasLatestRevenue ? Number(latestTotalsBySource.get(sourceId) || 0) : cfgTotal;
+        const latestRevenue = hasLatestRevenue ? Number(latestTotalsBySource.get(sourceId) || 0) : platformContext === 'google_ads' ? 0 : cfgTotal;
         const completedDayRevenue = hasCompletedDayRevenue ? Number(totalsBySource.get(sourceId) || 0) : 0;
         return {
           ...source,
@@ -4341,12 +4352,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || "30days");
-      const { startDate, endDate } = getDateRangeBounds(dateRange);
       const platformContext = parseRevenueReadPlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const { startDate, endDate } = getDateRangeBounds(dateRange, platformContext === 'google_ads' ? ok : undefined);
       const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
+      if (platformContext === 'google_ads' && (totals.sourceIds.length > 0 || totals.totalRevenue !== 0) && totals.currency !== ok.currency) throw new Error('Google Ads revenue currency does not match campaign currency');
       res.json({ success: true, platformContext, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue totals" });
@@ -14509,12 +14521,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get per-Google-Ads-campaign imported attributed revenue from exact campaign-ID records or explicit source mappings.
+  // Read dated, materialized Google Ads attribution; undated setup totals cannot establish period revenue.
   app.get("/api/campaigns/:id/google-ads-campaign-revenue", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id);
       const dateRange = String(req.query.dateRange || "90days");
-      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+      const { startDate, endDate } = getDateRangeBounds(dateRange, campaign);
       const activeGoogleAdsCampaignIds = await getActiveGoogleAdsCampaignIdSet(campaignId);
       if (activeGoogleAdsCampaignIds.size === 0) {
         return res.json({ success: true, dateRange, startDate, endDate, breakdown: [], hasSubCampaignData: false });
@@ -14525,12 +14539,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rr.sub_campaign_urn AS campaign_id,
           rr.revenue,
           rr.currency,
+          rs.currency AS source_currency,
           rr.revenue_source_id AS source_id,
           rs.display_name,
           rs.source_type
         FROM revenue_records rr
         INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
         WHERE rr.campaign_id = ${campaignId}
+          AND rs.campaign_id = ${campaignId}
           AND rs.is_active = true
           AND rs.platform_context = 'google_ads'
           AND rr.sub_campaign_urn IS NOT NULL
@@ -14540,12 +14556,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `);
 
       const breakdownMap = new Map<string, { campaignId: string; revenue: number; currency?: string; sourceIds: Set<string>; recordCount: number }>();
-      const materializedSourceCampaignPairs = new Set<string>();
       for (const row of rows.rows as any[]) {
         const googleCampaignId = String(row.campaign_id || "").trim();
         if (!activeGoogleAdsCampaignIds.has(googleCampaignId)) continue;
-        const revenue = parseFloat(String(row.revenue || "0"));
-        if (!Number.isFinite(revenue) || revenue <= 0) continue;
+        const revenue = Number(row.revenue);
+        if (row.revenue == null || row.revenue === '' || !Number.isFinite(revenue)) throw new Error('Invalid Google Ads campaign revenue');
+        if (row.currency !== campaign.currency || row.source_currency !== campaign.currency) throw new Error('Google Ads campaign revenue currency does not match campaign currency');
         const current = breakdownMap.get(googleCampaignId) || {
           campaignId: googleCampaignId,
           revenue: 0,
@@ -14558,55 +14574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (row.source_id) {
           const sourceId = String(row.source_id);
           current.sourceIds.add(sourceId);
-          materializedSourceCampaignPairs.add(`${sourceId}:${googleCampaignId}`);
         }
         if (!current.currency && row.currency) current.currency = String(row.currency);
         breakdownMap.set(googleCampaignId, current);
-      }
-
-      const parseCfg = (raw: any) => {
-        if (!raw) return null;
-        try { return typeof raw === "string" ? JSON.parse(raw) : raw; } catch { return null; }
-      };
-
-      const sources = await storage.getRevenueSources(campaignId, "google_ads").catch(() => [] as any[]);
-      for (const source of Array.isArray(sources) ? sources : []) {
-        if (!source || source.isActive === false) continue;
-        const sourceId = String(source.id || "").trim();
-        if (!sourceId) continue;
-        const cfg = parseCfg((source as any).mappingConfig);
-        const campaignMappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
-        if (campaignMappings.length === 0) continue;
-
-        const campaignValueRevenueByValue = new Map<string, number>();
-        for (const row of Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : []) {
-          const value = String(row?.campaignValue || "").trim();
-          const revenue = Number(row?.revenue || 0);
-          if (value && Number.isFinite(revenue) && revenue > 0) {
-            campaignValueRevenueByValue.set(value, (campaignValueRevenueByValue.get(value) || 0) + revenue);
-          }
-        }
-
-        for (const mapping of campaignMappings) {
-          const crmValue = String(mapping?.crmValue || "").trim();
-          const googleCampaignId = String(mapping?.googleAdsCampaignId || mapping?.linkedinCampaignUrn || "").trim();
-          if (!crmValue || !activeGoogleAdsCampaignIds.has(googleCampaignId)) continue;
-          if (materializedSourceCampaignPairs.has(`${sourceId}:${googleCampaignId}`)) continue;
-          const revenue = Number(mapping?.revenue || 0) || Number(campaignValueRevenueByValue.get(crmValue) || 0);
-          if (!Number.isFinite(revenue) || revenue <= 0) continue;
-          const current = breakdownMap.get(googleCampaignId) || {
-            campaignId: googleCampaignId,
-            revenue: 0,
-            currency: source.currency ? String(source.currency) : undefined,
-            sourceIds: new Set<string>(),
-            recordCount: 0,
-          };
-          current.revenue += revenue;
-          current.recordCount += 1;
-          current.sourceIds.add(sourceId);
-          if (!current.currency && source.currency) current.currency = String(source.currency);
-          breakdownMap.set(googleCampaignId, current);
-        }
       }
 
       const breakdown = Array.from(breakdownMap.values()).map((item) => ({
@@ -23817,6 +23787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/meta/:campaignId/connect-test", async (req, res) => {
     try {
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return res.status(404).json({ error: "Not found" });
       const { campaignId } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
@@ -23960,6 +23931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/instagram/:campaignId/connect-test", async (req, res) => {
     try {
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return res.status(404).json({ error: "Not found" });
       const { campaignId } = req.params;
       const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
       if (!parsedId.success) {
@@ -24230,6 +24202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/tiktok/:campaignId/connect-test", async (req, res) => {
     try {
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return res.status(404).json({ error: "Not found" });
       const { campaignId } = req.params;
       const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
       if (!parsedId.success) {
@@ -24440,6 +24413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/tiktok/:campaignId/refresh-test", async (req, res) => {
     try {
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return res.status(404).json({ error: "Not found" });
       const { campaignId } = req.params;
       const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
       if (!parsedId.success) {
@@ -24747,6 +24721,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = getDateRangeBounds(dateRange);
       const selected = new Set(selectedCampaignIds);
       let persistedRows = await storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate).catch(() => []);
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production" && String(connection.method || "").toLowerCase().includes("test")) {
+        return res.status(409).json({ error: "Test-mode data is unavailable in production" });
+      }
       if (persistedRows.length === 0 && String((connection as any).method || "") === "test_mode" && !(connection as any).spendOnly) {
         const date = yesterdayUTC();
         const seedRows = selectedCampaignIds.map((id: string, index: number) => {
@@ -24846,6 +24823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/instagram/:campaignId/refresh-test", async (req, res) => {
     try {
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return res.status(404).json({ error: "Not found" });
       const { campaignId } = req.params;
       const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
       if (!parsedId.success) {
@@ -26385,6 +26363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/google-ads/:campaignId/connect-test", async (req, res) => {
     try {
+      if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return res.status(404).json({ error: "Not found" });
       const { campaignId } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
@@ -26441,6 +26420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerName: connection.customerName,
         method: connection.method,
         lastRefreshAt: connection.lastRefreshAt,
+        currency: ok.currency,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get connection status' });
@@ -26487,8 +26467,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if ((connection as any).spendOnly && String((connection as any).method || "") === "test_mode") return res.json({ success: true, metrics: [] });
       const { startDate, endDate } = req.query;
       const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-      const end = datePattern.test(String(endDate || "")) ? String(endDate) : new Date().toISOString().slice(0, 10);
-      const requestedStart = datePattern.test(String(startDate || "")) ? String(startDate) : new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const reportingWindow = !spendPreview && req.query.dateRange ? getDateRangeBounds(String(req.query.dateRange), campaign) : null;
+      const end = reportingWindow?.endDate || (datePattern.test(String(endDate || "")) ? String(endDate) : new Date().toISOString().slice(0, 10));
+      const requestedStart = reportingWindow?.startDate || (datePattern.test(String(startDate || "")) ? String(startDate) : new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
       const rawCampaignStart = new Date((campaign as any)?.startDate || "1900-01-01");
       const campaignStart = Number.isNaN(rawCampaignStart.getTime()) ? "1900-01-01" : rawCampaignStart.toISOString().slice(0, 10);
       const start = requestedStart < campaignStart ? campaignStart : requestedStart;
@@ -26527,7 +26508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
       const { refreshGoogleAdsForCampaign } = await import('./google-ads-scheduler');
-      const refresh = await refreshGoogleAdsForCampaign(campaignId, connection, { advanceTestDay: true, ga4SpendConnection: !!dedicatedConnection });
+      const refresh = await refreshGoogleAdsForCampaign(campaignId, connection, { advanceTestDay: true, ga4SpendConnection: !!dedicatedConnection, allowDraftPreview: spendPreview && ok.status === "draft" });
 
       res.json({ success: true, message: 'Google Ads data refreshed', ...refresh });
     } catch (error: any) {
@@ -26700,6 +26681,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!platform || !startDate || !endDate) {
         return res.status(400).json({ success: false, error: "Missing platform, startDate, or endDate" });
       }
+      const validDate = (value: unknown) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+        && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+      const campaignStart = new Date(campaign.startDate || "1900-01-01").toISOString().slice(0, 10);
+      if (!validDate(startDate) || !validDate(endDate) || startDate > endDate || startDate < campaignStart
+        || endDate > getReportingDateWindow(1, campaign.reportingTimeZone).endDate) {
+        return res.status(400).json({ success: false, error: "Spend import requires completed dates within the campaign window" });
+      }
 
       // Fetch daily metrics from the platform's table
       let rows: any[] = [];
@@ -26707,40 +26695,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let platformSourceType = "ad_platforms";
       let platformContext = "";
       let selectedCampaignIds: string[] = [];
+      let connection: any;
+      let providerCampaignField = "";
       if (platform === "google_ads") {
         platformLabel = "Google Ads";
         platformContext = "google_ads";
+        connection = await storage.getGoogleAdsConnection(campaignId);
+        providerCampaignField = "googleCampaignId";
         rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];
       } else if (platform === "meta") {
         platformLabel = "Meta Ads";
         platformContext = "meta";
+        connection = await storage.getMetaConnection(campaignId);
+        providerCampaignField = "metaCampaignId";
         rows = (await storage.getMetaDailyMetrics(campaignId, startDate, endDate)) || [];
       } else if (platform === "linkedin") {
         platformLabel = "LinkedIn Ads";
         platformContext = "linkedin";
+        connection = await storage.getLinkedInConnection(campaignId);
+        providerCampaignField = "linkedinCampaignId";
         rows = (await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate)) || [];
       } else if (platform === "tiktok") {
         platformLabel = "TikTok Ads";
         platformContext = "tiktok";
         platformSourceType = "tiktok_api";
-        const connection = await storage.getTikTokConnection(campaignId);
-        selectedCampaignIds = (() => {
-          try {
-            const parsed = JSON.parse(String((connection as any)?.selectedCampaignIds || "[]"));
-            return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
-          } catch {
-            return [];
-          }
-        })();
-        if (!connection || (connection as any).spendOnly || selectedCampaignIds.length === 0) {
-          return res.status(400).json({ success: false, error: "TikTok spend import requires a connected TikTok source with selected campaigns" });
-        }
-        const selectedSet = new Set(selectedCampaignIds);
-        rows = ((await storage.getTikTokDailyMetrics(campaignId, startDate, endDate)) || [])
-          .filter((row: any) => selectedSet.has(String(row?.tiktokCampaignId || "")));
+        connection = await storage.getTikTokConnection(campaignId);
+        providerCampaignField = "tiktokCampaignId";
+        rows = (await storage.getTikTokDailyMetrics(campaignId, startDate, endDate)) || [];
       } else {
         return res.status(400).json({ success: false, error: "Unknown platform: " + platform });
       }
+
+      try {
+        const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
+        selectedCampaignIds = Array.isArray(parsed) ? Array.from(new Set(parsed.map(String).map(id => id.trim()).filter(Boolean))) : [];
+      } catch { selectedCampaignIds = []; }
+      if (!connection || connection.campaignId !== campaignId || connection.isActive === false || connection.spendOnly
+        || selectedCampaignIds.length === 0 || /test/i.test(String(connection.method || "")) || /^test[-_]/i.test(String(connection.accessToken || ""))) {
+        return res.status(400).json({ success: false, error: `${platformLabel} spend import requires a real connected source with selected campaigns` });
+      }
+      const selectedSet = new Set(selectedCampaignIds);
+      rows = rows.filter(row => selectedSet.has(String(row?.[providerCampaignField] || "")));
 
       if (!rows.length) {
         return res.json({ success: false, error: `No ${platformLabel} data found for the selected date range. Make sure the platform is connected and has data.` });
@@ -26748,51 +26743,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Aggregate spend by date
       const spendByDate = new Map<string, number>();
+      const seen = new Set<string>();
+      const currency = String(campaign.currency || "").trim().toUpperCase();
       for (const r of rows) {
         const date = String((r as any).date || "").trim();
-        const spend = parseFloat(String((r as any).spend || "0"));
-        if (!date || Number.isNaN(spend)) continue;
+        const spend = Number(r.spend);
+        const key = `${r[providerCampaignField]}::${date}`;
+        // These legacy tables (except TikTok) have no persisted currency proof.
+        // Do not silently relabel historical money using the campaign currency.
+        if (!/^[A-Z]{3}$/.test(currency) || String(r.currency || "").trim().toUpperCase() !== currency) {
+          return res.status(409).json({ success: false, error: "Spend currency could not be verified; existing spend has been kept" });
+        }
+        if (r.campaignId !== campaignId || r.isSimulated === true || !validDate(date) || date < startDate || date > endDate
+          || r.spend === null || r.spend === undefined || String(r.spend).trim() === "" || !Number.isFinite(spend) || spend < 0 || seen.has(key)) {
+          return res.status(409).json({ success: false, error: "Spend facts are incomplete, duplicated, or outside the selected scope; existing spend has been kept" });
+        }
+        seen.add(key);
         spendByDate.set(date, (spendByDate.get(date) || 0) + spend);
       }
 
       const totalSpend = Array.from(spendByDate.values()).reduce((a, b) => a + b, 0);
+      if (!Number.isFinite(totalSpend)) throw new Error("Spend total is invalid");
 
       // Create or find existing spend source for this platform
-      const existingSources = await storage.getSpendSources(campaignId);
+      const existingSources = (await storage.getSpendSources(campaignId, platformContext as any)).filter(s => s.campaignId === campaignId
+        && s.isActive !== false && s.sourceType === platformSourceType && s.platformContext === platformContext);
+      if (!requestedSourceId && existingSources.filter(s => String(s.displayName || "").includes(platformLabel)).length > 1) {
+        return res.status(409).json({ success: false, error: "Multiple spend sources match; select the exact source to update" });
+      }
       let source = requestedSourceId
         ? existingSources.find((s: any) => String(s?.id || "") === requestedSourceId && s?.isActive !== false)
         : existingSources.find((s: any) => s?.isActive !== false && (String(s.sourceType || "") === platformSourceType || String(s.platformContext || "") === platformContext) && (s.displayName || '').includes(platformLabel));
       if (requestedSourceId && (!source || (String((source as any).sourceType || "") !== platformSourceType && String((source as any).platformContext || "") !== platformContext) || !String((source as any).displayName || "").includes(platformLabel))) {
         return res.status(404).json({ success: false, error: `${platformLabel} spend source not found` });
       }
-      if (!source) {
-        source = await storage.createSpendSource({
-          campaignId,
-          sourceType: platformSourceType,
-          platformContext,
-          displayName: platformLabel,
-          currency: 'USD',
-          mappingConfig: selectedCampaignIds.length > 0 ? JSON.stringify({ platform, selectedCampaignIds }) : null,
-          isActive: true,
-        });
-      }
-
       // Insert spend records
       const records = Array.from(spendByDate.entries()).map(([date, spend]) => ({
         campaignId,
-        spendSourceId: String((source as any).id),
         date,
         spend: String(spend.toFixed(2)),
-        currency: 'USD',
+        currency,
         sourceType: platformSourceType,
       }));
 
-      await storage.deleteSpendRecordsBySource(String((source as any).id));
-      await storage.createSpendRecords(records);
-
-      // Update campaign spend total
-      const allSpend = await storage.getSpendTotalForRange(campaignId, "2020-01-01", new Date().toISOString().slice(0, 10));
-      await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);
+      source = await storage.replaceSpendSourceWithRecords(campaignId, source?.id || null, platformSourceType, platformContext as any, {
+        campaignId, sourceType: platformSourceType, platformContext, displayName: platformLabel, currency,
+        mappingConfig: JSON.stringify({ platform, selectedCampaignIds }), isActive: true,
+      }, records, source ? source.mappingConfig : undefined);
+      // A platform-specific import must not overwrite the shared GA4 spend cache.
 
       res.json({
         success: true,

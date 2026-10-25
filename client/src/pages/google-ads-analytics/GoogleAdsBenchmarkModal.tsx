@@ -314,7 +314,11 @@ export function GoogleAdsBenchmarkModal(props: any) {
         unit = "%";
         break;
     }
-    return { currentValue, unit };
+    if (typeof props.getLiveMetricValue === 'function') {
+      const live = props.getLiveMetricValue(metric);
+      currentValue = Number.isFinite(live) ? String(live) : '';
+    }
+    return { currentValue, unit: unit === '$' ? props.currency || '' : unit };
   };
 
   /* ----- Industry benchmark fetch with fallback ----- */

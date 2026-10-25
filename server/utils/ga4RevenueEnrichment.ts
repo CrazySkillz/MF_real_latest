@@ -36,6 +36,8 @@ export async function enrichPlatformWithGA4Revenue(params: {
   writeUpdates: (updates: GA4RevenueUpdate[]) => Promise<{ updated: number }>;
 }): Promise<EnrichmentResult> {
   const { campaignId, campaignUtmMap, platformLabel, getMetrics, writeUpdates } = params;
+  // A campaign-name match cannot prove Google Ads source identity or the sale date.
+  if (platformLabel === 'Google Ads') throw new Error('Google Ads GA4 attribution is unavailable: campaign-name matching does not verify source and date');
 
   // Get campaign record for GA4 filter
   const campaign = await storage.getCampaign(campaignId);

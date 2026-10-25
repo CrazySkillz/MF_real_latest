@@ -24,10 +24,10 @@ describe("Google Ads revenue Overview UI", () => {
     const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
 
     expect(page).toContain('Total Revenue');
-    expect(page).toContain('const googleAdsAttributedRevenueFromSources = activeGoogleAdsRevenueSources.reduce');
-    expect(page).toContain('sum + Number(source?.lastTotalRevenue || 0)');
-    expect(page).toContain('googleAdsAttributedRevenueFromSources > 0');
-    expect(page).toContain('hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : "Not connected"');
+    expect(page).not.toContain('googleAdsAttributedRevenueFromSources');
+    expect(page).toContain('googleAdsRevenueTotalsData?.success');
+    expect(page).toContain('googleAdsRevenueTotalsData.currency === currency');
+    expect(page).toContain('hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue)');
     expect(page).toContain('Imported Google Ads attributed revenue');
     expect(page).toContain('Attributed revenue / spend');
     expect(page).toContain('Attributed revenue ROI');
@@ -63,18 +63,18 @@ describe("Google Ads revenue Overview UI", () => {
     expect(page).not.toContain("/api/campaigns/${campaignId}/google-ads-overview-campaign-breakdown");
   });
 
-  it("uses saved explicit Google Ads campaign mappings as a campaign revenue fallback", () => {
+  it("uses dated Google Ads campaign records without an undated configuration fallback", () => {
     const server = readSource("server", "routes-oauth.ts");
     const start = server.indexOf('app.get("/api/campaigns/:id/google-ads-campaign-revenue"');
-    const end = server.indexOf("Campaign Outcome Totals", start);
+    const end = server.indexOf('app.get("/api/campaigns/:id/meta-campaign-revenue"', start);
     const route = server.slice(start, end);
 
-    expect(route).toContain('storage.getRevenueSources(campaignId, "google_ads")');
-    expect(route).toContain("materializedSourceCampaignPairs");
-    expect(route).toContain("campaignValueRevenueTotals");
-    expect(route).toContain("mapping?.googleAdsCampaignId || mapping?.linkedinCampaignUrn");
+    expect(route).toContain('rr.date >= ${startDate}');
+    expect(route).toContain('rr.date <= ${endDate}');
+    expect(route).toContain('rs.campaign_id = ${campaignId}');
+    expect(route).not.toContain("campaignValueRevenueTotals");
     expect(route).toContain("activeGoogleAdsCampaignIds.has(googleCampaignId)");
-    expect(route).toContain('materializedSourceCampaignPairs.has(`${sourceId}:${googleCampaignId}`)');
+    expect(route).toContain('row.source_currency !== campaign.currency');
   });
 
   it("exposes source provenance plus edit and delete behavior through the guarded source route", () => {
@@ -83,7 +83,7 @@ describe("Google Ads revenue Overview UI", () => {
     expect(page).toContain('Sources ({activeGoogleAdsRevenueSources.length})');
     expect(page).toContain('setShowRevenueSourcesDialog(true)');
     expect(page).toContain('Google Ads Revenue Sources');
-    expect(page).toContain('Sources contributing to Google Ads Total Revenue.');
+    expect(page).toContain('Latest imported source totals. The Overview uses only revenue within its reporting window.');
     expect(page).toContain('openGoogleAdsRevenueModal(source)');
     expect(page).toContain('setDeletingRevenueSourceId(String(source.id))');
     expect(page).toContain('deleteGoogleAdsRevenueSourceMutation');

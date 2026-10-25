@@ -192,7 +192,11 @@ export function GoogleAdsKpiModal(props: any) {
       }
     }
 
-    return { value: currentValue, unit };
+    if (typeof props.getLiveMetricValue === 'function') {
+      const live = props.getLiveMetricValue(metricKey);
+      currentValue = Number.isFinite(live) ? String(live) : '';
+    }
+    return { value: currentValue, unit: unit === '$' ? props.currency || '' : unit };
   };
 
   /**

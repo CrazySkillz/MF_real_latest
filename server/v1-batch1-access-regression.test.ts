@@ -58,7 +58,7 @@ async function invoke(key: string, actor: string | null, options: { overrides?: 
   const res: any = { statusCode: 200, setHeader() {}, status(n: number) { this.statusCode = n; return this; }, json(payload: any) { this.payload = payload; return this; }, send(payload: any) { this.payload = payload; return this; } };
   await handler({
     params: { id: "campaign-a", campaignId: "campaign-a", platform: "linkedin", ...options.params },
-    body: { amount: 100, value: 10, currency: "EUR", fromCampaignId: "campaign-a", toCampaignId: "campaign-a", ...options.body },
+    body: { amount: 100, value: 10, currency: "EUR", fromCampaignId: "campaign-a", toCampaignId: "campaign-b", ...options.body },
     query: { campaignId: "campaign-a", ...options.query }, headers: {}, get: () => undefined, socket: { remoteAddress: "198.51.100.1" },
   }, res);
   return { ...f, res };

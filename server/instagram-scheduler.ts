@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { storage } from "./storage";
 import { instagramConnections } from "../shared/schema";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 const parseSelectedInstagramCampaignIds = (connection: any): string[] => {
   try {
@@ -23,14 +24,15 @@ export async function refreshInstagramForCampaign(
     connection = await storage.getInstagramConnection(campaignId);
   }
   if (!connection) return { refreshed: false, reason: "missing_connection", upserted: 0 };
+  if (connection.campaignId && connection.campaignId !== campaignId) return { refreshed: false, reason: "connection_scope_mismatch", upserted: 0 };
   if ((connection as any).spendOnly) return { refreshed: false, reason: "spend_only", upserted: 0 };
   if (String((connection as any).method || "") === "test_mode") return { refreshed: false, reason: "test_mode_explicit_refresh_only", upserted: 0 };
   if (String((connection as any).publisherPlatformFilter || "instagram") !== "instagram") return { refreshed: false, reason: "invalid_publisher_platform", upserted: 0 };
 
   const campaign = await storage.getCampaign(campaignId).catch(() => null);
-  if (!campaign) {
+  if (!campaign || !String(campaign.ownerId || "").trim() || !filterActiveSchedulerCampaigns([campaign]).length) {
     console.warn(`[Instagram Scheduler] Skipping refresh for missing campaign ${campaignId}`);
-    return { refreshed: false, reason: "missing_campaign", upserted: 0 };
+    return { refreshed: false, reason: "ineligible_campaign", upserted: 0 };
   }
 
   if (!(connection as any).accessToken) return { refreshed: false, reason: "missing_access_token", upserted: 0 };

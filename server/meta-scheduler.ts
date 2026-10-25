@@ -12,6 +12,7 @@ import { db } from "./db";
 import { metaConnections, metaDailyMetrics } from "../shared/schema";
 import { desc, eq } from "drizzle-orm";
 import { enrichPlatformWithGA4Revenue } from "./utils/ga4RevenueEnrichment";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 // Mock campaign profiles with distinct metric characteristics
 export const META_MOCK_CAMPAIGNS = [
@@ -41,6 +42,7 @@ export async function generateMockMetaData(
   connection: any,
   opts?: { advanceDay?: boolean }
 ): Promise<void> {
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") throw new Error("Test-mode data is disabled in production");
   console.log(`[Meta Scheduler] TEST MODE: Generating mock data for campaign ${campaignId}`);
 
   try {
@@ -306,12 +308,14 @@ export async function refreshMetaDataForCampaign(
   opts?: { advanceTestDay?: boolean }
 ): Promise<void> {
   try {
+    const campaign = await storage.getCampaign(campaignId);
+    if (!campaign || !String(campaign.ownerId || "").trim() || !filterActiveSchedulerCampaigns([campaign]).length) return;
     // Get connection if not provided
     if (!connection) {
       connection = await storage.getMetaConnection(campaignId);
     }
 
-    if (!connection) {
+    if (!connection || (connection.campaignId && connection.campaignId !== campaignId)) {
       console.log(`[Meta Scheduler] No Meta connection found for campaign ${campaignId}`);
       return;
     }
@@ -331,6 +335,7 @@ export async function refreshMetaDataForCampaign(
       token.startsWith('test_') ||
       token.startsWith('test-');
 
+    if (isTestMode && String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return;
     if (isTestMode) {
       await generateMockMetaData(campaignId, connection, { advanceDay: Boolean(opts?.advanceTestDay) });
     } else {

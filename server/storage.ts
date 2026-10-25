@@ -5640,13 +5640,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]> {
-    return await db.select().from(googleAdsDailyMetrics)
+    const rows = await db.select().from(googleAdsDailyMetrics)
       .where(and(
         eq(googleAdsDailyMetrics.campaignId, campaignId),
         sql`${googleAdsDailyMetrics.date} >= ${startDate}`,
         sql`${googleAdsDailyMetrics.date} <= ${endDate}`,
       ))
       .orderBy(googleAdsDailyMetrics.date);
+    // Legacy name/spend-weighted enrichment is not verified attribution. Keep stored
+    // records intact, but exclude these fields from every current consumer.
+    return rows.map((row: GoogleAdsDailyMetric) => ({ ...row, ga4Revenue: null, ga4UtmName: null }));
   }
 
   async upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }> {
@@ -5720,6 +5723,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {
+    if (updates.length) throw new Error('Google Ads GA4 attribution is unavailable: campaign-name matching does not verify source and date');
     let updated = 0;
     for (const u of updates) {
       const result = await db.execute(sql`

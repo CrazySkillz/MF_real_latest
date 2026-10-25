@@ -12,6 +12,7 @@ import { db } from "./db";
 import { linkedinConnections, linkedinDailyMetrics } from "../shared/schema";
 import { desc, eq } from "drizzle-orm";
 import { enrichPlatformWithGA4Revenue } from "./utils/ga4RevenueEnrichment";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 // Mock campaign profiles with distinct metric characteristics
 const LINKEDIN_MOCK_CAMPAIGNS = [
@@ -702,7 +703,7 @@ export async function refreshLinkedInDataForCampaign(
   try {
     signal?.throwIfAborted();
     const campaign = await storage.getCampaign(campaignId).catch(() => null);
-    if (!campaign) {
+    if (!campaign || !String(campaign.ownerId || "").trim() || !filterActiveSchedulerCampaigns([campaign]).length) {
       console.log(`[LinkedIn Scheduler] No campaign found for LinkedIn refresh ${campaignId}`);
       return { refreshed: false };
     }
@@ -712,7 +713,7 @@ export async function refreshLinkedInDataForCampaign(
       connection = await storage.getLinkedInConnection(campaignId);
     }
 
-    if (!connection) {
+    if (!connection || (connection.campaignId && connection.campaignId !== campaignId)) {
       console.log(`[LinkedIn Scheduler] No LinkedIn connection found for campaign ${campaignId}`);
       return { refreshed: false };
     }
@@ -727,6 +728,7 @@ export async function refreshLinkedInDataForCampaign(
       token.startsWith('test_') ||
       token.startsWith('test-');
 
+    if (isTestMode && String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return { refreshed: false };
     const refreshed = isTestMode
       ? await generateMockLinkedInData(campaignId, connection, { advanceDay: Boolean(opts?.advanceTestDay), signal })
       : await fetchRealLinkedInData(campaignId, connection, signal);

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-25T00:41:18.096Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 2,
+      "error": null,
+      "log": "retained-boundaries-types-oct25-typecheck.log"
+    }
+  ]
+}

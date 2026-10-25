@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  campaigns,
   ga4GoogleAdsSpendConnections,
   ga4GoogleAdsSpendDailyMetrics,
   googleAdsConnections,
@@ -41,9 +42,13 @@ const mocks = vi.hoisted(() => {
   reset();
 
   const tx = {
+    // Unit boundary: transactional deletion before durable-work migration.
+    // Migrated publication is covered by ga4-revenue-publication-postgres.test.ts.
+    execute: vi.fn(async () => ({ rows: [{ name: null }] })),
     select: vi.fn(() => ({
       from: vi.fn((table: unknown) => ({
-        where: vi.fn(async () => {
+        where: vi.fn(() => {
+          if (table === campaigns) return { orderBy: () => ({ for: async () => [{ id: 'campaign-1' }] }) };
           if (table === spendSources) return state.sources.filter((row) => row.campaignId === "campaign-1" && row.sourceType === "ad_platforms" && row.isActive && (row.platformContext === "ga4" || row.platformContext == null));
           if (table === ga4GoogleAdsSpendConnections) return state.dedicatedConnections.filter((row) => row.campaignId === "campaign-1");
           if (table === googleAdsConnections) return state.mainConnections.filter((row) => row.campaignId === "campaign-1" && row.spendOnly === true);

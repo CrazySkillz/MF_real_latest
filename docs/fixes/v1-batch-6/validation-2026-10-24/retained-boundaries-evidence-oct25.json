@@ -1,0 +1,366 @@
+{
+  "at": "2026-10-25T00:45:21.273Z",
+  "baseline": "2c3097bc13dc5206ae158a5ef505eee2b30d2ba0",
+  "scope": "Google Ads unverified name/spend-weighted enrichment exclusion and retained ad-platform spend import guards/atomic replacement. Synthetic providers plus isolated PostgreSQL; no live account, browser or production data.",
+  "files": [
+    {
+      "file": "server/campaign-scheduler-eligibility.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 2,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/executive-summary-snapshot-scheduler.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 6,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-aggregate-saved-overview.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 25,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 5,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-google-ads-spend-pipeline-regression.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 2,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-production-regression.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 7,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-revenue-kpi-benchmark-ui.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 11,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-revenue-overview-ui.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 6,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-revenue-wizard-context.test.ts",
+      "packet": "values-neighbors-final-oct25",
+      "passed": 3,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-spend-lifecycle-downstream.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 7,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-spend-production-path.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 23,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/performance-summary-aggregate.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 22,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/trend-analysis-aggregate.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 4,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch1-access-regression.test.ts",
+      "packet": "values-combined-oct25",
+      "passed": 78,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-google-ads-revenue-postgres.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 9,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-google-ads-values.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 48,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-paid-isolation.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 82,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 84,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/google-ads-ga4-spend-disconnect-transaction.test.ts",
+      "packet": "values-disconnect-final-oct25",
+      "passed": 5,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 82,
+      "failed": [
+        "individual revenue source delete proves campaign ownership before deleting source records",
+        "Google Sheets main platform feeds Campaign DeepDive aggregate without raw sheet revenue/spend rows",
+        "Google Sheets KPIs use source-backed mapped metrics without blocking explicit sheet financial columns",
+        "Google Sheets Reports follow the GA4 Reports template with source-backed output guards",
+        "Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted",
+        "Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections"
+      ],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-google-ads-enrichment.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 3,
+      "failed": [],
+      "skipped": 0
+    },
+    {
+      "file": "server/v1-batch6-retained-spend-import.test.ts",
+      "packet": "retained-boundaries-final-oct25",
+      "passed": 28,
+      "failed": [],
+      "skipped": 0
+    }
+  ],
+  "totals": {
+    "passed": 542,
+    "failed": 6,
+    "skipped": 0
+  },
+  "hashes": [
+    {
+      "file": "client/src/pages/google-ads-analytics.tsx",
+      "sha256": "0cf47ee0d9a2ca6b006ad66d8e52ac4a95d9184350c3538ff20430a4ac05368d"
+    },
+    {
+      "file": "client/src/pages/google-ads-analytics/GoogleAdsKpiModal.tsx",
+      "sha256": "6b40323b0feba190703ec9d04f9d5b65893addcdd952a6e763c9a4a004d42a17"
+    },
+    {
+      "file": "client/src/pages/google-ads-analytics/GoogleAdsBenchmarkModal.tsx",
+      "sha256": "b41b72c9637474d2741465e21fba2641d1b32c1a9e4f8976521cf757f6912bf2"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "419f057462901b80349148190e090ef9f6e7b9473325d1ac9c9b3ae1f4fb718b"
+    },
+    {
+      "file": "server/google-ads-scheduler.ts",
+      "sha256": "da1b25e98ef877dfb0e7a4b04d825b01f10c67b795826a311cfc8d37d9b62ee3"
+    },
+    {
+      "file": "server/instagram-scheduler.ts",
+      "sha256": "32f3b6cf70b1f75576be012a3bf3433f06bfb9528d5e1c0622a70b98060c142c"
+    },
+    {
+      "file": "server/linkedin-scheduler.ts",
+      "sha256": "e020500a739156ac4b616e2eb0bda13b332f8a115aced5e1ff25116537d3c8cd"
+    },
+    {
+      "file": "server/meta-scheduler.ts",
+      "sha256": "e37a964cc2b101c150b12f9b2cb56b4ceaf83c574aea50a02d9018eb03ed3202"
+    },
+    {
+      "file": "server/tiktok-scheduler.ts",
+      "sha256": "5fe34ed7d1e5ce28cbc516404d4ec8b5685b9cb6553dc257e17f71da09707720"
+    },
+    {
+      "file": "server/scheduler.ts",
+      "sha256": "789fdbc398bd9112bfee8e104d2a978b4b79b38b2e28bfcac065ee0dd99a5b77"
+    },
+    {
+      "file": "server/campaign-scheduler-eligibility.test.ts",
+      "sha256": "5b592dfe79984a27fd471ab2fe22ab0ca0ae54036f7a3bd4562164a3441fc2ff"
+    },
+    {
+      "file": "server/executive-summary-snapshot-scheduler.test.ts",
+      "sha256": "e89f21ba11e3c22d1a7fe37c44e31de4bf322ad9b1f732e5edee7ac93e2c7e1e"
+    },
+    {
+      "file": "server/ga4-aggregate-saved-overview.test.ts",
+      "sha256": "28c886aa7810f28d0cdd640896d762cab30aeb5bd44afa9ce71e9271e5f356d6"
+    },
+    {
+      "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+      "sha256": "bc90bc58ee811d40d8562efa3656af1bb88e80726e32b106e5964b7dc527c8f1"
+    },
+    {
+      "file": "server/ga4-google-ads-spend-pipeline-regression.test.ts",
+      "sha256": "92814effaa099a12e652eb3a9cfdad782ba89c22f7658741a88bb48b68e00a7c"
+    },
+    {
+      "file": "server/google-ads-production-regression.test.ts",
+      "sha256": "d789e3736a3fec91a6ed0c072cadfee3b99e6254044f56e4cc2d25630086d4df"
+    },
+    {
+      "file": "server/google-ads-revenue-kpi-benchmark-ui.test.ts",
+      "sha256": "56e8f7e6485bfba21b5564e7bc64851a4ed16ba8ee8ccfbdf29e9de8981b4378"
+    },
+    {
+      "file": "server/google-ads-revenue-overview-ui.test.ts",
+      "sha256": "7165957b522e3565bb28712423a6ee9fab36bce56ab4df9ab14e1c62fba1758c"
+    },
+    {
+      "file": "server/google-ads-revenue-wizard-context.test.ts",
+      "sha256": "99ef3f0e07ccca9e39a96b5e4c601217ae21b655d49ba8ddf5f14ac8db86a1dc"
+    },
+    {
+      "file": "server/google-ads-spend-lifecycle-downstream.test.ts",
+      "sha256": "1e5a690d5947f701a0b8ebdfa231d1486039842b66586468e0d79240e7956987"
+    },
+    {
+      "file": "server/google-ads-spend-production-path.test.ts",
+      "sha256": "9f423b9f90f5ae19e968f7da68b06f4829f23eda1c1194686c6cf926fac320e1"
+    },
+    {
+      "file": "server/performance-summary-aggregate.test.ts",
+      "sha256": "47f0257c0f14a5d00a9e69b88752ee014f2f62d6a6b759286c485ac9fb5f2529"
+    },
+    {
+      "file": "server/trend-analysis-aggregate.test.ts",
+      "sha256": "56811f65704b51aa1fb3a693bdb2925d491fd027162d15e80c6097595be8b933"
+    },
+    {
+      "file": "server/v1-batch1-access-regression.test.ts",
+      "sha256": "cc85d84c2996f72259bf522a68da99f78a18502ae01d7e92560c767c23eb6563"
+    },
+    {
+      "file": "server/v1-batch6-google-ads-revenue-postgres.test.ts",
+      "sha256": "248837564200c97320521f404a14240fe324bf5e0da4caf44f77cfcc9b20be89"
+    },
+    {
+      "file": "server/v1-batch6-google-ads-values.test.ts",
+      "sha256": "0176cb477c2706ab65cd7b12a9b5e85d9cbdd4eda91f302be5a4e83520723a53"
+    },
+    {
+      "file": "server/v1-batch6-paid-isolation.test.ts",
+      "sha256": "22368e0c1ae5baeceb00545fabaa1ba245201823c44bf6b5e327a0357d60258e"
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "sha256": "841a8d90811278717d01b717544dc1cbe094f6a730a3e3307efcc5bfa9baba39"
+    },
+    {
+      "file": "server/google-ads-ga4-spend-disconnect-transaction.test.ts",
+      "sha256": "57adeb922c181626ed1fe0e8c04e972f57bfd2f99c57c2851059bdf8b98de20c"
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "981a9219fd6e0c4ff2797d1af94745ec213405656b75feec3517372fe950828f"
+    },
+    {
+      "file": "server/utils/ga4RevenueEnrichment.ts",
+      "sha256": "e3c021f996bd17b850511621d4203a1236b5f8bd085641f45d0a10428f3f09aa"
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "sha256": "04d13729d8313beb92ee2d63f6d696e206e000511159f4b047e71e6b16b26f4e"
+    },
+    {
+      "file": "server/v1-batch6-google-ads-enrichment.test.ts",
+      "sha256": "c49159c261883f844a615dbb98549d9715bb45ff2c52dd88cc0bba54a5f615de"
+    },
+    {
+      "file": "server/v1-batch6-retained-spend-import.test.ts",
+      "sha256": "1f3e7a8ba414cb697b35f2e8695364c6fe5d92fdd9a6183306ca61004cb66c5b"
+    }
+  ],
+  "build": {
+    "at": "2026-10-25T00:44:17.277Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "retained-boundaries-verified-oct25-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "retained-boundaries-verified-oct25-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "retained-boundaries-verified-oct25-server-build.log"
+      }
+    ]
+  },
+  "before": {
+    "enrichment": {
+      "passed": 1,
+      "failed": 2
+    },
+    "spend": {
+      "passed": 1,
+      "failed": 26
+    }
+  },
+  "baselineFailures": [
+    "Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted",
+    "Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections",
+    "Google Sheets KPIs use source-backed mapped metrics without blocking explicit sheet financial columns",
+    "Google Sheets Reports follow the GA4 Reports template with source-backed output guards",
+    "Google Sheets main platform feeds Campaign DeepDive aggregate without raw sheet revenue/spend rows",
+    "individual revenue source delete proves campaign ownership before deleting source records"
+  ],
+  "cleanup": {
+    "remainingOwnedFixtureSchemas": 0,
+    "fixturePostgresStopped": true
+  },
+  "limits": [
+    "All nine Batch 6 release acceptances remain open.",
+    "Six pre-existing static assertions remain failed; baseline independently reproduced using deployed Git objects.",
+    "Unverified Google Ads enrichment is excluded, not replaced by a new attribution model; persisted historical enrichment and report snapshots are not rewritten.",
+    "The retained Google Ads/Meta/LinkedIn import refuses facts without persisted currency; this is not positive acceptance of those legacy imports.",
+    "TikTok positive controls are synthetic; no deferred provider has been enabled or certified.",
+    "No production external-caller or historical-data inventory; no in-flight owner/connection race certification.",
+    "Other retained schedulers/readers, impression-share, raw chart denominators, goals/alerts/reports and live-provider acceptance remain incomplete."
+  ]
+}

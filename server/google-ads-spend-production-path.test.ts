@@ -82,7 +82,7 @@ describe("Google Ads GA4 Overview spend production path", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-06T12:00:00.000Z"));
     vi.clearAllMocks();
-    mocks.storage.getCampaign.mockResolvedValue({ id: "campaign-1", startDate: "2026-07-01", reportingTimeZone: "Europe/Amsterdam", currency: "USD" });
+    mocks.storage.getCampaign.mockResolvedValue({ id: "campaign-1", ownerId: "owner-1", status: "active", startDate: "2026-07-01", reportingTimeZone: "Europe/Amsterdam", currency: "USD" });
     mocks.storage.updateGoogleAdsConnection.mockResolvedValue({ id: "conn-1" });
     mocks.storage.replaceGoogleAdsDailyMetricsForWindow.mockResolvedValue({ replaced: 1 });
     mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow.mockResolvedValue({ replaced: 1 });

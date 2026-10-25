@@ -12,6 +12,7 @@ import { getReportingDateWindow, normalizeReportingTimeZone } from "./utils/repo
 import { buildGA4GoogleAdsSpendMaterialization } from "./ga4-google-ads-spend";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { isSupportedGoogleAdsSpendConnectionMethod } from "./utils/google-ads-service-account";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -30,6 +31,7 @@ async function generateMockGoogleAdsData(
   connection: any,
   opts?: { advanceDay?: boolean }
 ): Promise<void> {
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") throw new Error("Test-mode data is disabled in production");
   // Get the last imported date
   let existingDates: string[] = [];
   try {
@@ -347,7 +349,7 @@ export async function enrichGoogleAdsWithGA4Revenue(
 export async function refreshGoogleAdsForCampaign(
   campaignId: string,
   connection?: any,
-  opts?: GA4RefreshWriteInput & { advanceTestDay?: boolean; ga4SpendConnection?: boolean; deferDownstream?: boolean }
+  opts?: GA4RefreshWriteInput & { advanceTestDay?: boolean; ga4SpendConnection?: boolean; deferDownstream?: boolean; allowDraftPreview?: boolean }
 ): Promise<{ providerRefreshed: boolean; spendMaterialization: { updated: boolean; sourceId: string | null; records: number; totalSpend: number | null } | null }> {
   const guarded = !!opts && "refreshScope" in opts;
   const refreshWriteInput: GA4RefreshGoogleAdsWriteInput = guarded ? { refreshScope: opts!.refreshScope } : {};
@@ -371,9 +373,12 @@ export async function refreshGoogleAdsForCampaign(
   const isTestMode = String((connection as any).method || "") === "test_mode";
   if (isSpendOnly && isTestMode) return { providerRefreshed: false, spendMaterialization: null };
   const campaign = await storage.getCampaign(campaignId).catch(() => null);
-  if (!campaign) {
+  if (!campaign || !String(campaign.ownerId || "").trim()
+    || !filterActiveSchedulerCampaigns([campaign], guarded || (isSpendOnly && opts?.allowDraftPreview) ? campaignId : "").length) {
     throw new Error(`Google Ads campaign scope is unavailable for campaign ${campaignId}`);
   }
+  if (connection.campaignId && connection.campaignId !== campaignId) throw new Error("Google Ads connection campaign scope does not match");
+  if (isTestMode && String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") throw new Error("Test-mode data is disabled in production");
 
   if (connection.method === 'test_mode') {
     await generateMockGoogleAdsData(campaignId, connection, { advanceDay: opts?.advanceTestDay });

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-24T21:52:02.565Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "isolation-typecheck.log"
+    }
+  ]
+}

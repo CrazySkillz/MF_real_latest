@@ -34,6 +34,11 @@ const hasImportedMetric = (source: any, metricName: string): boolean => {
   return value !== null && typeof value !== 'undefined' && value !== '';
 };
 
+const isProductionTestConnection = (connection: any): boolean =>
+  String(process.env.NODE_ENV || "").trim().toLowerCase() === "production"
+  && (String(connection?.method || "").toLowerCase().includes("test")
+    || /^test[-_]/.test(String(connection?.accessToken || "")));
+
 const buildCustomIntegrationAggregateMetricLists = (source: any, isWebProvider: boolean) => {
   const paidMetricKeys = ['impressions', 'clicks', 'spend', 'conversions'];
   const webMetricKeys = ['users', 'sessions', 'pageviews', 'revenue'];
@@ -94,7 +99,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let linkedinDailyRows: any[] = [];
   try {
     const linkedInConnection = await storage.getLinkedInConnection(campaignId);
-    const latestSession = linkedInConnection && !(linkedInConnection as any).spendOnly
+    const latestSession = linkedInConnection && !isProductionTestConnection(linkedInConnection) && !(linkedInConnection as any).spendOnly
       ? await storage.getLatestLinkedInImportSession(campaignId)
       : null;
     if (latestSession) {
@@ -132,7 +137,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let metaDailyRows: any[] = [];
   try {
     const metaConnection = await storage.getMetaConnection(campaignId);
-    if (metaConnection) {
+    if (metaConnection && !isProductionTestConnection(metaConnection)) {
       metaConnected = true;
       metaDailyRows = await storage.getMetaDailyMetrics(campaignId, startDate, endDate);
       metaData = {
@@ -201,6 +206,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let googleAdsSelectedCampaignIds: string[] = [];
   try {
     googleAdsConn = await storage.getGoogleAdsConnection(campaignId);
+    if (isProductionTestConnection(googleAdsConn)) googleAdsConn = null;
     if (googleAdsConn && !(googleAdsConn as any).spendOnly) {
       const rawRows = await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]);
       const selectedIds = (() => {
@@ -226,6 +232,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let instagramSelectedCampaignIds: string[] = [];
   try {
     instagramConn = await storage.getInstagramConnection(campaignId);
+    if (isProductionTestConnection(instagramConn)) instagramConn = null;
     if (instagramConn && !(instagramConn as any).spendOnly && String((instagramConn as any).publisherPlatformFilter || "instagram") === "instagram") {
       const rawRows = await storage.getInstagramDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]);
       const selectedIds = (() => {
@@ -251,6 +258,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let tiktokSelectedCampaignIds: string[] = [];
   try {
     tiktokConn = await storage.getTikTokConnection(campaignId);
+    if (isProductionTestConnection(tiktokConn)) tiktokConn = null;
     if (tiktokConn && !(tiktokConn as any).spendOnly) {
       const rawRows = await storage.getTikTokDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]);
       const selectedIds = (() => {
@@ -264,7 +272,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         }
       })();
       tiktokDailyRows = selectedIds.size > 0
-        ? rawRows.filter((row: any) => selectedIds.has(String(row?.tiktokCampaignId || "")))
+        ? rawRows.filter((row: any) => row?.isSimulated !== true && selectedIds.has(String(row?.tiktokCampaignId || "")))
         : [];
     }
   } catch (err) {
@@ -330,6 +338,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   const googleAdsAttributedRevenueSource = hasGoogleAdsImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";
   const googleAdsData = {
     ...googleAdsRawData,
+    ga4AttributedRevenue: null,
     importedAttributedRevenue: googleAdsImportedAttributedRevenue,
     attributedRevenue: hasGoogleAdsImportedAttributedRevenue ? googleAdsImportedAttributedRevenue : 0,
   };
@@ -485,7 +494,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
           attributedRevenueLabel: hasGoogleAdsImportedAttributedRevenue ? "Google Ads imported attributed revenue" : "Unavailable",
           importedRevenueSourceIds: googleAdsImportedRevenueSourceIds,
           conversionValueLabel: "Native Google Ads conversion value",
-          ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Google Ads Total Revenue",
+          ga4AttributedRevenueLabel: "Unavailable: Google Ads source and date attribution is unverified",
         },
         freshness: { selectedCampaignIds: googleAdsSelectedCampaignIds },
       },
@@ -629,7 +638,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
           ...(hasGoogleAdsImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
         ],
         dailyRows: googleAdsDailyRows.map((row: any) => {
-          const ga4AttributedRevenue = parseNum(row.ga4Revenue);
+          const ga4AttributedRevenue = null;
           const conversionValue = parseNum(row.conversionValue);
           const importedAttributedRevenue = parseNum(googleAdsImportedRevenueByDate.get(String(row.date || "").slice(0, 10)));
           return {

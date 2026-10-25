@@ -5,7 +5,7 @@ const storageMock = vi.hoisted(() => Object.fromEntries([
   "getGA4OverviewSnapshot", "getLinkedInConnection", "getLatestCustomIntegrationMetrics", "getMetaConnection",
   "getGoogleAdsConnection", "getInstagramConnection", "getTikTokConnection", "getGoogleSheetsConnections",
   "getRevenueSources", "getRevenueTotalForRange", "getSpendTotalForRange", "getRevenueBreakdownBySource",
-  "getSpendBreakdownBySource", "createMetricSnapshot",
+  "getSpendBreakdownBySource", "createMetricSnapshot", "getGA4PublicationVersion",
 ].map((name) => [name, vi.fn()])));
 const provider = vi.hoisted(() => ({ getTotalsWithRevenue: vi.fn(), getAcquisitionBreakdown: vi.fn() }));
 const dbMock = vi.hoisted(() => ({ execute: vi.fn() }));
@@ -36,6 +36,7 @@ describe("ordered GA4 campaign snapshot saved financial inputs", () => {
     dbMock.execute.mockReset().mockResolvedValue({ rows: [] });
     for (const method of ["log", "warn", "error"] as const) vi.spyOn(console, method).mockImplementation(() => {});
     storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "owner-1", status: "active", currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: '["sale_a","sale_b"]' });
+    storageMock.getGA4PublicationVersion.mockResolvedValue(1);
     const connection = { campaignId, propertyId, isActive: true, isPrimary: true, importStartDate: "2026-10-15", method: "access_token", accessToken: "test-token" };
     storageMock.getPrimaryGA4Connection.mockResolvedValue(connection);
     storageMock.getGA4Connections.mockResolvedValue([connection]);

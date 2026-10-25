@@ -1,0 +1,6 @@
+error TS6053: File 'C:/Users/me/Documents/MF_real_latest/server/v1-batch6-baseline-google-ads.ts' not found.
+  The file is in the program because:
+    Matched by include pattern 'server/**/*' in 'C:/Users/me/Documents/MF_real_latest/tsconfig.json'
+error TS6053: File 'C:/Users/me/Documents/MF_real_latest/server/v1-batch6-baseline-routes.ts' not found.
+  The file is in the program because:
+    Matched by include pattern 'server/**/*' in 'C:/Users/me/Documents/MF_real_latest/tsconfig.json'

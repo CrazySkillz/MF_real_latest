@@ -76,7 +76,7 @@ describe("immediate alert email route durability regression guard", () => {
 
     expectBefore(createRoute, "const kpi = await storage.createKPI(validatedKPI);", 'await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "Campaign KPI Create");');
     expectBefore(createRoute, 'await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "Campaign KPI Create");', "res.json(kpi);");
-    expectBefore(updateRoute, "const kpi = await storage.updateKPI(kpiId, updateData);", 'await runImmediateKPIEmailAlertCheck(kpiId, "Campaign KPI Update");');
+    expectBefore(updateRoute, "const kpi = await storage.updateKPI(kpiId, { ...updateData,", 'await runImmediateKPIEmailAlertCheck(kpiId, "Campaign KPI Update");');
     expectBefore(updateRoute, 'await runImmediateKPIEmailAlertCheck(kpiId, "Campaign KPI Update");', "res.json(kpi);");
   });
 
@@ -116,15 +116,15 @@ describe("immediate alert email route durability regression guard", () => {
 
     expectBefore(campaignCreate, "const benchmark = await storage.createBenchmark(validatedBenchmark);", 'await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Campaign Benchmark Create");');
     expectBefore(campaignCreate, 'await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Campaign Benchmark Create");', "res.json(benchmark);");
-    expectBefore(campaignUpdate, "const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);", 'await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Campaign Benchmark Update");');
+    expectBefore(campaignUpdate, "const benchmark = await storage.updateBenchmark(benchmarkId, { ...validatedBenchmark,", 'await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Campaign Benchmark Update");');
     expectBefore(campaignUpdate, 'await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Campaign Benchmark Update");', "res.json(benchmark);");
     expectBefore(platformCreate, "const benchmark = await storage.createBenchmark(validatedData);", 'await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Platform Benchmark Create");');
     expectBefore(platformCreate, 'await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Platform Benchmark Create");', "res.status(201).json(responseBenchmark || benchmark);");
-    expectBefore(platformUpdate, "const benchmark = await storage.updateBenchmark(benchmarkId, validatedData);", 'await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Platform Benchmark Update");');
+    expectBefore(platformUpdate, "const benchmark = await storage.updateBenchmark(benchmarkId, { ...validatedData,", 'await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Platform Benchmark Update");');
     expectBefore(platformUpdate, 'await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Platform Benchmark Update");', "res.json(responseBenchmark || benchmark);");
     expectBefore(genericCreate, "const benchmark = await storage.createBenchmark(validatedData);", 'await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Benchmark Create");');
     expectBefore(genericCreate, 'await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Benchmark Create");', "res.status(201).json(benchmark);");
-    expectBefore(genericUpdate, "const benchmark = await storage.updateBenchmark(id, validated);", 'await runImmediateBenchmarkEmailAlertCheck(id, "Benchmark Update");');
+    expectBefore(genericUpdate, "const benchmark = await storage.updateBenchmark(id, { ...validated,", 'await runImmediateBenchmarkEmailAlertCheck(id, "Benchmark Update");');
     expectBefore(genericUpdate, 'await runImmediateBenchmarkEmailAlertCheck(id, "Benchmark Update");', "res.json(benchmark);");
   });
 

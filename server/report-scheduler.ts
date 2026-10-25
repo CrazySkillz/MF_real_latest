@@ -7,7 +7,7 @@ import { emailService } from "./services/email-service";
 import { storage } from "./storage";
 import { campaigns, emailAlertEvents, linkedinReports, reportSendEvents, reportSnapshots } from "../shared/schema";
 import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { LinkedInReport } from "../shared/schema";
 import * as cron from "node-cron";
 import { DateTime } from "luxon";
@@ -26,7 +26,8 @@ import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-v
 import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
 import { getLatestCompleteReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
-import { createReportPdfArtifact } from "./utils/report-pdf-artifact";
+import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
+import { randomUUID } from "node:crypto";
 import { getGA4AlignedRefreshState, isGA4AlignedRefreshReady } from "./ga4-daily-scheduler";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -83,7 +84,7 @@ async function getLatestReportEmailError(reportId: string): Promise<string> {
   return error ? `${provider ? `${provider}: ` : ""}${error}` : "";
 }
 
-async function getLatestReportEmailAudit(reportId: string, success: boolean): Promise<{ id: string; provider: string; error: string; providerResponseId: string; deliveryStatus: string; mailgunRegion: string }> {
+async function getLatestReportEmailAudit(reportId: string, success: boolean | undefined, auditEventId?: string): Promise<{ id: string; provider: string; error: string; providerResponseId: string; deliveryStatus: string; mailgunRegion: string }> {
   const rows = await db
     .select({
       id: emailAlertEvents.id,
@@ -98,7 +99,8 @@ async function getLatestReportEmailAudit(reportId: string, success: boolean): Pr
       eq(emailAlertEvents.kind, "report"),
       eq(emailAlertEvents.entityType, "report"),
       eq(emailAlertEvents.entityId, reportId),
-      eq(emailAlertEvents.success, success),
+      success === undefined ? undefined : eq(emailAlertEvents.success, success),
+      auditEventId ? eq(emailAlertEvents.id, auditEventId) : undefined,
     ))
     .orderBy(desc(emailAlertEvents.createdAt))
     .limit(1)
@@ -124,9 +126,13 @@ async function getLatestReportEmailAudit(reportId: string, success: boolean): Pr
   };
 }
 
-async function confirmScheduledReportEmailDelivery(reportId: string): Promise<{ sent: boolean; status: "sent" | "failed" | "pending_delivery"; error: string }> {
-  const audit = await getLatestReportEmailAudit(reportId, true);
-  if (audit.provider !== "mailgun-api") return { sent: true, status: "sent", error: "" };
+async function confirmScheduledReportEmailDelivery(reportId: string, auditEventId?: string): Promise<{ sent: boolean; status: "sent" | "failed" | "pending_delivery"; error: string }> {
+  if (!auditEventId) return { sent: false, status: "pending_delivery", error: "Exact report send attempt unavailable" };
+  const audit = await getLatestReportEmailAudit(reportId, undefined, auditEventId);
+  if (!audit.id) return { sent: false, status: "pending_delivery", error: "Exact report send audit unavailable" };
+  if (audit.deliveryStatus === "delivered") return { sent: true, status: "sent", error: "" };
+  if (audit.deliveryStatus === "failed") return { sent: false, status: "failed", error: audit.error || "Report email failed" };
+  if (audit.provider !== "mailgun-api" || !audit.providerResponseId) return { sent: false, status: "pending_delivery", error: "Report email delivery is not confirmed" };
 
   const delivery = await waitForMailgunDelivery(
     audit.providerResponseId,
@@ -145,12 +151,12 @@ async function confirmScheduledReportEmailDelivery(reportId: string): Promise<{ 
     const updates: any = {
       deliveryStatus,
       providerResponseId: audit.providerResponseId || null,
-      metadata: JSON.stringify({
+      metadata: sql`(COALESCE(NULLIF(${emailAlertEvents.metadata}, '')::jsonb, '{}'::jsonb) || ${JSON.stringify({
         providerResponseId: audit.providerResponseId,
         mailgunDeliveryStatus: delivery.status,
         mailgunDeliveryError: delivery.error,
         mailgunRegion: audit.mailgunRegion || undefined,
-      }),
+      })}::jsonb)::text`,
     };
     if (delivery.status === "delivered") updates.deliveredAt = new Date();
     if (delivery.status === "failed") {
@@ -159,12 +165,71 @@ async function confirmScheduledReportEmailDelivery(reportId: string): Promise<{ 
     }
     await db.update(emailAlertEvents)
       .set(updates)
-      .where(eq(emailAlertEvents.id, audit.id))
-      .catch(() => { });
+      .where(and(eq(emailAlertEvents.id, audit.id), eq(emailAlertEvents.deliveryStatus, audit.deliveryStatus)));
   }
 
-  if (delivery.status === "delivered") return { sent: true, status: "sent", error: "" };
-  return { sent: false, status: delivery.status === "failed" ? "failed" : "pending_delivery", error };
+  // Another poll may have committed first. Only the persisted outcome is authoritative.
+  const current = await getLatestReportEmailAudit(reportId, undefined, auditEventId);
+  if (current.deliveryStatus === "delivered") return { sent: true, status: "sent", error: "" };
+  return { sent: false, status: current.deliveryStatus === "failed" ? "failed" : "pending_delivery", error: current.error || error };
+}
+
+// Recover the exact prepared attachment after a restart or delayed delivery, without sending again.
+async function reconcileScheduledReportSend(event: typeof reportSendEvents.$inferSelect): Promise<void> {
+  try {
+    const [audit] = await db.select().from(emailAlertEvents).where(and(
+      eq(emailAlertEvents.id, event.id), eq(emailAlertEvents.kind, "report"),
+      eq(emailAlertEvents.entityType, "report"), eq(emailAlertEvents.entityId, event.reportId),
+    ));
+    const metadata = JSON.parse(audit?.metadata || "{}");
+    const payload = metadata.snapshotPayload;
+    if (metadata.reportSendEventId !== event.id || payload?.reportId !== event.reportId
+      || payload?.scheduledKey !== event.scheduledKey || !payload?.campaignId
+      || audit?.campaignId !== payload.campaignId || audit.to !== (event.recipients || []).map(value => String(value || "").trim()).filter(Boolean).join(", ")
+      || !payload?.reportType || !payload?.platformType || !payload?.windowStart || !payload?.windowEnd
+      || !readReportPdfArtifact(payload)) throw new Error("Original report send artifact or identity unavailable; automatic resend blocked");
+    const [report] = await db.select().from(linkedinReports).where(eq(linkedinReports.id, event.reportId));
+    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, payload.campaignId));
+    if (!report || !campaign?.ownerId || report.campaignId !== payload.campaignId || report.platformType !== payload.platformType) {
+      await db.update(reportSendEvents).set({ status: "skipped", error: "Report or campaign scope changed; delivery recovery skipped" })
+        .where(and(eq(reportSendEvents.id, event.id), eq(reportSendEvents.status, "pending_delivery")));
+      if (report && !campaign) await db.update(linkedinReports).set({ scheduleEnabled: false }).where(eq(linkedinReports.id, event.reportId));
+      return;
+    }
+    const confirmation = await confirmScheduledReportEmailDelivery(event.reportId, event.id);
+    if (!confirmation.sent) {
+      const changed = await db.update(reportSendEvents).set({ status: confirmation.status, error: confirmation.error })
+        .where(and(eq(reportSendEvents.id, event.id), eq(reportSendEvents.status, "pending_delivery"))).returning();
+      if (changed.length && confirmation.status === "failed") {
+        schedulerMetrics.totalFailed++; schedulerMetrics.lastErrorTime = new Date(); schedulerMetrics.lastError = confirmation.error;
+      }
+      return;
+    }
+    const published = await db.transaction(async (tx: any) => {
+      const [parent] = await tx.select().from(campaigns).where(eq(campaigns.id, payload.campaignId)).for("share");
+      const [currentReport] = await tx.select().from(linkedinReports).where(eq(linkedinReports.id, event.reportId)).for("update");
+      if (!parent?.ownerId || currentReport?.campaignId !== payload.campaignId || currentReport?.platformType !== payload.platformType) throw new Error("Report delivery recovery scope changed");
+      const [currentEvent] = await tx.select().from(reportSendEvents).where(eq(reportSendEvents.id, event.id)).for("update");
+      if (currentEvent?.status !== "pending_delivery" || currentEvent.reportId !== event.reportId || currentEvent.scheduledKey !== event.scheduledKey) return false;
+      const [snapshot] = await tx.insert(reportSnapshots).values({
+        reportId: payload.reportId, campaignId: payload.campaignId, platformType: payload.platformType,
+        reportType: payload.reportType, windowStart: payload.windowStart, windowEnd: payload.windowEnd,
+        snapshotJson: JSON.stringify(payload), hasEstimated: false,
+      }).returning();
+      if (!snapshot) throw new Error("Confirmed report artifact was not saved");
+      const deliveredAt = audit?.deliveredAt || new Date();
+      await tx.update(reportSendEvents).set({ status: "sent", error: null, snapshotId: snapshot.id, sentAt: deliveredAt })
+        .where(eq(reportSendEvents.id, event.id));
+      await tx.update(linkedinReports).set({ lastSentAt: sql`GREATEST(${linkedinReports.lastSentAt}, ${deliveredAt.toISOString()}::timestamp)` })
+        .where(eq(linkedinReports.id, event.reportId));
+      return true;
+    });
+    if (published) { schedulerMetrics.totalSent++; schedulerMetrics.lastSuccessTime = new Date(); }
+  } catch (error: any) {
+    // Keep the prepared artifact recoverable. A DB failure must never turn into a resend.
+    await db.update(reportSendEvents).set({ error: error?.message || "Report delivery recovery failed" })
+      .where(and(eq(reportSendEvents.id, event.id), eq(reportSendEvents.status, "pending_delivery"))).catch(() => {});
+  }
 }
 
 function coercePdfBufferFromDoc(doc: any): Buffer | null {
@@ -4126,6 +4191,7 @@ async function sendReportEmailWithRetry(
     windowEnd?: string;
     campaignName?: string | null;
     snapshotId?: string;
+    auditEventId?: string;
     attachment?: { filename: string; content: Buffer } | null;
   },
   maxRetries: number = 3
@@ -4171,6 +4237,7 @@ async function sendReportEmail(
     windowEnd?: string;
     campaignName?: string | null;
     snapshotId?: string;
+    auditEventId?: string;
     attachment?: { filename: string; content: Buffer } | null;
   }
 ): Promise<boolean> {
@@ -4236,6 +4303,7 @@ async function sendReportEmail(
       attachments: meta?.attachment ? [{ filename: meta.attachment.filename, content: meta.attachment.content, contentType: 'application/pdf' }] : undefined,
       auditContext: {
         kind: 'report',
+        auditEventId: meta?.auditEventId,
         entityType: 'report',
         entityId: String((report as any)?.id || ''),
         campaignId: String((report as any)?.campaignId || ''),
@@ -4269,6 +4337,10 @@ export async function checkScheduledReports(): Promise<void> {
   schedulerMetrics.lastRefreshDeferredReports = 0;
   try {
     console.log('[Report Scheduler] Checking for due scheduled reports...');
+
+    // Reconcile previous slots even when the report is paused or no longer due.
+    const pendingDelivery = await db.select().from(reportSendEvents).where(eq(reportSendEvents.status, "pending_delivery"));
+    for (const event of pendingDelivery) await reconcileScheduledReportSend(event);
 
     // Fetch campaign-scoped and platform-level scheduled rows from shared report storage explicitly.
     const allReports = await storage.getScheduledPlatformReports([...SCHEDULED_REPORT_PLATFORM_TYPES]);
@@ -4313,10 +4385,13 @@ export async function checkScheduledReports(): Promise<void> {
           timeZone: due.tz || null,
           recipients: (report as any).scheduleRecipients || null,
           status: "pending",
+          error: "Report preparation pending",
+          createdAt: new Date(),
         } as any)
         .onConflictDoNothing()
         .returning()
         .catch(() => []);
+      let claimedEvent = inserted?.[0];
       if (!inserted || inserted.length === 0) {
         const [existingEvent] = await db
           .select()
@@ -4332,10 +4407,10 @@ export async function checkScheduledReports(): Promise<void> {
           : "";
         const displayError = existingStatus === "sent" ? "" : (auditError || existingError);
         const existingCreatedAt = (existingEvent as any)?.createdAt ? new Date((existingEvent as any).createdAt) : null;
-        const stalePending = existingStatus === "pending" && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
+        const stalePending = existingStatus === "pending" && existingError === "Report preparation pending" && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
         const staleFailed = existingStatus === "failed"
           && !(existingEvent as any)?.sentAt
-          && !String(existingError || "").startsWith("Retry failed after previous failure:")
+          && existingError.startsWith("Report preparation failed:")
           && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
         if (!stalePending && !staleFailed) {
           if (existingStatus === "skipped" && (displayError.includes("Campaign not found") || displayError.includes("No recipients configured"))) {
@@ -4348,14 +4423,21 @@ export async function checkScheduledReports(): Promise<void> {
           console.log(`[Report Scheduler] Report "${report.name}" already processed for ${due.scheduledKey} (status=${existingStatus || "unknown"}${displayError ? `, error=${displayError}` : ""})`);
           continue; // already processed
         }
+        // Once dispatch was prepared, only exact-attempt recovery may handle it.
+        const [preparedAudit] = await db.select({ id: emailAlertEvents.id }).from(emailAlertEvents).where(eq(emailAlertEvents.id, existingEvent.id));
+        if (preparedAudit) continue;
         retryingFailedSend = staleFailed;
         console.warn(`[Report Scheduler] Retrying ${staleFailed ? "stale failed" : "stale pending"} report "${report.name}" for ${due.scheduledKey}`);
-        await db
+        [claimedEvent] = await db
           .update(reportSendEvents)
-          .set({ status: "pending", error: null, recipients: (report as any).scheduleRecipients || null } as any)
-          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
-          .catch(() => { });
+          .set({ status: "pending", error: "Report preparation pending", createdAt: new Date(), recipients: (report as any).scheduleRecipients || null } as any)
+          .where(and(eq(reportSendEvents.id, existingEvent.id), eq(reportSendEvents.status, existingEvent.status), sql`date_trunc('milliseconds', ${reportSendEvents.createdAt}) = ${existingEvent.createdAt.toISOString()}::timestamp`))
+          .returning();
+        if (!claimedEvent) continue;
       }
+
+      const sendEventClaim = and(eq(reportSendEvents.id, claimedEvent.id), eq(reportSendEvents.status, "pending"), sql`date_trunc('milliseconds', ${reportSendEvents.createdAt}) = ${claimedEvent.createdAt.toISOString()}::timestamp`);
+      const preparationError = (message: string) => `${retryingFailedSend ? "Retry failed after previous failure: " : ""}Report preparation failed: ${message}`;
 
       console.log(`[Report Scheduler] Report "${report.name}" is due now (${due.scheduledKey})`);
 
@@ -4373,7 +4455,7 @@ export async function checkScheduledReports(): Promise<void> {
         await db
           .update(reportSendEvents)
           .set({ status: "skipped", error: message } as any)
-          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .where(sendEventClaim)
           .catch(() => { });
         continue;
       }
@@ -4392,7 +4474,7 @@ export async function checkScheduledReports(): Promise<void> {
         await db
           .update(reportSendEvents)
           .set({ status: "skipped", error: message } as any)
-          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .where(sendEventClaim)
           .catch(() => { });
         continue;
       }
@@ -4410,7 +4492,7 @@ export async function checkScheduledReports(): Promise<void> {
         await db
           .update(reportSendEvents)
           .set({ status: "skipped", error: "No recipients configured" } as any)
-          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .where(sendEventClaim)
           .catch(() => { });
         continue;
       }
@@ -4420,7 +4502,7 @@ export async function checkScheduledReports(): Promise<void> {
         await db
           .update(reportSendEvents)
           .set({ status: "skipped", error: "Invalid GA4 schedule recipient configured" } as any)
-          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .where(sendEventClaim)
           .catch(() => { });
         continue;
       }
@@ -4448,7 +4530,7 @@ export async function checkScheduledReports(): Promise<void> {
             await db
               .update(reportSendEvents)
               .set({ status: "skipped", error } as any)
-              .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+              .where(sendEventClaim)
               .catch(() => { });
             continue;
           }
@@ -4459,8 +4541,8 @@ export async function checkScheduledReports(): Promise<void> {
         console.warn(`[Report Scheduler] Campaign lookup failed; skipped scheduled report: report=${report.id}, campaign=${(report as any).campaignId}, error=${message}`);
         await db
           .update(reportSendEvents)
-          .set({ status: "failed", error: message } as any)
-          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .set({ status: "failed", error: preparationError(message) } as any)
+          .where(sendEventClaim)
           .catch(() => { });
         continue;
       }
@@ -4486,8 +4568,8 @@ export async function checkScheduledReports(): Promise<void> {
         console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
         await db
           .update(reportSendEvents)
-          .set({ status: "failed", error } as any)
-          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .set({ status: "failed", error: preparationError(error) } as any)
+          .where(sendEventClaim)
           .catch(() => { });
         continue;
       }
@@ -4511,80 +4593,41 @@ export async function checkScheduledReports(): Promise<void> {
         console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
         await db
           .update(reportSendEvents)
-          .set({ status: "failed", error } as any)
-          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .set({ status: "failed", error: preparationError(error) } as any)
+          .where(sendEventClaim)
           .catch(() => { });
         continue;
       }
       if (customReportPdfArtifact) (snapshotPayload as any).pdfArtifact = customReportPdfArtifact;
 
-      // Send email with retry mechanism (with PDF attachment when possible)
-      let sent = await sendReportEmailWithRetry(report, recipients, {
+      // Persist the original artifact and exact audit identity before any provider side effect.
+      const prepared = await db.transaction(async (tx: any) => {
+        const [parent] = await tx.select().from(campaigns).where(eq(campaigns.id, snapshotPayload.campaignId || "")).for("share");
+        const [currentReport] = await tx.select().from(linkedinReports).where(eq(linkedinReports.id, snapshotPayload.reportId)).for("share");
+        if (!parent?.ownerId || currentReport?.campaignId !== snapshotPayload.campaignId
+          || currentReport?.platformType !== snapshotPayload.platformType || !currentReport?.scheduleEnabled || currentReport?.status !== "active") return false;
+        const [owned] = await tx.update(reportSendEvents).set({ status: "pending_delivery", error: "Report dispatch prepared; delivery not confirmed" })
+          .where(sendEventClaim).returning();
+        if (!owned) return false;
+        await tx.insert(emailAlertEvents).values({
+          id: claimedEvent.id, kind: "report", entityType: "report", entityId: snapshotPayload.reportId,
+          campaignId: snapshotPayload.campaignId, campaignName,
+          to: recipients.map(value => String(value || "").trim()).filter(Boolean).join(", "), subject: `MimoSaaS report attached: ${report.name}`,
+          provider: "pending", deliveryStatus: "sending", success: false,
+          metadata: JSON.stringify({ reportSendEventId: claimedEvent.id, snapshotPayload, retryingFailedSend }),
+        });
+        return true;
+      });
+      if (!prepared) continue;
+      // A transport timeout can follow provider acceptance. Never blindly resend that slot.
+      await sendReportEmailWithRetry(report, recipients, {
         windowStart,
         windowEnd,
         campaignName,
+        auditEventId: claimedEvent.id,
         attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${windowEnd}.pdf`, content: pdfBuffer } : null,
-      });
-      let sendEventStatus: "sent" | "failed" | "pending_delivery" = sent ? "sent" : "failed";
-      let deliveryError = "";
-      if (sent) {
-        const deliveryConfirmation = await confirmScheduledReportEmailDelivery(snapshotPayload.reportId);
-        sent = deliveryConfirmation.sent;
-        sendEventStatus = deliveryConfirmation.status;
-        deliveryError = deliveryConfirmation.error;
-      }
-
-
-      const [snap] = sent
-        ? await db
-          .insert(reportSnapshots)
-          .values({
-            reportId: snapshotPayload.reportId,
-            campaignId: snapshotPayload.campaignId,
-            platformType: snapshotPayload.platformType,
-            reportType: snapshotPayload.reportType,
-            windowStart,
-            windowEnd,
-            snapshotJson: JSON.stringify(snapshotPayload),
-            hasEstimated: false,
-          } as any)
-          .returning()
-          .catch(() => [])
-        : [];
-
-      // Update metrics
-      const emailError = sent ? "" : (deliveryError || await getLatestReportEmailError(snapshotPayload.reportId));
-      const sendError = emailError || "Email send failed after retries";
-      const persistedSendError = retryingFailedSend && sendEventStatus === "failed" ? `Retry failed after previous failure: ${sendError}` : sendError;
-
-      if (sent) {
-        schedulerMetrics.totalSent++;
-        schedulerMetrics.lastSuccessTime = new Date();
-      } else if (sendEventStatus === "failed") {
-        schedulerMetrics.totalFailed++;
-        schedulerMetrics.lastErrorTime = new Date();
-        schedulerMetrics.lastError = persistedSendError;
-      }
-
-      await db
-        .update(reportSendEvents)
-        .set({
-          status: sendEventStatus,
-          error: sent ? null : persistedSendError,
-          sentAt: sent ? new Date() : null,
-          snapshotId: (snap as any)?.id ? String((snap as any).id) : null,
-        } as any)
-        .where(and(eq(reportSendEvents.reportId, snapshotPayload.reportId), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
-        .catch(() => { });
-
-      if (sent) {
-        // Update report book-keeping
-        await db
-          .update(linkedinReports)
-          .set({ lastSentAt: new Date() } as any)
-          .where(eq(linkedinReports.id, snapshotPayload.reportId))
-          .catch(() => { });
-      }
+      }, 1);
+      await reconcileScheduledReportSend(claimedEvent);
 
       // Add a small delay between emails to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -4756,21 +4799,29 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
     }
 
     const safeName = String((report as any)?.name || "MimoSaaS_Report").replace(/\s+/g, "_");
+    const auditEventId = randomUUID();
+    await db.insert(emailAlertEvents).values({
+      id: auditEventId, kind: "report", entityType: "report", entityId: reportId,
+      campaignId: (report as any).campaignId, campaignName, to: recipients.map(value => String(value || "").trim()).filter(Boolean).join(", "),
+      subject: `MimoSaaS report attached: ${report.name}`, provider: "pending", deliveryStatus: "sending",
+    });
     const result = await sendReportEmail(report, recipients, {
       windowStart,
       windowEnd,
       campaignName,
+      auditEventId,
       attachment: pdfBuffer ? { filename: `${safeName}_${windowEnd}.pdf`, content: pdfBuffer } : null,
     });
     console.log(`[Report Scheduler] Send result: ${result ? 'SUCCESS ✅' : 'FAILED ❌'}`);
 
-    const audit = await getLatestReportEmailAudit(reportId, result);
+    const audit = await getLatestReportEmailAudit(reportId, result, auditEventId);
     if (!result) {
       return { success: false, message: audit.error || "Email send failed", recipients };
     }
+    if (!audit.id) return { success: false, message: "Exact test report send audit unavailable; delivery not confirmed", recipients };
 
     if (audit.provider === "mailgun-api") {
-      const deliveryConfirmation = await confirmScheduledReportEmailDelivery(reportId);
+      const deliveryConfirmation = await confirmScheduledReportEmailDelivery(reportId, auditEventId);
       const deliveryStatus = deliveryConfirmation.status === "pending_delivery" ? "pending" : deliveryConfirmation.status;
       console.log(`[Report Scheduler] Mailgun delivery status for test report "${report.name}": ${deliveryStatus}${deliveryConfirmation.error ? ` (${deliveryConfirmation.error})` : ""}`);
       if (!deliveryConfirmation.sent) {
@@ -4826,7 +4877,7 @@ export function startReportScheduler(): void {
   console.log(`[Report Scheduler] ✅ Report scheduler started with cron schedule: "${cronSchedule}" (UTC)`);
   console.log('[Report Scheduler] 📊 Health metrics available via getSchedulerMetrics()');
   console.log('[Report Scheduler] 🔒 Idempotency: report_send_events prevents duplicate sends');
-  console.log('[Report Scheduler] 🔄 Retry: 3 attempts with exponential backoff (1s, 2s, 4s)');
+  console.log('[Report Scheduler] Dispatch: one provider attempt per slot; delivery recovery never resends');
   console.log('[Report Scheduler] 🌍 Timezones: Luxon-powered DST-safe timezone handling');
 }
 

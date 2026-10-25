@@ -45,7 +45,7 @@ if (testUrl) {
   if (url.hostname !== '127.0.0.1' || url.port !== '55444' || url.pathname !== '/ga4_alignment_test' || url.search || process.env.DATABASE_URL) throw Error('Isolated local database required');
 }
 const schemaName = `v1_report_history_${randomUUID().replace(/-/g, '')}`;
-const tables = [schema.campaigns, schema.linkedinReports, schema.metaReports, schema.reportSnapshots, schema.reportSendEvents];
+const tables = [schema.campaigns, schema.linkedinReports, schema.metaReports, schema.reportSnapshots, schema.reportSendEvents, schema.emailAlertEvents];
 const platforms = ['google_analytics', 'campaign_deepdive', 'google_ads', 'linkedin', 'meta', 'instagram', 'tiktok', 'google_sheets', 'custom-integration', 'custom_integration'];
 const storage = new DatabaseStorage();
 const originalPdf = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(160, 65)]);
@@ -57,7 +57,7 @@ const schedulerDeclaration = schedulerSource.statements.find(node => ts.isFuncti
 function schedulerFixture(deliveryStatus = 'sent') {
   const send = vi.fn(async () => true);
   const code = ts.transpileModule(schedulerDeclaration.getText(schedulerSource), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
-  const env: Record<string, any> = { db: database.current, storage, ...schema, ...orm, createReportPdfArtifact,
+  const env: Record<string, any> = { db: database.current, storage, ...schema, ...orm, createReportPdfArtifact, readReportPdfArtifact,
     schedulerMetrics: { totalChecks: 0, totalSent: 0, totalFailed: 0 }, SCHEDULED_REPORT_PLATFORM_TYPES: platforms,
     isReportDueNow: () => ({ due: true, scheduledKey: '2026-10-25T09:00@Europe/Amsterdam', tz: 'Europe/Amsterdam' }),
     getScheduledReportAlignedRefreshGate: async () => ({ ready: true }),
@@ -68,6 +68,11 @@ function schedulerFixture(deliveryStatus = 'sent') {
     sourceBackedReportOutputUnavailableMessage: () => 'PDF unavailable', sendReportEmailWithRetry: send,
     confirmScheduledReportEmailDelivery: async () => ({ sent: deliveryStatus === 'sent', status: deliveryStatus, error: 'Fixture result' }),
     setTimeout: (callback: () => void) => queueMicrotask(callback), console: { log() {}, warn() {}, error() {} } };
+  const recovery = schedulerSource.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'reconcileScheduledReportSend');
+  if (recovery) {
+    const recoveryCode = ts.transpileModule(recovery.getText(schedulerSource), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+    env.reconcileScheduledReportSend = new Function(...Object.keys(env), `${recoveryCode}\nreturn reconcileScheduledReportSend;`)(...Object.values(env));
+  }
   const run = new Function('exports', ...Object.keys(env), `${code}\nreturn checkScheduledReports;`)({}, ...Object.values(env));
   return { run, send };
 }

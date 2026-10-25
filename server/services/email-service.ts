@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 import { formatConversionCredit } from "../../shared/metric-math";
 import { db } from "../db";
 import { campaigns, clients, emailAlertEvents } from "../../shared/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { buildAlertEmailAuditState, buildAlertEmailRetryState } from "../utils/alert-email-audit";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "../utils/mailgun-delivery";
 
@@ -588,7 +588,9 @@ class EmailService {
       const auditEventId = String(ctx?.auditEventId || "").trim();
       if (auditEventId) {
         await db.update(emailAlertEvents)
-          .set(auditValues as any)
+          .set({ ...auditValues, ...(ctx?.kind === "report" ? {
+            metadata: sql`(COALESCE(NULLIF(${emailAlertEvents.metadata}, '')::jsonb, '{}'::jsonb) || ${metadata}::jsonb)::text`,
+          } : {}) } as any)
           .where(eq(emailAlertEvents.id, auditEventId));
         return;
       }

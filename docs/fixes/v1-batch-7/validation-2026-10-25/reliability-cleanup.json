@@ -1,0 +1,8 @@
+﻿{
+    "at":  "2026-10-25T22:53:26.9100972Z",
+    "cluster":  "audit-temp/v1-batch4-sheets-pg",
+    "stopExitCode":  0,
+    "statusExitCode":  3,
+    "stopped":  true,
+    "output":  "pg_ctl: no server running"
+}

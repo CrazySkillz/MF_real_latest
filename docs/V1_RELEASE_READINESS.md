@@ -1,5 +1,9 @@
 # V1 release-readiness audit
 
+**October 26 Batch 7 publication packet:** The user authorized committing and pushing the [five Group 1 reliability corrections](fixes/v1-batch-7/README.md#reliability-checkpoint-october-25) and their 680-check evidence. Earlier uncommitted statements describe validation time. Deployment and all release acceptance remain unverified/open; no release counts or whole-app decision change.
+
+**October 25 Batch 7 reliability checkpoint, current:** [Group 1](fixes/v1-batch-7/README.md#reliability-checkpoint-october-25) corrects V1-021/022/058/059/110 locally. **680 checks in 32 files pass**, including 60 real-PostgreSQL recovery/history cases; TypeScript/server build pass. The new group is uncommitted/undeployed. The user reports earlier `825972a9` deployed but has no saved reports for UI validation. Eight Batch 7 forward corrections now have local evidence; 21 findings remain in three implementation groups plus combined validation. All 29 release acceptances, Batch 6's postponed live sign-off, release counts and whole-app NO-GO remain unchanged. No browser, production data, provider or actual email access occurred.
+
 **Batch 7 publication packet, October 25:** The [three tested report-history/Meta corrections](fixes/v1-batch-7/README.md#current-batch-7-status) and their 412-check evidence accompany the user-authorized commit and push. Deployment remains unverified. Subsequent uncommitted statements retain the validation-time state; no release acceptance or deferred Batch 6 sign-off is closed.
 
 **October 25 Batch 7 report-history checkpoint:** [Three original forward corrections](fixes/v1-batch-7/README.md#report-history-checkpoint-october-25) preserve immutable PDFs across report edits, capture every supported snapshot artifact and return accurate retained Meta mutation outcomes. **412 local checks in 10 files, TypeScript and server build pass**; changes are uncommitted/undeployed. Twenty-six Batch 7 findings still require work and all 29 acceptances remain OPEN. The user postponed Batch 6 live sign-off because Google account verification blocked login. Its deployed `4cd498cf` and prior local checks are not provider acceptance. Whole-app NO-GO and release counts are unchanged; no browser/provider/production data or email access occurred.
@@ -72,7 +76,7 @@ Each finding has one detailed home in its assigned batch. Cross-batch consumers 
 | B4 | [Files, Sheets and Custom Integration](fixes/v1-batch-4/README.md) | 24 | 0 | All 24 corrections verified locally; final V1-069 correction committed in `dc33df48` on `62ec590b`; required deployment/provider/lifecycle/downstream acceptance OPEN |
 | B5 | [CRM and commerce Revenue](fixes/v1-batch-5/README.md) | 6 | 0 | Six corrections plus compatibility recovery deployed in `71468999`; public and isolated GA4 UI checks pass; deployed/provider acceptance OPEN |
 | B6 | [Deferred-source isolation and included Ads](fixes/v1-batch-6/README.md) | 9 | 10 | In progress; isolation and selected Google Ads value paths locally corrected; remaining inventory and release acceptance OPEN |
-| B7 | [Diagnostics, goals, retained pages, alerts and reports](fixes/v1-batch-7/README.md) | 29 | 0 | Queued; release acceptance OPEN |
+| B7 | [Diagnostics, goals, retained pages, alerts and reports](fixes/v1-batch-7/README.md) | 29 | 0 | Eight forward corrections verified locally; 21 findings remain; all release acceptance OPEN |
 | B8 | [Release checks and deployed operational acceptance](fixes/v1-batch-8/README.md) | 8 | 0 | Bounded backup/restore checks passed; compatible application rollback and release acceptance OPEN |
 | **Total** | | **120** | **10** | **0 closed for release** |
 

@@ -6,6 +6,7 @@ import { storage, type GA4RefreshWriteInput } from "./storage";
 import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable, shopifyConnections as shopifyConnectionsTable } from "@shared/schema";
 import { z } from "zod";
 import { financialDailySnapshotInputSchema } from "@shared/schema";
+import { notifications as notificationRows } from "@shared/schema";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
@@ -7446,7 +7447,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
   const dismissedNotificationMetadata = (n: any, actorId: string, reason = "dismissed") => JSON.stringify({
-    ...notificationMetadata(n?.metadata),
     dismissedAt: new Date().toISOString(),
     dismissedBy: actorId,
     dismissalReason: reason,
@@ -7454,7 +7454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const softHideNotification = async (n: any, actorId: string, reason: string) => {
     await storage.updateNotification(String(n?.id || ""), {
       read: true,
-      metadata: dismissedNotificationMetadata(n, actorId, reason),
+      metadata: sql`((CASE WHEN ${notificationRows.metadata} = ${n?.metadata || ''} THEN ${JSON.stringify(notificationMetadata(n?.metadata))}::jsonb ELSE COALESCE(NULLIF(${notificationRows.metadata}, '')::jsonb, '{}'::jsonb) END) || ${dismissedNotificationMetadata(n, actorId, reason)}::jsonb)::text`,
     } as any);
   };
   const prepareKPINotificationHides = async (kpi: any, actorId: string) => {
@@ -7669,7 +7669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const n of rows || []) {
         if (isNotificationDismissed(n)) continue;
         await db.update(notifications as any)
-          .set({ read: true, metadata: dismissedNotificationMetadata(n, actorId, "clear_all") })
+          .set({ read: true, metadata: sql`((CASE WHEN ${notifications.metadata} = ${n?.metadata || ''} THEN ${JSON.stringify(notificationMetadata(n?.metadata))}::jsonb ELSE COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) END) || ${dismissedNotificationMetadata(n, actorId, "clear_all")}::jsonb)::text` })
           .where(eq((notifications as any).id, String((n as any).id)));
         hiddenCount++;
       }
@@ -7706,7 +7706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!okCampaign) return;
 
       await db.update(notifications as any)
-        .set({ read: true, metadata: dismissedNotificationMetadata(existing, actorId, "dismissed") })
+        .set({ read: true, metadata: sql`((CASE WHEN ${notifications.metadata} = ${existing?.metadata || ''} THEN ${JSON.stringify(notificationMetadata(existing?.metadata))}::jsonb ELSE COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) END) || ${dismissedNotificationMetadata(existing, actorId, "dismissed")}::jsonb)::text` })
         .where(eq((notifications as any).id, id));
 
       res.json({ success: true, message: "Notification deleted" });

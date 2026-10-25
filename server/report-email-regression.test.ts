@@ -33,7 +33,8 @@ describe("scheduled report email regression guard", () => {
   });
 
   it("keeps the scheduled report email body focused on the attached report", () => {
-    const source = readReportScheduler();
+    const scheduler = readReportScheduler();
+    const source = scheduler.slice(scheduler.indexOf('async function sendReportEmail('), scheduler.indexOf('export async function checkScheduledReports('));
 
     expect(source).toContain("Your scheduled MimoSaaS report is attached.");
     expect(source).toContain("deliverableSubject");
@@ -72,14 +73,13 @@ describe("scheduled report email regression guard", () => {
 
   it("creates scheduled report snapshots only after a successful send", () => {
     const source = readReportScheduler();
-    const sendIndex = source.indexOf("let sent = await sendReportEmailWithRetry");
-    const snapshotInsertIndex = source.indexOf(".insert(reportSnapshots)", sendIndex);
-    const sendEventUpdateIndex = source.indexOf(".update(reportSendEvents)", snapshotInsertIndex);
-
+    const recovery = source.slice(source.indexOf('async function reconcileScheduledReportSend'), source.indexOf('function coercePdfBufferFromDoc'));
+    expect(recovery.indexOf('if (!confirmation.sent)')).toBeLessThan(recovery.indexOf('db.transaction'));
+    expect(recovery.indexOf('db.transaction')).toBeLessThan(recovery.indexOf('tx.insert(reportSnapshots)'));
+    expect(recovery.indexOf('tx.insert(reportSnapshots)')).toBeLessThan(recovery.indexOf('snapshotId: snapshot.id'));
+    const sendIndex = source.indexOf('await sendReportEmailWithRetry(report, recipients');
     expect(sendIndex).toBeGreaterThan(-1);
-    expect(snapshotInsertIndex).toBeGreaterThan(sendIndex);
-    expect(sendEventUpdateIndex).toBeGreaterThan(snapshotInsertIndex);
-    expect(source).toContain("const [snap] = sent");
+    expect(source.indexOf('await reconcileScheduledReportSend(claimedEvent)', sendIndex)).toBeGreaterThan(sendIndex);
   });
 
   it("keeps optional GA4 scheduled PDF fallbacks but fails closed for selected Overview sections", () => {
@@ -341,7 +341,7 @@ describe("scheduled report email regression guard", () => {
     );
 
     expect(schedulerSource).toContain("waitForMailgunDelivery");
-    expect(testSendSource).toContain("const deliveryConfirmation = await confirmScheduledReportEmailDelivery(reportId)");
+    expect(testSendSource).toContain("const deliveryConfirmation = await confirmScheduledReportEmailDelivery(reportId, auditEventId)");
     expect(testSendSource).not.toContain("const delivery = await waitForMailgunDelivery(");
     expect(testSendSource).toContain('deliveryConfirmation.status === "pending_delivery" ? "pending"');
     expect(routesSource).toContain("deliveryStatus: result.deliveryStatus");
@@ -371,8 +371,7 @@ describe("scheduled report email regression guard", () => {
       source.indexOf("async function confirmScheduledReportEmailDelivery"),
       source.indexOf("function coercePdfBufferFromDoc")
     );
-    const sendIndex = source.indexOf("let sent = await sendReportEmailWithRetry");
-    const deliveryConfirmIndex = source.indexOf("const deliveryConfirmation = await confirmScheduledReportEmailDelivery", sendIndex);
+    const deliveryConfirmIndex = source.indexOf("const confirmation = await confirmScheduledReportEmailDelivery(event.reportId, event.id)");
     const snapshotInsertIndex = source.indexOf(".insert(reportSnapshots)", deliveryConfirmIndex);
 
     expect(confirmationBlock).toContain('audit.provider !== "mailgun-api"');
@@ -381,10 +380,9 @@ describe("scheduled report email regression guard", () => {
     expect(confirmationBlock).toContain("audit.mailgunRegion ? { region: audit.mailgunRegion } : {}");
     expect(confirmationBlock).toContain('delivery.status === "delivered"');
     expect(confirmationBlock).toContain('"pending_delivery"');
-    expect(sendIndex).toBeGreaterThan(-1);
-    expect(deliveryConfirmIndex).toBeGreaterThan(sendIndex);
+    expect(deliveryConfirmIndex).toBeGreaterThan(-1);
     expect(snapshotInsertIndex).toBeGreaterThan(deliveryConfirmIndex);
-    expect(source).toContain("status: sendEventStatus");
+    expect(source).toContain("status: confirmation.status");
   });
 
   it("keeps report test-send fail-closed for missing campaign ownership", () => {

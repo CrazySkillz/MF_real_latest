@@ -6542,7 +6542,7 @@ export class DatabaseStorage implements IStorage {
             throw new Error("KPI notification campaign scope mismatch");
           }
           const hidden = await tx.update(notifications)
-            .set({ read: true, metadata: hide.metadata })
+            .set({ read: true, metadata: sql`(COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) || ${hide.metadata}::jsonb)::text` })
             .where(and(eq(notifications.id, hide.id), eq(notifications.campaignId, hide.campaignId)))
             .returning({ id: notifications.id });
           if (!hidden.length) throw new Error("KPI notification hide failed");
@@ -6823,7 +6823,7 @@ export class DatabaseStorage implements IStorage {
           throw new Error("Benchmark notification campaign scope mismatch");
         }
         const hidden = await tx.update(notifications)
-          .set({ read: true, metadata: hide.metadata })
+          .set({ read: true, metadata: sql`(COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) || ${hide.metadata}::jsonb)::text` })
           .where(and(eq(notifications.id, hide.id), eq(notifications.campaignId, hide.campaignId)))
           .returning({ id: notifications.id });
         if (!hidden.length) throw new Error("Benchmark notification hide failed");

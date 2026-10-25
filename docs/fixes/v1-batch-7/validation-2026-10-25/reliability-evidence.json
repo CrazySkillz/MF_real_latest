@@ -1,0 +1,263 @@
+{
+  "at": "2026-10-25T22:52:42.992Z",
+  "baseCommit": "825972a9f341d0986bef838dadcbaa540c155272",
+  "status": "uncommitted, undeployed",
+  "scope": [
+    "V1-021",
+    "V1-022",
+    "V1-058",
+    "V1-059",
+    "V1-110"
+  ],
+  "baseline": {
+    "passed": 20,
+    "failed": 40,
+    "skipped": 0
+  },
+  "current": {
+    "passed": 680,
+    "failed": 0,
+    "skipped": 0,
+    "files": 32
+  },
+  "suites": [
+    {
+      "file": "server/alert-email-audit-regression.test.ts",
+      "count": 4,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/alert-email-breach-episode-regression.test.ts",
+      "count": 3,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/alert-email-delivery-regression.test.ts",
+      "count": 5,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/alert-email-idempotency-regression.test.ts",
+      "count": 11,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/alert-email-immediate-route-regression.test.ts",
+      "count": 5,
+      "evidence": "reliability-final-supplement.json"
+    },
+    {
+      "file": "server/alert-email-regression.test.ts",
+      "count": 11,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/alert-email-retry-read-error.test.ts",
+      "count": 5,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/alert-email-retry-regression.test.ts",
+      "count": 8,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/alert-email-scheduler-regression.test.ts",
+      "count": 6,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/benchmark-alert-email-delivery-validation-regression.test.ts",
+      "count": 1,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/benchmark-alert-lifecycle-regression.test.ts",
+      "count": 6,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/campaign-deepdive-report-concurrency.test.ts",
+      "count": 2,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/custom-report-regression.test.ts",
+      "count": 45,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/custom-report-window-metadata.test.ts",
+      "count": 4,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/ga4-alert-highlight-dismissal-regression.test.ts",
+      "count": 4,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/ga4-kpi-alert-contract-regression.test.ts",
+      "count": 62,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/ga4-kpi-duplicate-alert-regression.test.ts",
+      "count": 2,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/ga4-notification-run-now-regression.test.ts",
+      "count": 2,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/ga4-report-saved-publication.test.ts",
+      "count": 48,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/google-ads-report-regression.test.ts",
+      "count": 4,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/kpi-test-alert-route-security-regression.test.ts",
+      "count": 1,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/notification-alert-concurrency-regression.test.ts",
+      "count": 9,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/notification-alert-postgres-concurrency.test.ts",
+      "count": 2,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/notification-list-error-route-proof.test.ts",
+      "count": 13,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/notification-reconcile-route-proof.test.ts",
+      "count": 4,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/notification-visibility-regression.test.ts",
+      "count": 44,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/report-email-regression.test.ts",
+      "count": 28,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/report-pdf-artifact.test.ts",
+      "count": 2,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "count": 88,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/v1-batch6-paid-isolation.test.ts",
+      "count": 131,
+      "evidence": "reliability-neighbors-final.json"
+    },
+    {
+      "file": "server/v1-batch7-reliability-postgres.test.ts",
+      "count": 60,
+      "evidence": "reliability-final-supplement.json"
+    },
+    {
+      "file": "server/v1-batch7-report-history-postgres.test.ts",
+      "count": 60,
+      "evidence": "reliability-neighbors-final.json"
+    }
+  ],
+  "builds": {
+    "at": "2026-10-25T22:51:19.447Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "reliability-final-confirm-typecheck.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "reliability-final-confirm-server-build.log"
+      }
+    ]
+  },
+  "runtimeFiles": [
+    "server/report-scheduler.ts",
+    "server/routes-oauth.ts",
+    "server/storage.ts",
+    "server/kpi-notifications.ts",
+    "server/benchmark-notifications.ts",
+    "server/services/email-service.ts"
+  ],
+  "testFiles": [
+    "server/v1-batch7-reliability-postgres.test.ts",
+    "server/v1-batch7-report-history-postgres.test.ts",
+    "server/report-email-regression.test.ts",
+    "server/notification-visibility-regression.test.ts",
+    "server/alert-email-immediate-route-regression.test.ts"
+  ],
+  "hashes": {
+    "server/report-scheduler.ts": "e8bb3a5bae62fe91d705739b524429336ecc4b554658249b677b06593f9bab91",
+    "server/routes-oauth.ts": "57c0b3e2656662a4b446721af83b1a6a557c0b043d890005893821d705e3985c",
+    "server/storage.ts": "4c1048db56159a6f38bb916731a1ec54638b8a9ef29a312d14f486facc0e2378",
+    "server/kpi-notifications.ts": "09458c60c4d213817f2223d1947fc182296a2923e46b5d3e82ffaf394e0a079a",
+    "server/benchmark-notifications.ts": "15302e354925b4f3c8153fa39906311e7350a156a4e767fc2c947fa12f3a16fc",
+    "server/services/email-service.ts": "06eb3162eb2000607d47dfa739707633979a28d75db27745b015e736eefdb0e0",
+    "server/v1-batch7-reliability-postgres.test.ts": "d0e5de944a90408ce25ed64445ec18a69f6724f54493360be2fd5bf73d44d169",
+    "server/v1-batch7-report-history-postgres.test.ts": "56b6d2f5cdccd6baef62f0580f28586c4edbbb7bdd4c7b7cd50c82eefac71151",
+    "server/report-email-regression.test.ts": "dbf4e09f5d19b1500f235fd76a7b66048da756b4cb53a24f43ce24e4b080fd58",
+    "server/notification-visibility-regression.test.ts": "275c1e0457212e29b0951b0bde910f5c1358e7cb3b4a832079ed66dd6d10c296",
+    "server/alert-email-immediate-route-regression.test.ts": "78ddb353c1cd5fcd3f1cd0d874142626624e9c2eac6b10b4d93c95167a7d0cf4"
+  },
+  "staleAssertionProof": {
+    "baseCommit": "825972a9f341d0986bef838dadcbaa540c155272",
+    "unchangedSignatures": [
+      "const kpi = await storage.updateKPI(kpiId, { ...updateData,",
+      "const benchmark = await storage.updateBenchmark(benchmarkId, { ...validatedBenchmark,",
+      "const benchmark = await storage.updateBenchmark(benchmarkId, { ...validatedData,",
+      "const benchmark = await storage.updateBenchmark(id, { ...validated,"
+    ]
+  },
+  "cleanup": [
+    {
+      "host": "127.0.0.1",
+      "port": 55444,
+      "database": "ga4_alignment_test",
+      "remainingOwnedSchemas": 0,
+      "remainingOwnedSessions": 0
+    },
+    {
+      "host": "127.0.0.1",
+      "port": 55444,
+      "database": "notifications_test",
+      "remainingOwnedSchemas": 0,
+      "remainingOwnedSessions": 0
+    }
+  ],
+  "limitations": [
+    "Synthetic PDF content and controlled delivery responses; no actual provider or inbox validation",
+    "Concurrent database connections and restarted function contexts; no operating-system kill or separate-host deployment",
+    "Legacy attempts without exact original evidence remain unconfirmed; no production cleanup",
+    "No browser, production database, provider accounts, actual email or production-data changes",
+    "Not whole-app certification; 21 Batch 7 findings and all 29 release acceptances remain open"
+  ]
+}

@@ -313,12 +313,12 @@ describe("notification visibility regression guard", () => {
     expect(kpiNotificationsFile).toContain("await storage.updateNotification(String(preservedAlert.id), changes as any);");
     expect(kpiNotificationsFile).toContain("message: nextMessage,");
     expect(kpiNotificationsFile).toContain("campaignName: campaign.name,");
-    expect(kpiNotificationsFile).toContain("metadata: JSON.stringify({");
+    expect(kpiNotificationsFile).toContain("metadata: sql`(COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) ||");
     expect(benchmarkNotificationsFile).toContain("const preservedAlert = preservedAlertId");
     expect(benchmarkNotificationsFile).toContain("await storage.updateNotification(String(preservedAlert.id), changes as any);");
     expect(benchmarkNotificationsFile).toContain("message: nextMessage,");
     expect(benchmarkNotificationsFile).toContain("campaignName: campaign.name,");
-    expect(benchmarkNotificationsFile).toContain("metadata: JSON.stringify({");
+    expect(benchmarkNotificationsFile).toContain("metadata: sql`(COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) ||");
   });
 
   it("hides selected KPI and Benchmark alerts when linked rows are deleted", () => {

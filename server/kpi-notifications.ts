@@ -256,12 +256,12 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
       const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : (alert.metadata || {});
       const changes = {
         read: true,
-        metadata: JSON.stringify({
-          ...meta,
+        metadata: sql`CASE WHEN COALESCE(NULLIF(${notifications.metadata}, '')::jsonb ->> 'resolved', 'false') = 'true' THEN ${notifications.metadata}
+          ELSE (COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) || ${JSON.stringify({
           resolved: true,
           resolvedAt: new Date().toISOString(),
           resolvedReason: 'superseded',
-        }),
+        })}::jsonb)::text END`,
       };
       if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(alert.id)), eq(notifications.campaignId, campaignId)));
       else await storage.updateNotification(String(alert.id), changes as any);
@@ -286,14 +286,13 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
           priority: nextPriority,
           campaignId,
           campaignName: campaign.name,
-          metadata: JSON.stringify({
-            ...meta,
+          metadata: sql`(COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) || ${JSON.stringify({
             kpiId: kpi.id,
             alertType: 'performance-alert',
             actionUrl,
             ...(providerCoverageThroughDate ? { providerCoverageThroughDate } : {}),
             ...(windowKey ? { windowKey } : {}),
-          }),
+          })}::jsonb)::text`,
         };
         if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(preservedAlert.id)), eq(notifications.campaignId, campaignId)));
         else await storage.updateNotification(String(preservedAlert.id), changes as any);
@@ -366,12 +365,12 @@ export async function resolveKPIAlerts(kpiId: string, reason: 'cleared' | 'super
       if (String(meta.kpiId || '') !== id || meta.resolved) continue;
       const changes = {
         read: true,
-        metadata: JSON.stringify({
-          ...meta,
+        metadata: sql`CASE WHEN COALESCE(NULLIF(${notifications.metadata}, '')::jsonb ->> 'resolved', 'false') = 'true' THEN ${notifications.metadata}
+          ELSE (COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) || ${JSON.stringify({
           resolved: true,
           resolvedAt: new Date().toISOString(),
           resolvedReason: reason,
-        }),
+        })}::jsonb)::text END`,
       };
       if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(alert.id)), eq(notifications.campaignId, parent.campaignId)));
       else await storage.updateNotification(String(alert.id), changes as any);

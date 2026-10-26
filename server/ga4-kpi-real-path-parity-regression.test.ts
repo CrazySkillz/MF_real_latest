@@ -13,6 +13,7 @@ const storageMock = vi.hoisted(() => ({
   getGA4DailyMetrics: vi.fn(),
   getLatestGA4DailyMetric: vi.fn(),
   getGA4OverviewSnapshot: vi.fn(),
+  getGA4PublicationVersion: vi.fn(),
   getLatestFinancialDailySnapshot: vi.fn(),
   upsertGA4DailyMetrics: vi.fn(),
   replaceGA4DailyMetricsWindow: vi.fn(),
@@ -238,6 +239,7 @@ function setAuthoritativeFixture() {
   storageMock.getCampaigns.mockResolvedValue([campaign]);
   storageMock.getClients.mockResolvedValue([{ id: campaign.clientId, ownerId: campaign.ownerId }]);
   storageMock.getGA4Connections.mockResolvedValue([connection]);
+  storageMock.getGA4PublicationVersion.mockResolvedValue(0);
   storageMock.getGA4Connection.mockResolvedValue(connection);
   storageMock.getGA4DailyMetrics.mockResolvedValue([dailyRow]);
   storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
@@ -1314,6 +1316,9 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
   it("includes freshly recomputed Benchmark conclusions in the actual scheduled Insights PDF", async () => {
     setSavedReportPublication();
+    // Keep this assertion inside the twelve-finding summary; all aliases are covered above.
+    storageMock.getPlatformKPIs.mockResolvedValue([]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue(benchmarkRows.filter(row => row.metric === "revenue" || row.metric === "conversionRate"));
     const preflight = await preflightGA4ReportKPIConsumers(insightsReport, "2026-07-31", { suppressAlerts: true });
     expect(preflight.ok).toBe(true);
     expect(preflight.benchmarks).toEqual(expect.arrayContaining([
@@ -1334,8 +1339,10 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       campaignName: campaign.name,
     });
     const text = pdfTextCalls.join("\n");
-    expect(text).toContain("revenue Benchmark: Needs Attention");
-    expect(text).toContain("Current USD 200.00 vs Benchmark USD 250.00");
-    expect(text).not.toContain("conversionRate Benchmark:");
+    expect(text).toContain("revenue Benchmark Below Benchmark");
+    expect(text).toContain("Current USD 200.00 vs benchmark USD 250.00");
+    expect(text).not.toContain("conversionRate Benchmark Below Benchmark");
+    expect(text).not.toContain("conversionRate Benchmark Behind Benchmark");
+    expect(text).toContain("Benchmark configuration needs review: conversionRate Benchmark");
   });
 });

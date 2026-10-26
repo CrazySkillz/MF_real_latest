@@ -1,5 +1,5 @@
-import { buildGA4InsightsRollups } from "../shared/ga4-insights";
-import { conversionCreditsMatch } from "../shared/metric-math";
+import { buildGA4InsightsRollups, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, selectUniqueLowestGA4InsightsConversionRateChannel } from "../shared/ga4-insights";
+import { conversionCreditsMatch, computeProgress } from "../shared/metric-math";
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
@@ -8,9 +8,10 @@ import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
-import { computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
+import { computeAttainmentPct, computeEffectiveDeltaPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiDataSufficiency, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
+import { resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState } from "../shared/ga4-kpi-consumer-state";
 import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
 import { financialDailySnapshotInputSchema } from "../shared/schema";
 import { existsSync, readFileSync } from "fs";
@@ -142,10 +143,10 @@ const parseReportConfiguration = (configuration: any): Record<string, any> => {
 
 const reportIncludesKPISection = (report: any): boolean => {
   const reportType = String(report?.reportType || "overview").toLowerCase();
-  if (reportType === "kpis") return true;
+  if (reportType === "kpis" || reportType === "insights") return true;
   if (reportType !== "custom") return false;
   const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
-  return Boolean(cfg.sections?.kpis && cfg.subsections?.kpis?.items && cfg.selectedKpiIds.length > 0);
+  return Boolean(cfg.sections?.insights || (cfg.sections?.kpis && cfg.subsections?.kpis?.items && cfg.selectedKpiIds.length > 0));
 };
 
 const reportIncludesBenchmarkSection = (report: any): boolean => {
@@ -154,6 +155,12 @@ const reportIncludesBenchmarkSection = (report: any): boolean => {
   if (reportType !== "custom") return false;
   const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
   return Boolean(cfg.sections?.insights || (cfg.sections?.benchmarks && cfg.subsections?.benchmarks?.items && cfg.selectedBenchmarkIds.length > 0));
+};
+
+const reportIncludesInsightsActions = (report: any): boolean => {
+  const type = String(report?.reportType || "overview").toLowerCase();
+  const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
+  return type === "insights" || (type === "custom" && cfg.sections.insights && cfg.subsections.insights.actions);
 };
 
 const getOverviewReportRequirements = (report: any) => {
@@ -325,6 +332,24 @@ const buildInsightsItems = (payload: any) => {
       confidence: "High",
     });
   }
+  if (payload.insightsCurrentValuesVerified !== false && payload.financialSpendAvailable && financialSpend === 0 && financialRevenue > 0) {
+    items.push({ severity: "medium", title: `Revenue exists, but connected-source spend is ${payload.formatMoney(0)}`,
+      description: `Connected-source revenue is ${payload.formatMoney(financialRevenue)}, but connected-source spend is ${payload.formatMoney(0)}.`,
+      recommendation: "Verify the connected spend source and reporting window before acting on ROI, ROAS, or CPA.",
+      category: "finance", dataBasis: "Connected-source revenue/spend totals", confidence: "High" });
+  }
+  if (payload.insightsCurrentValuesVerified !== false && payload.financialSpendAvailable && financialSpend > 0 && financialRevenue > 0) {
+    const roi = computeRoiPercent(financialRevenue, financialSpend);
+    const roas = financialRevenue / financialSpend;
+    if (roi !== null && roi < 0) items.push({ severity: roi <= -20 ? "high" : "medium", title: "ROI is negative to date",
+      description: `ROI is ${roi.toFixed(2)}% for the connected-source financial window.`,
+      recommendation: "Confirm revenue attribution, then review conversion rate, AOV, and spend allocation before judging performance.",
+      category: "finance", dataBasis: "Connected-source revenue/spend totals", confidence: "High" });
+    if (roas < 1) items.push({ severity: "medium", title: "ROAS is below 1.0x to date",
+      description: `ROAS is ${roas.toFixed(2)}x for the connected-source financial window.`,
+      recommendation: "Check the conversion funnel, traffic mix, revenue source, and campaign filter before treating ROAS as a performance diagnosis.",
+      category: "finance", dataBasis: "Connected-source revenue/spend totals", confidence: "High" });
+  }
   const trend = (severity: "high" | "medium" | "positive" | "info", title: string, description: string) => items.push({
     severity, title, description, category: "trends", dataBasis: "GA4 completed daily history", confidence: "Medium",
     recommendation: "Verify the daily import and compare traffic sources and conversion paths before changing campaign delivery.",
@@ -374,68 +399,153 @@ const buildInsightsItems = (payload: any) => {
     trend("info", "Trend signals need more history",
       `Current 7-day window ${rollups.last7.startDate} to ${rollups.last7.endDate}: ${rollups.last7.days}/7 recorded days. Prior window: ${rollups.prior7.days}/7. Current 3-day window: ${rollups.last3.days}/3. Prior window: ${rollups.prior3.days}/3. Both adjacent calendar windows must be complete before comparisons run.`);
   }
-  for (const benchmark of Array.isArray(payload.benchmarks) ? payload.benchmarks : []) {
-    const sufficiency = resolveBenchmarkDataSufficiency({
-      metric: benchmark?.metric,
-      name: benchmark?.name,
-      sessions: Number(payload.breakdownTotals?.sessions || 0),
-      conversions: Number(payload.financialConversions || 0),
-      spend: Number(payload.financialSpend || 0),
-    });
-    if (!sufficiency.sufficient) continue;
-    const current = Number(benchmark?.currentValue);
-    const target = Number(benchmark?.benchmarkValue);
-    const identity = resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name);
-    if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) continue;
-    if ((identity === "conversion_rate" || identity === "engagement_rate") && target > 100) continue;
-    const threshold = computeBenchmarkThresholdResult({
-      metric: benchmark?.metric,
-      name: benchmark?.name,
-      unit: benchmark?.unit,
-      current,
-      benchmarkValue: target,
-    });
-    if (threshold.status !== "behind" && threshold.status !== "needs_attention") continue;
-    const unit = String(benchmark?.unit || "").trim();
-    const formatValue = (value: number) =>
-      resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name) === "conversions" ? formatConversionCredit(value)
-        : unit === "%" ? `${Number(value).toFixed(2)}%`
+  const unverifiedTargets: Array<{ name: string; detail: string; unavailable: boolean }> = [];
+  const incompatibleTargets: string[] = [];
+  for (const [entityLabel, targets] of [["KPI", payload.platformKPIs], ["Benchmark", payload.benchmarks]] as const) {
+    for (const targetRow of Array.isArray(targets) ? targets : []) {
+      const name = String(targetRow?.name || targetRow?.metric || entityLabel);
+      const rawTarget = String(entityLabel === "KPI" ? targetRow?.targetValue ?? "" : targetRow?.benchmarkValue ?? "").replace(/,/g, "").trim();
+      const target = Number(rawTarget);
+      const identity = resolveGA4KpiMetricIdentity(targetRow?.metric, targetRow?.name);
+      const invalid = !rawTarget || !Number.isFinite(target) ? `${entityLabel === "KPI" ? "Target" : "Benchmark"} value must be a valid number.`
+        : target <= 0 ? `${entityLabel === "KPI" ? "Target" : "Benchmark"} value must be greater than 0.`
+        : (identity === "conversion_rate" || identity === "engagement_rate") && target > 100 ? "Percentage rate targets cannot exceed 100%." : "";
+      if (invalid) items.push({ severity: "high", title: `${entityLabel} configuration needs review: ${name}`,
+        description: invalid, recommendation: `Edit the ${entityLabel} value before using this target for decisions.`,
+        category: "setup", dataBasis: `Saved ${entityLabel} configuration`, confidence: "High" });
+      if (payload.insightsCurrentValuesVerified === false) {
+        unverifiedTargets.push({ name, detail: "Current target values lack a reconciled saved publication for this campaign and property.", unavailable: true });
+        continue;
+      }
+      const sufficiency = (entityLabel === "KPI" ? resolveKpiDataSufficiency : resolveBenchmarkDataSufficiency)({
+        metric: targetRow?.metric,
+        name: targetRow?.name,
+        sessions: Number(payload.breakdownTotals?.sessions || 0),
+        conversions: Number(payload.financialConversions || 0),
+        spend: Number(payload.financialSpend || 0),
+      });
+      const consumer = resolveGA4KpiConsumerState({ metric: targetRow?.metric, name: targetRow?.name, entityLabel,
+        listState: "ready", trafficState: "ready", revenueState: "ready", financialConversionsState: "ready",
+        spendState: payload.financialSpendAvailable === false ? "unavailable" : "ready",
+        sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason });
+      const rawCurrent = String(targetRow?.currentValue ?? "").replace(/,/g, "").trim();
+      const current = Number(rawCurrent);
+      if (!consumer.eligible || !rawCurrent || !Number.isFinite(current)) {
+        unverifiedTargets.push({ name, detail: consumer.eligible ? "A required current value could not be verified." : consumer.detail,
+          unavailable: consumer.code === "unavailable" || !rawCurrent || !Number.isFinite(current) });
+        continue;
+      }
+      if (invalid) continue;
+      const period = resolveGA4InsightTargetPeriodCompatibility(targetRow);
+      if (!period.comparable) { incompatibleTargets.push(`${name} (${entityLabel === "KPI" ? "target" : "benchmark"} ${rawTarget})`); continue; }
+      const unit = String(targetRow?.unit || "").trim();
+      const formatValue = (value: number) => identity === "conversions" ? formatConversionCredit(value)
         : unit === "$" || unit.toUpperCase() === String(payload.currency || "").toUpperCase() ? payload.formatMoney(value)
-          : `${Number(value).toFixed(2)}${unit === "ratio" || unit === "x" ? "x" : unit ? ` ${unit}` : ""}`;
-    items.push({
-      severity: threshold.status === "behind" ? "high" : "medium",
-      title: `${String(benchmark?.name || benchmark?.metric || "Benchmark")}: ${threshold.status === "behind" ? "Behind Benchmark" : "Needs Attention"}`,
-      description: `Current ${formatValue(current)} vs Benchmark ${formatValue(target)}.`,
-      recommendation: "Review the campaign inputs behind this Benchmark before changing budget, creative, or landing pages.",
-      category: "targets",
-      dataBasis: "Freshly recomputed saved Benchmark",
-      confidence: "Medium",
-    });
+        : `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}${unit === "%" ? "%" : unit === "ratio" || unit === "x" ? "x" : ""}`;
+      if (entityLabel === "KPI") {
+        const lowerIsBetter = isLowerIsBetterKpi({ metric: targetRow?.metric, name: targetRow?.name });
+        const attainment = computeAttainmentPct({ current, target, lowerIsBetter });
+        const improvement = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
+        const priority = String(targetRow?.priority || "medium").trim().toLowerCase();
+        const history = payload.insightsKpiHistory?.get(String(targetRow.id)) || [];
+        const statusFor = (point: any) => computeProgress({ current: Number(point.value), target, lowerIsBetter }).status;
+        const streak = history.length && statusFor(history[0]) !== "on_track"
+          ? countGA4InsightsConsecutiveDays(history, (point: any) => point.recordedAt, (point: any) => statusFor(point) === statusFor(history[0])) : 0;
+        const recent = history.filter((point: any) => new Date(point.recordedAt).getTime() >= Date.now() - 30 * 86400000);
+        const earliest = Number(recent[recent.length - 1]?.value);
+        const pct = recent.length >= 2 && earliest !== 0 ? (Number(recent[0].value) - earliest) / Math.abs(earliest) * 100 : null;
+        const historyNote = `${streak > 1 ? ` Streak: ${streak} days.` : ""}${pct === null ? "" : Math.abs(pct) < 0.1 ? " Stable over recent period." : ` Trending ${pct > 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% over 30d.`}`;
+        const ch = payload.insightsChannelAnalysis;
+        const context = (identity === "conversions" || identity === "conversion_rate") && ch?.lowestCRChannel
+          ? ` "${ch.lowestCRChannel.label}" has the lowest conversion rate (${ch.lowestCRChannel.cr.toFixed(1)}%) among significant channels; check targeting and landing pages for this source first.`
+          : identity === "revenue" && ch?.topRevenueChannel ? ` "${ch.topRevenueChannel.label}" accounts for ${ch.topRevenueShare.toFixed(0)}% of native GA4 revenue in the imported 30-day window; check that channel first.`
+          : ["sessions", "users", "pageviews"].includes(String(identity)) && ch?.topSessionChannel ? ` "${ch.topSessionChannel.label}" accounts for ${ch.topSessionShare.toFixed(0)}% of sessions; check whether its volume or quality changed.` : "";
+        if (attainment !== null && attainment < 100) items.push({
+          severity: priority === "high" || priority === "critical" ? "high" : priority === "low" ? "info" : "medium",
+          title: `${name} ${lowerIsBetter ? "Above" : "Below"} Saved Target`,
+          description: `${period.currentWindow}: Current ${formatValue(current)} vs target ${formatValue(target)} (${attainment.toFixed(1)}% progress).${historyNote}`,
+          recommendation: "Review the traffic, conversion, revenue and spend inputs relevant to this KPI before changing campaign delivery." + context,
+          category: "targets", dataBasis: "Saved KPI target + current values", confidence: "Medium" });
+        if (improvement !== null && improvement >= 10) items.push({ severity: "positive", title: `${name} outperforms target by ${improvement.toFixed(0)}%`,
+          description: `${period.currentWindow}: Current ${formatValue(current)} vs target ${formatValue(target)}.`,
+          recommendation: "Review whether the target should be raised before changing budget allocation.",
+          category: "context", dataBasis: "Saved KPI target + current values", confidence: "Medium" });
+        continue;
+      }
+      const threshold = computeBenchmarkThresholdResult({
+        metric: targetRow?.metric,
+        name: targetRow?.name,
+        unit: targetRow?.unit,
+        current,
+        benchmarkValue: target,
+      });
+      if (threshold.status !== "behind" && threshold.status !== "needs_attention") continue;
+      const history = payload.insightsBenchmarkHistory?.get(String(targetRow.id)) || [];
+      const recent = history.slice(-3);
+      const improving = recent.length >= 2 && recent.every((point: any, index: number) => index === 0 || Number(point.variance) >= Number(recent[index - 1].variance));
+      const declining = recent.length >= 2 && recent.every((point: any, index: number) => index === 0 || Number(point.variance) <= Number(recent[index - 1].variance));
+      const average = history.length ? history.reduce((sum: number, point: any) => sum + Number(point.variance), 0) / history.length : 0;
+      const historyNote = `${history.length >= 2 ? ` Trend ${improving ? "improving" : declining ? "declining" : "neutral"}.` : ""}${average ? ` Avg variance ${average.toFixed(1)}%.` : ""}`;
+      const ch = payload.insightsChannelAnalysis;
+      const context = (identity === "conversions" || identity === "conversion_rate") && ch?.lowestCRChannel
+        ? ` "${ch.lowestCRChannel.label}" has the lowest conversion rate (${ch.lowestCRChannel.cr.toFixed(1)}%); check this source first.`
+        : identity === "revenue" && ch?.topRevenueChannel ? ` "${ch.topRevenueChannel.label}" accounts for ${ch.topRevenueShare.toFixed(0)}% of native GA4 revenue in the imported 30-day window; check changes there first.`
+        : identity !== "engagement_rate" && ch?.topSessionChannel ? ` Top traffic source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).` : "";
+      items.push({
+        severity: threshold.status === "behind" ? "high" : "medium",
+        title: `${name} ${threshold.status === "behind" ? "Behind Benchmark" : "Below Benchmark"}`,
+        description: `${period.currentWindow}: Current ${formatValue(current)} vs benchmark ${formatValue(target)} (${threshold.labelPct}% to benchmark).${historyNote}`,
+        recommendation: "Review the campaign inputs behind this Benchmark before changing budget, creative, or landing pages." + context,
+        category: "targets",
+        dataBasis: "Saved Benchmark + current values",
+        confidence: "Medium",
+      });
+    }
   }
+  if (incompatibleTargets.length > 0) items.push({ severity: "medium", title: "Target reporting periods need review",
+    description: `A matching reporting window cannot be verified for: ${incompatibleTargets.join(", ")}.`,
+    recommendation: "Compare each saved target only with a value calculated for the same reporting period.",
+    category: "setup", dataBasis: "Saved target period + current-value reporting window", confidence: "High" });
+  if (unverifiedTargets.length > 0) items.push({ severity: unverifiedTargets.some(item => item.unavailable) ? "high" : "medium",
+    title: `${unverifiedTargets.length} saved target evaluation${unverifiedTargets.length === 1 ? "" : "s"} withheld`,
+    description: `${Array.from(new Set(unverifiedTargets.map(item => item.detail))).join(" ")} Affected saved targets: ${unverifiedTargets.map(item => item.name).join(", ")}.`,
+    recommendation: "Resolve the stated data condition before using these targets for decisions.",
+    category: "setup", dataBasis: "Required source state + saved KPI/Benchmark configuration", confidence: "High" });
+  if (payload.insightsHistoryFailures?.length) items.push({ severity: "high", title: `${payload.insightsHistoryFailures.join(" and ")} trend history is unavailable`,
+    description: "The scoped analytics history request failed, so affected streak and trend context is withheld. Current target checks are shown separately.",
+    recommendation: "Retry the report after verifying access to the affected analytics history.", category: "setup", dataBasis: "Scoped KPI/Benchmark history", confidence: "High" });
+  const channel = payload.insightsChannelAnalysis;
+  if (rollups.last7.complete && channel?.channelCount >= 2 && channel.topSessionShare > 70) items.push({ severity: "info",
+    title: `Top channel: ${channel.topSessionChannel.label} (${channel.topSessionShare.toFixed(0)}% of sessions)`,
+    description: `${channel.topSessionChannel.label} supplied ${payload.formatNumber(channel.topSessionChannel.sessions)} sessions across ${channel.channelCount} channels in the imported 30-day window. Traffic is concentrated in this source.`,
+    recommendation: `Check whether changes to ${channel.topSessionChannel.label} explain the campaign's traffic movement before shifting spend to other sources.`,
+    category: "context", dataBasis: "Reconciled native GA4 channel data", confidence: "Medium" });
   if (items.length === 0) {
     items.push({
       severity: "info",
       title: "No findings from the report checks",
-      description: "No trend or Benchmark threshold was triggered by the available report inputs. This does not establish that every Insights check is clear.",
+      description: "No KPI, trend or Benchmark threshold was triggered by the available report inputs. This does not establish that every Insights check is clear.",
       recommendation: "Continue monitoring the main revenue, traffic, and conversion inputs for this campaign.",
       category: "context",
       dataBasis: "Current campaign data",
       confidence: "Medium",
     });
   }
-  return items;
+  const order = { high: 0, medium: 1, positive: 2, info: 2 };
+  const categoryOrder = { setup: 0, finance: 1, targets: 2, trends: 3, context: 4 };
+  return items.sort((a, b) => order[a.severity] - order[b.severity] || categoryOrder[a.category] - categoryOrder[b.category]);
 };
 
 const buildInsightsActionDescription = (availableDays: number) => {
   const days = Math.max(0, Number(availableDays || 0));
   const dayLabel = `${days} completed GA4 day${days === 1 ? "" : "s"}`;
   if (days < 6) {
-    return `Only ${dayLabel} available. Trend and anomaly checks need at least 6 days; financial setup and Benchmark checks still run.`;
+    return `Only ${dayLabel} available. Trend and anomaly checks need at least 6 days; financial setup and saved-target checks still run.`;
   }
   if (days < 14) {
     return `${dayLabel} available. Trend checks require consecutive recorded dates; a 7-day comparison needs two complete adjacent windows.`;
   }
-  return `${dayLabel} available. Comparisons are shown only for complete adjacent windows; missing dates are unavailable. Benchmark performance is checked separately.`;
+  return `${dayLabel} available. Comparisons are shown only for complete adjacent windows; missing dates are unavailable. KPI and Benchmark performance are checked separately.`;
 };
 
 async function buildGA4ReportPayload(report: any) {
@@ -478,7 +588,9 @@ async function buildGA4ReportPayload(report: any) {
   if (adComparisonRequirements.included && !adComparisonWindow) {
     throw new Error('GA4_AD_COMPARISON_IMPORT_WINDOW_UNAVAILABLE');
   }
-  const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);
+  const includesInsights = String(report?.reportType).toLowerCase() === "insights" ||
+    (String(report?.reportType).toLowerCase() === "custom" && normalizeCustomReportConfig(parseReportConfiguration(report?.configuration)).sections.insights);
+  const reportingWindow = getReportingDateWindow(includesInsights ? 60 : lookbackDays, (campaign as any)?.reportingTimeZone);
   const financialStartDate = reportCumulativeWindow.startDate;
   const financialEndDate = reportCumulativeWindow.endDate;
   const spendSourceStartDate = "1900-01-01";
@@ -943,7 +1055,60 @@ async function buildGA4ReportPayload(report: any) {
         Number(totals.reduce((sum: number, item: any) => sum + Number(item.revenue), 0).toFixed(2)) === Number(source.revenue) ? totals : []];
     })
   );
-  const insightsRollups = buildTrendRollups(dailyRows, reportingWindow.dataThroughDate);
+  const created = new Date((campaign as any)?.createdAt || "");
+  const createdParts = Number.isFinite(created.getTime()) ? Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: reportingWindow.reportingTimeZone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(created).map(part => [part.type, part.value])) : null;
+  const campaignHistoryStart = createdParts ? `${createdParts.year}-${createdParts.month}-${createdParts.day}` : "";
+  const insightsRollups = buildTrendRollups(dailyRows.filter((row: any) => campaignHistoryStart && String(row.date) >= campaignHistoryStart), reportingWindow.dataThroughDate);
+  const insightsKpiHistory = new Map<string, any[]>(), insightsBenchmarkHistory = new Map<string, any[]>();
+  const insightsHistoryFailures: string[] = [];
+  let insightsChannelAnalysis: any = null;
+  if (reportIncludesInsightsActions(report) && useSavedOverview && publishedFinancialInputs) {
+    const marker = buildGA4InsightsHistoryScopeMarker(propertyId, campaignFilter, reportingWindow.reportingTimeZone, campaignCurrency);
+    const failures = new Set<string>();
+    await Promise.all([
+      ...platformKPIs.map(async (target: any) => {
+        try {
+          const history = filterGA4InsightsHistoryByScope(await storage.getKPIProgress(target.id), marker)
+            .filter(point => point.kpiId === target.id && Number.isFinite(new Date(point.recordedAt).getTime()) && new Date(point.recordedAt).toISOString().slice(0, 10) <= dailyEnd && String(point.value ?? "").trim() !== "" && Number.isFinite(Number(point.value)));
+          insightsKpiHistory.set(String(target.id), history);
+        } catch { failures.add("KPI"); }
+      }),
+      ...benchmarks.map(async (target: any) => {
+        try {
+          const history = filterGA4InsightsHistoryByScope(await storage.getBenchmarkHistory(target.id), marker)
+            .filter(point => point.benchmarkId === target.id && Number.isFinite(new Date(point.recordedAt).getTime()) && new Date(point.recordedAt).toISOString().slice(0, 10) <= dailyEnd && String(point.variance ?? "").trim() !== "" && Number.isFinite(Number(point.variance)));
+          insightsBenchmarkHistory.set(String(target.id), history);
+        } catch { failures.add("Benchmark"); }
+      }),
+    ]);
+    insightsHistoryFailures.push(...["KPI", "Benchmark"].filter(label => failures.has(label)));
+    try {
+      const window = insightsRollups.last30;
+      const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, window.startDate!, propertyId, 2000, campaignFilter, window.endDate!, true, true, campaignCurrency);
+      const rows = filterGA4InsightsBreakdownRowsToImportedDates(breakdown.rows, dailyRows, window.startDate, window.endDate);
+      const channels = new Map<string, { label: string; sessions: number; conversions: number; revenue: number }>();
+      for (const row of rows) {
+        const label = `${String(row.source || "(direct)").trim()} / ${String(row.medium || "(none)").trim()}`;
+        const channel = channels.get(label) || { label, sessions: 0, conversions: 0, revenue: 0 };
+        for (const key of ["sessions", "conversions", "revenue"] as const) {
+          if (row[key] == null || !Number.isFinite(Number(row[key])) || (key !== "revenue" && Number(row[key]) < 0)) throw new Error("Unverified channel values");
+          channel[key] += Number(row[key]);
+        }
+        channels.set(label, channel);
+      }
+      const values = Array.from(channels.values());
+      const sessions = values.reduce((sum, row) => sum + row.sessions, 0), conversions = values.reduce((sum, row) => sum + row.conversions, 0), revenue = values.reduce((sum, row) => sum + row.revenue, 0);
+      if (String(breakdown.meta?.propertyId).replace(/^properties\//, "") === propertyId.replace(/^properties\//, "") && breakdown.meta?.currencyCode === campaignCurrency && sessions > 0 && sessions === window.sessions && conversionCreditsMatch(conversions, window.conversions, rows.length + dailyRows.length) && Math.abs(revenue - window.revenue) < 0.005) {
+        const topSessionChannel = [...values].sort((a, b) => b.sessions - a.sessions)[0];
+        const topRevenueChannel = revenue > 0 ? [...values].sort((a, b) => b.revenue - a.revenue)[0] : null;
+        insightsChannelAnalysis = { channelCount: values.length, topSessionChannel, topSessionShare: topSessionChannel.sessions / sessions * 100,
+          topRevenueChannel, topRevenueShare: topRevenueChannel ? topRevenueChannel.revenue / revenue * 100 : 0,
+          lowestCRChannel: selectUniqueLowestGA4InsightsConversionRateChannel(values.filter(row => row.sessions >= sessions * 0.05).map(row => ({ ...row, cr: row.conversions / row.sessions * 100 }))) };
+      }
+    } catch (error) { console.warn("[GA4 Scheduled PDF] Optional Insights channel context unavailable:", (error as Error)?.message); }
+  }
   const currency = String((campaign as any)?.currency || "USD");
   const formatMoney = (value: number) => `${currency} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatNumber = (value: number) => `${Math.round(Number(value || 0)).toLocaleString()}`;
@@ -963,6 +1128,7 @@ async function buildGA4ReportPayload(report: any) {
     spendDisplaySources,
     platformKPIs: Array.isArray(platformKPIs) ? platformKPIs.map(reportCurrentValue) : [],
     benchmarks: Array.isArray(benchmarks) ? benchmarks.map(reportCurrentValue) : [],
+    insightsCurrentValuesVerified: useSavedOverview && Boolean(publishedFinancialInputs),
     financialSpendAvailable: publishedFinancialInputs ? publishedFinancialInputs.spend.available : true,
     financialRevenue,
     financialSpend,
@@ -981,6 +1147,10 @@ async function buildGA4ReportPayload(report: any) {
     sourceRevenueBreakdowns,
     adComparisonSourceRevenueBreakdowns,
     insightsRollups,
+    insightsKpiHistory,
+    insightsBenchmarkHistory,
+    insightsHistoryFailures,
+    insightsChannelAnalysis,
     insightsFreshness: {
       dataThroughDate: reportingWindow.dataThroughDate,
       reportingTimeZone: reportingWindow.reportingTimeZone,
@@ -1602,18 +1772,23 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         }
         y += 3;
       }
-      const topInsights = payload.insightsItems.slice(0, 8);
+      const topInsights = payload.insightsItems.slice(0, 12);
       const groupedInsights = INSIGHT_CATEGORY_GROUPS.map((group) => ({
         ...group,
         items: topInsights.filter((item: any) => item.category === group.key),
       })).filter((group) => group.items.length > 0);
       for (const group of groupedInsights) {
         const firstItem = group.items[0];
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        const firstTitleLines = doc.splitTextToSize(String(firstItem?.title || ""), CW - 20) as string[];
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
         const firstMeta = [firstItem?.dataBasis ? `Basis: ${String(firstItem.dataBasis)}` : "", firstItem?.confidence ? `Confidence: ${String(firstItem.confidence)}` : ""].filter(Boolean).join(" | ");
         const firstMetaLines = firstMeta ? doc.splitTextToSize(firstMeta, CW - 20) as string[] : [];
         const firstDescriptionLines = doc.splitTextToSize(String(firstItem?.description || ""), CW - 20) as string[];
         const firstRecommendationLines = firstItem?.recommendation ? doc.splitTextToSize(`Recommended check: ${String(firstItem.recommendation || "")}`, CW - 20) as string[] : [];
-        const firstCardHeight = 18 + firstMetaLines.length * 4 + (firstMetaLines.length > 0 ? 2 : 0) + firstDescriptionLines.length * 4.5 + (firstRecommendationLines.length > 0 ? firstRecommendationLines.length * 4.5 + 4 : 0);
+        const firstCardHeight = 18 + Math.max(0, firstTitleLines.length - 1) * 4.5 + firstMetaLines.length * 4 + (firstMetaLines.length > 0 ? 2 : 0) + firstDescriptionLines.length * 4.5 + (firstRecommendationLines.length > 0 ? firstRecommendationLines.length * 4.5 + 4 : 0);
         checkPage(10 + firstCardHeight + 4);
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
@@ -1622,11 +1797,17 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         y += 6;
         for (const item of group.items) {
           const sevCol = item.severity === "high" ? COLORS.danger : item.severity === "positive" ? COLORS.success : item.severity === "medium" ? COLORS.warning : COLORS.info;
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "bold");
+          const titleLines = doc.splitTextToSize(String(item.title || ""), CW - 20) as string[];
+          const titleExtraHeight = Math.max(0, titleLines.length - 1) * 4.5;
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
           const lines = doc.splitTextToSize(String(item.description || ""), CW - 20) as string[];
           const meta = [item.dataBasis ? `Basis: ${String(item.dataBasis)}` : "", item.confidence ? `Confidence: ${String(item.confidence)}` : ""].filter(Boolean).join(" | ");
           const metaLines = meta ? doc.splitTextToSize(meta, CW - 20) as string[] : [];
           const recLines = item.recommendation ? doc.splitTextToSize(`Recommended check: ${String(item.recommendation || "")}`, CW - 20) as string[] : [];
-          const height = 18 + metaLines.length * 4 + (metaLines.length > 0 ? 2 : 0) + lines.length * 4.5 + (recLines.length > 0 ? recLines.length * 4.5 + 4 : 0);
+          const height = 18 + titleExtraHeight + metaLines.length * 4 + (metaLines.length > 0 ? 2 : 0) + lines.length * 4.5 + (recLines.length > 0 ? recLines.length * 4.5 + 4 : 0);
           checkPage(height + 4);
           doc.setFillColor(...COLORS.white);
           doc.setDrawColor(...COLORS.cardBorder);
@@ -1636,8 +1817,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(...COLORS.text);
-          doc.text(String(item.title || "").slice(0, 80), MX + 8, y + 8);
-          let lineY = y + 14;
+          titleLines.forEach((line, index) => doc.text(line, MX + 8, y + 8 + index * 4.5));
+          let lineY = y + 14 + titleExtraHeight;
           doc.setFontSize(8);
           doc.setFont("helvetica", "normal");
           doc.setTextColor(...COLORS.textSec);

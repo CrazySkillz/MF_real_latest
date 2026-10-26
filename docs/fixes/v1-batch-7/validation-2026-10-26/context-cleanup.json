@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-26T09:33:52.855Z",
+  "state": {
+    "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch4-sheets-pg",
+    "listen": "127.0.0.1",
+    "test_schemas": 0,
+    "test_sessions": 0
+  },
+  "stopped": true,
+  "productionAccessed": false
+}

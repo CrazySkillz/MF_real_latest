@@ -1,9 +1,12 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { jsPDF } from "jspdf";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { formatPct, normalizeRateToPercent, formatConversionCredit } from "../shared/metric-math";
+import * as targetMath from "../shared/kpi-math";
+import * as insightMath from "../shared/ga4-insights";
+import * as comparisonMath from "../shared/ga4-ad-comparison-cards";
 
 const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
 const start = page.indexOf("const downloadGA4Report = async");
@@ -28,6 +31,8 @@ function run(overrides: Record<string, any> = {}, configuration?: any, reportTyp
     spendSourcesError: false, spendToDateError: false, spendBreakdownError: false,
     spendSourceDefinitionsKnownEmpty: false, hasSpendSources: true,
     campaignBreakdownUnavailable: false, landingPagesUnavailable: false, conversionEventsUnavailable: false,
+    kpiAnalyticsQueries: [], benchmarkAnalyticsQueries: [], reportInsightsBreakdownLoading: false,
+    ga4InsightsDailyResp: { reportingTimeZone: "Europe/Amsterdam" }, ga4InsightsDailyError: false, trendsDataThroughDate: "2026-10-16",
     ...overrides,
   };
   const callback = new Function(...Object.keys(bindings), ts.transpileModule(body, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
@@ -52,6 +57,11 @@ describe("Browser GA4 report publication gate", () => {
   });
   it("keeps an empty saved KPI selection empty", async () => {
     await expect(run({ overviewFinancialSnapshot: null }, { sections: { kpis: true }, subsections: {}, selectedKpiIds: [], selectedBenchmarkIds: [] })).resolves.toBe("ready");
+  });
+  it.each(["kpiAnalyticsQueries", "benchmarkAnalyticsQueries", "reportInsightsBreakdownLoading"])("waits for %s before generating Insights actions", async key => {
+    const changes = { [key]: key.endsWith("Queries") ? [{ isLoading: true }] : true };
+    await expect(run(changes, undefined, "insights")).rejects.toThrow("Insights context is still loading");
+    await expect(run(changes, undefined, "overview")).resolves.toBe("ready");
   });
 });
 
@@ -101,7 +111,10 @@ describe("Browser Overview reports without a Spend source", () => {
     const drawn: { text: string; x: number; y: number; width: number; page: number }[] = [];
     const originalText = doc.text.bind(doc);
     const text = vi.spyOn(doc, "text").mockImplementation(((value: string, x: number, y: number, ...args: any[]) => {
-      if (typeof value === "string") drawn.push({ text: value, x, y, width: doc.getTextWidth(value), page: doc.getNumberOfPages() });
+      if (typeof value === "string") {
+        const width = doc.getTextWidth(value), alignment = args[0]?.align;
+        drawn.push({ text: value, x: x - (alignment === "right" ? width : alignment === "center" ? width / 2 : 0), y, width, page: doc.getNumberOfPages() });
+      }
       return (originalText as any)(value, x, y, ...args);
     }) as any);
     const save = vi.spyOn(doc, "save").mockReturnValue(doc);
@@ -129,6 +142,46 @@ describe("Browser Overview reports without a Spend source", () => {
     const words = text.mock.calls.map(call => call[0]);
     return Object.assign((label: string) => words[words.indexOf(label.toUpperCase()) + 1], { doc, drawn, words, content: words.flat().join(" ") });
   }
+  it("retains full long finding titles in an actual browser Insights PDF", async () => {
+    const title = "International expansion campaign sessions from qualified prospects across northern and southern European markets Below Saved Target";
+    const result = await render({
+      insights: [{ title, severity: "high", category: "targets", description: "Current 1,400 vs target 2,000. Streak: 3 days. Trending up 12.5% over 30d.", recommendation: "Review search / paid, which accounts for 80% of sessions.", dataBasis: "Saved KPI target + current values", confidence: "Medium" }],
+      insightsRollups: { availableDays: 14 }, insightsTrendMetric: "sessions", trendsDailyRows: [],
+      trendsDataThroughLabel: "Oct 16, 2026", trendsReportingTimeZoneLabel: "Europe/Amsterdam", trendsLastRefreshedLabel: "Oct 17, 2026",
+      insightsActionDescription: "Target and channel checks use scoped, completed data.",
+      INSIGHT_CATEGORY_GROUPS: [{ key: "targets", label: "Targets off track" }],
+    }, "custom", { sections: { insights: true }, subsections: { insights: { actions: true, summaryCards: false, trends: false, dataSummary: false } }, selectedKpiIds: [], selectedBenchmarkIds: [] });
+    expect(result.content.replace(/\s+/g, " ")).toContain(title);
+    for (const line of result.drawn.filter(line => line.y > 40)) expect(line.x + line.width).toBeLessThanOrEqual(198);
+    writeFileSync("docs/fixes/v1-batch-7/validation-2026-10-26/context-browser-insights.pdf", Buffer.from(result.doc.output("arraybuffer")));
+  });
+  it.each(["overview", "kpis", "benchmarks", "ads", "insights", "custom"])("renders actual browser %s content with mixed revenue and verified targets", async type => {
+    const target = { id: "k", name: "Revenue goal", metric: "revenue", currentValue: "65659.5", targetValue: "70000", benchmarkValue: "70000", unit: "EUR" };
+    const valueBindings = { ...targetMath, getLiveKpiValue: (row: any) => row.currentValue, getLiveBenchmarkCurrentValue: () => target.currentValue, stripNumberFormatting: String };
+    const ast = ts.createSourceFile("ga4-metrics.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const names = ["getKpiEffectiveTarget", "computeKpiProgress", "computeBenchmarkProgress"], declarations: string[] = [];
+    const visit = (node: ts.Node) => { if (ts.isVariableDeclaration(node) && names.includes(node.name.getText(ast))) declarations.push(`const ${node.getText(ast)};`); ts.forEachChild(node, visit); }; visit(ast);
+    const progress = new Function(...Object.keys(valueBindings), ts.transpileModule(declarations.join("\n") + `return { ${names.join(", ")} };`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(valueBindings));
+    const nativeRows = [{ name: "saved_campaign", sessions: 2977, users: 2978, conversions: 262, revenue: 65000, conversionRate: 8.8 }];
+    const rows = ["2026-10-15", "2026-10-16"].map(date => ({ date, sessions: 100, users: 80, conversions: 10, revenue: 100, pageviews: 200, engagedSessions: 50 }));
+    const rollups = insightMath.buildGA4InsightsRollups(rows, "2026-10-16");
+    const result = await render({ ...valueBindings, ...progress, ...comparisonMath, ...insightMath,
+      platformKPIs: [target], benchmarks: [target], kpiListState: "ready", kpiTracker: { total: 1, above: 0, near: 0, below: 1, scored: 1, avgPct: 93.8 }, benchmarkTracker: { total: 1, onTrack: 0, needsAttention: 1, behind: 0, avgPct: 93.8 },
+      getGA4KpiReportingWindowLabel: () => "Initial import through Oct 16, 2026", getKpiConsumerState: () => ({ eligible: true }), getBenchmarkConsumerState: () => ({ eligible: true }),
+      getMissingDependenciesForMetric: () => ({ missing: [] }), getBenchmarkDataSufficiency: () => ({ sufficient: true }), getBenchmarkDisplayCurrentValue: () => target.currentValue,
+      formatNumberByUnit: (value: string) => Number(value).toLocaleString("en-US"), formatBenchmarkValue: (value: string) => Number(value).toLocaleString("en-US"),
+      revenueSourceDisplayLabel: (source: any) => source.displayName || source.sourceType,
+      ga4RevenueForFinancials: 65000, revenueDisplaySources: [{ sourceId: "hubspot", sourceType: "hubspot", displayName: "HubSpot", revenue: 659.5 }], sourceRevenueBreakdowns: new Map(),
+      campaignBreakdownAgg: nativeRows, adComparisonBreakdownAgg: nativeRows, adComparisonMetric: "sessions", adComparisonBreakdownLoading: false, adComparisonBreakdownUnavailable: false, adComparisonBreakdownError: false, adComparisonRevenueState: "ready", materializedRevenueUnavailable: false, breakdownError: false,
+      adComparisonRevenueDisplaySources: [{ sourceId: "hubspot", sourceType: "hubspot", displayName: "HubSpot", revenue: 659.5 }], adComparisonSourceRevenueBreakdowns: new Map(),
+      insights: [], insightsRollups: rollups, trendsRollups: rollups, trendsDailyRows: rows, insightsTrendMetric: "sessions", insightsTrendMode: "daily", executiveFinancialsDescription: "Native GA4 revenue plus HubSpot revenue.",
+      trendsDataThroughLabel: "Oct 16, 2026", trendsReportingTimeZoneLabel: "Europe/Amsterdam", trendsLastRefreshedLabel: "Oct 17, 2026", spendSourceLabels: [], revenueSourceLabels: ["GA4", "HubSpot"], breakdownTotals: { sessions: 2977, conversions: 262 },
+      formatMoney: (value: number) => `EUR ${value.toFixed(2)}`, formatNumber: (value: number) => value.toLocaleString("en-US"),
+    }, type, { sections: { kpis: true, benchmarks: true }, subsections: { kpis: { items: true }, benchmarks: { items: true } }, selectedKpiIds: ["k"], selectedBenchmarkIds: ["k"] });
+    if (["kpis", "benchmarks", "custom"].includes(type)) { expect(result.content).toContain("65,659.5"); expect(result.content).toContain("70,000"); }
+    if (type === "overview" || type === "insights") expect(result.content).toContain("65,659.50");
+    if (type === "ads") { expect(result.content).toContain("65,000.00"); expect(result.content).toContain("659.50"); }
+  });
   it.each([0.75, 0.000075, 2])("prints observed conversion credit %s in a real browser PDF", async conversions => {
     const pdf = await render({ overviewSummaryTotals: { sessions: 2977, users: 2978, conversions },
       financialConversions: conversions, overviewFinancialConversions: conversions });

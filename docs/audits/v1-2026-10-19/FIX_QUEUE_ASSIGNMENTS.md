@@ -1,5 +1,11 @@
 # Finding-by-finding fix queue
 
+**October 26 report-context publication packet:** The user authorized committing/pushing the [555-check consolidated report packet](../../fixes/v1-batch-7/REPORT_CONTEXT_CHECKPOINT.md); source/test/PDF hashes match its evidence. Earlier uncommitted statements record validation time. Assignments, release counts and unverified deployment/live-acceptance gates remain unchanged.
+
+**October 26 consolidated report context packet, current:** [Exact scope and evidence](../../fixes/v1-batch-7/REPORT_CONTEXT_CHECKPOINT.md) records **555/555 checks in 39 files**, TypeScript and client/server builds, six offered GA4 report types, exact immutable artifact preservation, and seven inspected PDFs / 11 pages. Two runtime files change; uncommitted/undeployed. V1-085/V1-015 retain OPEN release status for documented live/coverage gates; assignment and release counts are unchanged. Earlier target-only evidence is historical.
+
+**October 26 scheduled Insights target checkpoint:** [Current report evidence](../../fixes/v1-batch-7/INSIGHTS_TARGET_CHECKPOINT.md) records **266/266 passing checks in 21 files**, TypeScript/server build, one runtime file changed, and no production access. Uncommitted/undeployed. V1-085's history/channel/complete negative-state work and V1-015's artifact/source-mix/live-delivery work remain open. No assignment, release count, deferred Batch 6 gate or whole-app decision changes.
+
 **October 26 retained pages/report publication packet:** User-authorized commit/push includes the [verified corrections and evidence](../../fixes/v1-batch-7/RETAINED_PAGES_AND_REPORT_CHECKPOINT.md). Earlier uncommitted statements describe validation time. No assignment, release-acceptance count or remaining V1-015/V1-085 gate changes; deployment/UI acceptance remains unverified.
 
 **October 26 retained pages/report checkpoint:** [Six additional Batch 7 corrections](../../fixes/v1-batch-7/RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) have local evidence: V1-061/062/064/086/129/130. **306/306 checks in 19 files pass, zero failed/skipped**. V1-085 is partially corrected and remains OPEN; V1-015 remains OPEN. Twenty-six findings have local forward-path evidence plus one user-approved local exclusion. Uncommitted/undeployed; assignments and all release-acceptance counts remain unchanged. Earlier checkpoint counts are historical.

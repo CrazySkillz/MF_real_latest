@@ -96,7 +96,7 @@ describe("GA4 Insights report parity", () => {
     expect(reportSection).toContain("Confidence: ${confidence}");
     expect(reportSection).toContain("Recommended check: ${rec}");
 
-    expect(scheduledSection).toContain("const topInsights = payload.insightsItems.slice(0, 8);");
+    expect(scheduledSection).toContain("const topInsights = payload.insightsItems.slice(0, 12);");
     expect(scheduledSection).toContain("+ ${payload.insightsItems.length - topInsights.length} more insights");
     expect(scheduledSection).toContain("Basis: ${String(item.dataBasis)}");
     expect(scheduledSection).toContain("Confidence: ${String(item.confidence)}");

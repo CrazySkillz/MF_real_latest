@@ -120,7 +120,9 @@ describe("GA4 Insights authentication and tenant scope", () => {
     const methodStart = storageSource.indexOf("async updateCampaignWithGA4DailyInvalidation");
     const methodEnd = storageSource.indexOf("async deleteCampaign", methodStart);
     const method = storageSource.slice(methodStart, methodEnd);
-    expect(method).toContain("return db.transaction(async (tx: any) =>");
+    expect(method).toContain("return this.writeGA4RefreshInputChange(id, async (tx: any) =>");
+    const transactionStart = storageSource.indexOf("private async writeGA4RefreshInputChange");
+    expect(storageSource.slice(transactionStart, transactionStart + 1100)).toContain("return db.transaction(async (tx: any) =>");
     expect(method).toContain("await tx.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, id))");
   });
 
@@ -294,7 +296,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(selectCustomer).not.toContain("storage.deleteGoogleAdsConnection");
     expect(selectCustomer).not.toContain("storage.deleteGoogleAdsDailyMetrics");
     expect(selectCustomer).toContain("if (!spendOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)");
-    expect(replaceConnection).toContain("db.transaction");
+    expect(replaceConnection).toContain("this.writeGA4RefreshInputChange(connection.campaignId, async (tx: any) =>");
     expect(replaceConnection).toContain("tx.delete(googleAdsConnections)");
     expect(replaceConnection).toContain("tx.delete(googleAdsDailyMetrics)");
     expect(replaceConnection).toContain("tx.insert(googleAdsConnections)");

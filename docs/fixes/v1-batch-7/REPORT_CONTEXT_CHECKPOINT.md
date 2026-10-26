@@ -1,0 +1,58 @@
+# Batch 7 consolidated report context checks — October 26, 2026
+
+**Publication packet, October 26:** The user authorized committing and pushing this reviewed packet. All two runtime-file hashes, 39 test-file hashes and seven current PDF hashes still match the 555-check/build evidence. Earlier uncommitted statements record validation time. Deployment, live acceptance and all documented release gates remain unverified/open.
+
+The local correction packet is ready for commit/review. **555/555 checks in 39 files, zero failures/skips; TypeScript, client and server builds pass.** This supersedes the narrower [target checkpoint](INSIGHTS_TARGET_CHECKPOINT.md) for current source/evidence hashes. It is uncommitted and undeployed. It is not production sign-off.
+
+## Confirmed causes and localized corrections
+
+Only two runtime files differ from `ec358757`: `server/ga4-scheduled-report-pdf.ts` and `client/src/pages/ga4-metrics.tsx`. The earlier target/financial corrections are included in this packet.
+
+| Confirmed boundary | Correction | Executed evidence |
+|---|---|---|
+| Scheduled Insights never read scoped KPI/Benchmark history or dated channel data. | Read history only from the campaign's selected GA4 targets, filter the existing property/filter/timezone/currency marker, retain valid completed timestamps and exact parent IDs, and use the existing adjacent-day/progress helpers. History failure gets an explicit finding while current targets remain evaluable. | Correct history, wrong property/filter/timezone/currency/parent, unmarked/future rows, gaps, duplicate dates and individual/combined read failures. |
+| Reports-tab downloads did not enable target-history queries and used cumulative Overview rows where dated Insights channels were required. | Enable existing history queries on Reports and add the existing read-only dated breakdown request there. Overview keeps its own cumulative rows. Pending context blocks Insights-actions download; failure is distinguished from pending. Failed cached history is withheld. | Actual query expressions, failed cached histories, all three pending preflight states, unchanged Overview preflight, actual complete browser PDF handler. |
+| Scheduled trend rows included days before campaign creation and used connection lookback instead of the Insights history window. | Use the existing 60-day reporting window for Insights and filter trend rows by campaign creation date in the reporting timezone. Cumulative financial/current-target inputs remain separate. | Amsterdam midnight boundary: October 15 at 23:30 UTC becomes October 16; only October 16–18 trend rows remain while EUR 1,400 cumulative revenue and 1,400 sessions remain unchanged. |
+| Channel context lacked the report-side reconciliation checks. | Same selected property/filter, read-only provider request, exact last-30-day window and recorded dates; compare currency, sessions, fractional conversions and native revenue before naming a channel. Preserve unique-lowest-CR tie handling. Zero/negative net native revenue produces no revenue-leading channel. | Wrong property/currency/date/window, missing/pending/failed reads, mismatched sessions/conversions/revenue, zero/negative revenue and tied CR. No imported revenue is allocated to channels. |
+| Browser finding titles were truncated at 70 characters. | Wrap the full title and account for its height in both card and group page placement. | The prior actual-PDF test fails; the corrected full title is present and within page bounds. Rendered page inspected. |
+
+## Exact read paths and downstream boundaries
+
+Browser: existing campaign/property target lists → existing authenticated `/api/kpis/:id/analytics` and `/api/benchmarks/:id/analytics` routes → scope-filtered storage history → query-state guards → Insights findings → `downloadGA4Report`. The new Reports channel request uses the existing campaign breakdown endpoint with `insightsChannelAttribution=1&readOnly=1`; it neither replaces nor changes the Overview request. The request's cache key includes campaign, property, window, currency and read-only mode.
+
+Scheduled: existing report campaign/primary-property selection and verified saved publication → `getPlatformKPIs` / `getPlatformBenchmarks` with exact campaign/platform → `getKPIProgress` ordered descending / `getBenchmarkHistory` ordered ascending → scope, parent, date and numeric checks → existing finding/PDF renderer. Empty matching history is not an error and does not block current target scoring. Optional channel failure withholds channel conclusions without replacing verified totals with zero. Overview/KPI/Benchmark-only reports do not perform these new context reads.
+
+Channel provider path: existing `getAcquisitionBreakdown`, selected campaign filter, normalized property, explicit currency, dated source/medium rows, read-only token behavior. Its existing pagination validates row count, duplicate dimension rows, changing counts, empty pages and the 100,000-row ceiling; the supplied 2,000 limit is page size, not a silently truncated report. Existing landing-UTM merge behavior remains unchanged. The report filters to recorded dates, groups by source/medium, and reconciles to native daily totals before using the result. No new allocation rule or source write is introduced.
+
+The report scheduler still calls the existing builder and refuses unsupported/unavailable output. Storage, schema, API routes, source import/delete/refresh jobs, target recompute jobs, notifications and email transport are unchanged. No persisted production data was inspected, rewritten or deleted. Existing inaccurate historical artifacts are not silently regenerated.
+
+## Current validation inventory
+
+| Inventory / lifecycle | Current evidence | Boundary of proof |
+|---|---|---|
+| Ten standard target metrics | Sessions, users, pageviews, fractional conversions, conversion/engagement rates, revenue, ROI, ROAS and CPA; aliases/direction/absolute goals/priority/invalid/custom-window and unverified-input controls. | Synthetic exact-code execution, not live-provider correctness or DOM interaction. |
+| Source totals | Native plus imported revenue; absent, zero, positive and negative spend/revenue; currency/materialization/publication mismatch; existing Shopify/source downstream tests. | Source mutation and scheduler implementations are unchanged; this packet does not recertify every source's provider lifecycle. |
+| Target add/edit/delete | Replaced and removed saved fixture rows alter the next report; old findings do not leak into subsequent builds. | Synthetic saved rows, not production CRUD. |
+| History/channel recommendations | Correct scope and order, adjacent-day streaks, recent change/variance, failure notices, reconciliation, concentration and tie controls. | Live token expiry, provider latency and actual provider response combinations remain unobserved. |
+| Browser negative states | Existing failed/empty/zero daily data, failed target lists, unavailable/stale financial inputs, pending publication, cached-history failure and channel mismatch tests; actual report preflight refuses incomplete required data. | Browser may retain last-good UI content while scheduled artifact creation fails closed. This intentional distinction is not byte-for-byte template parity. No real browser was accessed. |
+| All six offered GA4 report types | Overview, KPIs, Benchmarks, Ad Comparison (`ads`), Insights and Custom run through actual browser and scheduled PDF code. Browser fixture: EUR 65,000 native + EUR 659.50 HubSpot = EUR 65,659.50; saved goal EUR 70,000. Scheduled fixture: EUR 1,400 native + EUR 250 HubSpot = EUR 1,650, spend EUR 200, ROAS 8.25x, ROI 725%; unmapped Campaign Breakdown remains EUR 1,400. | Fixtures exercise current values and selection, not every possible Custom combination or arbitrarily large user text. Layout templates intentionally differ. |
+| Immutable history and delivery boundary | Six actual generated PDFs pass through the actual scheduler and storage/HTTP history paths in disposable PostgreSQL. Exact attachment bytes equal snapshot/download bytes after later report/source-adapter changes. Existing cross-platform authorization, absent artifacts, failed/pending delivery, duplicate send and scope mismatch cases pass (66 history tests). | Delivery is a controlled adapter. Provider acceptance, provider delivery events and actual inbox receipt have **not** been tested. |
+| Layout | Seven exported PDFs / 11 pages rendered and inspected; long browser title checked at full size. No changed committed PDF/PNG evidence. | Large consolidated configuration messages, arbitrary extreme names and live UI layout are not certified by these fixtures. |
+
+The consolidated packet includes 81 target/context tests and 71 browser-publication tests. The broad run found a pre-existing cross-consumer fixture that omitted `getGA4PublicationVersion`, causing the unchanged job to fail closed before computing values. Adding that mock restored 14 checks. The remaining Benchmark text test was updated for the current finding labels and a deliberately small target set so the expected medium-priority finding is inside the twelve-item summary; numeric expectations and invalid-percentage rejection remain asserted. Static channel/copy assertions follow the newly separate Reports input. No job/calculation code was changed to make these tests pass.
+
+## Evidence and reproducibility
+
+- [Final results](validation-2026-10-26/context-accepted.json): 555 passed, 0 failed, 0 skipped, 39 files.
+- [Build results](validation-2026-10-26/context-final-build-checks.json): TypeScript, client and server all exit 0.
+- [Rendered pages](validation-2026-10-26/context-contact.png) and [artifact hashes](validation-2026-10-26/context-render.json): seven synthetic PDFs, 11 pages.
+- [Cleanup](validation-2026-10-26/context-cleanup.json): no test schemas/sessions, exact owned loopback cluster stopped.
+- [Source/evidence manifest](validation-2026-10-26/context-evidence.json).
+
+Use `run-tests.cjs` with the 39 filenames in the final result, `--preserve-artifacts`, and `--local-pg` against the documented disposable cluster. Generate the scheduled matrix fixtures with `server/v1-batch7-insights-targets.test.ts` before a fresh immutable-history run; that test reads the six checked-in synthetic PDFs. The runner strips application credentials and blocks outbound networking. Render with `context-render.py` after the tests, then run the boundary-checking cleanup script. The earlier uncommitted target fixture was regenerated during investigation; its older artifact hash is historical, and this packet is the current artifact record. Committed historical evidence and user reports were not rewritten.
+
+## Release status and next action
+
+The consolidated local correction/review pass is complete for the traced cases above. **V1-085 and V1-015 remain OPEN for full release acceptance**, including current deployed UI/provider validation, complete live source/configuration coverage, extreme-content limits and confirmed email delivery. This is stronger local evidence, not a claim that all report surfaces or downstream paths are production-certified. Batch 7 finding/release counts and whole-app NO-GO remain unchanged; Batch 6 Google Ads sign-off remains explicitly postponed.
+
+Next: commit/push this reviewed packet, deploy once, then perform one combined authorized validation through GA4 → Reports: a current Insights download, one saved/scheduled report with matching downloaded PDF, and actual email receipt. No production/browser/email access was used or requested during this local pass.

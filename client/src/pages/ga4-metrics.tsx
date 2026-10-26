@@ -1812,7 +1812,7 @@ export default function GA4Metrics() {
   const kpiAnalyticsQueries = useQueries({
     queries: (Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => ({
       queryKey: ["/api/kpis", String(k?.id || ""), "analytics", "30d", selectedGA4PropertyId],
-      enabled: activeTab === "insights" && !!k?.id && !!selectedGA4PropertyId,
+      enabled: (activeTab === "insights" || activeTab === "reports") && !!k?.id && !!selectedGA4PropertyId,
       staleTime: 0,
       queryFn: async () => {
         const id = String(k?.id || "");
@@ -1827,7 +1827,7 @@ export default function GA4Metrics() {
   const benchmarkAnalyticsQueries = useQueries({
     queries: (Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => ({
       queryKey: ["/api/benchmarks", String(b?.id || ""), "analytics", selectedGA4PropertyId],
-      enabled: activeTab === "insights" && !!b?.id && !!selectedGA4PropertyId,
+      enabled: (activeTab === "insights" || activeTab === "reports") && !!b?.id && !!selectedGA4PropertyId,
       staleTime: 0,
       queryFn: async () => {
         const id = String(b?.id || "");
@@ -1845,7 +1845,7 @@ export default function GA4Metrics() {
       const k = (Array.isArray(platformKPIs) ? platformKPIs : [])[idx];
       const id = String((k as any)?.id || "");
       if (!id) return;
-      if (q?.data) map.set(id, q.data);
+      if (q?.data && !q.isError) map.set(id, q.data);
     });
     return map;
   }, [kpiAnalyticsQueries, platformKPIs]);
@@ -1856,7 +1856,7 @@ export default function GA4Metrics() {
       const b = (Array.isArray(benchmarks) ? benchmarks : [])[idx];
       const id = String((b as any)?.id || "");
       if (!id) return;
-      if (q?.data) map.set(id, q.data);
+      if (q?.data && !q.isError) map.set(id, q.data);
     });
     return map;
   }, [benchmarkAnalyticsQueries, benchmarks]);
@@ -2158,6 +2158,19 @@ export default function GA4Metrics() {
         throw new Error(json?.message || json?.error || "Failed to fetch GA4 breakdown");
       }
       return json as any;
+    },
+  });
+
+  // Reports need the same dated channel inputs as Insights, independently of cumulative Overview rows.
+  const { data: reportInsightsBreakdown, isLoading: reportInsightsBreakdownLoading, isError: reportInsightsBreakdownError } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", "30daysAgo", selectedGA4PropertyId, true, true, "", campaignCurrency],
+    enabled: activeTab === "reports" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    staleTime: 0,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-breakdown?dateRange=30daysAgo&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&insightsChannelAttribution=1&readOnly=1`);
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json || json?.success === false) throw new Error(json?.message || json?.error || "Failed to fetch GA4 breakdown");
+      return json;
     },
   });
 
@@ -3508,6 +3521,10 @@ export default function GA4Metrics() {
       if (!historyReady) {
         throw new Error("Cannot generate the Insights report until its completed-day history is available. Wait for Reports data to finish loading, then try again.");
       }
+      if ((reportType !== "custom" || customSubsections.insights?.actions) &&
+          (kpiAnalyticsQueries.some((query: any) => query.isLoading) || benchmarkAnalyticsQueries.some((query: any) => query.isLoading) || reportInsightsBreakdownLoading)) {
+        throw new Error("Insights context is still loading. Try downloading the report again when it finishes.");
+      }
     }
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
@@ -4474,6 +4491,9 @@ export default function GA4Metrics() {
           const rec = trunc(String((item as any)?.recommendation || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
           const recText = rec ? `Recommended check: ${rec}` : "";
 
+          doc.setFontSize(9); doc.setFont("helvetica", "bold");
+          const titleLines = wrapPdfText(title, CW - 60);
+          const titleExtraHeight = Math.max(0, titleLines.length - 1) * 4.5;
           doc.setFontSize(8); doc.setFont("helvetica", "normal");
           const metaLines = meta ? wrapPdfText(meta, insightCardTextWidth) : [];
           const descLines = desc ? wrapPdfText(desc, insightCardTextWidth) : [];
@@ -4481,7 +4501,7 @@ export default function GA4Metrics() {
           const metaL = metaLines.length;
           const descL = descLines.length;
           const recL = recLines.length;
-          const ch = 16 + metaL * 4 + (metaL > 0 ? 2 : 0) + descL * 4.5 + (recL > 0 ? recL * 4.5 + 4 : 0) + 4;
+          const ch = 16 + titleExtraHeight + metaL * 4 + (metaL > 0 ? 2 : 0) + descL * 4.5 + (recL > 0 ? recL * 4.5 + 4 : 0) + 4;
           checkPage(ch + 4);
 
           // Card
@@ -4504,8 +4524,8 @@ export default function GA4Metrics() {
 
           // Title
           doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-          doc.text(trunc(title, 70), MX + 8 + pillW + 4, y + 8);
-          let iy = y + 14;
+          titleLines.forEach((line, index) => doc.text(line, MX + 8 + pillW + 4, y + 8 + index * 4.5));
+          let iy = y + 14 + titleExtraHeight;
 
           // Evidence metadata
           if (metaL > 0) {
@@ -4528,12 +4548,15 @@ export default function GA4Metrics() {
         };
         for (const group of groupedTop) {
           const firstItem = group.items[0];
+          doc.setFontSize(9); doc.setFont("helvetica", "bold");
+          const firstTitleLines = wrapPdfText(String(firstItem?.title || ""), CW - 60);
+          doc.setFontSize(8); doc.setFont("helvetica", "normal");
           const firstMeta = [firstItem?.dataBasis ? `Basis: ${String(firstItem.dataBasis).trim()}` : "", firstItem?.confidence ? `Confidence: ${String(firstItem.confidence).trim()}` : ""].filter(Boolean).join(" | ");
           const firstMetaLines = firstMeta ? wrapPdfText(firstMeta, insightCardTextWidth) : [];
           const firstDescLines = wrapPdfText(trunc(String(firstItem?.description || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500), insightCardTextWidth);
           const firstRec = trunc(String(firstItem?.recommendation || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
           const firstRecLines = firstRec ? wrapPdfText(`Recommended check: ${firstRec}`, insightCardTextWidth) : [];
-          const firstCardHeight = 16 + firstMetaLines.length * 4 + (firstMetaLines.length > 0 ? 2 : 0) + firstDescLines.length * 4.5 + (firstRecLines.length > 0 ? firstRecLines.length * 4.5 + 4 : 0) + 4;
+          const firstCardHeight = 16 + Math.max(0, firstTitleLines.length - 1) * 4.5 + firstMetaLines.length * 4 + (firstMetaLines.length > 0 ? 2 : 0) + firstDescLines.length * 4.5 + (firstRecLines.length > 0 ? firstRecLines.length * 4.5 + 4 : 0) + 4;
           checkPage(10 + firstCardHeight + 4);
           doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(group.label, MX + 4, y);
@@ -5028,9 +5051,11 @@ export default function GA4Metrics() {
     (dataSummaryHistorySessions > 0 || dataSummaryHistoryConversions > 0 ||
       ga4InsightsTimeSeries.some((row) => row.date >= dataSummaryHistoryStartDate && row.date <= dataSummaryHistoryEndDate));
   // --- Channel analysis for data-driven recommendations ---
+  const insightsChannelBreakdown = activeTab === "reports" ? reportInsightsBreakdown : ga4Breakdown;
+  const insightsChannelPlaceholder = activeTab === "reports" ? false : breakdownPlaceholder;
   const channelAnalysis = useMemo(() => {
-    const breakdownRows = !breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
-    const rows = activeTab === "insights"
+    const breakdownRows = !insightsChannelPlaceholder && Array.isArray(insightsChannelBreakdown?.rows) ? insightsChannelBreakdown.rows : [];
+    const rows = activeTab === "insights" || activeTab === "reports"
       ? filterGA4InsightsBreakdownRowsToImportedDates(
           breakdownRows,
           ga4InsightsTimeSeries,
@@ -5071,7 +5096,7 @@ export default function GA4Metrics() {
       : 0;
 
     const byRevenueDesc = [...channels].sort((a, b) => b.revenue - a.revenue);
-    const topRevenueChannel = byRevenueDesc[0] || null;
+    const topRevenueChannel = totalRevenue > 0 ? byRevenueDesc[0] || null : null;
     const topRevenueShare = totalRevenue > 0 && topRevenueChannel
       ? (topRevenueChannel.revenue / totalRevenue * 100)
       : 0;
@@ -5097,17 +5122,20 @@ export default function GA4Metrics() {
       channelCount: channels.length,
       channels: bySessionsDesc,
     };
-  }, [activeTab, ga4Breakdown, breakdownPlaceholder, ga4InsightsTimeSeries, insightsDataSummaryTotals.startDate, insightsDataSummaryTotals.endDate]);
+  }, [activeTab, insightsChannelBreakdown, insightsChannelPlaceholder, ga4InsightsTimeSeries, insightsDataSummaryTotals.startDate, insightsDataSummaryTotals.endDate]);
 
   const insightsChannelBreakdownMatchesDaily =
     ga4InsightsDailyResp !== undefined &&
     channelAnalysis !== null &&
-    String((ga4Breakdown as any)?.startDate || "") === String(insightsDataSummaryTotals.startDate || "") &&
-    String((ga4Breakdown as any)?.endDate || "") === String(insightsDataSummaryTotals.endDate || "") &&
+    String((insightsChannelBreakdown as any)?.startDate || "") === String(insightsDataSummaryTotals.startDate || "") &&
+    String((insightsChannelBreakdown as any)?.endDate || "") === String(insightsDataSummaryTotals.endDate || "") &&
+    String((insightsChannelBreakdown as any)?.meta?.propertyId || "").replace(/^properties\//, "") === selectedGA4PropertyId.replace(/^properties\//, "") &&
+    String((insightsChannelBreakdown as any)?.meta?.currencyCode || "").toUpperCase() === campaignCurrency &&
     channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions &&
+    Math.abs(channelAnalysis.totalRevenue - insightsDataSummaryTotals.revenue) < 0.005 &&
     conversionCreditsMatch(channelAnalysis.totalConversions, insightsDataSummaryTotals.conversions, Math.max(1, ga4InsightsTimeSeries.length + channelAnalysis.channelCount));
   const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;
-  const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;
+  const recommendationChannelAnalysis = (activeTab === "reports" ? reportInsightsBreakdownError : breakdownError) ? null : dataSummaryChannelAnalysis;
   const insightsInitialLoading =
     activeTab === "insights" && (
       campaignLoading ||
@@ -5625,7 +5653,7 @@ export default function GA4Metrics() {
           if (isRevenue) {
             const base = "Check top channels for traffic or conversion drops; validate revenue tracking.";
             return ch?.topRevenueChannel
-              ? `${base} "${ch.topRevenueChannel.label}" accounts for ${ch.topRevenueShare.toFixed(0)}% of revenue; check that channel first.`
+              ? `${base} "${ch.topRevenueChannel.label}" accounts for ${ch.topRevenueShare.toFixed(0)}% of native GA4 revenue in the imported 30-day window; check that channel first.`
               : base;
           }
           if (isTraffic) {
@@ -5691,7 +5719,7 @@ export default function GA4Metrics() {
           if (isRevenue) {
             const base = "Review which channels may be underperforming before iterating targeting/creative.";
             return ch?.topRevenueChannel
-              ? `${base} "${ch.topRevenueChannel.label}" accounts for ${ch.topRevenueShare.toFixed(0)}% of revenue; check changes there first.`
+              ? `${base} "${ch.topRevenueChannel.label}" accounts for ${ch.topRevenueShare.toFixed(0)}% of native GA4 revenue in the imported 30-day window; check changes there first.`
               : base;
           }
           const base = "Review which channels/campaigns may be underperforming before iterating targeting/creative/landing page.";

@@ -26,6 +26,6 @@ describe("GA4 Insights Data Summary history window", () => {
     expect(section).not.toContain("Top Channel");
     expect(section).not.toContain("Channel Breakdown");
     expect(section).not.toContain("insights-data-summary-channel-unavailable");
-    expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
+    expect(page).toContain('const recommendationChannelAnalysis = (activeTab === "reports" ? reportInsightsBreakdownError : breakdownError) ? null : dataSummaryChannelAnalysis;');
   });
 });

@@ -39,9 +39,9 @@ describe("GA4 Insights findings completeness visibility", () => {
     expect(liveReport).toContain("items.length > top.length");
     expect(liveReport).toContain("+ ${items.length - top.length} more insights");
 
-    expect(pdf).toContain("return items;");
+    expect(pdf).toContain("return items.sort((a, b) => order[a.severity] - order[b.severity] || categoryOrder[a.category] - categoryOrder[b.category]);");
     expect(pdf).not.toContain("return items.slice(0, 8);");
-    expect(pdf).toContain("const topInsights = payload.insightsItems.slice(0, 8);");
+    expect(pdf).toContain("const topInsights = payload.insightsItems.slice(0, 12);");
     expect(pdf).toContain("payload.insightsItems.length > topInsights.length");
     expect(pdf).toContain("+ ${payload.insightsItems.length - topInsights.length} more insights");
     expect(pdf).toContain("items: topInsights.filter((item: any) => item.category === group.key)");

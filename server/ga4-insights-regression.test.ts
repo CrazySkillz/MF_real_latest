@@ -266,7 +266,7 @@ describe("GA4 Insights regression guard", () => {
 
     expect(insightsStart).toBeGreaterThan(-1);
     expect(insightsEnd).toBeGreaterThan(insightsStart);
-    expect(insightsSection).toContain('accounts for ${ch.topRevenueShare.toFixed(0)}% of revenue; check that channel first.');
+    expect(insightsSection).toContain('accounts for ${ch.topRevenueShare.toFixed(0)}% of native GA4 revenue in the imported 30-day window; check that channel first.');
     expect(insightsSection).toContain('accounts for ${ch.topSessionShare.toFixed(0)}% of sessions; check whether its volume or quality changed.');
     expect(insightsSection).toContain("Check top-performing channels before considering budget increases.");
     expect(insightsSection).toContain("Check which channels contributed to the increase before considering scaling.");
@@ -278,7 +278,7 @@ describe("GA4 Insights regression guard", () => {
     expect(insightsSection).not.toContain("Revenue momentum is strong.");
     expect(insightsSection).not.toContain("Performance is strong.");
     expect(insightsSection).not.toContain("This KPI is performing well.");
-    expect(pdfContent).toContain("Review source and medium mix for the largest acquisition-channel changes.");
+    expect(pdfContent).toContain("Verify the daily import and compare traffic sources and conversion paths before changing campaign delivery.");
     expect(pdfContent).not.toContain("dropped first");
   });
 
@@ -290,7 +290,7 @@ describe("GA4 Insights regression guard", () => {
     expect(content).toContain("channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions");
     expect(content).toContain("conversionCreditsMatch(channelAnalysis.totalConversions, insightsDataSummaryTotals.conversions, Math.max(1, ga4InsightsTimeSeries.length + channelAnalysis.channelCount))");
     expect(content).toContain("const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;");
-    expect(content).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
+    expect(content).toContain('const recommendationChannelAnalysis = (activeTab === "reports" ? reportInsightsBreakdownError : breakdownError) ? null : dataSummaryChannelAnalysis;');
     expect(content).not.toContain("dataSummaryHistoryChannelAnalysis");
     expect(content).not.toContain('data-testid="insights-summary-top-channel"');
     expect(content).not.toContain('data-testid="insights-summary-channel-row"');

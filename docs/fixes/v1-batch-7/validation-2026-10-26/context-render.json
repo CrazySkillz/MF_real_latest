@@ -1,0 +1,47 @@
+{
+  "synthetic": true,
+  "artifacts": [
+    {
+      "file": "context-scheduled-overview.pdf",
+      "pages": 2,
+      "sha256": "109e5ee1e3d0009c57df9c56b82be86c8d98ec9cdea13c44eeea4a801f185b80",
+      "characters": 866
+    },
+    {
+      "file": "context-scheduled-kpis.pdf",
+      "pages": 1,
+      "sha256": "20bd01da6f1dc30bf600bcdcf7198992344172eae67e9bc94a16a367894bbf31",
+      "characters": 271
+    },
+    {
+      "file": "context-scheduled-benchmarks.pdf",
+      "pages": 1,
+      "sha256": "a5ba753d6dac4ffe10f04df3dee517f00f776428b222318895312de0069e5787",
+      "characters": 270
+    },
+    {
+      "file": "context-scheduled-ads.pdf",
+      "pages": 1,
+      "sha256": "596efd9a541add3f65dfffcc0bcaadce3f5b64487116e9c84da0e37965570782",
+      "characters": 412
+    },
+    {
+      "file": "context-scheduled-insights.pdf",
+      "pages": 3,
+      "sha256": "af705e93722d4a980a3142f476f9f7f36f828471d6a9503d2dd742712bb916ef",
+      "characters": 2893
+    },
+    {
+      "file": "context-scheduled-custom.pdf",
+      "pages": 2,
+      "sha256": "f0b726f238fcbc63ccb3c436edb6048e7bbd5f84db0aaa10f41f989ed3d5f85f",
+      "characters": 1955
+    },
+    {
+      "file": "context-browser-insights.pdf",
+      "pages": 1,
+      "sha256": "2217187c46be262a8601bbc14195a58149d774da3c559c004cf45c2809e06f6a",
+      "characters": 676
+    }
+  ]
+}

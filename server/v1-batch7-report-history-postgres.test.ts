@@ -148,6 +148,25 @@ describe.skipIf(!testUrl)('Batch 7 immutable report history and mutation outcome
   });
   afterEach(() => vi.restoreAllMocks());
 
+  for (const reportType of ['overview', 'kpis', 'benchmarks', 'ads', 'insights', 'custom']) {
+    it(`GA4 ${reportType}: preserves the rendered mixed-source PDF through scheduled delivery and immutable download`, async () => {
+      const bytes = readFileSync(`docs/fixes/v1-batch-7/validation-2026-10-26/context-scheduled-${reportType}.pdf`);
+      expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+      buildPdf.mockResolvedValue(bytes);
+      const row = await report('google_analytics', { reportType, scheduleEnabled: true, scheduleRecipients: ['fixture@example.invalid'], status: 'active' });
+      const job = schedulerFixture(); await job.run();
+      expect(job.send).toHaveBeenCalledOnce();
+      expect(job.send.mock.calls[0][2].attachment.content).toEqual(bytes);
+      const [snapshot] = await database.current.select().from(schema.reportSnapshots);
+      expect(snapshot.reportId).toBe(row.id); expect(snapshot.reportType).toBe(reportType);
+      expect(readReportPdfArtifact(JSON.parse(snapshot.snapshotJson))).toEqual(bytes);
+      await storage.updatePlatformReport(row.id, { name: 'Changed source configuration', configuration: '{"changed":true}' });
+      buildPdf.mockResolvedValue(changedPdf);
+      expect((await api('GET', `/api/report-snapshots/${snapshot.id}/pdf`)).bytes).toEqual(bytes);
+      expect(buildPdf).toHaveBeenCalledOnce();
+    });
+  }
+
   for (const platform of platforms) {
     it(`${platform}: scheduled snapshot preserves the exact confirmed attachment`, async () => {
       const row = await report(platform, { scheduleEnabled: true, scheduleRecipients: ['fixture@example.invalid'], status: 'active' });

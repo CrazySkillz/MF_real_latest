@@ -1,0 +1,116 @@
+{
+  "at": "2026-10-26T08:51:21.079307+00:00",
+  "base": "ec358757",
+  "state": "uncommitted; undeployed",
+  "runtimeFiles": [
+    "server/ga4-scheduled-report-pdf.ts"
+  ],
+  "sourceHashes": {
+    "docs/fixes/v1-batch-7/validation-2026-10-26/run-tests.cjs": "d8626d5ab979f6c2a017316f35b387c44a5fdb551e4a5aca3f551d02fd8024bf",
+    "server/ga4-insights-auth-scope-regression.test.ts": "b7cf1a1a43cdd24d14d9efde9433a90102db17639e575aace35fbeb08081ed62",
+    "server/ga4-insights-findings-completeness-regression.test.ts": "c41607af243af36b542a69e22aabfe91cf3df9fc9ea325fc537ed8341b61f0cf",
+    "server/ga4-insights-live-production-regression.test.ts": "d8f0bca95d884947c3676a87af56c983e5acbc4a267a9445aeea095310254524",
+    "server/ga4-insights-regression.test.ts": "6fe843c0fa90c767f5bf089f5917aa3dc81ae39a182505ba8cb0c30cec1f4c33",
+    "server/ga4-insights-report-parity-regression.test.ts": "4a3e1b4e488803109e4a2eb792f2a218a1f54525634aec3dfcb7d404edfe5286",
+    "server/ga4-kpi-reporting-window-regression.test.ts": "e107b72ba5da2f8b445b9480c54c8fc2d385c6332b2ed731a7ed2712fb6de852",
+    "server/ga4-scheduled-report-pdf.ts": "5ccc488d475fc7b4ad18633286033a7035f35b659e976804050c10d84db540fe",
+    "server/v1-batch7-report-artifacts.test.ts": "28be0eed4de00e8bef0daecf1d22b85656a50a3e07f263b7f162b9a5c9d97717",
+    "server/v1-batch7-insights-targets.test.ts": "d6d1bcee8bff99dd9af2c5adff51dfbdea89a2929ed174e9afc75f8e81c9c6dd"
+  },
+  "validation": {
+    "file": "insights-verified.json",
+    "sha256": "0063c3ad6e1fd452c128e9026452b172efca28c32bc788cb4856b31a7b2068e0",
+    "total": 266,
+    "passed": 266,
+    "failed": 0,
+    "skipped": 0,
+    "files": 21
+  },
+  "baseline": {
+    "file": "insights-verified-baseline.json",
+    "sha256": "6a7ccbd0f1737886f13c9b4cb57e4b438e1efd445ae367f5c8e2601ebea42d2a",
+    "total": 39,
+    "passed": 2,
+    "failed": 37,
+    "skipped": 0,
+    "files": 1
+  },
+  "build": {
+    "file": "insights-verified-build-checks.json",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "insights-verified-typecheck.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "insights-verified-server-build.log"
+      }
+    ]
+  },
+  "unchangedFromBaselineLFHashes": {
+    "server/storage.ts": "37e6ccf9216c40fc6f9ba99a3ff231404f4a81d597c83f521cc07200e2c2ae12",
+    "server/ga4-kpi-benchmark-jobs.ts": "b4a3fb36dffc724a763e6afb32b4eec22c89d115ea9af271c59101a5263ea5aa",
+    "client/src/pages/ga4-metrics.tsx": "453fd9a018e9f1dd5a5c2351173f7c498cd2032fb6fa14cd11c03e836631a5e6",
+    "server/report-scheduler.ts": "97f2b12a074e3d1a473d567ac243d12be67e8a482f2f635196220884e1faea22",
+    "server/routes-oauth.ts": "4af1d0fb35a3a690bab84cfacee42a4f23abb2c12c32d0e1c1845549718a525f"
+  },
+  "artifacts": [
+    {
+      "file": "insights-targets-current-contact.png",
+      "sha256": "df2c457d7123f29df586a3e6e7e07eb8c16bcf0037f9c7b374b2b39528111d79",
+      "bytes": 153716
+    },
+    {
+      "file": "insights-targets-current-page-1.png",
+      "sha256": "5de04514d505d8888529e97aeb1270d462e81163e1d2f2194c50c69492eb47e5",
+      "bytes": 34982
+    },
+    {
+      "file": "insights-targets-current-page-2.png",
+      "sha256": "574243aa6ccad975e5076d25eccb7d18f6771e539cf14581fbd82c2a295a5988",
+      "bytes": 13867
+    },
+    {
+      "file": "insights-targets-current-page-3.png",
+      "sha256": "dc8502a4b4b58e78641dcbb881e8332ded925f9d90e2b1cf4871e8b6c4e4b844",
+      "bytes": 21994
+    },
+    {
+      "file": "insights-targets-current-page-4.png",
+      "sha256": "0d0ffaca8fb75504e81b7e502989a3fac4edeacd38164b7098c93d32d4e63ad2",
+      "bytes": 22755
+    },
+    {
+      "file": "insights-targets-current-page-5.png",
+      "sha256": "f2ab0866a653186f8fad492bfec09dcdec639d7020d927262c54395b51636e92",
+      "bytes": 16187
+    },
+    {
+      "file": "insights-targets-current.pdf",
+      "sha256": "f95724e1baf3bb76841aca7d8d0303f9610ff6cfa728dd1c9e69239a5e81ec4e",
+      "bytes": 80798
+    }
+  ],
+  "safety": {
+    "syntheticFixturesOnly": true,
+    "outboundNetworkingBlocked": true,
+    "applicationCredentialsRemoved": true,
+    "providerCalls": false,
+    "productionDatabaseAccess": false,
+    "realEmailSent": false,
+    "browserAccess": false,
+    "historicalArtifactsUnchanged": true
+  },
+  "scopeLimits": [
+    "Actual browser target loops are evaluated for eligible verified inputs; not a full browser state or DOM test.",
+    "Added/edited/deleted target rows are synthetic replacements, not real API/provider mutations.",
+    "Historical/channel recommendations and complete negative-state parity remain OPEN under V1-085.",
+    "Current browser/scheduled/immutable artifacts across all offered report/source mixes and confirmed real delivery remain OPEN under V1-015.",
+    "All 29 Batch 7 release acceptances and deferred Batch 6 Google Ads live sign-off remain open."
+  ]
+}

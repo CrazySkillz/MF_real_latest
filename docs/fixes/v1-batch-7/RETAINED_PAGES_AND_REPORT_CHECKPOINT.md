@@ -1,5 +1,9 @@
 # Retained pages and report checkpoint — October 26, 2026
 
+**Current continuation:** The subsequent [consolidated report context packet](REPORT_CONTEXT_CHECKPOINT.md) records 555 passing checks, browser/scheduled/history evidence and current limits. This document retains the earlier checkpoint's evidence and validation-time status.
+
+Subsequent work: the [scheduled Insights target checkpoint](INSIGHTS_TARGET_CHECKPOINT.md) supersedes the target/financial portion of the remaining V1-085 inventory below. Full V1-085/V1-015 and release acceptance remain open.
+
 **Publication packet:** The user subsequently authorized commit/push of this checkpoint. Tested source hashes still match the final evidence manifest. Uncommitted/undeployed statements below describe validation time; this publication does not establish deployment or UI acceptance. V1-015/V1-085 and the stated release gates remain OPEN.
 
 This checkpoint follows `eacb62fa`. It is uncommitted and undeployed. Six additional findings have local forward-path evidence: V1-061, V1-062, V1-064, V1-086, V1-129 and V1-130. V1-085 is partially corrected and remains OPEN; V1-015 remains OPEN. No whole-page, whole-source or production-readiness certification is made.

@@ -14,7 +14,8 @@ if (process.argv.includes('--local-pg')) Object.assign(environment, {
   V1_BATCH2_TEST_DATABASE_URL: 'postgresql://v1_audit@127.0.0.1:55444/notifications_test',
 });
 if (process.argv.includes('--baseline')) environment.V1_BATCH7_BASELINE = '1';
-const [label, ...files] = process.argv.slice(2).filter(value => value !== '--local-pg' && value !== '--baseline');
+if (process.argv.includes('--preserve-artifacts')) environment.V1_BATCH7_PRESERVE_ARTIFACTS = '1';
+const [label, ...files] = process.argv.slice(2).filter(value => value !== '--local-pg' && value !== '--baseline' && value !== '--preserve-artifacts');
 if (!/^[a-z0-9-]+$/.test(label || '') || !files.length) throw new Error('Supply a new result label and test files');
 const directory = __dirname;
 const fd = fs.openSync(path.join(directory, `${label}.log`), 'wx');

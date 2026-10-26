@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
+  getGA4PublicationVersion: vi.fn(),
   getCampaigns: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
@@ -60,6 +61,7 @@ describe("GA4 KPI authoritative reporting window", () => {
     vi.setSystemTime(new Date("2026-08-01T00:30:00.000Z"));
     for (const value of Object.values(storageMock)) value.mockReset();
     for (const value of Object.values(ga4ServiceMock)) value.mockReset();
+    storageMock.getGA4PublicationVersion.mockResolvedValue("fixture-publication");
 
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
@@ -161,13 +163,14 @@ describe("GA4 KPI authoritative reporting window", () => {
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
       "properties/123", "token", "2026-07-01", "2026-07-30", undefined, "USD",
     );
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("users", { currentValue: "200" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("sessions", { currentValue: "400" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("pageviews", { currentValue: "800" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("conversions", { currentValue: "40" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("conversion-rate", { currentValue: "10" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("engagement-rate", { currentValue: "65" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("cpa", { currentValue: "10" });
+    const publicationVersion = { campaignId: "campaign-1", version: "fixture-publication" };
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("users", { currentValue: "200", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("sessions", { currentValue: "400", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("pageviews", { currentValue: "800", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("conversions", { currentValue: "40", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("conversion-rate", { currentValue: "10", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("engagement-rate", { currentValue: "65", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("cpa", { currentValue: "10", publicationVersion });
     expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({
       recordedAt: new Date("2026-07-30T23:59:59.000Z"),
       notes: "auto:ga4_daily:2026-07-30;ga4_scope_v1:123:America%2FLos_Angeles:USD:%5B%5D",

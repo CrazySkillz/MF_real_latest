@@ -13,6 +13,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('new URLSearchParams(search).get("readOnly") === "1"');
     expect(page).toContain('insightsValidationReadOnly ? "&readOnly=1" : ""');
     expect(page.match(/insightsValidationReadOnly \? "&readOnly=1" : ""/g)?.length).toBe(2);
+    expect(page).toContain('&insightsChannelAttribution=1&readOnly=1`');
     expect(page).toContain('"ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly');
     expect(page).toContain('activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"');
     expect(page).toContain('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency]');
@@ -63,7 +64,7 @@ describe("live GA4 Insights production boundary", () => {
   it("reports exact rolling-window coverage instead of calling scattered rows complete days", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
 
-    expect(page).toContain("The campaign does not yet contain enough completed calendar days for both adjacent windows.");
+    expect(page).toContain("Recorded daily history does not cover both adjacent windows.");
     expect(page).not.toContain("Missing dates are not assumed to be zero.");
     expect(page).not.toContain("`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day");
     expect(page).not.toContain("completed GA4 day${availableDays");
@@ -90,14 +91,14 @@ describe("live GA4 Insights production boundary", () => {
     expect(page.indexOf('data-testid="insights-daily-chart-coverage"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
     expect(page).toContain('data-testid="insights-7d-chart-coverage"');
     expect(page.indexOf('data-testid="insights-7d-chart-coverage"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
-    expect(page).toContain("Each point totals 7 consecutive calendar days; no-activity dates count as 0.");
+    expect(page).toContain("Each point requires 7 recorded consecutive calendar days, including recorded zero values.");
     expect(page).toContain('data-testid="insights-monthly-comparison-note"');
     expect(page.indexOf('data-testid="insights-monthly-comparison-note"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
     expect(page).toContain("Monthly comparison requires two adjacent complete calendar months. Partial months are shown but not compared.");
     expect(page).toContain('data-testid="insights-trend-metric"');
-    expect(page).toContain("Missing stored dates are shown as 0.");
+    expect(page).toContain("Missing stored dates are unavailable; recorded zero values remain 0.");
     expect(page).toContain("value: row ? (isRate");
-    expect(page).toContain(": 0,");
+    expect(page).toContain(": null,");
     expect(page).toContain("connectNulls={false}");
     expect(page).not.toContain('connectNulls={insightsTrendMode === "daily"}');
     expect(page).toContain('dot={insightsTrendMode === "daily" ? { r: 3 } : chartData.length === 1 ? { r: 3 } : false}');
@@ -107,8 +108,9 @@ describe("live GA4 Insights production boundary", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
 
     expect(page).toContain("filterGA4InsightsBreakdownRowsToImportedDates(");
-    expect(page).toContain("}, [activeTab, ga4Breakdown, breakdownPlaceholder, ga4InsightsTimeSeries, insightsDataSummaryTotals.startDate, insightsDataSummaryTotals.endDate]);");
-    expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
+    expect(page).toContain("}, [activeTab, insightsChannelBreakdown, insightsChannelPlaceholder, ga4InsightsTimeSeries, insightsDataSummaryTotals.startDate, insightsDataSummaryTotals.endDate]);");
+    expect(page).toContain('const insightsChannelBreakdown = activeTab === "reports" ? reportInsightsBreakdown : ga4Breakdown;');
+    expect(page).toContain('const recommendationChannelAnalysis = (activeTab === "reports" ? reportInsightsBreakdownError : breakdownError) ? null : dataSummaryChannelAnalysis;');
     expect(page).toContain("const findingChannelAnalysis = recommendationChannelAnalysis &&");
     expect(page).toContain("findingRollups.last30.sessions === insightsDataSummaryTotals.sessions");
     expect(page).toContain("buildGA4InsightsRollups(findingsDailyRows, trendsDataThroughDate)");

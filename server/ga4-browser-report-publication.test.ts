@@ -17,6 +17,7 @@ const preflight = page.slice(start, end) + 'return "ready"; }; return downloadGA
 function run(overrides: Record<string, any> = {}, configuration?: any, reportType = "custom", body = preflight) {
   const bindings: Record<string, any> = {
     ga4PublicationDisplayPending: false, ga4PublicationDisplayFailed: false,
+    ga4InsightsContextFetching: 0, reportInsightsBreakdownError: false,
     ga4ReportForm: {}, normalizeCustomReportConfig: (value: any) => value, resolveGA4KpiMetricIdentity,
     campaignId: "campaign-a", campaign: { reportingTimeZone: "Europe/Amsterdam" }, campaignCurrency: "EUR", selectedGA4PropertyId: "123",
     normalizeClientReportingTimeZone: (value: string) => value,
@@ -44,6 +45,21 @@ describe("Browser GA4 report publication gate", () => {
     await expect(run({ [state]: true })).rejects.toThrow("latest displayed figures are still being checked");
   });
   it("accepts aligned figures", async () => { await expect(run()).resolves.toBe("ready"); });
+  it.each(["ads", "overview", "kpis", "benchmarks"])("does not block %s on pending or failed Insights-only inputs", async reportType => {
+    const changes = { ga4InsightsContextFetching: 1, ga4InsightsDailyError: true, reportInsightsBreakdownError: true,
+      adComparisonBreakdownLoading: false, adComparisonBreakdownUnavailable: false, adComparisonBreakdownError: false,
+      breakdownError: false, adComparisonRevenueState: "ready" };
+    await expect(run(changes, undefined, reportType)).resolves.toBe("ready");
+    await expect(run({ ...changes, ga4InsightsContextFetching: 0 }, undefined, reportType)).resolves.toBe("ready");
+  });
+  it("still blocks selected Insights context while pending or failed, including Custom reports", async () => {
+    for (const type of ["insights", "custom"]) {
+      const config = { sections: { insights: true }, subsections: { insights: { actions: true } } };
+      await expect(run({ ga4InsightsContextFetching: 1 }, config, type)).rejects.toThrow("Insights context is still loading");
+      await expect(run({ reportInsightsBreakdownError: true }, config, type)).rejects.toThrow("Insights channel data could not refresh");
+      await expect(run({ ga4InsightsDailyError: true }, config, type)).rejects.toThrow("completed-day history");
+    }
+  });
   it.each([
     { financialRevenue: 140 }, { financialConversions: 6 }, { financialSpend: 30 },
     { overviewFinancialSnapshot: null }, { overviewFinancialRefreshWarning: "Retained figures" },

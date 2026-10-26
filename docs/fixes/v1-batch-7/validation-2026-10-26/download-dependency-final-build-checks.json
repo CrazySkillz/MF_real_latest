@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-26T21:39:19.124Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "download-dependency-final-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "download-dependency-final-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "download-dependency-final-server-build.log"
+    }
+  ]
+}

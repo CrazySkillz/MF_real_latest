@@ -1,0 +1,299 @@
+{
+  "base": "e1b113d70bb54e58a5fc93d4ab8cc5a45372ed04",
+  "stateAtValidation": "local; deployment acceptance pending",
+  "rootCause": "Shared publication wait/error included unrelated Insights history and channel requests before report-specific preflight.",
+  "baseline": "download-dependency-baseline.json",
+  "runtime": {
+    "client/src/pages/ga4-metrics.tsx": "d5b322f399cff65da5a72cbaf6d9feb4803cc1fbc9aed42ae8261d71df4dd27f"
+  },
+  "unchangedFiles": {
+    "server/routes-oauth.ts": "0e7e13f7b7371b2be254472ccfc038df1285d0058956944263ea88a48025ef7f",
+    "server/storage.ts": "37e6ccf9216c40fc6f9ba99a3ff231404f4a81d597c83f521cc07200e2c2ae12",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96",
+    "server/report-scheduler.ts": "3b29cd9516d6a03795643720de83c64bf8c62a0d8695abc7b973ba5d74f70f37",
+    "server/ga4-daily-scheduler.ts": "868dbe834e9836e0a80274d5594c753956922d550a4614299b58324ca6007108",
+    "server/ga4-scheduled-report-pdf.ts": "7e3a561ab1c9f21fd87fd4db5b73a09a651f4759a7e0924427a274fa629e849d",
+    "client/src/pages/ga4-ad-comparison.tsx": "0d0b74d4a34a6c80d3e3315295b1ca0a8f7809b3c75992e8a1de5c20933eb8cf"
+  },
+  "passed": 710,
+  "failed": 0,
+  "skipped": 0,
+  "files": 46,
+  "tests": {
+    "server/custom-report-regression.test.ts": {
+      "passed": 45,
+      "sha256": "de10d7631b24179d35fe6956964469c0a0deb671809630d7a8355818fc088e02",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-ad-comparison-accumulation-regression.test.ts": {
+      "passed": 8,
+      "sha256": "cb6c7736e7f052aa2cf4e3dd5541e6246e2436169de6ade69c4714960961f34f",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-ad-comparison-card-logic.test.ts": {
+      "passed": 9,
+      "sha256": "6f00a39baee056d4bc4665eb1684c7b44c8f25b227beb5ec0d6752c891027f0d",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-ad-comparison-download-browser.test.ts": {
+      "passed": 2,
+      "sha256": "443d9929f945b52872884299fb4c1e3eb9dcf08b6a6596bebc7a98fe4dc2e854",
+      "evidence": "download-dependency-browser-final.json"
+    },
+    "server/ga4-ad-comparison-revenue-breakdown-pdf.test.ts": {
+      "passed": 3,
+      "sha256": "8e84cf397903d434455c3c9b01df2442612fecda768aca21a8b70c7b90e35f0b",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-ad-comparison-revenue-breakdown-render.test.ts": {
+      "passed": 9,
+      "sha256": "54971b22889c97f2cabb94143471fdfb4d37cd13435461e9566153076df01585",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-browser-publication-refresh.test.ts": {
+      "passed": 37,
+      "sha256": "57b445f8d073dc47eb2e3ae2bb3769715d9bd446e0d103b8dccde201b75defb9",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-browser-report-publication.test.ts": {
+      "passed": 96,
+      "sha256": "163e019371e21be6bd3f94525eea62a26f483fd352f47215f6db5a6c248842aa",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-anomaly-location-regression.test.ts": {
+      "passed": 1,
+      "sha256": "610d47ca0bf55fd5c6f941bccabf7eb33d7091db6c1554deef0d11f97d7d2580",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-auth-scope-regression.test.ts": {
+      "passed": 16,
+      "sha256": "b7cf1a1a43cdd24d14d9efde9433a90102db17639e575aace35fbeb08081ed62",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-certification-gate.test.ts": {
+      "passed": 11,
+      "sha256": "744126d2c9ff5fc5366435f7219e0fb230d0439f46d32a87aab779d296d96a23",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-copy-accuracy-regression.test.ts": {
+      "passed": 2,
+      "sha256": "db7aed5dbdac51e3d098f76d4c0bea632c46b8c9d544745373b4302a0d38e8d8",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-data-summary-accuracy-regression.test.ts": {
+      "passed": 3,
+      "sha256": "16c1b12ed193f7e8292d35857da8d6523bfd8cf4038f77c1c864df1c4fa5bc47",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-data-summary-empty-window.test.ts": {
+      "passed": 1,
+      "sha256": "3b058c2509ef8f6d92d252872a8b95a4c2d54193b81f9fd67e6963670b1a6e17",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-data-summary-history-window.test.ts": {
+      "passed": 1,
+      "sha256": "8c313b2ceeffde28f99d87137cee28c7e5aa43572a074e45c8cf63232d628086",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-data-summary-stale-warning.test.ts": {
+      "passed": 2,
+      "sha256": "8af220136e5b2adb696d961d738ad73c066688f7c43f67f7dc92519452d8051a",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-executive-financials.test.ts": {
+      "passed": 9,
+      "sha256": "5eca428512ee097498af67511a65f4218b9f438e4bf0274c32df379c96a2db81",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-findings-completeness-regression.test.ts": {
+      "passed": 2,
+      "sha256": "c41607af243af36b542a69e22aabfe91cf3df9fc9ea325fc537ed8341b61f0cf",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-findings-daily-failure.test.ts": {
+      "passed": 1,
+      "sha256": "bbdb1b522a7bbe83b77891b60799c876adcb25cfd263517ce3105dde3a24dd56",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-findings-spend-advice.test.ts": {
+      "passed": 1,
+      "sha256": "091b6b4685f9aff968f2787859607682a33406a3a6e4325bbd951a04cc4b64ea",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-findings-target-list-failure.test.ts": {
+      "passed": 1,
+      "sha256": "b3246e4a32cd45463d84e2f5dbe5e9508194f31fa7b256d84a3160f9f05c3abb",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-findings-verified-zero.test.ts": {
+      "passed": 1,
+      "sha256": "751ee6984b62b59a47fdb133127215c3d6a4ba66d0fa55badbb7b97f476654ef",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-live-production-regression.test.ts": {
+      "passed": 12,
+      "sha256": "fc6c0a94ee4750adf7b9e53aae02f255f7e6384afe27b79fa4540c15ccb8d9ab",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-production-path.test.ts": {
+      "passed": 22,
+      "sha256": "d708c2aa655f3072f20ac8c2a555bacf0c06d6a63b2a55166936f2c73e2d3828",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-regression.test.ts": {
+      "passed": 15,
+      "sha256": "e130765bec5e864e4bf8098faed574779d728d6674152bd1fd5f33391d9561a3",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-report-parity-regression.test.ts": {
+      "passed": 4,
+      "sha256": "4a3e1b4e488803109e4a2eb792f2a218a1f54525634aec3dfcb7d404edfe5286",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-scheduler-validation-regression.test.ts": {
+      "passed": 1,
+      "sha256": "1b9111f7d954032f2edc614fba613ab2fbc777d87f8969ea672d74b9db7e494c",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-snapshot-display.test.ts": {
+      "passed": 19,
+      "sha256": "6a6c7140ab7f93d8ea95b1be3091b638684c9dd6bf972f96673f8600531dc02e",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-trends-campaign-start.test.ts": {
+      "passed": 5,
+      "sha256": "49e40559d3990e12f9a589b14138289b0abb46f01d869f24f3789867626ec83e",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-trends-chart-regression.test.ts": {
+      "passed": 3,
+      "sha256": "7247404dfb95bd381d491dd75ff7e32e6117b2056329c4e0069e641592eb8b33",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-trends-coverage-route.test.ts": {
+      "passed": 11,
+      "sha256": "d358d4d6089152395866ef03d9f519d0ffdd65e4b3e0a1cf230b87e26b979baf",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-insights-trends-zero-days.test.ts": {
+      "passed": 8,
+      "sha256": "d4f79ed9944a51d0fca872daf599eca7e355b238039c1b7545f9b63783ebb284",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-kpi-real-path-parity-regression.test.ts": {
+      "passed": 52,
+      "sha256": "a174d0a3762cb3c2dfc1a4c09f0eb9f8c205ac3ccd1c1e4493dbcc18bbf20f84",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-kpi-report-consumer-regression.test.ts": {
+      "passed": 10,
+      "sha256": "faca10d8e4e6abe7ef01448e5e92c533983ac24e2f25c727199a57c742067dcf",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-kpi-reporting-window-regression.test.ts": {
+      "passed": 4,
+      "sha256": "e107b72ba5da2f8b445b9480c54c8fc2d385c6332b2ed731a7ed2712fb6de852",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-overview-conversion-events-scheduled-pdf.test.ts": {
+      "passed": 2,
+      "sha256": "7192825fcd5fd7a10ebd260ce6a160076b40344cbed900194673738a29b3d4b3",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-overview-landing-pages-scheduled-pdf.test.ts": {
+      "passed": 1,
+      "sha256": "a46fc0566c05eedd2076f4f11c4f4496580715009cc1c151c97de339f37a5350",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-publication-browser.test.ts": {
+      "passed": 1,
+      "sha256": "6084b057ba273f5bd69b6647bd6eebd236f0a68361647ecfb5ba9c49929101ab",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-report-attachment-filename.test.ts": {
+      "passed": 28,
+      "sha256": "40de66459d5dccacd629175c9913ed0fae6509fa821e758e3e4f0831db0379d6",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-report-saved-publication.test.ts": {
+      "passed": 48,
+      "sha256": "74862af90ac01c748e0a16de001a67173de650b421e348611029e1630fdc1189",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/ga4-ui-regression.test.ts": {
+      "passed": 49,
+      "sha256": "1ebe892c909d2db0ac850d8dfabe700cf60cfc28d8dd9f3dbbb8cf5d072df3be",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/report-email-regression.test.ts": {
+      "passed": 28,
+      "sha256": "bf7b37deb380fa67aea429eab237218ed409ec643b89f93d9b9eb41133008dfb",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/report-pdf-artifact.test.ts": {
+      "passed": 2,
+      "sha256": "6a9a2b70006846f0a44e9f0b2ab32f8386bf1a6171c388c13a678109c70609d7",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/shopify-downstream-content-regression.test.ts": {
+      "passed": 15,
+      "sha256": "7dddd20f103f00a708c1d7aa7c2c978eb2f24efa2f4160baa2ea793748932e07",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/v1-batch7-insights-targets.test.ts": {
+      "passed": 87,
+      "sha256": "eced0d175c6897ca6bbcc97f12cafaf6d29e1332a283c0bfde8448ce1583c180",
+      "evidence": "download-dependency-final.json"
+    },
+    "server/v1-batch7-report-artifacts.test.ts": {
+      "passed": 22,
+      "sha256": "e2bf7527ce749290d6c1eae16d206ede5f1dcf6788de065e8f3f15b199c8436d",
+      "evidence": "download-dependency-final.json"
+    }
+  },
+  "builds": {
+    "at": "2026-10-26T21:39:19.124Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "download-dependency-final-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "download-dependency-final-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "download-dependency-final-server-build.log"
+      }
+    ]
+  },
+  "browser": {
+    "personalBrowserAccess": false,
+    "normalPageMode": true,
+    "allRequestsIntercepted": true,
+    "downloadsPerContextCase": 5,
+    "cases": [
+      "pending/failed channel context",
+      "pending/failed 60-day history",
+      "selected Insights pending blocked",
+      "core daily/status failures blocked then recover",
+      "financial mismatch blocked then recovers"
+    ],
+    "expectedNative": 7653.96,
+    "expectedTotal": 8003.96
+  },
+  "historicalTrackedArtifactsUnchanged": true,
+  "limits": [
+    "Exact production pending/failed request was not observed.",
+    "First consolidated run had one 10-second download-event timeout; latest browser rerun uses 20 seconds and passes both cases.",
+    "Deployment and natural emailed artifact acceptance remain pending; no full production-readiness claim."
+  ]
+}

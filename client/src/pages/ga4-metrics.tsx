@@ -1894,7 +1894,11 @@ export default function GA4Metrics() {
   };
   const ga4PublicationReceipt = useRef({ scope: "", token: "", pending: false });
   const [ga4PublicationSync, setGA4PublicationSync] = useState({ scope: "", pending: false, failed: false });
-  const ga4PublicationFetching = useIsFetching({ predicate: query => query.queryKey[0] === "/api/campaigns" && isGA4PublicationQuery(query) });
+  const isGA4InsightsContextQuery = ({ queryKey: key }: { queryKey: readonly unknown[] }) =>
+    key[0] === "/api/campaigns" && key[1] === campaignId && key[4] === selectedGA4PropertyId &&
+    (key[2] === "ga4-insights-daily" || key[2] === "ga4-breakdown" && key[5] === true);
+  const ga4InsightsContextFetching = useIsFetching({ predicate: isGA4InsightsContextQuery });
+  const ga4PublicationFetching = useIsFetching({ predicate: query => query.queryKey[0] === "/api/campaigns" && isGA4PublicationQuery(query) && !isGA4InsightsContextQuery(query) });
   useEffect(() => {
     const token = ga4PublicationStatus?.publicationToken;
     if (!token || ga4PublicationStatusError || ga4PublicationStatus?.campaignId !== campaignId
@@ -1904,8 +1908,10 @@ export default function GA4Metrics() {
     const receipt = { scope: ga4PublicationScope, token, pending: true };
     ga4PublicationReceipt.current = receipt;
     setGA4PublicationSync({ scope: ga4PublicationScope, pending: true, failed: false });
+    // Insights context refreshes independently; it must not block unrelated report types.
+    void queryClient.invalidateQueries({ predicate: isGA4InsightsContextQuery });
     // Inactive tabs are marked stale; only mounted, enabled queries are fetched.
-    void queryClient.invalidateQueries({ predicate: isGA4PublicationQuery }, { throwOnError: true }).then(async () => {
+    void queryClient.invalidateQueries({ predicate: query => isGA4PublicationQuery(query) && !isGA4InsightsContextQuery(query) }, { throwOnError: true }).then(async () => {
       if (ga4PublicationReceipt.current !== receipt) return;
       const checked = await refetchGA4PublicationStatus();
       if (checked.isError || checked.data?.publicationToken !== token) throw new Error("GA4 publication changed while the page was refreshing");
@@ -3514,12 +3520,19 @@ export default function GA4Metrics() {
       }
     }
     if (sections.insights) {
+      if (ga4InsightsContextFetching > 0) {
+        throw new Error("Insights context is still loading. Try downloading the report again when it finishes.");
+      }
       const historyReady = ga4InsightsDailyResp !== undefined
         && !ga4InsightsDailyError
         && /^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate)
         && Boolean(String((ga4InsightsDailyResp as any)?.reportingTimeZone || "").trim());
       if (!historyReady) {
         throw new Error("Cannot generate the Insights report until its completed-day history is available. Wait for Reports data to finish loading, then try again.");
+      }
+      if ((reportType !== "custom" || customSubsections.insights?.actions) &&
+          reportInsightsBreakdownError) {
+        throw new Error("Insights channel data could not refresh. Please try the report again after it updates.");
       }
       if ((reportType !== "custom" || customSubsections.insights?.actions) &&
           (kpiAnalyticsQueries.some((query: any) => query.isLoading) || benchmarkAnalyticsQueries.some((query: any) => query.isLoading) || reportInsightsBreakdownLoading)) {

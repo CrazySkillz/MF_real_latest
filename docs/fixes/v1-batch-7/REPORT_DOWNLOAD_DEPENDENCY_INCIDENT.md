@@ -1,0 +1,31 @@
+# Report download dependency incident - October 26, 2026
+
+Base: `e1b113d70bb54e58a5fc93d4ab8cc5a45372ed04`. The user reported the same "latest displayed figures are still being checked" error after deployment. The prior 702-check packet proved numeric output and core-query recovery, but not pending/failed Insights inputs during a different report type. Deployed download acceptance is unverified; earlier passing tests are not evidence for this missing case.
+
+## Confirmed local root cause and exact path
+
+Reports mounts the 60-day `ga4-insights-daily` query and 30-day channel attribution query for Insights, alongside the data required for Ad Comparison. The shared `isGA4PublicationQuery` predicate includes both. `useIsFetching` therefore treats either pending request as a pending publication; the refresh effect also awaits both with `throwOnError: true`. One slow or failed Insights-only request can keep the global publication state pending/failed. `downloadGA4Report` checks that global state before its own report-type validation or PDF generation, so valid Ad Comparison amounts are rejected.
+
+The new [baseline](validation-2026-10-26/download-dependency-baseline.json) runs the normal page URL, not validation read-only mode, in a fresh isolated headless browser. All network requests are intercepted. It holds the Insights channel request pending while Overview and Ad Comparison both show EUR 8,003.96. The actual modal download fails before emitting a PDF; the page reports an update still pending. The baseline retains the observed request list. This confirms the defective dependency locally; the screenshot alone cannot identify which exact production request was pending/failed.
+
+The channel endpoint remains the existing campaign-access-guarded `/ga4-breakdown?insightsChannelAttribution=1` -> scoped GA4 service path. Its request is not an input to Ad Comparison's source table. Insights history uses the existing `/ga4-daily?days=60` read. Ad Comparison uses its separate campaign-scoped native breakdown plus existing financial/source reads. No source data is rewritten by this correction.
+
+## Smallest correction and propagation boundary
+
+Only `client/src/pages/ga4-metrics.tsx` changes at runtime (15 added / 2 removed lines). A local predicate identifies Insights history/channel queries by exact campaign and property. They are still invalidated on a new publication, with the same active/inactive query behavior, but refresh independently from the core receipt. Core reads and the final publication-token recheck still must succeed. Their failures, token changes and financial mismatches still block export.
+
+Insights and Custom reports containing Insights retain their own pending/history validation; selected Actions also reject a failed channel request with an accurate error. Other report types do not depend on those Insights-only requests. The existing saved-report Download and create-modal Generate & Download actions share this handler. No report saving/deleting/scheduling, API/storage/schema, attribution, source add/edit/delete/refresh, KPI/Benchmark calculations, scheduled PDF generation or email transport changes. The EUR 7,653.96 native / EUR 8,003.96 combined precision correction is unchanged.
+
+The same global state feeds page warnings and KPI input freshness. Separating Insights-only failures means a valid core publication is no longer marked failed solely because optional Insights context fails. Core failure/freshness paths remain. Insights query error/history guards remain separate. No production data cleanup is required because this bug prevents output before persistence.
+
+## Validation
+
+- Focused packet: **135 passing checks**, zero failures/skips. The first corrected run passed the actual stalled-request browser case; one coordinator mock still counted the old single invalidation and was corrected to defer the core branch, preserving the late-campaign-completion assertion.
+- Normal-page browser scenarios cover both channel and 60-day history requests pending and failed. Each scenario produces five actual PDF downloads: while unrelated context is pending, while it fails, after a failed core daily read recovers, after a failed status read recovers, and after financial alignment recovers. Every PDF contains EUR 7,653.96 native and EUR 8,003.96 combined, with EUR 250 and EUR 100 imports. Selecting Insights while its context is pending blocks download.
+- Coordinator tests prove an unresolved/rejected context promise does not block a successful core receipt, retained core data updates, and unrelated-campaign queries are excluded. Existing changed-token, failed-status, stale-data, retry and late-campaign-result tests remain.
+- Actual browser-handler tests cover standard Ad Comparison/Overview/KPI/Benchmark independence, selected Insights/Custom failure gates, and existing date/currency/source/financial guards.
+- Latest-per-file results: **710 passing checks across 46 files**, zero remaining failures/skips. The consolidated run recorded 709 passes and one 10-second browser download-event timeout with the report modal already closed. The application code did not change after that run. The event wait was extended to a bounded 20 seconds and download diagnostics were added; both normal-page browser scenarios then passed in `download-dependency-browser-final.json`. This is a combined current result, not a claim that the first consolidated run passed. TypeScript/client/server builds pass in `download-dependency-final-build-checks.json`. Historical PDF/PNG fixtures are preserved; freshly generated PDFs are asserted in memory. Exact hashes and the unique result inventory are in `download-dependency-validation.json`.
+
+## Remaining limits
+
+No personal browser, production account/database, or real email is accessed. The exact production failing request remains unobserved; the reproduced dependency is established by code and a failing-before/passing-after browser test. New deployed download acceptance and the natural emailed artifact remain pending. A core-data failure must still reject a report; this correction does not bypass it or certify every Reports/Batch 7 path.

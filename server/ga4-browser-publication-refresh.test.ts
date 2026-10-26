@@ -52,7 +52,7 @@ function browser(client = new QueryClient({ defaultOptions: { queries: { retry: 
   let completionResult: any;
   const block = page.slice(page.indexOf("  const ga4PublicationScope ="), page.indexOf("  const deriveBenchmarkCategoryFromMetric"));
   const render = (status: any = { campaignId: "a", propertyId: "123", publicationToken: "p1" }, error = false, campaignId = "a", property = "123") => {
-    const values = compile(block + "return { isGA4PublicationQuery, ga4PublicationDisplayPending, ga4PublicationDisplayFailed };", {
+    const values = compile(block + "return { isGA4PublicationQuery, isGA4InsightsContextQuery, ga4InsightsContextFetching, ga4PublicationDisplayPending, ga4PublicationDisplayFailed };", {
       campaignId, selectedGA4PropertyId: property, ga4ConnectionUsable: true, queryClient: client,
       platformKPIs: [{ id: "k-a" }], benchmarks: [{ id: "b-a" }],
       useQuery: (options: any) => { queryOptions = options; return { data: status, dataUpdatedAt: Date.now(), isError: error, refetch: async () => completionResult || ({ data: status, isError: error }) }; },
@@ -214,13 +214,38 @@ describe("GA4 browser publication coordination", () => {
   });
   it("does not let an old campaign's late completion replace the new campaign's receipt", async () => {
     const view = browser(); const pending = deferred();
-    const invalidate = vi.spyOn(view.client, "invalidateQueries").mockReturnValueOnce(pending.promise).mockResolvedValueOnce();
+    let coreRequests = 0;
+    const invalidate = vi.spyOn(view.client, "invalidateQueries").mockImplementation((_filters, options) =>
+      options?.throwOnError && ++coreRequests === 1 ? pending.promise : Promise.resolve());
     view.render().effect();
     view.render({ campaignId: "b", propertyId: "456", publicationToken: "p2" }, false, "b", "456").effect();
     await vi.waitFor(() => expect(view.receipt.current.pending).toBe(false));
     pending.resolve(undefined); await pending.promise; await Promise.resolve();
-    expect(invalidate).toHaveBeenCalledTimes(2); expect(view.receipt.current.scope).toBe(JSON.stringify(["b", "456"]));
+    expect(coreRequests).toBe(2); expect(view.receipt.current.scope).toBe(JSON.stringify(["b", "456"]));
     expect(view.state.scope).toBe(JSON.stringify(["b", "456"])); view.client.clear();
+  });
+  it.each([
+    ["ga4-insights-daily", 60, "123"], ["ga4-breakdown", "30daysAgo", "123", true, true, "", "EUR"],
+  ])("keeps pending/failed Insights context %j separate from core publication", async (...suffix) => {
+    const view = browser(), response = deferred();
+    const key = ["/api/campaigns", "a", ...suffix];
+    const core = ["/api/campaigns", "a", "ga4-daily", 30, "123"];
+    view.client.setQueryData(key, { retained: true }); view.client.setQueryData(core, { sessions: 1 });
+    const contextObserver = new QueryObserver(view.client, { queryKey: key, queryFn: () => response.promise });
+    const coreObserver = new QueryObserver(view.client, { queryKey: core, queryFn: async () => ({ sessions: 2 }) });
+    const stopContext = contextObserver.subscribe(() => {}), stopCore = coreObserver.subscribe(() => {});
+    try {
+      view.render().effect();
+      await vi.waitFor(() => expect(view.state.pending).toBe(false));
+      expect(view.render().ga4PublicationDisplayPending).toBe(false);
+      expect(view.render().ga4InsightsContextFetching).toBe(1);
+      expect(view.client.getQueryData(core)).toEqual({ sessions: 2 });
+      expect(view.render().isGA4InsightsContextQuery({ queryKey: core })).toBe(false);
+      expect(view.render().isGA4InsightsContextQuery({ queryKey: ["/api/campaigns", "other", ...suffix] })).toBe(false);
+      response.reject(new Error("Insights provider unavailable"));
+      await vi.waitFor(() => expect(view.client.getQueryState(key)?.status).toBe("error"));
+      expect(view.render().ga4PublicationDisplayFailed).toBe(false);
+    } finally { stopContext(); stopCore(); view.client.clear(); }
   });
   it("forwards cancellation and rejects mismatched status responses", async () => {
     const view = browser(); const signal = new AbortController().signal;

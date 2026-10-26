@@ -668,8 +668,7 @@ async function buildGA4ReportPayload(report: any) {
     const selectedCampaignNames = (Array.isArray(campaignFilter) ? campaignFilter : campaignFilter ? [campaignFilter] : [])
       .map((name) => String(name || "").trim()).filter(Boolean);
     const rows = mergeGA4OverviewCampaignRevenueRows((breakdownTraffic as any)?.rows, (nativeCampaignRevenueBreakdown as any)?.rows, selectedCampaignNames);
-    // The merge above validates campaign scope but rounds display rows; reconcile raw amounts.
-    const rowRevenue = Number(((nativeCampaignRevenueBreakdown as any)?.rows || []).reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2));
+    const rowRevenue = Number(rows.reduce((sum, row) => sum + Number(row?.revenue || 0), 0).toFixed(2));
     const providerRevenue = Number(Number((nativeCampaignRevenueBreakdown as any)?.totals?.revenue || 0).toFixed(2));
     // Keep Campaign Breakdown validation independent from protected report totals.
     if (Math.abs(rowRevenue - providerRevenue) >= 0.01) {
@@ -1027,7 +1026,7 @@ async function buildGA4ReportPayload(report: any) {
       const conversions = Number(row.conversions || 0);
       return {
         ...row,
-        revenue: Number(row.revenue || 0),
+        revenue,
         conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
       };
@@ -1653,13 +1652,12 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
     if (includeRevenueBreakdown) {
       y += 4;
-      const nativeRevenueTotal = Number(payload.adComparisonBreakdownAgg.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2));
       const revenueBreakdownRows: { label: string; amount: string; bold?: boolean }[] = [
-        { label: "GA4 Revenue (Imported to Date)", amount: formatMoney(nativeRevenueTotal) },
+        { label: "GA4 Revenue (Imported to Date)", amount: formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)) },
         ...payload.adComparisonRevenueDisplaySources.filter((source: any) => Number(source.revenue) !== 0).map((source: any) => (
             { label: String(source?.displayName || source?.sourceType || "Revenue"), amount: formatMoney(Number(source?.revenue)) }
           )),
-        { label: "TOTAL", amount: formatMoney(nativeRevenueTotal + payload.adComparisonRevenueDisplaySources.reduce((sum: number, source: any) => sum + Number(source.revenue), 0)), bold: true },
+        { label: "TOTAL", amount: formatMoney(Number(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2)) + payload.adComparisonRevenueDisplaySources.reduce((sum: number, source: any) => sum + Number(source.revenue), 0)), bold: true },
       ];
       const fullSectionHeight = 18 + 10 + revenueBreakdownRows.length * 8 + 4;
       if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) { addFooter(); doc.addPage(); paintPage(); y = 18; }

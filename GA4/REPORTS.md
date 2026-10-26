@@ -153,9 +153,6 @@ Current standard-template output rule:
 - browser and scheduled `Ad Comparison` PDFs show native import-to-date
   revenue, one row per nonzero contributing imported source, and a combined
   `TOTAL`; detailed source mappings remain in the source views
-- compute that native source total from full-precision campaign amounts, then
-  round once; keep individually rounded campaign displays separate. Scheduled
-  native-total reconciliation likewise compares full-precision scoped inputs.
 - browser and scheduled `Ad Comparison` paths fail closed when selected required
   inputs are unavailable
 - `Insights` should follow the live Insights order

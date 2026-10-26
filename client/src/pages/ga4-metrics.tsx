@@ -4133,11 +4133,10 @@ export default function GA4Metrics() {
 
         if (includeAdsRevenueBreakdown) {
           y += 4;
-          const nativeRevenueTotal = Number(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2));
           const breakdownRows: { label: string; amount: string; muted?: boolean; bold?: boolean }[] = [
             {
               label: "GA4 Revenue (Imported to Date)",
-              amount: fC(nativeRevenueTotal),
+              amount: fC(comparisonRows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)),
             },
             ...revenueDisplaySources.filter((source: any) => Number(source.revenue) !== 0).map((source: any) => (
                 {
@@ -4145,7 +4144,7 @@ export default function GA4Metrics() {
                   amount: fC(Number(source.revenue)),
                 }
               )),
-            { label: "TOTAL", amount: fC(nativeRevenueTotal + revenueDisplaySources.reduce((sum: number, source: any) => sum + Number(source.revenue), 0)), bold: true },
+            { label: "TOTAL", amount: fC(Number(comparisonRows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2)) + revenueDisplaySources.reduce((sum: number, source: any) => sum + Number(source.revenue), 0)), bold: true },
           ];
           const fullSectionHeight = 18 + 10 + breakdownRows.length * 8 + 4;
           if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
@@ -6136,8 +6135,7 @@ export default function GA4Metrics() {
       .filter((row) => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(row.name)))
       .map((row) => ({
         ...row,
-        // Source totals need full precision; individual campaign displays round separately.
-        revenue: Number(row.revenue || 0),
+        revenue: Number(Number(row.revenue || 0).toFixed(2)),
         conversionRate: row.sessions > 0 ? (row.conversions / row.sessions) * 100 : 0,
         revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
       }))

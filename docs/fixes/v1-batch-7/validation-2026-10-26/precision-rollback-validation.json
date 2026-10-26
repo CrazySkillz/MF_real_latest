@@ -1,0 +1,37 @@
+{
+    "verifiedAt":  "2026-10-26T20:38:40.8605701Z",
+    "revertedPrecisionCommit":  "bf9b47bcd5a244d5d52087d08b391094e53e3b47",
+    "restoredRuntimeRevision":  "5105795945a01c3a21abecb33d13b636bfb99249",
+    "runtimeGitBlobs":  {
+                            "client/src/pages/ga4-metrics.tsx":  "699cf00cc4bbb1fdb457075c77f1a6422d298d40",
+                            "server/ga4-scheduled-report-pdf.ts":  "530508988be565d541c2fa509789f62f97b11ab0"
+                        },
+    "passed":  693,
+    "failed":  0,
+    "skipped":  0,
+    "files":  44,
+    "tests":  "precision-rollback.json",
+    "builds":  [
+                   {
+                       "name":  "typecheck",
+                       "exitCode":  0,
+                       "error":  null,
+                       "log":  "precision-rollback-typecheck.log"
+                   },
+                   {
+                       "name":  "client-build",
+                       "exitCode":  0,
+                       "error":  null,
+                       "log":  "precision-rollback-client-build.log"
+                   },
+                   {
+                       "name":  "server-build",
+                       "exitCode":  0,
+                       "error":  null,
+                       "log":  "precision-rollback-server-build.log"
+                   }
+               ],
+    "historicalTrackedPdfPngUnchanged":  true,
+    "scope":  "User-requested rollback of native revenue precision changes; earlier report fixes retained; precision-specific tests restored to prior behavior; test artifact preservation retained.",
+    "limits":  "Known one-cent discrepancy restored temporarily. Live download recovery and underlying failed request remain unverified. No production data, accounts, browser, provider or email accessed. Replacement fix deferred."
+}

@@ -1,6 +1,4 @@
 import React from "react";
-import { readFileSync } from "node:fs";
-import ts from "typescript";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GA4AdComparison from "../client/src/pages/ga4-ad-comparison";
@@ -55,37 +53,6 @@ function renderRevenueBreakdown(
 }
 
 describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
-  it.each([
-    [1, "7653.96", "8003.96"], [-1, "-7653.96", "-7303.96"], [0, "0.00", "350.00"],
-  ])("sums full-precision selected campaign amounts before rounding (sign %s)", (sign, native, total) => {
-    const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
-    const start = page.indexOf("const adComparisonBreakdownAgg = useMemo(() => {");
-    const end = page.indexOf("const campaignBreakdownMatchedExternalRevenue", start);
-    expect(start).toBeGreaterThan(0); expect(end).toBeGreaterThan(start);
-    const rows = [
-      { campaign: "yesop_prospecting", revenue: 1700.2170965 * Number(sign), sessions: 173, users: 172, conversions: 9.5 },
-      { campaign: "yesop_prospecting", revenue: 1700.2170965 * Number(sign), sessions: 173, users: 172, conversions: 9.5 },
-      { campaign: "yesop_paid_social", revenue: 4253.52214 * Number(sign), sessions: 258, users: 258, conversions: 21 },
-      { campaign: "unselected_campaign", revenue: 999999, sessions: 1, users: 1, conversions: 1 },
-    ];
-    const before = JSON.stringify(rows);
-    const bindings = { useMemo: (fn: () => unknown) => fn(), adComparisonBreakdown: { rows }, adComparisonBreakdownPlaceholder: false,
-      importedGA4CampaignNames: new Set(["yesop_prospecting", "yesop_paid_social"]), normalizeCampaignKey: (name: string) => name.trim().toLowerCase() };
-    const aggregate = new Function(...Object.keys(bindings), ts.transpileModule(page.slice(start, end) + "return adComparisonBreakdownAgg;", {
-      compilerOptions: { target: ts.ScriptTarget.ES2022 },
-    }).outputText)(...Object.values(bindings));
-    const html = renderRevenueBreakdown("ready", [
-      { sourceId: "hubspot", displayName: "HubSpot", sourceType: "hubspot", revenue: 250 },
-      { sourceId: "salesforce", displayName: "Salesforce", sourceType: "salesforce", revenue: 100 },
-    ], nativeRows, aggregate);
-    expect(html).toContain(`$${native}`);
-    expect(html).toMatch(new RegExp(`TOTAL</td>\\s*<td[^>]*>\\$${String(total).replace(".", "\\.")}</td>`));
-    expect(aggregate.map((row: any) => row.name)).toEqual(["yesop_prospecting", "yesop_paid_social"]);
-    expect(aggregate[0]).toMatchObject({ sessions: 346, users: 344, conversions: 19 });
-    expect(JSON.stringify(rows)).toBe(before);
-    expect(html).not.toContain("unselected_campaign");
-  });
-
   it("keeps both retained subsections together without the retired table", () => {
     const html = renderRevenueBreakdown("ready", [], [
       { ...nativeRows[0], name: "campaign-a", sessions: 10, conversions: 2, conversionRate: 20 },

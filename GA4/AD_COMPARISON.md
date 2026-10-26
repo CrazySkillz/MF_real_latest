@@ -287,8 +287,6 @@ Rules:
   selected GA4 property and saved campaign values, using the saved initial-import
   boundary through the latest completed reporting day. It is not the Overview
   native Revenue & Financials amount when that section uses a different window.
-- retain full precision when aggregating native campaign revenue; round the native
-  source total once. Individual campaign display rounding must not feed this total.
 - active imported sources use the same campaign-scoped materialized revenue
   records as Overview Revenue & Financials. The `revenue-breakdown` API reads
   records from `1900-01-01` through the latest completed reporting day in the

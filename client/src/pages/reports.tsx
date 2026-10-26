@@ -2757,7 +2757,7 @@ export default function Reports() {
               </TabsContent>
             </Tabs>
             <AlertDialog open={!!reportPendingDelete} onOpenChange={(open) => !open && setReportPendingDelete(null)}>
-              <AlertDialogContent>
+              <AlertDialogContent data-campaign-report-dialog>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete report?</AlertDialogTitle>
                   <AlertDialogDescription>

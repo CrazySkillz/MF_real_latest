@@ -9296,7 +9296,7 @@ export default function GA4Metrics() {
                                         <Trash2 className="w-4 h-4" />
                                       </Button>
                                     </AlertDialogTrigger>
-                                    <AlertDialogContent>
+                                    <AlertDialogContent data-ga4-report-dialog>
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Delete Report</AlertDialogTitle>
                                         <AlertDialogDescription>

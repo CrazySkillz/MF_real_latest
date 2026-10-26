@@ -1,0 +1,75 @@
+{
+  "at": "2026-10-26T18:33:46.599810+00:00",
+  "base": "e4b976e2",
+  "state": "uncommitted; undeployed",
+  "rootCause": "Report delete confirmations lacked existing report markers. Radix added a 32px body margin on top of reserved root scrollbar gutters in the isolated fixture.",
+  "correction": "Two JSX attributes reuse existing scoped CSS; shared CSS/components and all callbacks unchanged.",
+  "runtimeFiles": {
+    "client/src/pages/ga4-metrics.tsx": "24170628a9672696765676390c4fb0f8fc30e42031a7098c08561b49fc859ec5",
+    "client/src/pages/reports.tsx": "d53319c3add6283367b2d2da22c1095b1fce780a73eec2e15a5d9fa69c6236e1"
+  },
+  "unchangedFiles": {
+    "client/src/index.css": "df891dc3a2f1c5ed4722f183d1f2aa8883a0459b5ab218d3a92196a4cdb2adce",
+    "client/src/components/ui/alert-dialog.tsx": "eaf24f8ccc1faa6ae744a673029d31bfa39315234899dd4d1451e8ea1f9113b1",
+    "server/routes-oauth.ts": "0e7e13f7b7371b2be254472ccfc038df1285d0058956944263ea88a48025ef7f",
+    "server/storage.ts": "37e6ccf9216c40fc6f9ba99a3ff231404f4a81d597c83f521cc07200e2c2ae12",
+    "server/report-scheduler.ts": "3b29cd9516d6a03795643720de83c64bf8c62a0d8695abc7b973ba5d74f70f37",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96"
+  },
+  "testFiles": {
+    "server/ga4-ui-regression.test.ts": "5173e73580f8da9b4bb2848ce1acc0ec900e8ee1242a67739904be2f485f6c57",
+    "server/custom-report-regression.test.ts": "de10d7631b24179d35fe6956964469c0a0deb671809630d7a8355818fc088e02"
+  },
+  "ui": {
+    "cases": 8,
+    "failures": 0,
+    "baselineWidthLossPx": 32,
+    "fixedWidthLossPx": 0,
+    "scenarios": [
+      "GA4 and Campaign Reports",
+      "Open/cancel",
+      "Confirm synthetic deletion",
+      "Synthetic failure retains report",
+      "Escape",
+      "Stable width/x/scrollY"
+    ]
+  },
+  "regression": {
+    "passed": 125,
+    "failedPreexisting": 3,
+    "skipped": 0,
+    "result": "report-delete-layout-regressions.json",
+    "baselineProof": "report-delete-layout-preexisting.json"
+  },
+  "builds": {
+    "at": "2026-10-26T18:30:27.248Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "report-delete-layout-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "report-delete-layout-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "report-delete-layout-server-build.log"
+      }
+    ]
+  },
+  "limits": [
+    "Actual confirmation JSX, Radix components and app CSS in a synthetic shell, not the deployed full page.",
+    "Delete callbacks synthetic; no backend requests or real records.",
+    "No personal browser/account access; external browser requests blocked.",
+    "Three unrelated pre-existing static-text failures retained.",
+    "Deployed visual acceptance unverified; no whole-section certification."
+  ]
+}

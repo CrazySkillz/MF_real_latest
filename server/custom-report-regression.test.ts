@@ -93,6 +93,7 @@ describe("campaign Custom Report regression guard", () => {
     const styles = readFileSync(join(process.cwd(), "client/src/index.css"), "utf-8");
 
     expect(reports).toContain("data-campaign-report-dialog");
+    expect(reports).toContain("<AlertDialogContent data-campaign-report-dialog>");
     expect(styles).toContain("body[data-scroll-locked]:has([data-campaign-report-dialog])");
   });
 

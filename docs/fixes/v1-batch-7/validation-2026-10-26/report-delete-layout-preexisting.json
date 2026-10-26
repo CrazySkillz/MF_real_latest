@@ -1,0 +1,24 @@
+{
+  "base": "e4b976e2",
+  "method": "Execute unchanged exact test callback bodies against HEAD and current sources, with strict assertion equivalents for toContain/not.toContain.",
+  "checks": [
+    {
+      "name": "does not render or export previous-property placeholder rows in Ad Comparison",
+      "baselineFailure": "Missing text: !breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows)",
+      "currentFailure": "Missing text: !breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows)",
+      "testBodyUnchanged": true
+    },
+    {
+      "name": "keeps GA4 Insights trend history requirements aligned to selected mode",
+      "baselineFailure": "Missing text: The campaign does not yet contain enough completed calendar days for both adjacent windows.",
+      "currentFailure": "Missing text: The campaign does not yet contain enough completed calendar days for both adjacent windows.",
+      "testBodyUnchanged": true
+    },
+    {
+      "name": "keeps GA4 Insights report exports aligned with Trends freshness metadata",
+      "baselineFailure": "Missing text: const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);",
+      "currentFailure": "Missing text: const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);",
+      "testBodyUnchanged": true
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "baseline": false,
+  "cases": [
+    {
+      "kind": "ga4",
+      "action": "cancel",
+      "before": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "opened": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "closed": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      }
+    },
+    {
+      "kind": "ga4",
+      "action": "delete",
+      "before": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "opened": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "closed": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      }
+    },
+    {
+      "kind": "ga4",
+      "action": "failure",
+      "before": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "opened": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "closed": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      }
+    },
+    {
+      "kind": "ga4",
+      "action": "escape",
+      "before": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "opened": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "closed": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      }
+    },
+    {
+      "kind": "campaign",
+      "action": "cancel",
+      "before": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "opened": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "closed": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      }
+    },
+    {
+      "kind": "campaign",
+      "action": "delete",
+      "before": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "opened": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "closed": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      }
+    },
+    {
+      "kind": "campaign",
+      "action": "failure",
+      "before": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "opened": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "closed": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      }
+    },
+    {
+      "kind": "campaign",
+      "action": "escape",
+      "before": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "opened": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      },
+      "closed": {
+        "x": 76,
+        "width": 1128,
+        "scrollY": 300,
+        "margin": "0px"
+      }
+    }
+  ],
+  "errors": []
+}

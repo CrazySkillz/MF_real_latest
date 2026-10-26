@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { jsPDF } from "jspdf";
@@ -153,7 +153,28 @@ describe("Browser Overview reports without a Spend source", () => {
     }, "custom", { sections: { insights: true }, subsections: { insights: { actions: true, summaryCards: false, trends: false, dataSummary: false } }, selectedKpiIds: [], selectedBenchmarkIds: [] });
     expect(result.content.replace(/\s+/g, " ")).toContain(title);
     for (const line of result.drawn.filter(line => line.y > 40)) expect(line.x + line.width).toBeLessThanOrEqual(198);
-    writeFileSync("docs/fixes/v1-batch-7/validation-2026-10-26/context-browser-insights.pdf", Buffer.from(result.doc.output("arraybuffer")));
+    const artifact = "docs/fixes/v1-batch-7/validation-2026-10-26/context-browser-insights.pdf";
+    if (!(process.env.V1_BATCH7_PRESERVE_ARTIFACTS && existsSync(artifact))) writeFileSync(artifact, Buffer.from(result.doc.output("arraybuffer")));
+  });
+  it("keeps the Trends title with its chart for the supplied three-day/no-spend layout", async () => {
+    const rows = ["2026-10-23", "2026-10-24", "2026-10-25"].map(date => ({ date, sessions: 0, conversions: 0, revenue: 0 }));
+    const rollups = insightMath.buildGA4InsightsRollups(rows, "2026-10-25");
+    const result = await render({ ...insightMath,
+      platformKPIs: [], financialRevenue: 8003.96, overviewFinancialRevenue: 8003.96,
+      financialConversions: 40, overviewFinancialConversions: 40, ga4RevenueForFinancials: 7653.96,
+      insights: [], insightsRollups: rollups, trendsRollups: rollups, trendsDailyRows: rows,
+      insightsTrendMetric: "sessions", insightsTrendMode: "daily", trendsDataThroughDate: "2026-10-25",
+      executiveFinancialsDescription: "Uses total revenue from GA4 native revenue, Salesforce (Opportunities), HubSpot (Deals); no spend source is connected.",
+      trendsDataThroughLabel: "Oct 25, 2026", trendsReportingTimeZoneLabel: "Amsterdam", trendsLastRefreshedLabel: "Oct 26, 2026, 04:38 AM GMT+1",
+      spendSourceLabels: [], revenueSourceLabels: ["GA4 native revenue", "Salesforce (Opportunities)", "HubSpot (Deals)"],
+      breakdownTotals: { sessions: 604, conversions: 40 }, formatMoney: (value: number) => `EUR ${value.toFixed(2)}`,
+      formatNumber: (value: number) => value.toLocaleString("en-US"),
+    }, "insights");
+    writeFileSync("docs/fixes/v1-batch-7/validation-2026-10-26/live-browser-three-day.pdf", Buffer.from(result.doc.output("arraybuffer")));
+    expect(result.drawn.find(box => box.text === "Trends")?.page).toBe(result.drawn.find(box => box.text === "Sessions · Daily")?.page);
+    expect(result("Revenue")).toBe("EUR 8,003.96");
+    expect(result("ROI")).toBe("—");
+    for (const box of result.drawn) { expect(box.x + box.width).toBeLessThanOrEqual(198); expect(box.y).toBeLessThanOrEqual(287); }
   });
   it.each(["overview", "kpis", "benchmarks", "ads", "insights", "custom"])("renders actual browser %s content with mixed revenue and verified targets", async type => {
     const target = { id: "k", name: "Revenue goal", metric: "revenue", currentValue: "65659.5", targetValue: "70000", benchmarkValue: "70000", unit: "EUR" };
@@ -348,5 +369,34 @@ describe("Insights financial recommendation input states", () => {
     for (const changes of [{ financialSpend: 30 }, { hasSpendSources: false }, { financialDailySnapshotError: true }]) expect(evaluate("spendKpiInputState", changes)).toBe("stale");
     expect(evaluate("spendKpiInputState", { financialDailySnapshotResp: undefined })).toBe("loading");
     expect(evaluate("spendKpiInputState", { overviewFinancialSpendAvailable: false, hasSpendSources: false, spendSourceDefinitionsKnownEmpty: true })).toBe("ready");
+  });
+});
+
+describe("Verified missing-spend configuration notice", () => {
+  const ast = ts.createSourceFile("ga4-metrics.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let branch = "", dependencyList = "";
+  function visit(node: ts.Node) {
+    if (ts.isIfStatement(node) && node.thenStatement.getText(ast).includes('id: "financial:spend_missing"')) branch = node.getText(ast);
+    if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "insights" && node.initializer && ts.isCallExpression(node.initializer)) dependencyList = node.initializer.arguments[1].getText(ast);
+    ts.forEachChild(node, visit);
+  }
+  visit(ast);
+  function findings(changes: Record<string, any> = {}) {
+    const args = { revenueKpiInputState: "stale", spendKpiInputState: "ready", revenueMetricAvailable: true, spendMetricAvailable: false,
+      spendSourcesError: false, spendSourceDefinitionsKnownEmpty: true, hasSpendSources: false,
+      overviewFinancialSpendAvailable: false, snapshotRevenueKpiInputState: "stale", ...changes };
+    return new Function(...Object.keys(args), ts.transpileModule(`const out = []; ${branch}; return out;`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(args));
+  }
+  it.each(["ready", "stale"])("reports verified absence with a %s saved Revenue value", state => {
+    expect(findings({ snapshotRevenueKpiInputState: state })).toHaveLength(1);
+  });
+  it.each([
+    { spendSourcesError: true }, { spendSourceDefinitionsKnownEmpty: false }, { hasSpendSources: true },
+    { overviewFinancialSpendAvailable: true }, { snapshotRevenueKpiInputState: "loading" }, { snapshotRevenueKpiInputState: "unavailable" },
+  ])("does not turn unknown, failed, connected, or mismatched data into missing configuration: %j", changes => {
+    expect(findings(changes)).toHaveLength(0);
+  });
+  it("re-evaluates the notice when its source configuration changes", () => {
+    for (const dependency of ["spendSourcesError", "spendSourceDefinitionsKnownEmpty", "hasSpendSources", "overviewFinancialSpendAvailable", "snapshotRevenueKpiInputState"]) expect(dependencyList).toContain(dependency);
   });
 });

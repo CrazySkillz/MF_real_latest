@@ -396,8 +396,10 @@ const buildInsightsItems = (payload: any) => {
       }
     }
   } else {
-    trend("info", "Trend signals need more history",
-      `Current 7-day window ${rollups.last7.startDate} to ${rollups.last7.endDate}: ${rollups.last7.days}/7 recorded days. Prior window: ${rollups.prior7.days}/7. Current 3-day window: ${rollups.last3.days}/3. Prior window: ${rollups.prior3.days}/3. Both adjacent calendar windows must be complete before comparisons run.`);
+    items.push({ severity: "info", title: "Trend signals need more history", category: "trends",
+      dataBasis: "GA4 recorded completed daily history; missing dates are unavailable", confidence: "High",
+      description: `Current 7-day window ${rollups.last7.startDate} to ${rollups.last7.endDate}: ${rollups.last7.days}/7 completed days. Prior 7-day window ${rollups.prior7.startDate} to ${rollups.prior7.endDate}: ${rollups.prior7.days}/7 completed days. Current 3-day window ${rollups.last3.startDate} to ${rollups.last3.endDate}: ${rollups.last3.days}/3 completed days. Prior window ${rollups.prior3.startDate} to ${rollups.prior3.endDate}: ${rollups.prior3.days}/3 completed days. Both adjacent calendar windows must be complete before comparisons run; ${rollups.availableDays} recorded campaign dates are available.`,
+      recommendation: "Check the daily refresh. Comparisons require recorded data for every day in both windows." });
   }
   const unverifiedTargets: Array<{ name: string; detail: string; unavailable: boolean }> = [];
   const incompatibleTargets: string[] = [];
@@ -1337,7 +1339,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       doc.line(innerX, py, innerX + innerW, py);
       doc.setFontSize(5.8);
       doc.setTextColor(...COLORS.textTert);
-      doc.text(formatNumber(tickValue), innerX - 2, py + 1.4, { align: "right" });
+      doc.text(tickValue.toLocaleString(undefined, { maximumFractionDigits: 1 }), innerX - 2, py + 1.4, { align: "right" });
     }
     doc.setDrawColor(100, 116, 139);
     doc.line(innerX, innerY + innerH, innerX + innerW, innerY + innerH);
@@ -1712,6 +1714,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["Spend", payload.financialSpendAvailable ? formatMoney(payload.financialSpend) : "Unavailable"],
         ["Profit", payload.financialSpendAvailable ? formatMoney(payload.financialRevenue - payload.financialSpend) : "Unavailable"],
         ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROI", payload.financialSpendAvailable && payload.financialSpend > 0 ? formatPct(payload.financialROI) : "—"],
         ["Days of Data", formatNumber(payload.insightsRollups.availableDays || 0)],
       ], 3);
     }

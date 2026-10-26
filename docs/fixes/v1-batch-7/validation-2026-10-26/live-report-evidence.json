@@ -1,0 +1,234 @@
+{
+  "at": "2026-10-26T14:32:56.560902+00:00",
+  "base": "3caf3e9c",
+  "state": "uncommitted; undeployed",
+  "runtimeFiles": {
+    "client/src/pages/ga4-metrics.tsx": "7997463403b34ac84040093d53cfd2698297a8e071cf1dc3f40d03a9df850502",
+    "server/ga4-scheduled-report-pdf.ts": "734294369c660de0ede635e23c0964e65151b39b4905bfd1e2a46be4bcc97d76"
+  },
+  "unchangedFromBaselineLFHashes": {
+    "server/storage.ts": "37e6ccf9216c40fc6f9ba99a3ff231404f4a81d597c83f521cc07200e2c2ae12",
+    "shared/schema.ts": "986b489bca21ef6c9994b4cdd5c0cfe45cfdaded156875606f94068b892e3225",
+    "server/routes-oauth.ts": "4af1d0fb35a3a690bab84cfacee42a4f23abb2c12c32d0e1c1845549718a525f",
+    "server/report-scheduler.ts": "97f2b12a074e3d1a473d567ac243d12be67e8a482f2f635196220884e1faea22",
+    "server/ga4-kpi-benchmark-jobs.ts": "b4a3fb36dffc724a763e6afb32b4eec22c89d115ea9af271c59101a5263ea5aa",
+    "server/ga4-daily-scheduler.ts": "a7cf8107dc0463e98a2cb9c370b01fc7c20528db24fcf88eb558893263923f2c",
+    "server/analytics.ts": "260103142975588eaf6737aab1c8d56d621b1c38ca720acefc699c50b3eeefd6"
+  },
+  "passed": 505,
+  "failed": 0,
+  "skipped": 0,
+  "tests": {
+    "ga4-ad-comparison-revenue-breakdown-pdf.test.ts": {
+      "sha256": "8e84cf397903d434455c3c9b01df2442612fecda768aca21a8b70c7b90e35f0b",
+      "passed": 3
+    },
+    "ga4-ad-comparison-revenue-breakdown-render.test.ts": {
+      "sha256": "cf87d020cca7b8c8b5985608f14ecdd65c9faec33f0d8fa1028a3709815b712e",
+      "passed": 6
+    },
+    "ga4-browser-report-publication.test.ts": {
+      "sha256": "f4927be75629b99022e14dd729621e204bb166808aa84fdd520c31258db8a48d",
+      "passed": 81
+    },
+    "ga4-insights-anomaly-location-regression.test.ts": {
+      "sha256": "610d47ca0bf55fd5c6f941bccabf7eb33d7091db6c1554deef0d11f97d7d2580",
+      "passed": 1
+    },
+    "ga4-insights-auth-scope-regression.test.ts": {
+      "sha256": "b7cf1a1a43cdd24d14d9efde9433a90102db17639e575aace35fbeb08081ed62",
+      "passed": 16
+    },
+    "ga4-insights-certification-gate.test.ts": {
+      "sha256": "744126d2c9ff5fc5366435f7219e0fb230d0439f46d32a87aab779d296d96a23",
+      "passed": 11
+    },
+    "ga4-insights-copy-accuracy-regression.test.ts": {
+      "sha256": "db7aed5dbdac51e3d098f76d4c0bea632c46b8c9d544745373b4302a0d38e8d8",
+      "passed": 2
+    },
+    "ga4-insights-data-summary-accuracy-regression.test.ts": {
+      "sha256": "16c1b12ed193f7e8292d35857da8d6523bfd8cf4038f77c1c864df1c4fa5bc47",
+      "passed": 3
+    },
+    "ga4-insights-data-summary-empty-window.test.ts": {
+      "sha256": "3b058c2509ef8f6d92d252872a8b95a4c2d54193b81f9fd67e6963670b1a6e17",
+      "passed": 1
+    },
+    "ga4-insights-data-summary-history-window.test.ts": {
+      "sha256": "8c313b2ceeffde28f99d87137cee28c7e5aa43572a074e45c8cf63232d628086",
+      "passed": 1
+    },
+    "ga4-insights-data-summary-stale-warning.test.ts": {
+      "sha256": "8af220136e5b2adb696d961d738ad73c066688f7c43f67f7dc92519452d8051a",
+      "passed": 2
+    },
+    "ga4-insights-executive-financials.test.ts": {
+      "sha256": "5eca428512ee097498af67511a65f4218b9f438e4bf0274c32df379c96a2db81",
+      "passed": 9
+    },
+    "ga4-insights-findings-completeness-regression.test.ts": {
+      "sha256": "c41607af243af36b542a69e22aabfe91cf3df9fc9ea325fc537ed8341b61f0cf",
+      "passed": 2
+    },
+    "ga4-insights-findings-daily-failure.test.ts": {
+      "sha256": "bbdb1b522a7bbe83b77891b60799c876adcb25cfd263517ce3105dde3a24dd56",
+      "passed": 1
+    },
+    "ga4-insights-findings-spend-advice.test.ts": {
+      "sha256": "091b6b4685f9aff968f2787859607682a33406a3a6e4325bbd951a04cc4b64ea",
+      "passed": 1
+    },
+    "ga4-insights-findings-target-list-failure.test.ts": {
+      "sha256": "b3246e4a32cd45463d84e2f5dbe5e9508194f31fa7b256d84a3160f9f05c3abb",
+      "passed": 1
+    },
+    "ga4-insights-findings-verified-zero.test.ts": {
+      "sha256": "751ee6984b62b59a47fdb133127215c3d6a4ba66d0fa55badbb7b97f476654ef",
+      "passed": 1
+    },
+    "ga4-insights-live-production-regression.test.ts": {
+      "sha256": "fc6c0a94ee4750adf7b9e53aae02f255f7e6384afe27b79fa4540c15ccb8d9ab",
+      "passed": 12
+    },
+    "ga4-insights-production-path.test.ts": {
+      "sha256": "d708c2aa655f3072f20ac8c2a555bacf0c06d6a63b2a55166936f2c73e2d3828",
+      "passed": 22
+    },
+    "ga4-insights-regression.test.ts": {
+      "sha256": "e130765bec5e864e4bf8098faed574779d728d6674152bd1fd5f33391d9561a3",
+      "passed": 15
+    },
+    "ga4-insights-report-parity-regression.test.ts": {
+      "sha256": "4a3e1b4e488803109e4a2eb792f2a218a1f54525634aec3dfcb7d404edfe5286",
+      "passed": 4
+    },
+    "ga4-insights-scheduler-validation-regression.test.ts": {
+      "sha256": "1b9111f7d954032f2edc614fba613ab2fbc777d87f8969ea672d74b9db7e494c",
+      "passed": 1
+    },
+    "ga4-insights-snapshot-display.test.ts": {
+      "sha256": "6a6c7140ab7f93d8ea95b1be3091b638684c9dd6bf972f96673f8600531dc02e",
+      "passed": 19
+    },
+    "ga4-insights-trends-campaign-start.test.ts": {
+      "sha256": "49e40559d3990e12f9a589b14138289b0abb46f01d869f24f3789867626ec83e",
+      "passed": 5
+    },
+    "ga4-insights-trends-chart-regression.test.ts": {
+      "sha256": "7247404dfb95bd381d491dd75ff7e32e6117b2056329c4e0069e641592eb8b33",
+      "passed": 3
+    },
+    "ga4-insights-trends-coverage-route.test.ts": {
+      "sha256": "d358d4d6089152395866ef03d9f519d0ffdd65e4b3e0a1cf230b87e26b979baf",
+      "passed": 11
+    },
+    "ga4-insights-trends-zero-days.test.ts": {
+      "sha256": "d4f79ed9944a51d0fca872daf599eca7e355b238039c1b7545f9b63783ebb284",
+      "passed": 8
+    },
+    "ga4-kpi-real-path-parity-regression.test.ts": {
+      "sha256": "a174d0a3762cb3c2dfc1a4c09f0eb9f8c205ac3ccd1c1e4493dbcc18bbf20f84",
+      "passed": 52
+    },
+    "ga4-kpi-report-consumer-regression.test.ts": {
+      "sha256": "faca10d8e4e6abe7ef01448e5e92c533983ac24e2f25c727199a57c742067dcf",
+      "passed": 10
+    },
+    "ga4-kpi-reporting-window-regression.test.ts": {
+      "sha256": "e107b72ba5da2f8b445b9480c54c8fc2d385c6332b2ed731a7ed2712fb6de852",
+      "passed": 4
+    },
+    "ga4-overview-conversion-events-scheduled-pdf.test.ts": {
+      "sha256": "7192825fcd5fd7a10ebd260ce6a160076b40344cbed900194673738a29b3d4b3",
+      "passed": 2
+    },
+    "ga4-overview-landing-pages-scheduled-pdf.test.ts": {
+      "sha256": "a46fc0566c05eedd2076f4f11c4f4496580715009cc1c151c97de339f37a5350",
+      "passed": 1
+    },
+    "ga4-report-saved-publication.test.ts": {
+      "sha256": "74862af90ac01c748e0a16de001a67173de650b421e348611029e1630fdc1189",
+      "passed": 48
+    },
+    "report-email-regression.test.ts": {
+      "sha256": "dbf4e09f5d19b1500f235fd76a7b66048da756b4cb53a24f43ce24e4b080fd58",
+      "passed": 28
+    },
+    "report-pdf-artifact.test.ts": {
+      "sha256": "6a9a2b70006846f0a44e9f0b2ab32f8386bf1a6171c388c13a678109c70609d7",
+      "passed": 2
+    },
+    "shopify-downstream-content-regression.test.ts": {
+      "sha256": "233bf3647146fc6f2e038067a298c5e13e909428d98f397e3fcd7a7baf3b3e00",
+      "passed": 15
+    },
+    "v1-batch7-insights-targets.test.ts": {
+      "sha256": "e3fb8c8350f07cdb781b11a0cc6e071f039aca21b49882b61813dd9ce1d657fb",
+      "passed": 87
+    },
+    "v1-batch7-report-artifacts.test.ts": {
+      "sha256": "28be0eed4de00e8bef0daecf1d22b85656a50a3e07f263b7f162b9a5c9d97717",
+      "passed": 14
+    }
+  },
+  "testResultsSha256": "41640f76e74f4e7fd5e75ffdce8ed7291c2c87535f1f264ab2a0ac2ae9d14d0e",
+  "builds": {
+    "at": "2026-10-26T14:28:31.725Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "live-report-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "live-report-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "live-report-server-build.log"
+      }
+    ]
+  },
+  "syntheticArtifacts": [
+    {
+      "file": "live-browser-three-day.pdf",
+      "pages": 2,
+      "sha256": "1f9ae2bc149fed29866afb303f90b3191fae9aa8e547194301076d39eae2ea8e"
+    },
+    {
+      "file": "live-scheduled-roi-0.pdf",
+      "pages": 3,
+      "sha256": "a40e478130111f50b52bd3bae0c76e791333391baa91cbddbfc746734e8fb7cd"
+    },
+    {
+      "file": "live-scheduled-roi-200.pdf",
+      "pages": 3,
+      "sha256": "4aada394f51ee52232cb3dbd104cd336e9995ea5eeb079724e203d00f8d1b908"
+    },
+    {
+      "file": "live-scheduled-roi-absent.pdf",
+      "pages": 3,
+      "sha256": "8bdcc8eb604377bd77070364c0a81e60b0676e449f0ab9da69a06a4ce837ff84"
+    },
+    {
+      "file": "live-scheduled-zero-trend.pdf",
+      "pages": 3,
+      "sha256": "8f1692133728c08cb38194ebbdfe591da07b219960e6c79c5e6a06b0ae079a89"
+    }
+  ],
+  "renderedPages": 14,
+  "boundaries": [
+    "No production data/provider/mailbox/browser access",
+    "No database integration rerun: storage and scheduling unchanged",
+    "Missing-spend stale-state suppression reproduced; the uploaded PDF does not preserve its historical query state",
+    "No whole-section or release sign-off; deployed recheck pending"
+  ]
+}

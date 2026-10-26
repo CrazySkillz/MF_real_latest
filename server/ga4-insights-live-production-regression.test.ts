@@ -174,7 +174,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('id: ga4ToDateResp === undefined ? "financial:ga4_to_date_unavailable" : "financial:ga4_to_date_stale"');
     expect(page).toContain('title: ga4ToDateResp === undefined ? "GA4 imported-window totals are unavailable" : "GA4 imported-window totals are stale"');
     expect(page).toContain('if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && !revenueMetricAvailable)');
-    expect(page).toContain('if (revenueKpiInputState === "ready" && spendKpiInputState === "ready" && revenueMetricAvailable && !spendMetricAvailable)');
+    expect(page).toContain('if (!spendSourcesError && spendSourceDefinitionsKnownEmpty && !hasSpendSources && !overviewFinancialSpendAvailable &&');
+    expect(page).toContain('["ready", "stale"].includes(snapshotRevenueKpiInputState)');
     expect(section).toContain('executiveRevenueAvailable && executiveSpendAvailable && overviewFinancialSpend <= 0 ? "—" : "Unavailable"');
   });
 

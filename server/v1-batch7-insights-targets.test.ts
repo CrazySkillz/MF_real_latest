@@ -107,7 +107,7 @@ async function render(file: string, type = "insights", configuration?: string) {
   boxes = [];
   const bytes = await pdf.buildGA4ScheduledPdfAttachment({ report, reportName: report.name, windowStart: fixture.connection.importStartDate, windowEnd: "2026-10-18", campaignName: fixture.campaign.name });
   expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
-  if (!process.env.V1_BATCH7_BASELINE && !(process.env.V1_BATCH7_PRESERVE_ARTIFACTS && file.startsWith("insights-") && existsSync(`${directory}/${file}.pdf`))) writeFileSync(`${directory}/${file}.pdf`, bytes);
+  if (!process.env.V1_BATCH7_BASELINE && !(process.env.V1_BATCH7_PRESERVE_ARTIFACTS && /^(insights|context)-/.test(file) && existsSync(`${directory}/${file}.pdf`))) writeFileSync(`${directory}/${file}.pdf`, bytes);
   return payload;
 }
 
@@ -120,6 +120,36 @@ function spend(value: number) {
 }
 const fresh = () => setFixture(rowsFor(14, date => row(date)));
 const titles = (payload: any) => payload.insightsItems.map((item: any) => item.title);
+describe("October 26 supplied report cases", () => {
+  it("matches the browser's missing-history confidence and recommended check", async () => {
+    setFixture(rowsFor(3, date => row(date, 0, 0, 0), date => row(date, 0, 0, 0)));
+    const item = (await pdf.buildGA4ReportPayload(report())).insightsItems.find((i: any) => i.title === "Trend signals need more history");
+    expect(item.confidence).toBe("High");
+    expect(item.recommendation).toBe("Check the daily refresh. Comparisons require recorded data for every day in both windows.");
+    expect(item.dataBasis).toBe("GA4 recorded completed daily history; missing dates are unavailable");
+    expect(item.description).toContain("3/3 completed days");
+    expect(item.description).toContain("0/3 completed days");
+  });
+  it.each([null, 0, 200])("prints the ROI card without inventing ROI when Spend is %s", async value => {
+    fresh(); if (value !== null) spend(value);
+    const payload = await render(`live-scheduled-roi-${value === null ? "absent" : value}`);
+    const index = boxes.findIndex(box => box.text === "ROI");
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(boxes[index + 1].text).toBe(value === 200 ? "600.0%" : "—");
+    expect(payload.financialRevenue).toBe(1400);
+    expect(payload.financialSpend).toBe(value ?? 0);
+  });
+  it("still rejects a negative source amount that does not reconcile with the publication", async () => {
+    fresh(); spend(-1);
+    await expect(pdf.buildGA4ReportPayload(report())).rejects.toThrow("Financial publication changed");
+  });
+  it("keeps fractional axis ticks distinct on a zero-activity chart", async () => {
+    setFixture(rowsFor(3, date => row(date, 0, 0, 0), date => row(date, 0, 0, 0)));
+    await render("live-scheduled-zero-trend");
+    const ticks = boxes.filter(box => Math.abs(box.right - 28) < 0.01 && /^\d+(\.\d+)?$/.test(box.text)).map(box => box.text);
+    expect(ticks).toEqual(["0", "0.3", "0.6", "0.9", "1.2"]);
+  });
+});
 function contextFixture() {
   fresh();
   fixture.kpis = [target("sessions", "2000")]; fixture.benchmarks = [target("users", "2000", { id: "benchmark-1" })];

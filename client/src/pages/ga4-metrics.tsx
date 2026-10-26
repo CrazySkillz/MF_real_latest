@@ -4286,8 +4286,9 @@ export default function GA4Metrics() {
         }
 
         if (trendChartData.length > 1) {
-          sectionTitle("Trends", C.insights);
+          doc.setFontSize(7); doc.setFont("helvetica", "normal");
           const trendNoteLines = wrapPdfText("Daily shows recorded values; missing dates are unavailable. 7d/30d require consecutive recorded days. Monthly comparisons require adjacent complete months.", CW - 8);
+          sectionTitle("Trends", C.insights, trendNoteLines.length * 4.5 + 77);
           checkPage(trendNoteLines.length * 4.5 + 77);
           doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
           for (const line of trendNoteLines) { doc.text(line, MX + 4, y); y += 4.5; }
@@ -5487,7 +5488,9 @@ export default function GA4Metrics() {
         recommendation: "Connect a GA4 revenue metric if available, or import revenue from HubSpot/Salesforce/Shopify/Sheets/CSV.",
       });
     }
-    if (revenueKpiInputState === "ready" && spendKpiInputState === "ready" && revenueMetricAvailable && !spendMetricAvailable) {
+    // Verified source absence is configuration, not a conclusion from stale financial performance.
+    if (!spendSourcesError && spendSourceDefinitionsKnownEmpty && !hasSpendSources && !overviewFinancialSpendAvailable &&
+        ["ready", "stale"].includes(snapshotRevenueKpiInputState)) {
       out.push({
         id: "financial:spend_missing",
         severity: "high",
@@ -6042,6 +6045,7 @@ export default function GA4Metrics() {
     benchmarkListState,
     insightsAnalyticsHistoryMatchesSelectedProperty,
     financialWindowDescription,
+    spendSourcesError, spendSourceDefinitionsKnownEmpty, hasSpendSources, overviewFinancialSpendAvailable,
   ]);
 
   const insightsActionDescription = useMemo(() => {

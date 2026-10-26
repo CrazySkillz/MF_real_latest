@@ -69,8 +69,8 @@ campaign. The campaign context and `Back to Campaign Overview` treatment is
 implemented for GA4, Campaign Diagnostics, Talk to Your Data, and campaign
 scoped Reports routes.
 
-`Dashboard`, `Audiences`, and `Reports` are not global sidebar items in the
-current implementation.
+`Audiences` and `Reports` are not global sidebar items in the current
+implementation. There is no separate Dashboard page or `/dashboard` route.
 
 ## Clients
 
@@ -96,7 +96,7 @@ Notifications in the background. This keeps loading content stable during the
 request; the wait time is the server-side cascade, not a UI transition timer.
 
 The registered `/clients` page is a retained alternate implementation that
-routes client selection to `/dashboard`; it is not linked by the current
+routes client selection to `/campaigns`; it is not linked by the current
 sidebar or primary client journey.
 
 ## Campaign Management
@@ -379,8 +379,7 @@ caller or are retained compatibility surfaces:
 
 | Route | Current classification |
 | --- | --- |
-| `/dashboard` | Retained Marketing Dashboard implementation; not linked from the sidebar and still marked for refinement. |
-| `/clients` | Alternate Clients implementation that routes selection to Dashboard; the primary Clients route is `/`. |
+| `/clients` | Alternate Clients implementation that routes selection to All Campaigns; the primary Clients route is `/`. |
 | `/campaigns/:id/platform-comparison` | Implemented page retained for compatibility; removed from current Campaign Diagnostics launchers and new report creation. |
 | `/campaigns/:id/kpis` | Registered standalone campaign KPI page; current alert deep links use GA4 KPI/Benchmark tabs instead. |
 | `/platforms/:platformType/kpis` | Registered standalone platform KPI page with no current navigation caller. |
@@ -401,10 +400,11 @@ restores a navigation entry and validates the resulting journey.
 3. Campaign Overview retains non-rendered KPI and Benchmark tab content without
    visible tab controls; onboarding should use the GA4 KPI and Benchmark tabs.
 4. Talk to Your Data is a placeholder, not an interactive feature.
-5. Dashboard and Audiences are registered but absent from the primary
-   navigation.
-6. The unused `WelcomePage` component still previews Dashboard, while
-   `/welcome` currently renders the Clients page.
+5. Audiences is registered but absent from the primary navigation.
+6. `/welcome` currently renders the Clients page. The separate Dashboard page,
+   its route and its unused welcome preview were removed on October 26, 2026;
+   `/dashboard` now reaches the existing not-found fallback for signed-in
+   users with a client. Campaign records were not removed.
 7. Campaign Diagnostics browser and scheduled PDFs use the new branded shell,
    but some generated section text still retains older labels such as `Key
    Outcomes`, `Financial Position`, and `7-Day Snapshot Trajectory`. Those are

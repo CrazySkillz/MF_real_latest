@@ -3,7 +3,7 @@ import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import CreateClientModal from "@/components/modals/create-client-modal";
 import { Button } from "@/components/ui/button";
-import { Building2, BarChart3, Target, Bell } from "lucide-react";
+import { Building2, Target, Bell } from "lucide-react";
 
 export default function WelcomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,7 +43,6 @@ export default function WelcomePage() {
             {/* What you'll unlock preview */}
             <div className="mt-12 grid grid-cols-2 gap-4 text-left">
               {[
-                { icon: BarChart3, label: "Dashboard", desc: "Overview of all campaign metrics" },
                 { icon: Target, label: "Campaigns", desc: "Create and manage campaigns" },
                 { icon: Bell, label: "Notifications", desc: "KPI alerts and reminders" },
               ].map(({ icon: Icon, label, desc }) => (

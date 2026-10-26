@@ -15,7 +15,7 @@ export default function ClientsPage() {
 
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
-    setLocation("/dashboard");
+    setLocation("/campaigns");
   };
 
   return (

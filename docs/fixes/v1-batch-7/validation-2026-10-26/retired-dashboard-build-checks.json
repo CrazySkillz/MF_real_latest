@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-26T03:20:09.884Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "retired-dashboard-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "retired-dashboard-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "retired-dashboard-server-build.log"
+    }
+  ]
+}

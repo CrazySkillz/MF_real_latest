@@ -123,7 +123,7 @@ Important meaning:
 - the sidebar displays only the active client and campaign context; it is not a
   list of every client
 - `Notifications` is global navigation
-- `Dashboard` is registered but is not current sidebar navigation
+- There is no separate Dashboard page or `/dashboard` route.
 - the `Notifications` page is a global surface that aggregates notifications across campaigns
 - users can filter that page by client after opening it
 - the current page and top-bar bell do not expose read, clear, or dismiss controls; retained legacy API dismiss/clear actions hide the current alert record only and do not resolve the underlying KPI or Benchmark breach
@@ -134,20 +134,16 @@ Important meaning:
 - version 1 retains resolved and legacy-dismissed notification rows as hidden records; active-list APIs exclude them, and they have no analytical effect
 - version 1 has no general age-based notification-retention job; retention/archive and any required separation of email breach-episode state are deferred to version 2
 
-### Current-State Note: Dashboard
+### Current-State Note: Campaign Entry
 
-The registered `Dashboard` route is a global snapshot layer for quick
-executive-style client-performance review.
-
-The Dashboard still needs refinement.
-
-For now, preserve the primary routing and hierarchy:
+The primary routing and hierarchy is:
 
 - `Welcome / Home` -> select/create client -> client `Campaigns` -> campaign-specific analytics
-- `Dashboard` remains a retained direct route and is excluded from current
-  onboarding until it is intentionally restored to navigation and refined
 
-Do not redesign around the Dashboard until that layer is intentionally updated.
+The obsolete Dashboard page and route were removed at the user's explicit
+request on October 26, 2026. The alternate `/clients` selector also opens
+`/campaigns`. Removing the page does not delete campaign records or change
+Campaign Overview, source analytics, or financial calculations.
 
 ### 3. Create Campaign
 

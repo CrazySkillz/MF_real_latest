@@ -1,0 +1,75 @@
+{
+  "at": "2026-10-26T03:21:35.279622+00:00",
+  "finding": "V1-125",
+  "status": "User-approved page exclusion, verified locally; uncommitted and undeployed",
+  "baseline": "fa9fb67ad26e05f6e373c1abe1e0c59704ae0033",
+  "scope": "Remove obsolete Dashboard page, route, incoming selector link and unused welcome preview. Preserve campaign data and active campaign routes.",
+  "baselineResults": {
+    "file": "retired-dashboard-baseline-final.json",
+    "passed": 9,
+    "failed": 4,
+    "skipped": 0
+  },
+  "baselineExpectedFailures": [
+    "Dashboard and trailing-slash paths still mount Dashboard",
+    "Alternate client selector opens Dashboard",
+    "Unused welcome preview advertises Dashboard"
+  ],
+  "fixedResults": {
+    "file": "retired-dashboard-final.json",
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0
+  },
+  "buildResults": {
+    "at": "2026-10-26T03:20:09.884Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "retired-dashboard-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "retired-dashboard-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "retired-dashboard-server-build.log"
+      }
+    ]
+  },
+  "commands": [
+    "node docs/fixes/v1-batch-7/validation-2026-10-26/run-tests.cjs retired-dashboard-baseline-final server/v1-batch7-retired-dashboard.test.ts --baseline",
+    "node docs/fixes/v1-batch-7/validation-2026-10-26/run-tests.cjs retired-dashboard-final server/v1-batch7-retired-dashboard.test.ts server/campaign-overview-navigation-ui.test.ts server/campaign-delete-cascade-regression.test.ts",
+    "node docs/fixes/v1-batch-7/validation-2026-10-26/run-build-checks.cjs retired-dashboard --with-client",
+    "git diff --check"
+  ],
+  "isolation": "Test/build runners strip application credentials; tests prohibit nonlocal network. No browser, provider, production data, campaign deletion, migration, database or email operations.",
+  "coverage": "Actual App route tree with Wouter server rendering and stub page components; actual primary/alternate client-selection handlers; neighboring navigation and cascade static guards; TypeScript and production builds.",
+  "limitations": [
+    "No deployed or browser acceptance",
+    "Page body/provider analytics are not exercised by route matching",
+    "All 29 Batch 7 release acceptances remain open",
+    "Earlier Audiences edits remain in progress and are outside this finding packet"
+  ],
+  "fileSha256": {
+    "client/src/App.tsx": "712a3d0955634d286dd546fd36a75a3caa5f2af49b897cb6c60df5022c7b1b18",
+    "client/src/pages/clients.tsx": "899319608707b6fa15364c8d6651ad8cefcb99321bf21516861883bf4b0cd00e",
+    "client/src/pages/welcome.tsx": "bb449d24931154288faefcda4c2680011611800d1ce97b23d199c82111b2bb35",
+    "client/src/pages/dashboard.tsx": null,
+    "server/v1-batch7-retired-dashboard.test.ts": "34e7ea7d25d091034bdaff56f9c4d21c8c9710a80d3df64c5f9d4f02041a19f0",
+    "ARCHITECTURE_USER_JOURNEY.md": "eae1fa35177ae54f26d7f00d95109e7a85fcfff45f7109e176a42cfc1226ddcd",
+    "docs/CURRENT_APP_SECTIONS.md": "ee736b4b80cb2ae7b9c6e7d3166a83e0c19130d53a6fd0de83262f8786ce001a",
+    "docs/fixes/v1-batch-7/README.md": "b312ce134a32d088dedae524c3366e1470c69eed227437deb336bc95c7b05572",
+    "docs/V1_RELEASE_READINESS.md": "455767e03b392bc790134eb3b69c7de734760be63b0a00447303ddf022174fc4",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md": "ced970c0fa0c55a3366add91ef8afe70fa4eab49d768ee9beed30baa83c55522"
+  },
+  "publicationPreparation": "User authorized commit/push. Documentation publication notes added; verified runtime/test files unchanged. Audiences excluded. Deployment/UI acceptance remains unverified."
+}

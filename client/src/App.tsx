@@ -15,7 +15,6 @@ import {
   useAuth,
 } from "@clerk/clerk-react";
 import { ClientProvider, useClient } from "@/lib/clientContext";
-import Dashboard from "@/pages/dashboard";
 import Campaigns from "@/pages/campaigns";
 const CampaignDetail = lazy(() => import("@/pages/campaign-detail"));
 const CampaignPerformance = lazy(() => import("@/pages/campaign-performance"));
@@ -137,7 +136,6 @@ function ProtectedRouter() {
           <Switch>
             <Route path="/" component={HomePage} />
             <Route path="/welcome" component={HomePage} />
-            <Route path="/dashboard" component={Dashboard} />
             <Route path="/clients" component={ClientsPage} />
             <Route path="/campaigns" component={Campaigns} />
             <Route path="/campaigns/:id" component={CampaignDetail} />

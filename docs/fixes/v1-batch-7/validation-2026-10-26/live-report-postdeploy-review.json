@@ -1,0 +1,61 @@
+{
+  "reviewedAt": "2026-10-26T17:34:24.404259+00:00",
+  "relatedCommit": "ee0ba8c7",
+  "scope": "User-supplied follow-up browser and emailed Insights PDF acceptance for five localized report fixes",
+  "result": "PASS for these artifacts and five fixes; no whole-section or production-readiness certification",
+  "sources": {
+    "browser": {
+      "filename": "GA4_Insights_Report_2026-10-26 (1).pdf",
+      "sha256": "bb2c62f10263632b325ea1688e9a0c77a766670ae568d4ccbd251565643b0ea2",
+      "pages": 3,
+      "creationDate": "D:20261026154625+01'00'"
+    },
+    "emailed": {
+      "filename": "GA4_Insights_Report_2026-10-25_emailed_ version_2.pdf",
+      "sha256": "c21add0cef18689e75bcbd35ce34e3ee810691658debf950622493cdd4975dee",
+      "pages": 3,
+      "creationDate": "D:20261026150038-00'00'"
+    }
+  },
+  "matchedValues": {
+    "campaign": "V1 Batch 5 Test",
+    "revenueEUR": 8003.96,
+    "sessions": 604,
+    "conversions": 40,
+    "completedDayCutoff": "2026-10-25",
+    "reportingTimezone": "Amsterdam",
+    "lastRefreshed": "2026-10-26 14:10 GMT+1",
+    "spend": "Unavailable",
+    "profit": "Unavailable",
+    "roi": "Undefined (em dash)",
+    "roas": "Undefined (em dash)"
+  },
+  "verifiedFixes": [
+    "Missing-Spend finding present in both; browser counts two findings and one high priority",
+    "Missing-history confidence High, coverage description and recommended check agree",
+    "Scheduled ROI card present and undefined without Spend",
+    "Scheduled chart axis labels distinct: 0, 0.3, 0.6, 0.9, 1.2",
+    "Browser Trends heading, note and chart together on page 2"
+  ],
+  "visualInspection": {
+    "pages": 6,
+    "fullSizeKeyPages": [
+      "browser 2",
+      "browser 3",
+      "emailed 1",
+      "emailed 2"
+    ],
+    "allPagesContactReviewed": true,
+    "outOfPageCharacters": 0,
+    "visibleClippingOrOverlap": false,
+    "currencyAndDashGlyphs": "render correctly"
+  },
+  "boundaries": [
+    "User-added emailed suffix is a label, not app metadata. Submission is bounded user-supplied receipt evidence, not independent provider delivery confirmation.",
+    "PDFs do not identify the runtime commit. Related commit is the correction under review, not an observed deployed SHA.",
+    "Cumulative totals and three recorded zero trend days are separate report windows; provider values and campaign-created boundary not independently verified.",
+    "No production data, browser, provider or mailbox access. Saved report/history bytes not compared to these attachments.",
+    "Original PDFs unchanged. No application code or configuration changes. No new test/build run for this document-only review.",
+    "Full V1-085/V1-015 release acceptance and deferred Batch 6 Google Ads checks remain open."
+  ]
+}

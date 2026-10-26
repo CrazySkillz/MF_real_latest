@@ -102,6 +102,12 @@ The browser download action supplies a PDF filename. The browser controls the
 actual operating-system download directory according to the user's browser
 settings.
 
+GA4 PDF filenames use the UTC generation date for browser downloads, scheduled
+attachments and test-send attachments. For example, a report generated on
+October 26, 2026 is named `GA4_Insights_Report_2026-10-26.pdf`, while its completed
+data cutoff can remain October 25. The filename does not change the data window
+or rename previously sent attachments or stored historical artifacts.
+
 Browser Overview PDF presentation update (2026-10-17): the download now includes
 the Overview reporting window, successful update times, configured refresh
 schedule, provisional-data explanation and current refresh/retained-data status.

@@ -1,5 +1,9 @@
 # Batch 7 consolidated report context checks — October 26, 2026
 
+**Filename follow-up, October 26:** The user requires the current generation date in emailed GA4 filenames. The two dispatch paths now follow the browser's UTC generation-date convention while preserving the completed-data cutoff. **194/194 checks, TypeScript and server build pass.** This separate two-line correction is local, uncommitted and undeployed; no real email was sent. See the filename evidence below.
+
+**Follow-up artifact acceptance, October 26:** The correction was committed and pushed as `ee0ba8c7`. The user's two new PDFs now pass all five localized report checks; all six pages were inspected and common figures agree. No further application changes are needed for these five issues. This closes their supplied-artifact recheck, not full V1-085/V1-015 release acceptance. See the final review below; earlier publication/status statements are historical.
+
 **Localized follow-up, October 26:** The user clarified that they added the emailed-file suffix and authorized careful correction. Five supplied report differences now have localized forward fixes. **505/505 checks in 38 files, no failures/skips; TypeScript and both builds pass.** Five synthetic PDFs / 14 pages inspected. Two runtime files change by 12 added / 5 removed lines. Uncommitted/undeployed; deployed verification and existing release gates remain open. See the correction record below; previous statements are historical.
 
 **Deployed artifact review, October 26:** The user reports `3caf3e9c` deployed and supplied one emailed Insights PDF and one browser-downloaded Insights PDF. All six pages were extracted and visually inspected. The compared figures agree, but report-content/layout acceptance does not pass yet. This is bounded user-supplied artifact evidence, not independent runtime/provider or immutable-history verification. See the review below; prior publication statements are historical.
@@ -92,3 +96,29 @@ Evidence: [baseline](validation-2026-10-26/live-report-before-exec.json), [505 c
 Runtime files: `client/src/pages/ga4-metrics.tsx`, `server/ga4-scheduled-report-pdf.ts`. Storage, schema, routes, report/daily schedulers, KPI/Benchmark jobs and provider analytics match prior evidence hashes. All committed PDF/PNG artifacts remain byte-identical; preservation also covers prior context fixtures. New PDFs are synthetic. No production data/provider/browser/mailbox/email-send access occurred. TypeScript and both builds passed after final runtime edits. Database history checks were not rerun: storage/scheduling are unchanged, and their prior 66 cases are not counted in the 505.
 
 Forward corrections are ready for commit/review. After deployment, rerun the bounded supplied-report comparison. Full V1-085/V1-015 acceptance, immutable-history/live-provider verification and Batch 6's deferred Google Ads check remain open.
+
+## Follow-up supplied-artifact acceptance for `ee0ba8c7`
+
+The user supplied `GA4_Insights_Report_2026-10-26 (1).pdf` and `GA4_Insights_Report_2026-10-25_emailed_ version_2.pdf`. Both have three pages. Original files were read only; their SHA-256 hashes, generation metadata, exact checks and proof boundaries are recorded in [the acceptance evidence](validation-2026-10-26/live-report-postdeploy-review.json). The emailed suffix remains the user's label. These PDFs show the corrected behavior but do not identify an independently observed deployed commit.
+
+| Corrected issue | Supplied artifact result |
+|---|---|
+| Missing-Spend notice | Present in both. Browser correctly shows two findings and one high-priority finding. |
+| Missing-history finding | Both show High confidence, matching dated coverage and the same recommended check. |
+| Scheduled ROI omission | ROI card is present; absent Spend keeps ROI/ROAS undefined and Profit unavailable. |
+| Repeated chart tick labels | Scheduled chart now shows distinct 0, 0.3, 0.6, 0.9 and 1.2 labels. |
+| Detached browser Trends heading | Heading, note and chart appear together on page 2. |
+
+Both reports retain EUR 8,003.96, 604 sessions and 40 conversions for `V1 Batch 5 Test`, completed through October 25 in Amsterdam, refreshed October 26 at 14:10 GMT+1. Browser conversion rate 6.6% agrees with 40 / 604. Three recorded zero trend dates remain October 23-25; cumulative and trend windows remain distinct. All six pages were visually inspected; four key pages additionally inspected at full size. No out-of-page characters, visible clipping or overlap; euro and dash glyphs render correctly.
+
+This is a PASS for the five supplied-artifact corrections. No runtime code, source configuration, stored data or original PDF changed; no tests/builds were rerun for this documentation-only review. User-supplied receipt evidence is recorded, while provider delivery events, saved-card/history byte equality, provider values and full release gates remain unverified. V1-085/V1-015 release acceptance and Batch 6's deferred Google Ads validation remain open.
+
+## Generation-date filename correction
+
+The October 26 email screenshot shows an attachment ending `2026-10-25.pdf`. Root cause: both `checkScheduledReports` and `sendTestReport` construct the attachment name with `windowEnd`, the completed-data cutoff. `sendReportEmail` forwards that name unchanged to the email adapter. Browser downloads already use the UTC generation date. Earlier review documented the old difference as expected implementation behavior; the user's explicit requested convention now supersedes it.
+
+Only two filename expressions in `server/report-scheduler.ts` change. GA4 scheduled mail uses the existing snapshot's generation date; GA4 test mail uses its existing generation timestamp. October 26 generation therefore produces `GA4_Insights_Report_2026-10-26.pdf`, while `windowEnd` remains October 25. Other platforms retain their existing filenames. PDF bytes, report windows, source totals, ownership checks, scheduling, retries, delivery confirmation and historical artifacts are unchanged.
+
+The new exact-source regression executes both send-call metadata objects and the real email-forwarding function with a stub adapter. Baseline reproduces 20 filename failures with eight passing non-GA4 controls. Fixed plus neighboring checks: **194 passed, zero failed/skipped, six files**; TypeScript and server build pass. Tests cover all six GA4 types, UTC midnight/year rollover, four non-GA4 platforms, unchanged PDF bytes/window/audit identity and missing-attachment rejection. No app, live scheduler, database, provider or mailbox was accessed. A test-regenerated synthetic browser PDF was restored to its exact committed historical bytes; all committed PDF/PNG artifacts remain unchanged.
+
+Evidence: [baseline](validation-2026-10-26/filename-baseline.json), [fixed and neighboring checks](validation-2026-10-26/filename-verified.json), [builds](validation-2026-10-26/filename-final-build-checks.json), [source/test hashes and boundaries](validation-2026-10-26/filename-evidence.json). The initial sandbox compiler `spawn EPERM` was resolved with the existing credential-stripped, external-network-blocked runner. No new dependencies or PDF generation logic. Client build was not repeated because client code is unchanged. This correction is not yet committed/deployed; only the next new scheduled GA4 attachment needs filename acceptance after deployment. Existing attachments are not renamed. Whole-section release gates remain open.

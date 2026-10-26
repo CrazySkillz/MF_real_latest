@@ -1,0 +1,87 @@
+{
+  "at": "2026-10-26T17:54:25.959667+00:00",
+  "base": "ee0ba8c7",
+  "state": "uncommitted; undeployed",
+  "rootCause": "Both GA4 email dispatch paths used the data-window end date in the attachment filename instead of the UTC generation date used by the browser.",
+  "path": "Saved campaign-scoped report -> checkScheduledReports/sendTestReport -> attachment metadata -> sendReportEmailWithRetry/sendReportEmail -> emailService attachment filename",
+  "change": "Two filename expressions in report-scheduler.ts; scoped to google_analytics. Scheduled uses persisted snapshot generation timestamp; test-send uses its generation timestamp.",
+  "runtimeFiles": {
+    "server/report-scheduler.ts": "3b29cd9516d6a03795643720de83c64bf8c62a0d8695abc7b973ba5d74f70f37"
+  },
+  "unchangedRuntimeFiles": {
+    "client/src/pages/ga4-metrics.tsx": "7997463403b34ac84040093d53cfd2698297a8e071cf1dc3f40d03a9df850502",
+    "server/ga4-scheduled-report-pdf.ts": "734294369c660de0ede635e23c0964e65151b39b4905bfd1e2a46be4bcc97d76",
+    "server/storage.ts": "37e6ccf9216c40fc6f9ba99a3ff231404f4a81d597c83f521cc07200e2c2ae12",
+    "server/routes-oauth.ts": "0e7e13f7b7371b2be254472ccfc038df1285d0058956944263ea88a48025ef7f",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96",
+    "server/ga4-daily-scheduler.ts": "868dbe834e9836e0a80274d5594c753956922d550a4614299b58324ca6007108"
+  },
+  "baseline": {
+    "passed": 8,
+    "failedExpected": 20,
+    "result": "filename-baseline.json"
+  },
+  "passed": 194,
+  "failed": 0,
+  "skipped": 0,
+  "files": {
+    "ga4-browser-report-publication.test.ts": {
+      "sha256": "f4927be75629b99022e14dd729621e204bb166808aa84fdd520c31258db8a48d",
+      "passed": 81
+    },
+    "ga4-report-attachment-filename.test.ts": {
+      "sha256": "40de66459d5dccacd629175c9913ed0fae6509fa821e758e3e4f0831db0379d6",
+      "passed": 28
+    },
+    "ga4-report-saved-publication.test.ts": {
+      "sha256": "74862af90ac01c748e0a16de001a67173de650b421e348611029e1630fdc1189",
+      "passed": 48
+    },
+    "ga4-reports-certification-gate.test.ts": {
+      "sha256": "e130130f2f547095f1f8ef8c45420e723f856c293d54f05717ef7b99ea919ba7",
+      "passed": 7
+    },
+    "report-email-regression.test.ts": {
+      "sha256": "dbf4e09f5d19b1500f235fd76a7b66048da756b4cb53a24f43ce24e4b080fd58",
+      "passed": 28
+    },
+    "report-pdf-artifact.test.ts": {
+      "sha256": "6a9a2b70006846f0a44e9f0b2ab32f8386bf1a6171c388c13a678109c70609d7",
+      "passed": 2
+    }
+  },
+  "resultsSha256": "fe48ce690b2658f75316946d6994b3e67249c28a315aa26d82d9a071bf9b59a4",
+  "builds": {
+    "at": "2026-10-26T17:53:11.776Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "filename-final-typecheck.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "filename-final-server-build.log"
+      }
+    ]
+  },
+  "coverage": [
+    "Six GA4 report types in scheduled and test-send metadata",
+    "UTC midnight and year boundary",
+    "Four non-GA4 platform filename controls",
+    "Exact PDF bytes, window dates and audit identity forwarded to mocked email adapter",
+    "Missing attachment still rejected",
+    "Existing browser/publication/artifact/email safety regression checks"
+  ],
+  "limits": [
+    "No live scheduler, provider, mailbox or production database accessed",
+    "No real email sent",
+    "Existing attachments/history unchanged",
+    "Generated PDF content and financial calculations unchanged",
+    "Deployed filename acceptance pending; whole Reports/Batch 7 sign-off unchanged"
+  ]
+}

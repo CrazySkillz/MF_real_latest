@@ -4634,7 +4634,7 @@ export async function checkScheduledReports(): Promise<void> {
         windowEnd,
         campaignName,
         auditEventId: claimedEvent.id,
-        attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${windowEnd}.pdf`, content: pdfBuffer } : null,
+        attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${snapshotPlatformType === "google_analytics" ? snapshotPayload.generatedAt.slice(0, 10) : windowEnd}.pdf`, content: pdfBuffer } : null,
       }, 1);
       await reconcileScheduledReportSend(claimedEvent);
 
@@ -4819,7 +4819,7 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
       windowEnd,
       campaignName,
       auditEventId,
-      attachment: pdfBuffer ? { filename: `${safeName}_${windowEnd}.pdf`, content: pdfBuffer } : null,
+      attachment: pdfBuffer ? { filename: `${safeName}_${report.platformType === "google_analytics" ? now.toISOString().slice(0, 10) : windowEnd}.pdf`, content: pdfBuffer } : null,
     });
     console.log(`[Report Scheduler] Send result: ${result ? 'SUCCESS ✅' : 'FAILED ❌'}`);
 

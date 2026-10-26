@@ -1,0 +1,90 @@
+{
+  "base": "eacb62fa2af72a41e8176b765b5e0e3b8c6bb79f",
+  "committed": false,
+  "deployed": false,
+  "verifiedFindings": [
+    "V1-061",
+    "V1-062",
+    "V1-064",
+    "V1-086",
+    "V1-129",
+    "V1-130"
+  ],
+  "remainingOpen": [
+    "V1-015",
+    "V1-085"
+  ],
+  "tests": {
+    "result": "retained-verified-postgres.json",
+    "files": 19,
+    "passed": 306,
+    "failed": 0,
+    "skipped": 0
+  },
+  "builds": {
+    "at": "2026-10-26T04:17:05.106Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "retained-complete-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "retained-complete-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "retained-complete-server-build.log"
+      }
+    ]
+  },
+  "cleanup": {
+    "at": "2026-10-26T04:16:53.875Z",
+    "before": {
+      "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch4-sheets-pg",
+      "listen": "127.0.0.1",
+      "test_sessions": 0,
+      "test_temp_tables": 0
+    },
+    "stopExitCode": 0,
+    "statusExitCode": 3,
+    "stopped": true,
+    "productionAccessed": false
+  },
+  "fileHashes": {
+    "client/src/pages/audiences.tsx": "a934bc98707bcdc9c168c3c76a8fcb8a04bb1368ffc2f412385851db00a3487a",
+    "client/src/pages/kpis.tsx": "233479e5673497a59adb04a35634aecd73da2f1a34c8713aa1eea1165f8a0899",
+    "client/src/pages/platform-kpis.tsx": "9e13d0660965f9714a18e5357a6a4f1ce2e06134e13a8c4fab0cc38746b0e4d0",
+    "client/src/pages/platform-comparison.tsx": "25b7fadfe25eb6370394c52baf92a9fce86ac692d564230b7b0ad79f293274a0",
+    "client/src/lib/pdfExport.ts": "26a4c78b2ba0ec393ccc96ed30d4919c280e76a667e0ff1ecb6199e713e08707",
+    "server/routes-oauth.ts": "0e7e13f7b7371b2be254472ccfc038df1285d0058956944263ea88a48025ef7f",
+    "server/ga4-scheduled-report-pdf.ts": "91c91de83f4578988caf4c6516ddfda2acc07e200791d95e6a6e095643062766",
+    "server/v1-batch7-retained-values.test.ts": "18fc11328afc62f96a67195611b777ee70f541ef96f115de24e74cb637ab7b00",
+    "server/v1-batch7-retained-routes.test.ts": "fed0a10080837dd45bc716a22e601f6f34de5c9e1253c72f39004af855877ab2",
+    "server/v1-batch7-report-artifacts.test.ts": "ec954692ee91a12e658ffa9a8df27a9076ea1def19d7c37923de6bde73ffa4f7",
+    "server/platform-comparison-regression.test.ts": "2b49365a053d620059fc9b01ad7cbe7878e120ff991c5329404598b6dba226ba"
+  },
+  "pdfs": {
+    "retained-insights-rate.pdf": "18c36beee0baed2a5ece7b01c7184d5742c6cc5899f69169bc434f5d997cb210",
+    "retained-insights-six-days.pdf": "3ab0dde1458aa2cffeda4f1767c7d81cea1c04f83b69300fea862eb6144612f9",
+    "retained-kpi-export.pdf": "135702e6ffcb4a09724af10b1d43ab675f70a960746017e9ffb5801c4185dcbc",
+    "retained-overview-layout.pdf": "711e8a573b6f8066b115516da19070ab4ee7beb94cff60b687269bef911e7ee3"
+  },
+  "safety": {
+    "productionAccess": false,
+    "browserAccess": false,
+    "providerAccess": false,
+    "emailSent": false,
+    "schemaChange": false,
+    "newDependency": false,
+    "productionCleanup": false
+  },
+  "limits": "See ../RETAINED_PAGES_AND_REPORT_CHECKPOINT.md. All 29 release acceptances remain OPEN; no full-section certification."
+}

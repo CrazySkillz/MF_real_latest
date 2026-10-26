@@ -1,4 +1,6 @@
 import { formatConversionCredit } from "@shared/metric-math";
+import { computeAttainmentPct, computeAttainmentFillPct, isLowerIsBetterKpi } from "@shared/kpi-math";
+import { exportCampaignKPIsToPDF } from "@/lib/pdfExport";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
@@ -26,8 +28,8 @@ const kpiFormSchema = z.object({
   name: z.string().min(1, "KPI name is required"),
   description: z.string().optional(),
   unit: z.string().min(1, "Unit is required"),
-  targetValue: z.string().min(1, "Target value is required"),
-  currentValue: z.string().optional(),
+  targetValue: z.string().trim().min(1, "Target value is required").refine(value => Number.isFinite(Number(value)), "Enter a finite target"),
+  currentValue: z.string().refine(value => value.trim() === "" || Number.isFinite(Number(value)), "Enter a finite value").optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   status: z.enum(["tracking", "achieved", "at_risk", "critical"]).default("tracking"),
   timeframe: z.enum(["daily", "weekly", "monthly", "quarterly"]).default("monthly"),
@@ -41,8 +43,8 @@ const kpiFormSchema = z.object({
   alertFrequency: z.enum(["immediate", "daily", "weekly"]).default("daily"),
 });
 
-const progressFormSchema = insertKPIProgressSchema.extend({
-  value: z.coerce.number().min(0, "Value cannot be negative"),
+const progressFormSchema = insertKPIProgressSchema.omit({ kpiId: true }).extend({
+  value: z.preprocess((value) => !["number", "string"].includes(typeof value) || String(value).trim() === "" ? NaN : Number(value), z.number().finite("Enter a finite value")),
 });
 
 type KPIFormData = z.infer<typeof kpiFormSchema>;
@@ -124,23 +126,26 @@ function getPriorityIcon(priority: string) {
   }
 }
 
-function calculateProgress(current: string | number, target: string | number): number {
-  const currentNum = typeof current === 'string' ? parseFloat(current) : current;
-  const targetNum = typeof target === 'string' ? parseFloat(target) : target;
-  
-  if (targetNum === 0) return 0;
-  return Math.min((currentNum / targetNum) * 100, 100);
+function calculateProgress(current: string | number | null | undefined, target: string | number | null | undefined, name = ""): number | null {
+  if (current == null || target == null || String(current).trim() === "" || String(target).trim() === "") return null;
+  const currentNum = Number(current);
+  const targetNum = Number(target);
+  if (!Number.isFinite(currentNum) || !Number.isFinite(targetNum)) return null;
+  const attainment = computeAttainmentPct({ current: currentNum, target: targetNum,
+    lowerIsBetter: name.trim().toUpperCase() === "CAC" || isLowerIsBetterKpi({ name }) });
+  return attainment === null ? null : computeAttainmentFillPct(attainment);
 }
 
-function formatValue(value: string | number, unit: string): string {
-  const num = typeof value === 'string' ? parseFloat(value) : value;
+function formatValue(value: string | number | null | undefined, unit: string, currency = "USD"): string {
+  if (value == null || String(value).trim() === "" || !Number.isFinite(Number(value))) return "Unavailable";
+  const num = Number(value);
   
   switch (unit) {
     case 'count': return formatConversionCredit(num);
     case '%':
       return `${num.toFixed(1)}%`;
     case '$':
-      return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(num);
     case 'ratio':
       return `${num.toFixed(2)}:1`;
     default:
@@ -156,8 +161,7 @@ export default function KPIsPage() {
   const [showProgressDialog, setShowProgressDialog] = useState(false);
   const [showKPIReportDialog, setShowKPIReportDialog] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState<KPI | null>(null);
-  const [kpiReportFormat, setKPIReportFormat] = useState<"pdf" | "csv" | "xlsx">("pdf");
-  const [kpiReportDateRange, setKPIReportDateRange] = useState("30d");
+  const [kpiReportFormat, setKPIReportFormat] = useState<"pdf" | "csv" | "json">("pdf");
 
   // Fetch campaign data
   const { data: campaign } = useQuery<Campaign>({
@@ -305,14 +309,14 @@ export default function KPIsPage() {
 
   const handleRecordProgress = (kpi: KPI) => {
     setSelectedKPI(kpi);
-    progressForm.setValue("value", parseFloat(kpi.currentValue || "0"));
+    progressForm.reset({ value: kpi.currentValue == null ? undefined : Number(kpi.currentValue), notes: "" });
     setShowProgressDialog(true);
   };
 
   // KPI Report generation
   const generateKPIReport = async () => {
     try {
-      downloadKPIReport();
+      await downloadKPIReport();
       setShowKPIReportDialog(false);
       toast({
         title: "Report Generated",
@@ -328,70 +332,36 @@ export default function KPIsPage() {
     }
   };
 
-  const downloadKPIReport = () => {
-    let content = "";
-    let mimeType = "";
-    let fileName = `${campaign?.name || 'Campaign'}_KPI_Report_${format(new Date(), 'yyyy-MM-dd')}`;
-
-    if (kpiReportFormat === "csv") {
-      content = "KPI Name,Current Value,Target Value,Progress %,Status,Priority,Description\n";
-      kpis?.forEach((kpi: KPI) => {
-        const progress = kpi.currentValue && kpi.targetValue ? 
-          ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) : 'N/A';
-        content += `"${kpi.name || ''}","${kpi.currentValue || ''}","${kpi.targetValue || ''}","${progress}","${kpi.status || 'Active'}","${kpi.priority || 'Medium'}","${kpi.description || ''}"\n`;
-      });
-      mimeType = "text/csv";
-      fileName += ".csv";
-    } else if (kpiReportFormat === "xlsx") {
-      const reportData = {
-        campaign: campaign?.name,
-        generatedAt: new Date().toISOString(),
-        kpis: kpis?.map((kpi: KPI) => ({
-          name: kpi.name,
-          currentValue: kpi.currentValue,
-          targetValue: kpi.targetValue,
-          progress: kpi.currentValue && kpi.targetValue ? 
-            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) + '%' : 'N/A',
-          status: kpi.status || 'Active',
-          priority: kpi.priority || 'Medium',
-          description: kpi.description || ''
-        })) || []
+  const downloadKPIReport = async () => {
+    const currency = campaign?.currency || "USD";
+    const rows = kpis.map((kpi) => {
+      const progress = calculateProgress(kpi.currentValue, kpi.targetValue, kpi.metric || kpi.name);
+      return {
+        name: kpi.name, currentValue: formatValue(kpi.currentValue, kpi.unit, currency),
+        targetValue: formatValue(kpi.targetValue, kpi.unit, currency),
+        progress: progress === null ? "Unavailable" : `${progress.toFixed(1)}%`,
+        savedStatus: kpi.status, priority: kpi.priority, description: kpi.description || "",
       };
-      content = JSON.stringify(reportData, null, 2);
-      mimeType = "application/json";
-      fileName += ".json";
-    } else {
-      // PDF/Text format
-      content = `Campaign KPI Report: ${campaign?.name}\n\n`;
-      content += `Generated: ${format(new Date(), 'PPP')}\n`;
-      content += `Date Range: ${kpiReportDateRange}\n\n`;
-      
-      if (kpis && kpis.length > 0) {
-        content += `Total KPIs: ${kpis.length}\n\n`;
-        content += `KPI Details:\n`;
-        content += "=".repeat(50) + "\n\n";
-        
-        kpis.forEach((kpi: KPI, index: number) => {
-          const progress = kpi.currentValue && kpi.targetValue ? 
-            ((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100).toFixed(1) : 'N/A';
-          
-          content += `${index + 1}. ${kpi.name}\n`;
-          content += `   Current Value: ${kpi.currentValue || 'N/A'}\n`;
-          content += `   Target Value: ${kpi.targetValue || 'N/A'}\n`;
-          content += `   Progress: ${progress}${progress !== 'N/A' ? '%' : ''}\n`;
-          content += `   Status: ${kpi.status || 'Active'}\n`;
-          content += `   Priority: ${kpi.priority || 'Medium'}\n`;
-          if (kpi.description) content += `   Description: ${kpi.description}\n`;
-          content += `\n`;
-        });
-      } else {
-        content += `No KPIs found for this campaign.\n`;
-      }
-      
-      mimeType = "text/plain";
-      fileName += ".txt";
+    });
+    if (kpiReportFormat === "pdf") {
+      await exportCampaignKPIsToPDF({ id: campaignId, name: campaign?.name || "Campaign", exportDate: new Date(),
+        kpis: rows.map((row, index) => ({ id: kpis[index].id, name: row.name,
+          aggregatedMetric: kpis[index].metric || row.name, currentValue: row.currentValue, targetValue: row.targetValue,
+          formattedDetails: [`Current Value: ${row.currentValue}`, `Target Value: ${row.targetValue}`,
+            `Progress: ${row.progress}`, `Saved Status: ${row.savedStatus}`, `Priority: ${row.priority}`, `Description: ${row.description}`],
+        })),
+      });
+      return;
     }
-
+    // Quote every cell and escape embedded quotes/newlines. Text cells cannot execute spreadsheet formulas.
+    const csvCell = (value: string) => `"${(/^[=+@\t\r-]/.test(value) ? "'" + value : value).replace(/"/g, '""')}"`;
+    const content = kpiReportFormat === "csv"
+      ? ["KPI Name,Current Value,Target Value,Progress %,Saved Status,Priority,Description",
+          ...rows.map(row => Object.values(row).map(csvCell).join(","))].join("\r\n")
+      : JSON.stringify({ campaign: campaign?.name, generatedAt: new Date().toISOString(),
+          scope: "Current saved KPI values", currency, kpis: rows }, null, 2);
+    const mimeType = kpiReportFormat === "csv" ? "text/csv;charset=utf-8" : "application/json";
+    const fileName = `${campaign?.name || 'Campaign'}_KPI_Report_${format(new Date(), 'yyyy-MM-dd')}.${kpiReportFormat}`;
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -920,8 +890,8 @@ export default function KPIsPage() {
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {kpis.map((kpi) => {
-                const progress = calculateProgress(kpi.currentValue || "0", kpi.targetValue);
-                const isAchieved = progress >= 100;
+                const progress = calculateProgress(kpi.currentValue, kpi.targetValue, kpi.metric || kpi.name);
+                const isAchieved = progress !== null && progress >= 100;
                 
                 return (
                   <Card key={kpi.id} className="relative hover:shadow-lg transition-shadow">
@@ -932,7 +902,7 @@ export default function KPIsPage() {
                           <CardTitle className="text-lg">{kpi.name}</CardTitle>
                         </div>
                         <Badge className={getStatusColor(kpi.status)}>
-                          {kpi.status.replace('_', ' ')}
+                          Saved status: {kpi.status.replace('_', ' ')}
                         </Badge>
                       </div>
                       {kpi.description && (
@@ -944,10 +914,10 @@ export default function KPIsPage() {
                       {/* Current vs Target */}
                       <div className="text-center space-y-2">
                         <div className="text-3xl font-bold text-foreground">
-                          {formatValue(kpi.currentValue || "0", kpi.unit)}
+                          {formatValue(kpi.currentValue, kpi.unit, campaign.currency)}
                         </div>
                         <div className="text-sm text-muted-foreground/70">
-                          Target: {formatValue(kpi.targetValue, kpi.unit)}
+                          Target: {formatValue(kpi.targetValue, kpi.unit, campaign.currency)}
                         </div>
                       </div>
                       
@@ -956,15 +926,15 @@ export default function KPIsPage() {
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground/70">Progress</span>
                           <span className={`font-medium ${isAchieved ? 'text-green-600' : 'text-foreground'}`}>
-                            {Math.round(progress)}%
+                            {progress === null ? "Unavailable" : `${Math.round(progress)}%`}
                           </span>
                         </div>
-                        <Progress value={progress} className="h-2" />
+                        {progress !== null && <Progress value={progress} className="h-2" />}
                       </div>
                       
                       {/* Status Icon */}
                       <div className="flex justify-center">
-                        {isAchieved ? (
+                        {progress === null ? <span className="text-muted-foreground text-sm">Progress unavailable</span> : isAchieved ? (
                           <div className="flex items-center text-green-600 text-sm">
                             <CheckCircle2 className="w-4 h-4 mr-1" />
                             Target Achieved
@@ -1043,7 +1013,7 @@ export default function KPIsPage() {
                       />
                     </FormControl>
                     <FormDescription>
-                      Target: {selectedKPI && formatValue(selectedKPI.targetValue, selectedKPI.unit)}
+                      Target: {selectedKPI && formatValue(selectedKPI.targetValue, selectedKPI.unit, campaign.currency)}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1095,38 +1065,25 @@ export default function KPIsPage() {
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Report Format</label>
-              <Select value={kpiReportFormat} onValueChange={(value: "pdf" | "csv" | "xlsx") => setKPIReportFormat(value)}>
+              <Select value={kpiReportFormat} onValueChange={(value: "pdf" | "csv" | "json") => setKPIReportFormat(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pdf">PDF/Text Report</SelectItem>
+                  <SelectItem value="pdf">PDF Report</SelectItem>
                   <SelectItem value="csv">CSV (Spreadsheet)</SelectItem>
-                  <SelectItem value="xlsx">Excel/JSON Data</SelectItem>
+                  <SelectItem value="json">JSON Data</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            <div>
-              <label className="text-sm font-medium mb-2 block">Date Range</label>
-              <Select value={kpiReportDateRange} onValueChange={setKPIReportDateRange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">Last 7 Days</SelectItem>
-                  <SelectItem value="30d">Last 30 Days</SelectItem>
-                  <SelectItem value="90d">Last 90 Days</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-sm text-muted-foreground">Exports the current saved KPI values. Historical progress is not included.</p>
             
             <div className="bg-muted p-3 rounded-lg">
               <div className="text-sm text-muted-foreground/70">
                 <p><strong>Report will include:</strong></p>
                 <ul className="mt-1 space-y-1">
-                  <li>• All KPI progress data</li>
+                  <li>• Current KPI values and progress</li>
                   <li>• Status and priority levels</li>
                   <li>• Target vs actual values</li>
                   <li>• Performance calculations</li>

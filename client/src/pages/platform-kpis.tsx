@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useSearch, useLocation } from "wouter";
+import { useClient } from "@/lib/clientContext";
+import type { Campaign } from "@shared/schema";
 import { ArrowLeft, Target, Plus, Trash2, Pencil, BarChart3, TrendingUp, Calendar } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -46,12 +48,12 @@ const kpiFormSchema = z.object({
   name: z.string().min(1, "KPI name is required"),
   description: z.string().optional(),
   unit: z.string().min(1, "Unit is required"),
-  targetValue: z.string().min(1, "Target value is required"),
+  targetValue: z.string().trim().min(1, "Target value is required").refine(value => Number.isFinite(Number(value)), "Enter a finite target"),
   priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
 });
 
 const progressFormSchema = z.object({
-  value: z.string().min(1, "Value is required"),
+  value: z.string().trim().min(1, "Value is required").refine(value => Number.isFinite(Number(value)), "Enter a finite value"),
   notes: z.string().optional(),
 });
 
@@ -61,6 +63,9 @@ type ProgressFormData = z.infer<typeof progressFormSchema>;
 export default function PlatformKPIs() {
   const [, params] = useRoute("/platforms/:platformType/kpis");
   const platformType = params?.platformType;
+  const campaignId = new URLSearchParams(useSearch()).get("campaignId") || "";
+  const [, setLocation] = useLocation();
+  const { selectedClientId } = useClient();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -88,19 +93,30 @@ export default function PlatformKPIs() {
     },
   });
 
-  // Fetch platform KPIs
-  const { data: kpis = [], isLoading: kpisLoading } = useQuery<KPI[]>({
-    queryKey: [`/api/platforms/${platformType}/kpis`],
-    enabled: !!platformType,
+  const { data: campaigns = [], isLoading: campaignsLoading, isError: campaignsError } = useQuery<Campaign[]>({
+    queryKey: [`/api/campaigns?clientId=${encodeURIComponent(selectedClientId || "")}`],
+    enabled: !!selectedClientId,
+  });
+  const selectedCampaign = campaigns.find(campaign => campaign.id === campaignId);
+  // The API requires the exact owned campaign; never show another campaign's cached KPIs.
+  const { data: kpis = [], isLoading: kpisLoading, isError: kpisError } = useQuery<KPI[]>({
+    queryKey: [`/api/platforms/${platformType}/kpis`, campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/${platformType}/kpis?campaignId=${encodeURIComponent(campaignId)}`);
+      if (!response.ok) throw new Error("Unable to load campaign KPIs");
+      return response.json();
+    },
+    enabled: !!platformType && !!selectedCampaign && !campaignsError,
   });
 
   // Create KPI mutation
   const createKPIMutation = useMutation({
     mutationFn: async (data: KPIFormData) => {
+      if (!selectedCampaign || campaignsError) throw new Error("Select a campaign first");
       const response = await fetch(`/api/platforms/${platformType}/kpis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, campaignId }),
       });
       if (!response.ok) throw new Error("Failed to create KPI");
       return response.json();
@@ -119,6 +135,7 @@ export default function PlatformKPIs() {
   // Record progress mutation
   const recordProgressMutation = useMutation({
     mutationFn: async (data: { kpiId: string; progressData: ProgressFormData }) => {
+      if (!selectedCampaign || !kpis.some(kpi => kpi.id === data.kpiId && kpi.campaignId === campaignId)) throw new Error("KPI is outside the selected campaign");
       const response = await fetch(`/api/kpis/${data.kpiId}/progress`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -142,6 +159,7 @@ export default function PlatformKPIs() {
   // Delete KPI mutation
   const deleteKPIMutation = useMutation({
     mutationFn: async (kpiId: string) => {
+      if (!selectedCampaign || !kpis.some(kpi => kpi.id === kpiId && kpi.campaignId === campaignId)) throw new Error("KPI is outside the selected campaign");
       const response = await fetch(`/api/kpis/${kpiId}`, {
         method: "DELETE",
       });
@@ -163,16 +181,17 @@ export default function PlatformKPIs() {
 
   const onRecordProgress = async (data: ProgressFormData) => {
     if (!selectedKPI) return;
-    recordProgressMutation.mutate({ kpiId: selectedKPI.id, progressData: { ...data, expectedScope: "platform", platformType } as any });
+    recordProgressMutation.mutate({ kpiId: selectedKPI.id, progressData: { ...data, expectedScope: "platform", platformType, campaignId } as any });
   };
 
   const formatValue = (value: string, unit: string) => {
-    const numValue = parseFloat(value);
+    if (value == null || String(value).trim() === "" || !Number.isFinite(Number(value))) return "Unavailable";
+    const numValue = Number(value);
     switch (unit) {
       case "%":
         return `${numValue}%`;
       case "$":
-        return `$${numValue.toLocaleString()}`;
+        return new Intl.NumberFormat(undefined, { style: "currency", currency: selectedCampaign?.currency || "USD" }).format(numValue);
       case "ratio":
         return `${numValue}:1`;
       default:
@@ -253,10 +272,10 @@ export default function PlatformKPIs() {
           <main className="flex-1 p-8">
             <div className="text-center py-12">
               <h2 className="text-2xl font-bold text-foreground mb-4">Platform not found</h2>
-              <Link href="/integrations">
+              <Link href="/campaigns">
                 <Button>
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Integrations
+                  Back to All Campaigns
                 </Button>
               </Link>
             </div>
@@ -266,7 +285,7 @@ export default function PlatformKPIs() {
     );
   }
 
-  if (kpisLoading) {
+  if (kpisLoading || campaignsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -300,10 +319,10 @@ export default function PlatformKPIs() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-4">
-                <Link href="/integrations">
+                <Link href={selectedCampaign ? `/campaigns/${campaignId}` : "/campaigns"}>
                   <Button variant="ghost" size="sm">
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Integrations
+                    {selectedCampaign ? "Back to Campaign Overview" : "Back to All Campaigns"}
                   </Button>
                 </Link>
                 <div className="flex items-center space-x-3">
@@ -319,13 +338,26 @@ export default function PlatformKPIs() {
                 </div>
               </div>
               
-              <Button onClick={() => setShowKPIDialog(true)}>
+              <Button onClick={() => setShowKPIDialog(true)} disabled={!selectedCampaign || campaignsError || kpisError}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add KPI
               </Button>
             </div>
           </div>
 
+          <div className="mb-6 space-y-2">
+            <label className="text-sm font-medium">Campaign</label>
+            <Select value={selectedCampaign?.id || ""} onValueChange={(id) => {
+              setSelectedKPI(null); setShowProgressDialog(false); setShowKPIDialog(false);
+              setLocation(`/platforms/${platformType}/kpis?campaignId=${encodeURIComponent(id)}`);
+            }}>
+              <SelectTrigger aria-label="Campaign"><SelectValue placeholder="Select a campaign" /></SelectTrigger>
+              <SelectContent>{campaigns.map(campaign => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}</SelectContent>
+            </Select>
+            {campaignsError || kpisError ? <p role="alert" className="text-destructive">Unable to load campaign KPIs. Please try again.</p>
+              : !selectedCampaign && <p className="text-muted-foreground">Select a campaign for this client to manage its KPIs.</p>}
+          </div>
+          {selectedCampaign && !campaignsError && !kpisError && <>
           {/* Summary Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
             <Card>
@@ -477,6 +509,7 @@ export default function PlatformKPIs() {
               ))}
             </div>
           )}
+          </>}
         </main>
       </div>
 

@@ -28950,10 +28950,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isCampaignKPIPlatformType(kpiPlatformType) || String(req.body?.platformType || "").trim().toLowerCase() !== kpiPlatformType) {
           return res.status(404).json({ message: "KPI not found" });
         }
+        if (req.body?.campaignId && String(okKpi.campaignId || "") !== String(req.body.campaignId)) {
+          return res.status(404).json({ message: "KPI not found" });
+        }
       } else {
         return res.status(400).json({ message: "KPI progress scope is required" });
       }
 
+      if (!["number", "string"].includes(typeof req.body.value) || String(req.body.value).trim() === "" || !Number.isFinite(Number(req.body.value))) {
+        return res.status(400).json({ message: "A finite KPI progress value is required" });
+      }
       const progressData = {
         kpiId: id,
         value: req.body.value?.toString() || "0",

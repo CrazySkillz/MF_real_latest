@@ -6,6 +6,7 @@ export interface KPIExportData {
   targetValue: string;
   frequency?: string;
   targetDate?: string;
+  formattedDetails?: string[];
 }
 
 export interface CampaignExportData {
@@ -21,14 +22,21 @@ export async function exportCampaignKPIsToPDF(data: CampaignExportData): Promise
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   let yPosition = margin;
+  const writeLines = (text: string, indent = 0, lineHeight = 6) => {
+    for (const line of doc.splitTextToSize(text, pageWidth - margin * 2 - indent)) {
+      if (yPosition > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); yPosition = margin; }
+      doc.text(line, margin + indent, yPosition);
+      yPosition += lineHeight;
+    }
+  };
 
   doc.setFontSize(20);
   doc.text('Campaign KPI Report', margin, yPosition);
   yPosition += 10;
 
   doc.setFontSize(12);
-  doc.text(`Campaign: ${data.name}`, margin, yPosition);
-  yPosition += 7;
+  writeLines(`Campaign: ${data.name}`);
+  writeLines('Current saved KPI values');
   doc.text(`Export Date: ${new Date(data.exportDate).toLocaleDateString()}`, margin, yPosition);
   yPosition += 15;
 
@@ -48,8 +56,7 @@ export async function exportCampaignKPIsToPDF(data: CampaignExportData): Promise
 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(`${index + 1}. ${kpi.name}`, margin, yPosition);
-      yPosition += 7;
+      writeLines(`${index + 1}. ${kpi.name}`, 0, 7);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
@@ -58,7 +65,7 @@ export async function exportCampaignKPIsToPDF(data: CampaignExportData): Promise
       const targetNum = parseFloat(kpi.targetValue) || 0;
       const progress = targetNum > 0 ? ((currentNum / targetNum) * 100).toFixed(1) : '0.0';
 
-      const details = [
+      const details = kpi.formattedDetails ?? [
         `Metric: ${kpi.aggregatedMetric}`,
         `Current Value: ${currentNum.toLocaleString()}`,
         `Target Value: ${targetNum.toLocaleString()}`,
@@ -73,8 +80,7 @@ export async function exportCampaignKPIsToPDF(data: CampaignExportData): Promise
       }
 
       details.forEach(detail => {
-        doc.text(detail, margin + 5, yPosition);
-        yPosition += 5;
+        writeLines(detail, 5, 5);
       });
 
       yPosition += 5;

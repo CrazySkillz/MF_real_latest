@@ -1,0 +1,1 @@
+client/src/pages/platform-comparison.tsx(189,65): error TS2339: Property 'currency' does not exist on type '{}'.

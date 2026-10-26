@@ -380,11 +380,11 @@ caller or are retained compatibility surfaces:
 | Route | Current classification |
 | --- | --- |
 | `/clients` | Alternate Clients implementation that routes selection to All Campaigns; the primary Clients route is `/`. |
-| `/campaigns/:id/platform-comparison` | Implemented page retained for compatibility; removed from current Campaign Diagnostics launchers and new report creation. |
-| `/campaigns/:id/kpis` | Registered standalone campaign KPI page; current alert deep links use GA4 KPI/Benchmark tabs instead. |
-| `/platforms/:platformType/kpis` | Registered standalone platform KPI page with no current navigation caller. |
+| `/campaigns/:id/platform-comparison` | Retained compatibility page using canonical source values/capabilities; removed from current Campaign Diagnostics launchers and new report creation. Row sums may overlap and source import windows may differ. |
+| `/campaigns/:id/kpis` | Registered standalone campaign KPI page with current-value PDF/CSV/JSON exports; current alert deep links use GA4 KPI/Benchmark tabs instead. |
+| `/platforms/:platformType/kpis` | Registered standalone platform KPI page with no current navigation caller. Requires a campaign selected from the current client's campaigns; keeps that ID in the query string. |
 | `/linkedin-analytics` | Legacy non-campaign LinkedIn route. |
-| `/audiences` | Implemented Audience Management page with no current navigation caller. |
+| `/audiences` | Explicit Audience Management Demo with example data and disabled create/edit/delete controls; no current navigation caller or persistence. |
 | `/reports` without `campaignId` | Standalone fail-closed library shell; it does not expose campaign report creation. |
 | `/integrations/:id/analytics` | Compatibility route to Custom Integration analytics. |
 

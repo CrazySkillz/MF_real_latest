@@ -1,5 +1,9 @@
 # Finding-by-finding fix queue
 
+**October 26 retained pages/report publication packet:** User-authorized commit/push includes the [verified corrections and evidence](../../fixes/v1-batch-7/RETAINED_PAGES_AND_REPORT_CHECKPOINT.md). Earlier uncommitted statements describe validation time. No assignment, release-acceptance count or remaining V1-015/V1-085 gate changes; deployment/UI acceptance remains unverified.
+
+**October 26 retained pages/report checkpoint:** [Six additional Batch 7 corrections](../../fixes/v1-batch-7/RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) have local evidence: V1-061/062/064/086/129/130. **306/306 checks in 19 files pass, zero failed/skipped**. V1-085 is partially corrected and remains OPEN; V1-015 remains OPEN. Twenty-six findings have local forward-path evidence plus one user-approved local exclusion. Uncommitted/undeployed; assignments and all release-acceptance counts remain unchanged. Earlier checkpoint counts are historical.
+
 **October 26 Dashboard publication packet:** The user authorized committing and pushing the [verified V1-125 removal](../../fixes/v1-batch-7/README.md#v1-125) and its evidence, excluding unfinished Audiences edits. Earlier uncommitted statements record validation time. Deployment/UI acceptance, assignments and release counts remain unchanged.
 
 **October 26 Dashboard scope decision:** User-directed removal of the separate Dashboard is [implemented and verified locally for V1-125](../../fixes/v1-batch-7/README.md#v1-125): 23 targeted checks pass; no page, route or redirect remains. Campaign records and analytics paths were not changed. Uncommitted/undeployed; eight Batch 7 findings remain before combined validation. Assignments and all release acceptance counts remain unchanged.

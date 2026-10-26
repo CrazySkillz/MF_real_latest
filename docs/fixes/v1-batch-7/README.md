@@ -6,11 +6,15 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 7 status
 
+**Retained pages/report publication packet, October 26:** The user authorized committing and pushing the tested corrections and their evidence. All 11 tested source hashes still match the 306-check/final-build packet. Earlier uncommitted statements record validation time. Deployment and UI acceptance remain unverified; V1-015/V1-085 and all release acceptance gates remain OPEN. Detailed KPI/export/report UI validation will be consolidated after the remaining report work; a campaign-opening smoke check alone does not close those gates.
+
+**Retained pages/report checkpoint, October 26:** [Current evidence and exact remaining scope](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) records six additional locally verified corrections (V1-061/062/064/086/129/130), partial trend/negative-state correction for V1-085, and a saved-source artifact fixture for V1-015. **306/306 checks in 19 files pass, zero failed/skipped**; the final production build packet is linked there. Twenty-six findings now have local forward-path evidence, V1-125 is locally excluded by user decision, and **two findings remain OPEN: V1-015 and V1-085**. Full non-trend report parity and current browser/scheduled/immutable artifacts plus real delivery are not certified. Changes are uncommitted/undeployed; all 29 release acceptances remain OPEN. The user reported completing the previous client-selection/Campaign Overview smoke check; direct `/dashboard` not-found behavior was not separately confirmed. Earlier checkpoint counts below are historical.
+
 **Dashboard publication packet, October 26:** The user authorized committing and pushing the verified V1-125 page removal and its 23-check/build evidence. Earlier uncommitted statements record validation time. The unfinished Audiences edits are excluded. Deployment and the short client-selection/Campaign Overview/removed-route UI check remain unverified; the eight remaining Batch 7 items and all release acceptances are unchanged.
 
 **Dashboard scope decision, October 26:** The user explicitly requires no separate Dashboard page. V1-125 is now effectively excluded locally: the page, import, route and unused welcome preview are removed; `/clients` selects the exact client and opens All Campaigns. There is no `/dashboard` redirect. **23/23 targeted checks pass**; the same new tests reproduce four expected failures on `fa9fb67a`. [Evidence and build results](validation-2026-10-26/retired-dashboard-evidence.json). Changes are uncommitted/undeployed. No campaign records, server routes, storage, schema, schedulers or calculations were changed. Earlier Audiences edits remain in progress and are not accepted by this packet.
 
-**Current remaining work:** Twenty findings have local forward-path evidence and V1-125 has a user-approved local exclusion. **Eight findings remain**: V1-061/062/064/129/130 (retained pages/forms/exports) and V1-015/085/086 (report content/layout/parity), followed by combined validation. All 29 release acceptances remain OPEN. Earlier checkpoint counts below are historical.
+**Remaining work at the Dashboard checkpoint (superseded above):** Twenty findings had local forward-path evidence and V1-125 a user-approved local exclusion. Eight findings remained: V1-061/062/064/129/130 and V1-015/085/086. All 29 release acceptances remained OPEN.
 
 **Group 2 publication packet, October 26:** The user authorized committing and pushing the verified metrics/source-backed-goal changes and their 675-check plus 59-check follow-up evidence. Uncommitted/undeployed statements below describe validation time. This publication does not close live acceptance, the remaining nine implementation findings, or Batch 6's postponed sign-off.
 
@@ -155,14 +159,14 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-058](#v1-058) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-059](#v1-059) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-060](#v1-060) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-061](#v1-061) | P1 | OPEN | OPEN |
-| [V1-062](#v1-062) | P1 | OPEN | OPEN |
-| [V1-064](#v1-064) | P1 | OPEN | OPEN |
+| [V1-061](#v1-061) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-062](#v1-062) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-064](#v1-064) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-074](#v1-074) | P2 | VERIFIED LOCALLY | OPEN |
 | [V1-077](#v1-077) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-084](#v1-084) | P2 | VERIFIED LOCALLY | OPEN |
 | [V1-085](#v1-085) | P1 | OPEN | OPEN |
-| [V1-086](#v1-086) | P2 | OPEN | OPEN |
+| [V1-086](#v1-086) | P2 | VERIFIED LOCALLY | OPEN |
 | [V1-094](#v1-094) | P2 | VERIFIED LOCALLY | OPEN |
 | [V1-095](#v1-095) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-096](#v1-096) | P2 | VERIFIED LOCALLY | OPEN |
@@ -175,8 +179,8 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-119](#v1-119) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-122](#v1-122) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-125](#v1-125) | P1 | OPEN | OPEN |
-| [V1-129](#v1-129) | P1 | OPEN | OPEN |
-| [V1-130](#v1-130) | P1 | OPEN | OPEN |
+| [V1-129](#v1-129) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-130](#v1-130) | P1 | VERIFIED LOCALLY | OPEN |
 
 ## Findings
 
@@ -192,8 +196,7 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 Browser PDFs, immutable snapshots, scheduled server artifacts and confirmed delivery need current-revision/source-mix parity. Browser `ga4-metrics.tsx:4130` labels source-to-date amounts; scheduled PDF fixtures enforce completed-day amounts. October19 deployed counter had0sent; October20 at09:00 had1 and final16:48 observation has2. Aggregate counters do not identify the artifact/campaign, verify its values or prove delivery. No email was triggered by the audit.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** Synthetic completed-day source amounts and unmapped-campaign behavior are covered in a complete scheduled payload and actual PDF. Current browser/scheduled/immutable artifact parity for all offered report/source mixes and confirmed provider delivery remain OPEN. See the [current checkpoint](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) for precise evidence and exclusions. No release certification is claimed.
 ### V1-021
 
 **Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
@@ -268,7 +271,7 @@ Browser PDFs, immutable snapshots, scheduled server artifacts and confirmed deli
 
 ### V1-061
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -276,11 +279,10 @@ Browser PDFs, immutable snapshots, scheduled server artifacts and confirmed deli
 
 Registered Audiences page `audiences.tsx:17–83,134–135` renders hard-coded audience/conversion/demographic data; Create210 has no persistence handler. Treat as nonfunctional/demo and explicitly gate/label it before inclusion; hidden navigation is insufficient.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** [Retained pages/report checkpoint](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) records the confirmed root cause, exact path, seven runtime files, baseline/fixed/neighbor evidence and remaining limits. The final combined packet passes 306/306 checks in 19 files. Uncommitted/undeployed; release acceptance remains OPEN. This is local forward-path evidence, not whole-section certification.
 ### V1-062
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -288,11 +290,10 @@ Registered Audiences page `audiences.tsx:17–83,134–135` renders hard-coded a
 
 `platform-comparison.tsx:221–222,402–411` returns0% ROI for zero revenue/positive spend while footer gives−100%. Failed aggregate fallback306–355 invents Custom Revenue from conversions×AOV(default50), ignoring measured0; native GA4 may disappear. [Full field/fallback inventory and exact cases](../../audits/v1-2026-10-19/RETAINED_COMPARISON_AUDIENCE_KPI_VALUES.md). Preserve verified source values, availability, windows and zero semantics; modern GA4 Financial Analysis is a separate path.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** [Retained pages/report checkpoint](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) records the confirmed root cause, exact path, seven runtime files, baseline/fixed/neighbor evidence and remaining limits. The final combined packet passes 306/306 checks in 19 files. Uncommitted/undeployed; release acceptance remains OPEN. This is local forward-path evidence, not whole-section certification.
 ### V1-064
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -300,8 +301,7 @@ Registered Audiences page `audiences.tsx:17–83,134–135` renders hard-coded a
 
 `kpis.tsx:329–400`: PDF choice emits TXT, Excel emits JSON, date filter is cosmetic, CSV fails to escape quotes, and progress ignores metric direction/current availability. Exact export fixtures prove format/quote defects; modern GA4 Reports is separate.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** [Retained pages/report checkpoint](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) records the confirmed root cause, exact path, seven runtime files, baseline/fixed/neighbor evidence and remaining limits. The final combined packet passes 306/306 checks in 19 files. Uncommitted/undeployed; release acceptance remains OPEN. This is local forward-path evidence, not whole-section certification.
 ### V1-074
 
 **Severity:** P2. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
@@ -348,11 +348,10 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `ga4-scheduled-report-pdf.ts:289–451,965–1014` omits current client three-day/rate and other finding rules, then calls no finding stable. Complete six-day100% decline and fourteen-day10%→5% conversion-rate fixtures pass saved-publication guards but render “No major anomalies detected”; exact client trend branch finds both. Required Benchmark read-failure control correctly rejects. Align current live/browser/server findings and negative states before report certification.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** Partial correction only: three-day/seven-day trend parity, missing/zero/negative finance states and removal of the false stable conclusion are covered locally. Full saved-target, financial, channel and negative-state parity remains OPEN. See the [current checkpoint](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) for precise evidence and exclusions. No release certification is claimed.
 ### V1-086
 
-**Severity:** P2. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P2. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -360,8 +359,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `ga4-scheduled-report-pdf.ts:1219–1229` unwrapped campaign name overlaps timestamp; table1104–1147 character-count truncation lets long Landing Page text overlap Source/Medium. Three real PDFs/eight pages inspected. Zero off-page characters did not detect overlap. Preserve current layout pattern while testing measured label bounds and page transitions.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** [Retained pages/report checkpoint](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) records the confirmed root cause, exact path, seven runtime files, baseline/fixed/neighbor evidence and remaining limits. The final combined packet passes 306/306 checks in 19 files. Uncommitted/undeployed; release acceptance remains OPEN. This is local forward-path evidence, not whole-section certification.
 ### V1-094
 
 **Severity:** P2. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
@@ -508,7 +506,7 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 ### V1-129
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -516,11 +514,10 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `kpis.tsx:42–44,277–295,1025–1081` requires kpiId before submit but never populates it; `platform-kpis.tsx:94–108` omits campaignId required by GET/POST at routes28743/28780. [Exact schema/route cases](../../audits/v1-2026-10-19/RETAINED_COMPARISON_AUDIENCE_KPI_VALUES.md) reproduce hidden validation failure, empty list and400 creation. Restore current scoped form/API contracts or effectively exclude these accessible pages.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** [Retained pages/report checkpoint](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) records the confirmed root cause, exact path, seven runtime files, baseline/fixed/neighbor evidence and remaining limits. The final combined packet passes 306/306 checks in 19 files. Uncommitted/undeployed; release acceptance remains OPEN. This is local forward-path evidence, not whole-section certification.
 ### V1-130
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -528,4 +525,4 @@ Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns s
 
 `kpis.tsx:42–44,126–147,921–989` universally scores current/target, despite CPA/CAC presets. Target25/current50 is “Target Achieved”; current10 is40%; negative ROI entry is forbidden and malformed progress yieldsNaN. [Exact controls and lifecycle](../../audits/v1-2026-10-19/RETAINED_COMPARISON_AUDIENCE_KPI_VALUES.md). Preserve metric direction, units, signed values and unavailable states through card, saved status, report and alert consumers.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** [Retained pages/report checkpoint](RETAINED_PAGES_AND_REPORT_CHECKPOINT.md) records the confirmed root cause, exact path, seven runtime files, baseline/fixed/neighbor evidence and remaining limits. The final combined packet passes 306/306 checks in 19 files. Uncommitted/undeployed; release acceptance remains OPEN. This is local forward-path evidence, not whole-section certification.

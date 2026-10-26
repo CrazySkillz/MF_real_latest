@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-26T04:11:59.851Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "retained-reports-final-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "retained-reports-final-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "retained-reports-final-server-build.log"
+    }
+  ]
+}

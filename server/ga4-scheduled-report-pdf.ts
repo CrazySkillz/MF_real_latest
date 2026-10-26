@@ -301,7 +301,20 @@ const buildInsightsItems = (payload: any) => {
   const financialRevenue = Number(payload.financialRevenue || 0);
   const financialSpend = Number(payload.financialSpend || 0);
   const rollups = payload.insightsRollups;
-  if (financialSpend > 0 && financialRevenue <= 0) {
+  if (payload.financialSpendAvailable === false) {
+    items.push({ severity: "high", title: "Spend is not connected",
+      description: "Spend is not configured for this campaign, so ROI/ROAS/CPA and spend-based KPIs/Benchmarks are blocked until a spend source is added.",
+      recommendation: "Import spend to enable spend-based executive metrics.", category: "finance", dataBasis: "Connected-source revenue/spend totals", confidence: "High" });
+  }
+  if (financialRevenue < 0 || (payload.financialSpendAvailable && financialSpend < 0)) {
+    for (const [name, value] of [["revenue", financialRevenue], ["spend", payload.financialSpendAvailable ? financialSpend : 0]] as const) {
+      if (value >= 0) continue;
+      items.push({ severity: "high", title: `Connected-source ${name} is negative`,
+        description: `Connected-source ${name} is ${payload.formatMoney(value)}; it is not treated as zero.`,
+        recommendation: "Verify refunds, credits, adjustments, and source signs before acting on financial metrics.", category: "finance", dataBasis: "Connected-source revenue/spend totals", confidence: "High" });
+    }
+  }
+  if (payload.financialSpendAvailable && financialSpend > 0 && financialRevenue === 0) {
     items.push({
       severity: "high",
       title: "Spend without revenue",
@@ -312,49 +325,54 @@ const buildInsightsItems = (payload: any) => {
       confidence: "High",
     });
   }
-  if (rollups.last7.complete && rollups.prior7.complete && rollups.prior7.revenue > 0 && rollups.deltas.revenue7 <= -25) {
-    items.push({
-      severity: "high",
-      title: "Revenue down vs prior 7 days",
-      description: `Last 7d revenue ${payload.formatMoney(rollups.last7.revenue)} vs prior 7d ${payload.formatMoney(rollups.prior7.revenue)}.`,
-      recommendation: "Check campaign mix, landing pages, and revenue tracking changes across the last week.",
-      category: "trends",
-      dataBasis: "GA4 completed daily history",
-      confidence: "Medium",
-    });
-  }
-  if (rollups.last7.complete && rollups.prior7.complete && rollups.prior7.sessions > 0 && rollups.deltas.sessions7 <= -20) {
-    items.push({
-      severity: "medium",
-      title: "Traffic drop detected",
-      description: `Last 7d sessions ${payload.formatNumber(rollups.last7.sessions)} vs prior 7d ${payload.formatNumber(rollups.prior7.sessions)}.`,
-      recommendation: "Review source and medium mix for the largest acquisition-channel changes.",
-      category: "trends",
-      dataBasis: "GA4 completed daily history",
-      confidence: "Medium",
-    });
-  }
-  if (rollups.last7.complete && rollups.prior7.complete && rollups.prior7.conversions > 0 && rollups.deltas.conversions7 <= -20) {
-    items.push({
-      severity: "medium",
-      title: "Conversions down vs prior 7 days",
-      description: `Last 7d conversions ${formatConversionCredit(rollups.last7.conversions)} vs prior 7d ${formatConversionCredit(rollups.prior7.conversions)}.`,
-      recommendation: "Review conversion-event firing, landing page changes, and traffic quality.",
-      category: "trends",
-      dataBasis: "GA4 completed daily history",
-      confidence: "Medium",
-    });
-  }
-  if (rollups.last7.complete && rollups.prior7.complete && rollups.prior7.revenue > 0 && rollups.deltas.revenue7 >= 20) {
-    items.push({
-      severity: "positive",
-      title: "Revenue momentum improving",
-      description: `Last 7d revenue ${payload.formatMoney(rollups.last7.revenue)} vs prior 7d ${payload.formatMoney(rollups.prior7.revenue)}.`,
-      recommendation: "Check which sources contributed to the improvement before considering careful scaling.",
-      category: "trends",
-      dataBasis: "GA4 completed daily history",
-      confidence: "Medium",
-    });
+  const trend = (severity: "high" | "medium" | "positive" | "info", title: string, description: string) => items.push({
+    severity, title, description, category: "trends", dataBasis: "GA4 completed daily history", confidence: "Medium",
+    recommendation: "Verify the daily import and compare traffic sources and conversion paths before changing campaign delivery.",
+  });
+  const sevenDayComparisonReady = rollups.last7.complete && rollups.prior7.complete;
+  const shortComparisonReady = rollups.last3.complete && rollups.prior3.complete;
+  if (sevenDayComparisonReady || shortComparisonReady) {
+    const days = sevenDayComparisonReady ? 7 : 3;
+    const current = sevenDayComparisonReady ? rollups.last7 : rollups.last3;
+    const prior = sevenDayComparisonReady ? rollups.prior7 : rollups.prior3;
+    const suffix = sevenDayComparisonReady ? "week-over-week" : "(3-day comparison)";
+    const delta = (key: string) => prior[key] > 0 ? ((current[key] - prior[key]) / prior[key]) * 100 : 0;
+    if (prior.cr > 0 && delta("cr") <= (sevenDayComparisonReady ? -15 : -25)) {
+      trend(sevenDayComparisonReady ? "high" : "medium", `Conversion rate dropped ${Math.abs(delta("cr")).toFixed(1)}% ${suffix}`,
+        `Last ${days}d ${Number(current.cr).toFixed(2)}% vs prior ${days}d ${Number(prior.cr).toFixed(2)}%.`);
+    }
+    if (prior.pvps > 0 && delta("pvps") <= (sevenDayComparisonReady ? -20 : -30)) {
+      trend(sevenDayComparisonReady ? "medium" : "info", `Engagement depth decreased ${Math.abs(delta("pvps")).toFixed(1)}% ${suffix}`,
+        `Pageviews/session last ${days}d ${Number(current.pvps).toFixed(2)} vs prior ${days}d ${Number(prior.pvps).toFixed(2)}.`);
+    }
+    const correlatedVolumeDrop = !sevenDayComparisonReady && prior.sessions > 0 && delta("sessions") <= -30 &&
+      prior.revenue > 0 && delta("revenue") <= -35 && prior.conversions > 0 && delta("conversions") <= -30 && current.cr >= prior.cr;
+    if (correlatedVolumeDrop) {
+      trend("medium", "Traffic and revenue fell in the latest 3 days",
+        `${current.startDate} to ${current.endDate}: ${payload.formatNumber(current.sessions)} sessions, ${formatConversionCredit(current.conversions)} conversions, ${payload.formatMoney(current.revenue)} native GA4 revenue. Prior ${prior.startDate} to ${prior.endDate}: ${payload.formatNumber(prior.sessions)} sessions, ${formatConversionCredit(prior.conversions)} conversions, ${payload.formatMoney(prior.revenue)} native GA4 revenue. Conversion rate was ${Number(current.cr).toFixed(2)}% vs ${Number(prior.cr).toFixed(2)}%.`);
+    }
+    for (const [key, label, threshold, shortThreshold, format] of [
+      ["sessions", "Sessions", -20, -30, payload.formatNumber],
+      ["revenue", "Revenue", -25, -35, payload.formatMoney],
+      ["conversions", "Conversions", -20, -30, formatConversionCredit],
+    ] as const) {
+      if (!correlatedVolumeDrop && prior[key] > 0 && delta(key) <= (sevenDayComparisonReady ? threshold : shortThreshold)) {
+        trend(sevenDayComparisonReady ? "high" : "medium", `${label} dropped ${Math.abs(delta(key)).toFixed(1)}% ${suffix}`,
+          `Last ${days}d: ${format(current[key])} vs prior ${days}d: ${format(prior[key])}.`);
+      }
+    }
+    for (const [key, label, threshold, minimum, format] of [
+      ["sessions", "Sessions", sevenDayComparisonReady ? 15 : 25, sevenDayComparisonReady ? 50 : 20, payload.formatNumber],
+      ["revenue", "Revenue", 20, 0, payload.formatMoney],
+      ["conversions", "Conversions", 15, 5, formatConversionCredit],
+    ] as const) {
+      if ((sevenDayComparisonReady || key === "sessions") && prior[key] > minimum && delta(key) >= threshold) {
+        trend("positive", `${label} up ${delta(key).toFixed(1)}% ${suffix}`, `Last ${days}d: ${format(current[key])} vs prior ${days}d: ${format(prior[key])}.`);
+      }
+    }
+  } else {
+    trend("info", "Trend signals need more history",
+      `Current 7-day window ${rollups.last7.startDate} to ${rollups.last7.endDate}: ${rollups.last7.days}/7 recorded days. Prior window: ${rollups.prior7.days}/7. Current 3-day window: ${rollups.last3.days}/3. Prior window: ${rollups.prior3.days}/3. Both adjacent calendar windows must be complete before comparisons run.`);
   }
   for (const benchmark of Array.isArray(payload.benchmarks) ? payload.benchmarks : []) {
     const sufficiency = resolveBenchmarkDataSufficiency({
@@ -397,8 +415,8 @@ const buildInsightsItems = (payload: any) => {
   if (items.length === 0) {
     items.push({
       severity: "info",
-      title: "No major anomalies detected",
-      description: "Recent GA4 trends are stable relative to the prior comparison window.",
+      title: "No findings from the report checks",
+      description: "No trend or Benchmark threshold was triggered by the available report inputs. This does not establish that every Insights check is clear.",
       recommendation: "Continue monitoring the main revenue, traffic, and conversion inputs for this campaign.",
       category: "context",
       dataBasis: "Current campaign data",
@@ -412,12 +430,12 @@ const buildInsightsActionDescription = (availableDays: number) => {
   const days = Math.max(0, Number(availableDays || 0));
   const dayLabel = `${days} completed GA4 day${days === 1 ? "" : "s"}`;
   if (days < 6) {
-    return `Only ${dayLabel} available. Trend and anomaly checks need at least 6 days; setup and KPI/Benchmark checks still run.`;
+    return `Only ${dayLabel} available. Trend and anomaly checks need at least 6 days; financial setup and Benchmark checks still run.`;
   }
   if (days < 14) {
     return `${dayLabel} available. Trend checks require consecutive recorded dates; a 7-day comparison needs two complete adjacent windows.`;
   }
-  return `${dayLabel} available. Comparisons are shown only for complete adjacent windows; missing dates are unavailable. KPI/Benchmark performance is checked separately.`;
+  return `${dayLabel} available. Comparisons are shown only for complete adjacent windows; missing dates are unavailable. Benchmark performance is checked separately.`;
 };
 
 async function buildGA4ReportPayload(report: any) {
@@ -1066,6 +1084,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   };
   const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[], color: C3 = COLORS.overview, note?: string) => {
     if (rows.length === 0) return;
+    const columnWidths = widths.map(width => width * CW / widths.reduce((sum, value) => sum + value, 0));
     const fullHeight = 18 + (note ? 6 : 0) + 10 + rows.length * 8 + 4;
     if (fullHeight <= 250 && y + fullHeight > 274) {
       addFooter();
@@ -1078,35 +1097,44 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...COLORS.textSec);
-      doc.text(note, MX, y + 2);
-      y += 6;
+      const noteLines = doc.splitTextToSize(note, CW);
+      doc.text(noteLines, MX, y + 2);
+      y += noteLines.length * 3.5 + 3;
     }
-    doc.setFillColor(...COLORS.cardBg);
-    doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+    const tableHeader = () => {
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
+    const labels = headers.map((header, idx) => doc.splitTextToSize(header, columnWidths[idx] - 8) as string[]);
+    const headerHeight = Math.max(...labels.map(lines => lines.length)) * 3.2 + 5;
+    doc.setFillColor(...COLORS.cardBg);
+    doc.roundedRect(MX, y, CW, headerHeight, 2, 2, "F");
     doc.setTextColor(...COLORS.textTert);
-    let x = MX + 4;
-    headers.forEach((header, idx) => {
-      doc.text(header, x, y + 5.5, idx === 0 ? undefined : { align: "right" });
-      x += widths[idx];
+    let x = MX;
+    labels.forEach((lines, idx) => {
+      doc.text(lines, idx === 0 ? x + 4 : x + columnWidths[idx] - 4, y + 5.5, idx === 0 ? undefined : { align: "right" });
+      x += columnWidths[idx];
     });
-    y += 10;
+    y += headerHeight + 2;
+    };
+    tableHeader();
     rows.forEach((row) => {
-      checkPage(9);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      const cells = row.map((cell, idx) => doc.splitTextToSize(cell, columnWidths[idx] - 8) as string[]);
+      const rowHeight = Math.max(...cells.map(lines => lines.length)) * 3.5 + 5;
+      if (y + rowHeight > 274) { checkPage(rowHeight); tableHeader(); }
       doc.setDrawColor(...COLORS.divider);
       doc.setLineWidth(0.2);
       doc.line(MX, y - 1.5, MX + CW, y - 1.5);
-      let colX = MX + 4;
-      row.forEach((cell, idx) => {
+      let colX = MX;
+      cells.forEach((cell, idx) => {
         doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...COLORS.text);
-        const safeValue = idx === 0 && cell.length > 32 ? `${cell.slice(0, 31)}…` : cell;
-        doc.text(safeValue, colX, y + 3.5, idx === 0 ? undefined : { align: "right" });
-        colX += widths[idx];
+        doc.text(cell, idx === 0 ? colX + 4 : colX + columnWidths[idx] - 4, y + 3.5, idx === 0 ? undefined : { align: "right" });
+        colX += columnWidths[idx];
       });
-      y += 8;
+      y += rowHeight;
     });
     y += 4;
   };
@@ -1175,25 +1203,25 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   doc.setTextColor(...COLORS.textSec);
   doc.text("GA4 Analytics Report", MX, 30);
   y = 38;
-  doc.setFillColor(...COLORS.cardBg);
-  doc.roundedRect(MX, y, CW, 22, 3, 3, "F");
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.textSec);
-  doc.text(`Campaign: ${String(campaignName || (payload.campaign as any)?.name || "—")}`, MX + 6, y + 7);
   const standaloneAdComparison = reportType === "ads";
-  if (standaloneAdComparison) {
-    doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, MX + CW / 2, y + 7);
-    const propertyIdLabel = String(payload.connection?.propertyId || "").replace(/^properties\//, "");
-    const propertyNameLabel = String(payload.connection?.displayName || payload.connection?.propertyName || "");
-    doc.text(`Property: ${propertyNameLabel}${propertyIdLabel ? ` (${propertyIdLabel})` : ""}`, MX + 6, y + 15);
-    const campaignFilterLabel = String((payload.campaign as any)?.ga4CampaignFilter || "").trim();
-    if (campaignFilterLabel) doc.text(`Filter: ${campaignFilterLabel}`, MX + CW / 2, y + 15);
-  } else {
-    doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, MX + CW / 2, y + 7);
-    doc.text(`Property: ${String(payload.connection?.displayName || payload.connection?.propertyName || payload.connection?.propertyId || "")}`, MX + 6, y + 15);
-    doc.text(`Completed data through: ${payload.reportCumulativeWindow.endDate} (${formatReportingTimeZoneLabel(payload.reportCumulativeWindow.reportingTimeZone)})`, MX + CW / 2, y + 15);
-  }
-  y += 30;
+  const propertyIdLabel = String(payload.connection?.propertyId || "").replace(/^properties\//, "");
+  const propertyNameLabel = String(payload.connection?.displayName || payload.connection?.propertyName || "");
+  const campaignFilterLabel = String((payload.campaign as any)?.ga4CampaignFilter || "").trim();
+  const metadata = [
+    [`Campaign: ${String(campaignName || (payload.campaign as any)?.name || "—")}`, `Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`],
+    [standaloneAdComparison ? `Property: ${propertyNameLabel}${propertyIdLabel ? ` (${propertyIdLabel})` : ""}` : `Property: ${String(payload.connection?.displayName || payload.connection?.propertyName || payload.connection?.propertyId || "")}`,
+      standaloneAdComparison ? (campaignFilterLabel ? `Filter: ${campaignFilterLabel}` : "") : `Completed data through: ${payload.reportCumulativeWindow.endDate} (${formatReportingTimeZoneLabel(payload.reportCumulativeWindow.reportingTimeZone)})`],
+  ].map(cells => cells.map(cell => doc.splitTextToSize(cell, CW / 2 - 12) as string[]));
+  const metadataHeights = metadata.map(cells => Math.max(...cells.map(lines => lines.length)) * 4 + 4);
+  doc.setFillColor(...COLORS.cardBg);
+  doc.roundedRect(MX, y, CW, metadataHeights.reduce((sum, height) => sum + height, 0) + 6, 3, 3, "F");
+  metadata.forEach((cells, idx) => {
+    cells.forEach((lines, col) => doc.text(lines, MX + 6 + col * CW / 2, y + 7));
+    y += metadataHeights[idx];
+  });
+  y += 14;
 
   if (sections.overview) {
     const s = cfg.subsections?.overview || {};

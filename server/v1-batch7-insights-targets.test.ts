@@ -107,7 +107,7 @@ async function render(file: string, type = "insights", configuration?: string) {
   boxes = [];
   const bytes = await pdf.buildGA4ScheduledPdfAttachment({ report, reportName: report.name, windowStart: fixture.connection.importStartDate, windowEnd: "2026-10-18", campaignName: fixture.campaign.name });
   expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
-  if (!process.env.V1_BATCH7_BASELINE && !(process.env.V1_BATCH7_PRESERVE_ARTIFACTS && /^(insights|context)-/.test(file) && existsSync(`${directory}/${file}.pdf`))) writeFileSync(`${directory}/${file}.pdf`, bytes);
+  if (!process.env.V1_BATCH7_BASELINE && !(process.env.V1_BATCH7_PRESERVE_ARTIFACTS && existsSync(`${directory}/${file}.pdf`))) writeFileSync(`${directory}/${file}.pdf`, bytes);
   return payload;
 }
 

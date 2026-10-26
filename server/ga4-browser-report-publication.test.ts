@@ -63,6 +63,11 @@ describe("Browser GA4 report publication gate", () => {
     await expect(run(changes, undefined, "insights")).rejects.toThrow("Insights context is still loading");
     await expect(run(changes, undefined, "overview")).resolves.toBe("ready");
   });
+  it.each(["campaignBreakdownUnavailable", "adComparisonBreakdownUnavailable"])("blocks Ad Comparison export when %s includes placeholder data", async key => {
+    const ready = { adComparisonBreakdownLoading: false, adComparisonBreakdownUnavailable: false, adComparisonBreakdownError: false, breakdownError: false, adComparisonRevenueState: "ready" };
+    await expect(run(ready, undefined, "ads")).resolves.toBe("ready");
+    await expect(run({ ...ready, [key]: true }, undefined, "ads")).rejects.toThrow("Cannot generate the Ad Comparison report");
+  });
 });
 
 describe("Browser Overview reports without a Spend source", () => {
@@ -170,7 +175,7 @@ describe("Browser Overview reports without a Spend source", () => {
       breakdownTotals: { sessions: 604, conversions: 40 }, formatMoney: (value: number) => `EUR ${value.toFixed(2)}`,
       formatNumber: (value: number) => value.toLocaleString("en-US"),
     }, "insights");
-    writeFileSync("docs/fixes/v1-batch-7/validation-2026-10-26/live-browser-three-day.pdf", Buffer.from(result.doc.output("arraybuffer")));
+    if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS) writeFileSync("docs/fixes/v1-batch-7/validation-2026-10-26/live-browser-three-day.pdf", Buffer.from(result.doc.output("arraybuffer")));
     expect(result.drawn.find(box => box.text === "Trends")?.page).toBe(result.drawn.find(box => box.text === "Sessions · Daily")?.page);
     expect(result("Revenue")).toBe("EUR 8,003.96");
     expect(result("ROI")).toBe("—");
@@ -202,6 +207,36 @@ describe("Browser Overview reports without a Spend source", () => {
     if (["kpis", "benchmarks", "custom"].includes(type)) { expect(result.content).toContain("65,659.5"); expect(result.content).toContain("70,000"); }
     if (type === "overview" || type === "insights") expect(result.content).toContain("65,659.50");
     if (type === "ads") { expect(result.content).toContain("65,000.00"); expect(result.content).toContain("659.50"); }
+  });
+  it.each(["standard", "custom", "zero", "refund", "long", "multipage"])("matches the live source-only Ad Comparison table in the %s browser PDF", async kind => {
+    const sourceNames = ["HubSpot", "Salesforce", "Shopify", "CSV", "Google Sheets"];
+    const amounts = kind === "zero" ? [0, 0, 0, 0, 0] : [250, 100, 785.95, kind === "refund" ? -50 : 50, 25];
+    const sources = sourceNames.map((name, i) => ({ sourceId: name, displayName: name + (kind === "long" ? " regional confirmed revenue attribution label with complete provenance" : ""), sourceType: name, revenue: amounts[i] }));
+    if (kind === "multipage") sources.splice(0, sources.length, ...Array.from({ length: 45 }, (_, i) => ({ sourceId: `source-${i}`, displayName: `${sourceNames[i % 5]} source ${i} regional confirmed revenue attribution label with complete provenance`, sourceType: sourceNames[i % 5], revenue: 1 })));
+    const native = kind === "zero" ? 0 : 7653.96;
+    const result = await render({ ...comparisonMath,
+      ga4RevenueForFinancials: native, revenueDisplaySources: sources,
+      sourceRevenueBreakdowns: new Map(sources.map(source => [source.sourceId, [{ campaignValue: "child_should_not_be_repeated", revenue: source.revenue }]])),
+      campaignBreakdownAgg: [{ name: "native_campaign", sessions: 100, users: 80, conversions: 2.5, revenue: native, conversionRate: 2.5 }],
+      adComparisonBreakdownAgg: [{ name: "native_campaign", sessions: 100, users: 80, conversions: 2.5, revenue: native, conversionRate: 2.5 }],
+      adComparisonMetric: "sessions", adComparisonBreakdownLoading: false, adComparisonBreakdownUnavailable: false,
+      adComparisonBreakdownError: false, adComparisonRevenueState: "ready", breakdownError: false,
+    }, kind === "standard" ? "ads" : "custom", {
+      sections: { ads: true }, subsections: { ads: { bestWorst: false, topCampaigns: false, allCampaigns: false, revenueBreakdown: true } },
+      selectedKpiIds: [], selectedBenchmarkIds: [],
+    });
+    const table = result.words.slice(result.words.indexOf("SOURCE"));
+    expect(table).toContain("TOTAL");
+    expect(table[table.indexOf("TOTAL") + 1]).toBe(kind === "zero" ? "EUR 0.00" : kind === "refund" ? "EUR 8,764.91" : kind === "multipage" ? "EUR 7,698.96" : "EUR 8,864.91");
+    expect(table.flat().join(" ")).not.toContain("child_should_not_be_repeated");
+    for (const name of sourceNames) expect(table.flat().join(" ")).toContain(kind === "zero" ? "GA4 Revenue" : name);
+    if (kind === "zero") expect(table.flat().join(" ")).not.toContain("HubSpot");
+    if (kind === "long" || kind === "multipage") {
+      expect(table.flat().join(" ")).toContain("complete provenance");
+      for (const box of result.drawn) { expect(box.x).toBeGreaterThanOrEqual(12); expect(box.x + box.width).toBeLessThanOrEqual(198); expect(box.y).toBeLessThanOrEqual(287); }
+      if (kind === "multipage") expect(result.doc.getNumberOfPages()).toBeGreaterThan(1);
+      writeFileSync(`docs/fixes/v1-batch-7/validation-2026-10-26/closeout-browser-ads-${kind}.pdf`, Buffer.from(result.doc.output("arraybuffer")));
+    }
   });
   it.each([0.75, 0.000075, 2])("prints observed conversion credit %s in a real browser PDF", async conversions => {
     const pdf = await render({ overviewSummaryTotals: { sessions: 2977, users: 2978, conversions },

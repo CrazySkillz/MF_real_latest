@@ -1652,16 +1652,12 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
     if (includeRevenueBreakdown) {
       y += 4;
-      const revenueBreakdownRows: { label: string; amount: string; muted?: boolean }[] = [
+      const revenueBreakdownRows: { label: string; amount: string; bold?: boolean }[] = [
         { label: "GA4 Revenue (Imported to Date)", amount: formatMoney(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)) },
-        ...payload.adComparisonRevenueDisplaySources.flatMap((source: any) => [
-            { label: `${String(source?.displayName || source?.sourceType || "Revenue")} (source-to-date; excluded from ranking)`, amount: formatMoney(Number(source?.revenue)) },
-            ...(payload.adComparisonSourceRevenueBreakdowns.get(String(source?.sourceId || ""))
-              || payload.sourceRevenueBreakdowns.get(String(source?.sourceId || ""))
-              || []).map((item: any) => ({
-              label: String(item?.campaignValue || ""), amount: formatMoney(Number(item?.revenue || 0)), muted: true,
-            })),
-          ]),
+        ...payload.adComparisonRevenueDisplaySources.filter((source: any) => Number(source.revenue) !== 0).map((source: any) => (
+            { label: String(source?.displayName || source?.sourceType || "Revenue"), amount: formatMoney(Number(source?.revenue)) }
+          )),
+        { label: "TOTAL", amount: formatMoney(Number(rows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2)) + payload.adComparisonRevenueDisplaySources.reduce((sum: number, source: any) => sum + Number(source.revenue), 0)), bold: true },
       ];
       const fullSectionHeight = 18 + 10 + revenueBreakdownRows.length * 8 + 4;
       if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) { addFooter(); doc.addPage(); paintPage(); y = 18; }
@@ -1672,12 +1668,15 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       doc.text("SOURCE", MX + 4, y + 5.5); doc.text("AMOUNT", MX + CW - 4, y + 5.5, { align: "right" });
       y += 10;
       revenueBreakdownRows.forEach((row) => {
-        checkPage(8);
+        doc.setFontSize(8); doc.setFont("helvetica", row.bold ? "bold" : "normal");
+        const labelLines = doc.splitTextToSize(row.label, CW - doc.getTextWidth(row.amount) - 16) as string[];
+        const rowHeight = Math.max(8, labelLines.length * 4 + 4);
+        checkPage(rowHeight);
         doc.setDrawColor(...COLORS.divider); doc.setLineWidth(0.2); doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
-        doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...(row.muted ? COLORS.textSec : COLORS.text));
-        doc.text(row.label.slice(0, 42), MX + (row.muted ? 8 : 4), y + 4);
+        doc.setFontSize(8); doc.setFont("helvetica", row.bold ? "bold" : "normal"); doc.setTextColor(...COLORS.text);
+        labelLines.forEach((line, index) => doc.text(line, MX + 4, y + 4 + index * 4));
         doc.text(row.amount, MX + CW - 4, y + 4, { align: "right" });
-        y += 8;
+        y += rowHeight;
       });
     }
   }

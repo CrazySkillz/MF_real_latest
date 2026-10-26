@@ -4138,17 +4138,13 @@ export default function GA4Metrics() {
               label: "GA4 Revenue (Imported to Date)",
               amount: fC(comparisonRows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)),
             },
-            ...revenueDisplaySources.flatMap((source: any) => [
+            ...revenueDisplaySources.filter((source: any) => Number(source.revenue) !== 0).map((source: any) => (
                 {
-                  label: `${String(source.displayName || source.sourceType || "Source")} (source-to-date; excluded from ranking)`,
+                  label: String(source.displayName || source.sourceType || "Source"),
                   amount: fC(Number(source.revenue)),
-                },
-                ...(sourceRevenueBreakdowns.get(String(source.sourceId || "")) || []).map((item: any) => ({
-                  label: String(item?.campaignValue || ""),
-                  amount: fC(Number(item?.revenue || 0)),
-                  muted: true,
-                })),
-              ]),
+                }
+              )),
+            { label: "TOTAL", amount: fC(Number(comparisonRows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2)) + revenueDisplaySources.reduce((sum: number, source: any) => sum + Number(source.revenue), 0)), bold: true },
           ];
           const fullSectionHeight = 18 + 10 + breakdownRows.length * 8 + 4;
           if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
@@ -4166,13 +4162,16 @@ export default function GA4Metrics() {
           doc.text("AMOUNT", MX + CW - 4, y + 5.5, { align: "right" });
           y += 10;
           for (const row of breakdownRows) {
-            checkPage(8);
+            doc.setFontSize(8); doc.setFont("helvetica", row.bold ? "bold" : "normal");
+            const labelLines = doc.splitTextToSize(row.label, CW - doc.getTextWidth(row.amount) - 16) as string[];
+            const rowHeight = Math.max(8, labelLines.length * 4 + 4);
+            checkPage(rowHeight);
             doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
             doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
             doc.setFontSize(8); doc.setFont("helvetica", row.bold ? "bold" : "normal"); doc.setTextColor(...(row.muted ? C.textSec : C.text));
-            doc.text(trunc(row.label, 42), MX + (row.muted ? 8 : 4), y + 4);
+            labelLines.forEach((line, index) => doc.text(line, MX + 4, y + 4 + index * 4));
             doc.text(row.amount, MX + CW - 4, y + 4, { align: "right" });
-            y += 8;
+            y += rowHeight;
           }
         }
       }

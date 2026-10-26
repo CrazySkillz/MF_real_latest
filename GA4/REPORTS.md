@@ -22,7 +22,7 @@ Current implementation note (updated 2026-10-18; report-wait correction `02aef39
 
 Insights report-output note (updated 2026-09-29): the Reports tab loads the dedicated completed-day Insights history before browser generation. An unavailable cutoff/history/timezone blocks generation instead of producing a UTC, zero-day, or `Not available yet` artifact. Browser Trends use the same campaign-start-to-cutoff rows and rollups as the live Insights view. Browser financial source lists wrap instead of truncating, and browser plus scheduled finding-category headings reserve space for their first card.
 
-Ad Comparison report-output note: the Reports-owned browser/server consumer boundary passed in the historical dated packet, but current PDF output no longer has live-table parity. The live table shows one row per contributing source and a `TOTAL`; current browser and scheduled PDFs still show imported source parent/child provenance rows and no combined total. This is an open Reports defect. It does not change the separate live-tab boundary in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
+Ad Comparison report-output note (October 26, local correction): browser and scheduled PDFs now follow the live Revenue Breakdown table: native GA4 revenue, one row per nonzero contributing source, and a combined `TOTAL`. Repeated mapping child rows are omitted; source labels wrap to the available column width. Required-input guards, source amounts, ranking inputs and historical artifacts are unchanged. Local evidence and deployment limits are in `docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md`; the separate live-tab boundary in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` is unchanged.
 
 ## Reports Tab Structure
 
@@ -150,10 +150,9 @@ Current standard-template output rule:
   external revenue cannot create or adjust ranked rows
 - the live `Ad Comparison` Revenue Breakdown shows one row per contributing
   source plus a combined `TOTAL`
-- current browser and scheduled `Ad Comparison` PDFs still show the native
-  import-to-date row plus imported source parent/child provenance rows and omit
-  the combined `TOTAL`; this is an unresolved report-parity defect, not the
-  intended final contract
+- browser and scheduled `Ad Comparison` PDFs show native import-to-date
+  revenue, one row per nonzero contributing imported source, and a combined
+  `TOTAL`; detailed source mappings remain in the source views
 - browser and scheduled `Ad Comparison` paths fail closed when selected required
   inputs are unavailable
 - `Insights` should follow the live Insights order

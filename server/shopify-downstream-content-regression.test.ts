@@ -305,7 +305,9 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(text).toContain("Shopify");
     expect(text).toContain("USD 199.98");
     expect(text).toContain("GA4 Revenue (Imported to Date)");
-    expect(text).toContain("Shopify (source-to-date; exclud");
+    const breakdown = pdfTextCalls.slice(pdfTextCalls.indexOf("Revenue Breakdown"));
+    expect(breakdown.filter(value => value === "Shopify")).toHaveLength(1);
+    expect(breakdown[breakdown.indexOf("TOTAL") + 1]).toBe("USD 299.98");
     expect(text).toContain("shopify_campaign");
     expect(text).toContain("Revenue KPI");
     expect(text).toContain("Revenue Benchmark");

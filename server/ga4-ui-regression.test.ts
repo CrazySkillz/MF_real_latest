@@ -630,8 +630,8 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).not.toContain("importedRevenue?: number;");
     expect(adComparison).not.toContain("Unallocated External Revenue");
     expect(ga4Metrics).not.toContain("importedRevenue={importedRevenueForFinancials}");
-    expect(ga4Metrics).toContain("source-to-date; excluded from ranking");
-    expect(scheduledPdf).toContain("source-to-date; excluded from ranking");
+    expect(ga4Metrics).toContain('label: "TOTAL", amount: fC(Number(comparisonRows.reduce');
+    expect(scheduledPdf).toContain('label: "TOTAL", amount: formatMoney(Number(rows.reduce');
     expect(scheduledPdf).not.toContain('allCampaignRows.push(["Unallocated External Revenue"');
   });
 
@@ -699,7 +699,9 @@ describe("GA4 UI regression guard", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
     expect(ga4Metrics).toContain("isPlaceholderData: breakdownPlaceholder");
-    expect(ga4Metrics).toContain("!breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows)");
+    const overviewGuard = ga4Metrics.slice(ga4Metrics.indexOf("const campaignBreakdownUnavailable ="), ga4Metrics.indexOf("const adComparisonBreakdownUnavailable ="));
+    expect(overviewGuard).toContain("breakdownPlaceholder ||");
+    expect(ga4Metrics).toContain("chartBreakdownUnavailable={Boolean(campaignBreakdownUnavailable)}");
     expect(ga4Metrics).toContain("isPlaceholderData: adComparisonBreakdownPlaceholder");
     expect(ga4Metrics).toContain("adComparisonBreakdownPlaceholder ||");
     expect(ga4Metrics).toContain("breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}");
@@ -773,7 +775,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('const complete30DayRows = insightsTrendMode === "30d"');
     expect(ga4Metrics).toContain(': complete30DayRows.length > 0');
     expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "1 calendar month" : `${minRequiredDays} imported daily rows`;');
-    expect(ga4Metrics).toContain("The campaign does not yet contain enough completed calendar days for both adjacent windows.");
+    expect(ga4Metrics).toContain("Both adjacent calendar windows must be complete before trend comparisons run.");
     expect(ga4Metrics).not.toContain("Missing dates are not assumed to be zero.");
     expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");
     expect(ga4Metrics).toContain('const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";');
@@ -804,7 +806,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Last refreshed: ${trendsLastRefreshedLabel}");
 
     expect(pdf).toContain("GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow");
-    expect(pdf).toContain("const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);");
+    expect(pdf).toContain("const reportingWindow = getReportingDateWindow(includesInsights ? 60 : lookbackDays, (campaign as any)?.reportingTimeZone);");
     expect(pdf).toContain("insightsFreshness: {");
     expect(pdf).toContain("lastRefreshedAt: lastDailyRefreshAt");
     expect(pdf).toContain("Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");

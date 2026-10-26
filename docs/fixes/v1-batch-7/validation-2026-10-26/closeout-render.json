@@ -1,0 +1,30 @@
+{
+  "synthetic": true,
+  "renderer": "existing PDFium installation; Poppler not available",
+  "artifacts": [
+    {
+      "file": "closeout-browser-ads-long.pdf",
+      "pages": 1,
+      "sha256": "66dedfaa0ac01d8fb705782b2bb8e1d8c3ed30b904e904af2fe3a2d8e236b0aa",
+      "characters": 684
+    },
+    {
+      "file": "closeout-browser-ads-multipage.pdf",
+      "pages": 2,
+      "sha256": "56f4f96b3188b35509986ed5362f991fba928c6ca308a32d8df8815653b1a38f",
+      "characters": 4665
+    },
+    {
+      "file": "closeout-scheduled-ads-long.pdf",
+      "pages": 1,
+      "sha256": "f066622a7c3d0139648e64fd01fc9dd38825f14d5992ecb82b4fef578ad45d2d",
+      "characters": 749
+    },
+    {
+      "file": "closeout-scheduled-ads-multipage.pdf",
+      "pages": 2,
+      "sha256": "330b9035e7cbb11fd315ede1424fe4a8491422f9a78a269cdda1bd2c8b0b74f5",
+      "characters": 4730
+    }
+  ]
+}

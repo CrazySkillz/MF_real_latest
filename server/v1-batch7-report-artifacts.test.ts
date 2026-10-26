@@ -175,6 +175,34 @@ describe("V1-086 real scheduled PDF text bounds", () => {
 });
 
 describe("V1-015 saved source amounts in the scheduled artifact", () => {
+  it.each(["standard", "custom", "zero", "refund", "long", "multipage"])("matches the live source-only Ad Comparison table in the %s scheduled PDF", async kind => {
+    const day = (date: string) => row(date, 100, 2.5, kind === "zero" ? 0 : 500);
+    setFixture(rowsFor(14, day, day));
+    const names = ["HubSpot", "Salesforce", "Shopify", "CSV", "Google Sheets"];
+    const types = ["hubspot", "salesforce", "shopify", "csv", "google_sheets"];
+    const amounts = kind === "zero" ? [0, 0, 0, 0, 0] : [250, 100, 785.95, kind === "refund" ? -50 : 50, 25];
+    fixture.revenueSources = names.map((name, i) => ({ id: name, sourceType: types[i], displayName: name + (kind === "long" ? " regional confirmed revenue attribution label with complete provenance" : ""), currency: "EUR", isActive: true, mappingConfig: { campaignValueRevenueTotals: [{ campaignValue: "child_should_not_be_repeated", revenue: amounts[i] }] } }));
+    if (kind === "multipage") fixture.revenueSources = Array.from({ length: 45 }, (_, i) => ({ id: `source-${i}`, sourceType: types[i % 5], displayName: `${names[i % 5]} source ${i} regional confirmed revenue attribution label with complete provenance`, currency: "EUR", isActive: true, mappingConfig: null }));
+    fixture.revenueBreakdown = fixture.revenueSources.map((source: any, i: number) => ({ sourceId: source.id, sourceType: source.sourceType, displayName: source.displayName, revenue: kind === "multipage" ? 1 : amounts[i] }));
+    fixture.financial.metrics.financialDaily.inputs.revenue.value = kind === "zero" ? "0" : kind === "refund" ? "8110.95" : kind === "multipage" ? "7045" : "8210.95";
+    const report = { campaignId: fixture.campaign.id, reportType: kind === "standard" ? "ads" : "custom", configuration: JSON.stringify({ sections: { ads: true }, subsections: { ads: { bestWorst: false, topCampaigns: false, allCampaigns: false, revenueBreakdown: true } } }) };
+    const payload = await pdf.buildGA4ReportPayload(report);
+    expect(payload.adComparisonBreakdownAgg.reduce((sum: number, item: any) => sum + item.revenue, 0)).toBe(kind === "zero" ? 0 : 7000);
+    expect(payload.campaignBreakdownMatchedExternalRevenue.size).toBe(0);
+    boxes = [];
+    const bytes = await pdf.buildGA4ScheduledPdfAttachment({ report, campaignName: fixture.campaign.name });
+    const text = boxes.map(box => box.text);
+    expect(text).toContain("TOTAL");
+    expect(text[text.indexOf("TOTAL") + 1]).toBe(kind === "zero" ? "EUR 0.00" : kind === "refund" ? "EUR 8,110.95" : kind === "multipage" ? "EUR 7,045.00" : "EUR 8,210.95");
+    expect(text.join(" ")).not.toContain("child_should_not_be_repeated");
+    if (kind === "zero") expect(text.join(" ")).not.toContain("HubSpot");
+    if (kind === "long" || kind === "multipage") {
+      expect(text.join(" ")).toContain("complete provenance");
+      for (const box of boxes) { expect(box.x).toBeGreaterThanOrEqual(12); expect(box.right).toBeLessThanOrEqual(198); expect(box.y).toBeLessThanOrEqual(287); }
+      if (kind === "multipage") expect(new Set(boxes.map(box => box.page)).size).toBeGreaterThan(1);
+      writeFileSync(`${directory}/closeout-scheduled-ads-${kind}.pdf`, bytes);
+    }
+  });
   it("adds EUR 250 and 100 to native revenue without allocating unmapped sales to campaign rows", async () => {
     setFixture(rowsFor(14, date => row(date, 100, 2.5, 500), date => row(date, 100, 2.5, 500)));
     fixture.revenueSources = [

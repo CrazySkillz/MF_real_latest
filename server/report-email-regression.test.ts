@@ -207,14 +207,15 @@ describe("scheduled report email regression guard", () => {
     expect(adsSection).toContain("payload.adComparisonBreakdownAgg");
     expect(adsSection).toContain("Top Campaigns by ${metricLabels[selectedMetric]}");
     expect(adsSection).toContain("Campaigns Compared");
-    expect(adsSection).toContain("payload.adComparisonSourceRevenueBreakdowns.get");
+    expect(adsSection).toContain("payload.adComparisonRevenueDisplaySources.filter");
     expect(adsSection).toContain("GA4 Revenue (Imported to Date)");
     expect(adsSection).toContain("const allCampaignRows = rows.map");
     expect(adsSection).not.toContain("rows.slice(0, 20)");
     expect(adsSection).not.toContain("Unallocated External Revenue");
     expect(adsSection).not.toContain("Total Revenue (All Sources)");
-    expect(adsSection).toContain("source-to-date; excluded from ranking");
-    expect(adsSection).toContain("payload.sourceRevenueBreakdowns.get(String(source?.sourceId || \"\"))");
+    expect(adsSection).toContain('label: "TOTAL"');
+    expect(adsSection).not.toContain("SourceRevenueBreakdowns.get");
+    expect(adsSection).not.toContain("payload.sourceRevenueBreakdowns.get");
   });
 
   it("keeps report test-send aligned with Mailgun HTTP API configuration", () => {

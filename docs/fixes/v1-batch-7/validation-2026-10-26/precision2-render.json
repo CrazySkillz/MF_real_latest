@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "renderer": "existing PDFium; Poppler unavailable",
+  "artifacts": [
+    {
+      "file": "precision2-browser-ads.pdf",
+      "pages": 1,
+      "sha256": "ddc38f1be6c1ac4a206d191f1312613c1cf8341ad525c8e269033dbb7ff5993b",
+      "text": [
+        "GA4 Report\nGA4 Analytics Report\nCampaign: Ptomo Generated: 26/10/2026 at 22:05:01\nProperty: (123)\nAd Comparison\nMOST KEY EVENTS HIGHEST CONVERSION RATE NEEDS ATTENTION\nyesop_paid_social yesop_paid_social yesop_prospecting\n21 Key Events - 8.14% CR 8.14% CR - EUR 4,253.52 revenue 4.62% CR - 346 sessions\nTop Campaigns by Sessions\n346\n346\n258\nyesop_prospecting yesop_paid_social\nTOTAL SESSIONS CAMPAIGNS COMPARED\n604 2\nRevenue Breakdown\nSOURCE AMOUNT\nGA4 Revenue (Imported to Date) EUR 7,653.96\nHubSpot EUR 250.00\nSalesforce EUR 100.00\nTOTAL EUR 8,003.96\nMimoSaaS Analytics 26/10/2026"
+      ]
+    },
+    {
+      "file": "precision2-browser-custom.pdf",
+      "pages": 2,
+      "sha256": "a14164b948ec2c39ec13997bdaa5fc926b54f5483288c38007916d8a1fb96fb9",
+      "text": [
+        "GA4 Report\nGA4 Analytics Report\nCampaign: Ptomo Generated: 26/10/2026 at 22:05:01\nProperty: (123)\nAd Comparison\nMOST KEY EVENTS HIGHEST CONVERSION RATE NEEDS ATTENTION\nyesop_paid_social yesop_paid_social yesop_prospecting\n21 Key Events - 8.14% CR 8.14% CR - EUR 4,253.52 revenue 4.62% CR - 346 sessions\nTop Campaigns by Sessions\n346\n346\n258\nyesop_prospecting yesop_paid_social\nTOTAL SESSIONS CAMPAIGNS COMPARED\n604 2\nAll Campaigns\n# CAMPAIGN SESSIONS USERS CONV REVENUE CR\n1 yesop_prospecting 346 344 19 EUR 3,400.43 5.5%\n2 yesop_paid_social 258 258 21 EUR 4,253.52 8.1%\nMimoSaaS Analytics 26/10/2026",
+        "Revenue Breakdown\nSOURCE AMOUNT\nGA4 Revenue (Imported to Date) EUR 7,653.96\nHubSpot EUR 250.00\nSalesforce EUR 100.00\nTOTAL EUR 8,003.96\nMimoSaaS Analytics 26/10/2026"
+      ]
+    },
+    {
+      "file": "precision2-scheduled-ads.pdf",
+      "pages": 1,
+      "sha256": "735cfa4dfe4dc75498e65041dfa42c091306bcea9396f4b5cf4e5274614d698b",
+      "text": [
+        "GA4 Report\nGA4 Analytics Report\nCampaign: Report fixture Generated: 19/10/2026 14:00:00\nProperty: (987654) Filter: [\"yesop_prospecting\",\"yesop_paid_social\"]\nAd Comparison\nMOST KEY EVENTS HIGHEST CONVERSION RATE NEEDS ATTENTION\nyesop_paid_social yesop_paid_social yesop_prospecting\n21 Key Events - 8.14% CR 8.14% CR - EUR 4,253.52 revenue 4.62% CR - 346 sessions\nTop Campaigns by Sessions\n346\n346\n258\nyesop_prospecting yesop_paid_social\nTOTAL SESSIONS CAMPAIGNS COMPARED\n604 2\nRevenue Breakdown\nSOURCE AMOUNT\nGA4 Revenue (Imported to Date) EUR 7,653.96\nhubspot EUR 250.00\nsalesforce EUR 100.00\nTOTAL EUR 8,003.96\nMimoSaaS Analytics 19/10/2026"
+      ]
+    },
+    {
+      "file": "precision2-scheduled-custom.pdf",
+      "pages": 2,
+      "sha256": "b1ecfa7a6cc7e1f3c14cf1b73c25849bca258710c5403b0ca2ae37fd3dcaac13",
+      "text": [
+        "GA4 Report\nGA4 Analytics Report\nCampaign: Report fixture Generated: 19/10/2026 14:00:00\nProperty: properties/987654 Completed data through: 2026-10-18 (Amsterdam)\nAd Comparison\nMOST KEY EVENTS HIGHEST CONVERSION RATE NEEDS ATTENTION\nyesop_paid_social yesop_paid_social yesop_prospecting\n21 Key Events - 8.14% CR 8.14% CR - EUR 4,253.52 revenue 4.62% CR - 346 sessions\nTop Campaigns by Sessions\n346\n346\n258\nyesop_prospecting yesop_paid_social\nTOTAL SESSIONS CAMPAIGNS COMPARED\n604 2\nAll Campaigns\n# CAMPAIGN SESSIONS USERS CONV REVENUE CR\n1 yesop_prospecting 346 344 19 EUR 3,400.43 5.49%\n2 yesop_paid_social 258 258 21 EUR 4,253.52 8.14%\nMimoSaaS Analytics 19/10/2026",
+        "Revenue Breakdown\nSOURCE AMOUNT\nGA4 Revenue (Imported to Date) EUR 7,653.96\nhubspot EUR 250.00\nsalesforce EUR 100.00\nTOTAL EUR 8,003.96\nMimoSaaS Analytics 19/10/2026"
+      ]
+    },
+    {
+      "file": "precision2-ui-download.pdf",
+      "pages": 1,
+      "sha256": "622ce79fe8b128382c57959c1506d22e98d3d79a59caf27894291974c176daca",
+      "text": [
+        "GA4 Ad Comparison Report\nGA4 Analytics Report\nCampaign: Precision regression Generated: 26/10/2026 at 20:00:02\nProperty: (123) Filter: [\"yesop_prospecting\",\"yesop_paid_social\"]\nAd Comparison\nMOST KEY EVENTS HIGHEST CONVERSION RATE NEEDS ATTENTION\nyesop_paid_social yesop_paid_social yesop_prospecting\n21 Key Events - 8.14% CR 8.14% CR - EUR 4,253.52 revenue 4.62% CR - 346 sessions\nTop Campaigns by Sessions\n346\n346\n258\nyesop_prospecting yesop_paid_social\nTOTAL SESSIONS CAMPAIGNS COMPARED\n604 2\nRevenue Breakdown\nSOURCE AMOUNT\nGA4 Revenue (Imported to Date) EUR 7,653.96\nHubSpot EUR 250.00\nSalesforce EUR 100.00\nTOTAL EUR 8,003.96\nMimoSaaS Analytics 26/10/2026"
+      ]
+    }
+  ]
+}

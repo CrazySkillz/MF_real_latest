@@ -27,6 +27,7 @@ interface CampaignAgg {
 
 interface GA4AdComparisonProps {
   campaignBreakdownAgg: CampaignAgg[];
+  nativeRevenue?: number;
   chartCampaignRows: CampaignAgg[];
   breakdownLoading: boolean;
   breakdownUnavailable?: boolean;
@@ -62,6 +63,7 @@ const METRIC_LABELS: Record<string, string> = {
 
 function GA4AdComparison({
   campaignBreakdownAgg,
+  nativeRevenue,
   chartCampaignRows,
   breakdownLoading,
   breakdownUnavailable = false,
@@ -78,7 +80,7 @@ function GA4AdComparison({
   formatMoney,
   revenueDisplaySources = [],
 }: GA4AdComparisonProps) {
-  const ga4Revenue = useMemo(() => campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [campaignBreakdownAgg]);
+  const ga4Revenue = useMemo(() => nativeRevenue ?? campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [nativeRevenue, campaignBreakdownAgg]);
   const ga4RevenueForBreakdown = Number(ga4Revenue.toFixed(2));
   const visibleRevenueDisplaySources = useMemo(
     () => revenueDisplaySources.filter((source) => (

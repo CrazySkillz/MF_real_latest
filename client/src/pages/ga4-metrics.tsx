@@ -4136,7 +4136,7 @@ export default function GA4Metrics() {
           const breakdownRows: { label: string; amount: string; muted?: boolean; bold?: boolean }[] = [
             {
               label: "GA4 Revenue (Imported to Date)",
-              amount: fC(comparisonRows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)),
+              amount: fC(adComparisonNativeRevenue),
             },
             ...revenueDisplaySources.filter((source: any) => Number(source.revenue) !== 0).map((source: any) => (
                 {
@@ -4144,7 +4144,7 @@ export default function GA4Metrics() {
                   amount: fC(Number(source.revenue)),
                 }
               )),
-            { label: "TOTAL", amount: fC(Number(comparisonRows.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2)) + revenueDisplaySources.reduce((sum: number, source: any) => sum + Number(source.revenue), 0)), bold: true },
+            { label: "TOTAL", amount: fC(adComparisonNativeRevenue + revenueDisplaySources.reduce((sum: number, source: any) => sum + Number(source.revenue), 0)), bold: true },
           ];
           const fullSectionHeight = 18 + 10 + breakdownRows.length * 8 + 4;
           if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
@@ -6141,6 +6141,13 @@ export default function GA4Metrics() {
       }))
       .sort((a, b) => b.sessions - a.sessions);
   }, [adComparisonBreakdown, adComparisonBreakdownPlaceholder, importedGA4CampaignNames]);
+
+  // Sum scoped source amounts before rounding; retain existing campaign display values.
+  const adComparisonNativeRevenue = useMemo(() => Number(
+    (Array.isArray(adComparisonBreakdown?.rows) ? adComparisonBreakdown.rows : [])
+      .filter((row: any) => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(String(row?.campaign || "(not set)").trim())))
+      .reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2),
+  ), [adComparisonBreakdown, importedGA4CampaignNames]);
 
   const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
     return resolveExactGA4CampaignBreakdownRevenue(
@@ -9336,6 +9343,7 @@ export default function GA4Metrics() {
                 <TabsContent value="campaigns" className="fade-in">
                   <GA4AdComparison
                     campaignBreakdownAgg={adComparisonBreakdownAgg}
+                    nativeRevenue={adComparisonNativeRevenue}
                     chartCampaignRows={adComparisonChartRows}
                     breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}
                     breakdownUnavailable={adComparisonBreakdownUnavailable}

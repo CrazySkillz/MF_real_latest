@@ -24,6 +24,8 @@ Insights report-output note (updated 2026-09-29): the Reports tab loads the dedi
 
 Ad Comparison report-output note (October 26, local correction): browser and scheduled PDFs now follow the live Revenue Breakdown table: native GA4 revenue, one row per nonzero contributing source, and a combined `TOTAL`. Repeated mapping child rows are omitted; source labels wrap to the available column width. Required-input guards, source amounts, ranking inputs and historical artifacts are unchanged. Local evidence and deployment limits are in `docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md`; the separate live-tab boundary in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` is unchanged.
 
+Replacement precision correction (October 26; locally validated, undeployed): both PDFs use a separate total of raw selected native amounts, rounded once, while per-campaign aggregates remain unchanged. The scheduled native reconciliation compares raw scoped amounts after the existing scope check. Browser publication/preflight guards remain intact; an isolated full-page test verifies initial download and recovery after status/data refresh failures and a mismatched financial publication. See the current replacement evidence in the checkpoint above; original production failure causation is not established.
+
 ## Reports Tab Structure
 
 The current GA4 `Reports` tab contains:

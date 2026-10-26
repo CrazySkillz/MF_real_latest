@@ -8,6 +8,8 @@
 The new Revenue Breakdown `TOTAL` row has passed focused local tests, but its
 exact revision has not yet been deployed and validated at runtime.
 
+October 26 replacement precision packet: after the user confirmed rollback downloads work, the raw selected native sum is now calculated separately from unchanged campaign display values. The EUR 8,003.95 / EUR 8,003.96 discrepancy is corrected in local live/browser/scheduled tests. 702 checks in 46 files and TypeScript/client/server builds pass; five PDFs / seven pages were inspected. The user authorized commit/push; deployment acceptance remains pending, so this does not establish production readiness. Exact paths, failure/recovery coverage and limits are in [the current checkpoint](../docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md).
+
 **Historical full live-tab status: CLEAN-CERTIFIED / PRODUCTION_READY** for Client2 /
 Campaign2 `eee3e654-b736-4e8e-86ec-1050e4d905c0`, active GA4 property
 `542352127`, saved values `yesop_retargeti` and `yesop_email_nurture`, USD,

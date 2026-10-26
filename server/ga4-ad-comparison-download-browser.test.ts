@@ -1,0 +1,139 @@
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { build } from "esbuild";
+import { chromium, expect as browserExpect } from "@playwright/test";
+import { describe, expect, it } from "vitest";
+
+// A fresh, isolated browser: all requests are intercepted, no user profile or live services.
+describe("Ad Comparison precision through the real Reports page", () => {
+  it("downloads the reconciled total and recovers after failed status/data refreshes", async () => {
+    const bundle = await build({
+      stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
+        import {QueryClientProvider} from '@tanstack/react-query';
+        import {TooltipProvider} from './client/src/components/ui/tooltip';
+        import {Toaster} from './client/src/components/ui/toaster';
+        import {createAppQueryClient} from './client/src/lib/queryClient';
+        import Page from './client/src/pages/ga4-metrics';
+        const client = createAppQueryClient();
+        window.fixtureStatus = () => client.invalidateQueries({queryKey: ['/api/campaigns','a','ga4-publication-status']});
+        createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><TooltipProvider><Page/><Toaster/></TooltipProvider></QueryClientProvider>);`,
+        loader: "tsx", resolveDir: process.cwd() },
+      bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic",
+      define: { "process.env.NODE_ENV": '"test"', "import.meta.env": "{}" },
+      plugins: [{ name: "isolate-auth-and-source-setup", setup(builder) {
+        builder.onResolve({ filter: /^@\/(components\/layout\/(navigation|sidebar)|lib\/clientContext|components\/(GA4ConnectionFlow|AddSpendWizardModal|AddRevenueWizardModal))$/ }, args => ({ path: args.path, namespace: "fixture" }));
+        builder.onLoad({ filter: /.*/, namespace: "fixture" }, args => ({ contents: args.path.endsWith("clientContext")
+          ? "export const useClient = () => ({clients: []});"
+          : args.path.includes("layout/") ? "export default function Stub(){return null}"
+          : `export function ${args.path.split("/").at(-1)}(){return null}`, loader: "js" }));
+      } }],
+    });
+    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({ viewport: { width: 1400, height: 1050 }, serviceWorkers: "block" });
+    const page = await context.newPage();
+    const errors: string[] = [], requests: string[] = [], downloads: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    page.on("download", download => downloads.push(download.suggestedFilename()));
+    let generation = 1, failed = "", financialMismatch = false;
+    const day = "2026-10-25", start = "2026-09-23", updatedAt = "2026-10-26T18:00:00Z";
+    const rows = [
+      { campaign: "yesop_prospecting", sessions: 346, users: 344, conversions: 19, revenue: 3400.434193, sessionKeyEventRate: 0.046242774566473986 },
+      { campaign: "yesop_paid_social", sessions: 258, users: 258, conversions: 21, revenue: 4253.52214, sessionKeyEventRate: 0.08139534883720931 },
+    ];
+    const totals = { sessions: 604, users: 602, conversions: 40, revenue: 7653.96, pageviews: 1000, engagedSessions: 300, engagementRate: 300 / 604 };
+    const sources = [
+      { id: "hubspot", sourceId: "hubspot", sourceType: "hubspot", displayName: "HubSpot", revenue: 250 },
+      { id: "salesforce", sourceId: "salesforce", sourceType: "salesforce", displayName: "Salesforce", revenue: 100 },
+    ];
+    await page.clock.install({ time: new Date("2026-10-26T19:00:00Z") });
+    await context.route("**/*", async route => {
+      const request = route.request(), url = new URL(request.url());
+      if (url.hostname !== "ga4-fixture.test" || request.method() !== "GET") {
+        errors.push(`Disallowed request: ${request.method()} ${url.hostname}${url.pathname}`); await route.abort(); return;
+      }
+      if (url.pathname === "/fixture.js") { await route.fulfill({ contentType: "application/javascript", body: bundle.outputFiles[0].text }); return; }
+      if (url.pathname.endsWith(".png")) { await route.fulfill({ status: 404, body: "" }); return; }
+      if (!url.pathname.startsWith("/api/")) {
+        await route.fulfill({ contentType: "text/html", body: '<html><body><div id="root"></div><script src="/fixture.js"></script></body></html>' }); return;
+      }
+      requests.push(url.pathname + url.search);
+      let data: any = { success: true }, status = 200;
+      const property = { propertyId: "123", propertyName: "Isolated fixture", isPrimary: true, lookbackDays: 30 };
+      if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Precision regression", currency: "EUR", status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify(rows.map(row => row.campaign)), createdAt: `${start}T00:00:00Z` };
+      else if (url.pathname.includes("/ga4/check-connection/") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
+      else if (url.searchParams.has("statusOnly")) {
+        data = { success: true, campaignId: "a", propertyId: "123", publicationToken: `p${generation}`, refreshStatus: "current" };
+        if (failed === "status") { status = 503; data = { success: false, error: "fixture status failure" }; }
+      } else if (url.pathname.endsWith("/ga4-daily")) {
+        data = { success: true, propertyId: "123", startDate: start, overviewStartDate: start, endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
+        if (failed === "daily") { status = 503; data = { success: false, error: "fixture daily failure" }; }
+      } else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: { financialDaily: { currency: "EUR", currentValueWindow: { startDate: start, endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: financialMismatch ? 8004.96 : 8003.96 }, spend: { available: false }, conversions: { available: true, value: 40 } } } } } };
+      else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, totals, rows, revenueWindow: { source: "ga4", startDate: start, endDate: day }, meta: { currencyCode: "EUR" } };
+      else if (url.pathname.endsWith("/ga4-to-date")) data = { success: true, propertyId: "123", startDate: start, endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals };
+      else if (url.pathname.endsWith("/ga4-landing-pages") || url.pathname.endsWith("/ga4-conversion-events")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, rows: [] };
+      else if (url.pathname.includes("/platforms/google_analytics/")) data = [];
+      else if (url.pathname.endsWith("/revenue-sources")) data = { success: true, sources: sources.map(source => ({ ...source, isActive: true, currency: "EUR", materializedRevenueStatus: "available", lastTotalRevenue: source.revenue, completedDayRevenue: source.revenue, mappingConfig: null })) };
+      else if (url.pathname.endsWith("/revenue-breakdown")) data = { success: true, sources, endDate: day };
+      else if (url.pathname.endsWith("/revenue-to-date")) data = { success: true, totalRevenue: 350, sourceIds: sources.map(source => source.id), endDate: day };
+      else if (url.pathname.includes("revenue") || url.pathname.includes("spend")) data = { success: true, sources: [], sourceIds: [], totalRevenue: 0, totalSpend: 0, spendToDate: 0, rows: [], endDate: day };
+      await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
+    });
+    const openReport = async () => {
+      await page.getByRole("button", { name: "Create Report", exact: true }).click();
+      await page.getByRole("dialog").getByText("Ad Comparison", { exact: true }).click();
+    };
+    const downloadReport = async () => {
+      const pending = page.waitForEvent("download", { timeout: 10_000 });
+      await page.getByRole("button", { name: "Generate & Download Report" }).click();
+      const download = await pending;
+      expect(download.suggestedFilename()).toBe("GA4_Ad_Comparison_Report_2026-10-26.pdf");
+      const bytes = readFileSync((await download.path())!);
+      expect(bytes.toString("latin1")).toContain("EUR 7,653.96");
+      expect(bytes.toString("latin1")).toContain("EUR 8,003.96");
+      expect(bytes.toString("latin1")).toContain("EUR 250.00");
+      expect(bytes.toString("latin1")).toContain("EUR 100.00");
+      const artifact = "docs/fixes/v1-batch-7/validation-2026-10-26/precision2-ui-download.pdf";
+      if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS || !existsSync(artifact)) writeFileSync(artifact, bytes);
+      await browserExpect(page.getByRole("dialog")).toHaveCount(0);
+    };
+    try {
+      await page.goto("http://ga4-fixture.test/campaigns/a/ga4-metrics?readOnly=1");
+      await browserExpect(page.getByText("Total Revenue", { exact: true }).locator("../..")).toContainText("€8,003.96");
+      await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      await page.getByRole("tab", { name: "Ad Comparison", exact: true }).click();
+      await browserExpect(page.getByRole("row").filter({ hasText: "TOTAL" }).last()).toContainText("€8,003.96");
+      await page.getByRole("tab", { name: "Reports", exact: true }).click();
+      await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      await openReport(); await downloadReport();
+      for (const failure of ["daily", "status"]) {
+        failed = failure; generation++;
+        await page.evaluate(() => (window as any).fixtureStatus());
+        await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("could not refresh");
+        await openReport();
+        const previousDownloads = downloads.length;
+        await page.getByRole("button", { name: "Generate & Download Report" }).click();
+        await browserExpect(page.getByText("Failed to generate report", { exact: true })).toBeVisible();
+        expect(downloads.length).toBe(previousDownloads);
+        failed = "";
+        await page.clock.runFor(30_000);
+        await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+        await downloadReport();
+      }
+      financialMismatch = true; generation++;
+      await page.clock.runFor(30_000);
+      await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      await openReport();
+      const beforeMismatch = downloads.length;
+      await page.getByRole("button", { name: "Generate & Download Report" }).click();
+      await browserExpect(page.getByText(/waiting for a successful aligned data refresh/)).toBeVisible();
+      expect(downloads.length).toBe(beforeMismatch);
+      financialMismatch = false; generation++;
+      await page.clock.runFor(30_000);
+      await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      await downloadReport();
+      expect(downloads).toHaveLength(4);
+      expect(errors).toEqual([]);
+    } catch (error) {
+      throw new Error(`${String(error)}\n${JSON.stringify({ errors, requests, pageText: (await page.locator("body").innerText()).slice(-5000) })}`);
+    } finally { await context.close(); await browser.close(); }
+  }, 90_000);
+});

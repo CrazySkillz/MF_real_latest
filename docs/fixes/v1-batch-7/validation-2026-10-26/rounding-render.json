@@ -1,0 +1,38 @@
+{
+  "scope": "Synthetic corrected outputs; not live deployment or inbox evidence",
+  "renderer": "existing PDFium installation",
+  "artifacts": [
+    {
+      "file": "rounding-browser-ads.pdf",
+      "sha256": "994183b59ae4da1bff5f5cd18837e40fad800a2be1439b6a46df7647ad92d5f7",
+      "pages": 1,
+      "nativeRevenue": "7653.96",
+      "totalRevenue": "8003.96",
+      "offPageCharacters": 0
+    },
+    {
+      "file": "rounding-browser-custom.pdf",
+      "sha256": "a4680cfda4299d64e99673efbf42c0f4b0b2c81bece988ef743539deda8539e7",
+      "pages": 2,
+      "nativeRevenue": "7653.96",
+      "totalRevenue": "8003.96",
+      "offPageCharacters": 0
+    },
+    {
+      "file": "rounding-scheduled-ads.pdf",
+      "sha256": "2312d5479b5c93661af62b3b963d930bfa232c0da7340d1c2447249f0090b4c3",
+      "pages": 1,
+      "nativeRevenue": "7653.96",
+      "totalRevenue": "8003.96",
+      "offPageCharacters": 0
+    },
+    {
+      "file": "rounding-scheduled-custom.pdf",
+      "sha256": "4019e45186eafdf1a764d2c6252a456714b0413aff3aa4e965ca8689228bf407",
+      "pages": 2,
+      "nativeRevenue": "7653.96",
+      "totalRevenue": "8003.96",
+      "offPageCharacters": 0
+    }
+  ]
+}

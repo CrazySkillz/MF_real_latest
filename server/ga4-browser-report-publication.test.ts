@@ -208,6 +208,28 @@ describe("Browser Overview reports without a Spend source", () => {
     if (type === "overview" || type === "insights") expect(result.content).toContain("65,659.50");
     if (type === "ads") { expect(result.content).toContain("65,000.00"); expect(result.content).toContain("659.50"); }
   });
+  it.each(["ads", "custom"])("rounds the native sum once in the %s browser PDF without changing displayed campaign amounts", async type => {
+    const rows = [
+      { name: "yesop_prospecting", sessions: 346, users: 344, conversions: 19, revenue: 3400.434193, conversionRate: 4.6242774566473986 },
+      { name: "yesop_paid_social", sessions: 258, users: 258, conversions: 21, revenue: 4253.52214, conversionRate: 8.139534883720931 },
+    ];
+    const before = JSON.stringify(rows);
+    const result = await render({ ...comparisonMath,
+      revenueDisplaySources: [{ sourceId: "hubspot", displayName: "HubSpot", sourceType: "hubspot", revenue: 250 }, { sourceId: "salesforce", displayName: "Salesforce", sourceType: "salesforce", revenue: 100 }],
+      sourceRevenueBreakdowns: new Map(), campaignBreakdownAgg: rows.map(row => ({ ...row, revenue: Number(row.revenue.toFixed(2)) })),
+      adComparisonBreakdownAgg: rows, adComparisonMetric: "sessions", adComparisonBreakdownLoading: false,
+      adComparisonBreakdownUnavailable: false, adComparisonBreakdownError: false, adComparisonRevenueState: "ready", breakdownError: false,
+    }, type, { sections: { ads: true }, subsections: { ads: { bestWorst: true, topCampaigns: true, allCampaigns: true, revenueBreakdown: true } } });
+    expect(result.words[result.words.indexOf("GA4 Revenue (Imported to Date)") + 1]).toBe("EUR 7,653.96");
+    expect(result.words[result.words.indexOf("TOTAL") + 1]).toBe("EUR 8,003.96");
+    expect(result.words[result.words.indexOf("HubSpot") + 1]).toBe("EUR 250.00");
+    expect(result.words[result.words.indexOf("Salesforce") + 1]).toBe("EUR 100.00");
+    expect(result.content).toContain("EUR 4,253.52 revenue");
+    if (type === "custom") { expect(result.words).toContain("EUR 3,400.43"); expect(result.words).toContain("EUR 4,253.52"); }
+    expect(JSON.stringify(rows)).toBe(before);
+    const artifact = `docs/fixes/v1-batch-7/validation-2026-10-26/rounding-browser-${type}.pdf`;
+    if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS || !existsSync(artifact)) writeFileSync(artifact, Buffer.from(result.doc.output("arraybuffer")));
+  });
   it.each(["standard", "custom", "zero", "refund", "long", "multipage"])("matches the live source-only Ad Comparison table in the %s browser PDF", async kind => {
     const sourceNames = ["HubSpot", "Salesforce", "Shopify", "CSV", "Google Sheets"];
     const amounts = kind === "zero" ? [0, 0, 0, 0, 0] : [250, 100, 785.95, kind === "refund" ? -50 : 50, 25];
@@ -235,7 +257,7 @@ describe("Browser Overview reports without a Spend source", () => {
       expect(table.flat().join(" ")).toContain("complete provenance");
       for (const box of result.drawn) { expect(box.x).toBeGreaterThanOrEqual(12); expect(box.x + box.width).toBeLessThanOrEqual(198); expect(box.y).toBeLessThanOrEqual(287); }
       if (kind === "multipage") expect(result.doc.getNumberOfPages()).toBeGreaterThan(1);
-      writeFileSync(`docs/fixes/v1-batch-7/validation-2026-10-26/closeout-browser-ads-${kind}.pdf`, Buffer.from(result.doc.output("arraybuffer")));
+      if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS) writeFileSync(`docs/fixes/v1-batch-7/validation-2026-10-26/closeout-browser-ads-${kind}.pdf`, Buffer.from(result.doc.output("arraybuffer")));
     }
   });
   it.each([0.75, 0.000075, 2])("prints observed conversion credit %s in a real browser PDF", async conversions => {

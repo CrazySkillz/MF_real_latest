@@ -175,6 +175,43 @@ describe("V1-086 real scheduled PDF text bounds", () => {
 });
 
 describe("V1-015 saved source amounts in the scheduled artifact", () => {
+  it.each(["ads", "custom"])("rounds the native sum once in the %s scheduled PDF without allocating a rounding cent to a campaign", async type => {
+    const day = (date: string) => row(date, date === "2026-10-18" ? 604 : 0, date === "2026-10-18" ? 40 : 0, date === "2026-10-18" ? 7653.96 : 0);
+    setFixture(rowsFor(14, day, day));
+    fixture.campaign.ga4CampaignFilter = JSON.stringify(["yesop_prospecting", "yesop_paid_social"]);
+    fixture.overview.campaignBreakdown.rows = [
+      { campaign: "yesop_prospecting", sessions: 346, users: 344, conversions: 19, revenue: 3400.434193, sessionKeyEventRate: 0.046242774566473986 },
+      { campaign: "yesop_paid_social", sessions: 258, users: 258, conversions: 21, revenue: 4253.52214, sessionKeyEventRate: 0.08139534883720931 },
+    ];
+    Object.assign(fixture.overview.campaignBreakdown.totals, { sessions: 604, users: 602, conversions: 40, revenue: 7653.96 });
+    fixture.revenueSources = ["hubspot", "salesforce"].map(id => ({ id, sourceType: id, displayName: id, currency: "EUR", isActive: true, mappingConfig: null }));
+    fixture.revenueBreakdown = fixture.revenueSources.map((source: any, i: number) => ({ sourceId: source.id, sourceType: source.sourceType, displayName: source.displayName, revenue: i === 0 ? 250 : 100 }));
+    fixture.financial.metrics.financialDaily.inputs.revenue.value = "8003.96";
+    fixture.financial.metrics.financialDaily.inputs.conversions.value = 40;
+    const before = JSON.stringify(fixture);
+    const report = { campaignId: fixture.campaign.id, reportType: type, configuration: JSON.stringify({ sections: { ads: true }, subsections: { ads: { bestWorst: true, topCampaigns: true, allCampaigns: true, revenueBreakdown: true } } }) };
+    const payload = await pdf.buildGA4ReportPayload(report);
+    expect(payload.adComparisonBreakdownAgg.map((row: any) => row.revenue)).toEqual([3400.434193, 4253.52214]);
+    expect(payload.campaignBreakdownAgg.map((row: any) => row.revenue)).toEqual([3400.43, 4253.52]);
+    expect(payload.campaignBreakdownMatchedExternalRevenue.size).toBe(0);
+    boxes = [];
+    const bytes = await pdf.buildGA4ScheduledPdfAttachment({ report, campaignName: fixture.campaign.name });
+    const text = boxes.map(box => box.text);
+    expect(text[text.indexOf("GA4 Revenue (Imported to Date)") + 1]).toBe("EUR 7,653.96");
+    expect(text[text.indexOf("TOTAL") + 1]).toBe("EUR 8,003.96");
+    expect(text[text.indexOf("hubspot") + 1]).toBe("EUR 250.00");
+    expect(text[text.indexOf("salesforce") + 1]).toBe("EUR 100.00");
+    expect(text.join(" ")).toContain("EUR 4,253.52 revenue");
+    if (type === "custom") { expect(text).toContain("EUR 3,400.43"); expect(text).toContain("EUR 4,253.52"); }
+    expect(JSON.stringify(fixture)).toBe(before);
+    const artifact = `${directory}/rounding-scheduled-${type}.pdf`;
+    if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS || !existsSync(artifact)) writeFileSync(artifact, bytes);
+    fixture.overview.campaignBreakdown.totals.revenue = 7653.97;
+    await expect(pdf.buildGA4ReportPayload(report)).rejects.toThrow("GA4 Overview Campaign Breakdown");
+    fixture.overview.campaignBreakdown.totals.revenue = 7653.96;
+    fixture.overview.campaignBreakdown.rows[0].campaign = "unselected_campaign";
+    await expect(pdf.buildGA4ReportPayload(report)).rejects.toThrow("GA4 Overview Campaign Breakdown");
+  });
   it.each(["standard", "custom", "zero", "refund", "long", "multipage"])("matches the live source-only Ad Comparison table in the %s scheduled PDF", async kind => {
     const day = (date: string) => row(date, 100, 2.5, kind === "zero" ? 0 : 500);
     setFixture(rowsFor(14, day, day));
@@ -200,7 +237,7 @@ describe("V1-015 saved source amounts in the scheduled artifact", () => {
       expect(text.join(" ")).toContain("complete provenance");
       for (const box of boxes) { expect(box.x).toBeGreaterThanOrEqual(12); expect(box.right).toBeLessThanOrEqual(198); expect(box.y).toBeLessThanOrEqual(287); }
       if (kind === "multipage") expect(new Set(boxes.map(box => box.page)).size).toBeGreaterThan(1);
-      writeFileSync(`${directory}/closeout-scheduled-ads-${kind}.pdf`, bytes);
+      if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS) writeFileSync(`${directory}/closeout-scheduled-ads-${kind}.pdf`, bytes);
     }
   });
   it("adds EUR 250 and 100 to native revenue without allocating unmapped sales to campaign rows", async () => {

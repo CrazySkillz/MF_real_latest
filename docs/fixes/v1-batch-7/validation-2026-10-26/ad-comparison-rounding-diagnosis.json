@@ -1,0 +1,33 @@
+{
+  "scope": "Read-only execution of current browser aggregation against recorded October 24 selected-campaign values; no live provider/database access",
+  "inputEvidence": "docs/fixes/v1-batch-5/validation-2026-10-23/pdf-native-breakdown-readonly.json",
+  "inputWindow": "2026-09-23 through 2026-10-23",
+  "inputRows": [
+    {
+      "campaign": "yesop_prospecting",
+      "revenue": 3400.434193
+    },
+    {
+      "campaign": "yesop_paid_social",
+      "revenue": 4253.52214
+    }
+  ],
+  "rawSum": 7653.956333,
+  "roundAfterSumming": 7653.96,
+  "actualRoundedRows": [
+    {
+      "name": "yesop_prospecting",
+      "revenue": 3400.43
+    },
+    {
+      "name": "yesop_paid_social",
+      "revenue": 4253.52
+    }
+  ],
+  "sumAfterRoundingEachRow": 7653.95,
+  "overviewNative": 7653.96,
+  "importedRevenue": 350,
+  "correctCombinedTotal": 8003.96,
+  "currentAdComparisonTotal": 8003.95,
+  "currentCodeSha256": "e61bca6ccc6b0116f23cd1fda17251d5fdce0a34de1e997d7e016cef41e2c0f7"
+}

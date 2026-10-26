@@ -630,8 +630,8 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).not.toContain("importedRevenue?: number;");
     expect(adComparison).not.toContain("Unallocated External Revenue");
     expect(ga4Metrics).not.toContain("importedRevenue={importedRevenueForFinancials}");
-    expect(ga4Metrics).toContain('label: "TOTAL", amount: fC(Number(comparisonRows.reduce');
-    expect(scheduledPdf).toContain('label: "TOTAL", amount: formatMoney(Number(rows.reduce');
+    expect(ga4Metrics).toContain('label: "TOTAL", amount: fC(nativeRevenueTotal + revenueDisplaySources.reduce');
+    expect(scheduledPdf).toContain('label: "TOTAL", amount: formatMoney(nativeRevenueTotal + payload.adComparisonRevenueDisplaySources.reduce');
     expect(scheduledPdf).not.toContain('allCampaignRows.push(["Unallocated External Revenue"');
   });
 
@@ -649,7 +649,8 @@ describe("GA4 UI regression guard", () => {
     expect(breakdownSection).toContain("{formatMoney(ga4RevenueForBreakdown)}");
     expect(breakdownSection).not.toContain("Total Revenue</td>");
     expect(pdfBreakdownSection).toContain('label: "GA4 Revenue (Imported to Date)"');
-    expect(pdfBreakdownSection).toContain("comparisonRows.reduce");
+    expect(pdfBreakdownSection).toContain("const nativeRevenueTotal = Number(rows.reduce");
+    expect(pdfBreakdownSection).not.toContain("comparisonRows.reduce");
   });
 
   it("removes All Campaigns from the live tab and new reports while preserving explicit legacy PDFs", () => {

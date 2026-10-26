@@ -182,7 +182,9 @@ Important meaning:
 
 ## October 26 local report close-out
 
-[Current Batch 7 evidence](../docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md) supersedes earlier Ad Comparison PDF implementation descriptions below: both renderers now show one row per nonzero source and `TOTAL`, with wrapped labels. 658 checks in 43 files pass, as do TypeScript and both builds; four synthetic PDFs / six pages were inspected. The three previously documented static-text failures are resolved against the current guards, history wording and 60-day Insights window. User-confirmed deletion-layout and filename checks remain accepted. This correction is local and uncommitted; full Reports status remains **UNVERIFIED**. Historical exact-runtime/provider evidence below is not current certification.
+**Subsequent precision correction, local only:** the user's EUR 8,003.96 Overview / EUR 8,003.95 Ad Comparison discrepancy was reproduced from raw native sum `7653.956333`. The live/browser/scheduled paths now retain native precision until the source total is rounded; the existing per-campaign displays and EUR 350 CRM contribution are unchanged. Scheduled native reconciliation likewise uses raw scoped amounts after scope validation, preserving rejection of genuine mismatches. **665 current checks pass across 43 files**, plus TypeScript and both builds; four corrected synthetic PDFs / six pages were inspected. The fix is uncommitted/undeployed, and deployed browser/email acceptance remains pending. See the [exact diagnosis, correction, coverage and limitations](../docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md#precision-correction-and-validation). Full Reports remains **UNVERIFIED**.
+
+[Current Batch 7 evidence](../docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md) supersedes earlier Ad Comparison PDF implementation descriptions below: both renderers now show one row per nonzero source and `TOTAL`, with wrapped labels. 658 checks in 43 files pass, as do TypeScript and both builds; four synthetic PDFs / six pages were inspected. The three previously documented static-text failures are resolved against the current guards, history wording and 60-day Insights window. User-confirmed deletion-layout and filename checks remain accepted. The correction was committed/pushed as `51057959`. The supplied October 26 browser PDF passes layout, unique-source rows and displayed arithmetic (EUR 7,653.95 + 100.00 + 250.00 = 8,003.95). Its total is EUR 0.01 below the earlier Overview screenshot; simultaneous live reconciliation and the cause remain unverified. The emailed artifact is expected October 27 and remains pending. Full Reports status remains **UNVERIFIED**. Historical exact-runtime/provider evidence below is not current certification.
 
 ## Current Local Value And State Inventory
 
@@ -560,7 +562,7 @@ Future-platform template rule:
 
 ## Current Dependent Queue
 
-1. October 26 Ad Comparison PDF correction and local checks are complete for the documented fixtures; commit/deployment and a current deployed artifact remain pending.
+1. October 26 Ad Comparison PDF correction was committed/pushed as `51057959`; local checks and the supplied browser PDF's layout/source-row/arithmetic checks pass. The emailed artifact and the recorded EUR 0.01 cross-surface reconciliation gap remain pending; see the current Batch 7 checkpoint.
 2. The supplied Insights browser/emailed PDF comparison already passed its bounded five-issue recheck. Do not repeat it or the user-confirmed filename/deletion checks. Full configuration/source/lifecycle and immutable-history/provider acceptance remain separately classified in the current Batch 7 checkpoint.
 
 ## Historical Completed Fix Queue

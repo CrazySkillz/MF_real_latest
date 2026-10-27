@@ -1,0 +1,104 @@
+{
+  "at": "2026-10-27T14:40:34.325Z",
+  "head": "49202eaf76378c5dabf42f03e4a61aee63347253",
+  "boundary": "Existing GitHub read-only access; no production credentials or mutations",
+  "runs": [
+    {
+      "id": 40516437855,
+      "sha": "49202eaf76378c5dabf42f03e4a61aee63347253",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/40516437855",
+      "jobs": [
+        {
+          "id": 122231432280,
+          "name": "unit-tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm ci --ignore-scripts",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npx --no-install playwright install --with-deps chromium",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Create isolated notification fixture database",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run check:ga4-kpi-certification",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run test:current-version",
+              "status": "completed",
+              "conclusion": "failure"
+            },
+            {
+              "name": "Retained deferred-source evidence (non-blocking)",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ],
+          "log": "hosted-49202eaf-122231432280.log",
+          "testSummary": [
+            "2026-10-27T14:13:50.6285781Z \u001b[31m⎯⎯⎯⎯⎯⎯⎯\u001b[39m\u001b[1m\u001b[41m Failed Tests 1 \u001b[49m\u001b[22m\u001b[31m⎯⎯⎯⎯⎯⎯⎯\u001b[39m",
+            "2026-10-27T14:13:50.6289705Z \u001b[41m\u001b[1m FAIL \u001b[22m\u001b[49m server/ga4-auto-refresh-regression.test.ts\u001b[2m > \u001b[22mGA4 external value auto-refresh regression guard\u001b[2m > \u001b[22mreports scheduler execution and fails closed when an attempted provider refresh fails",
+            "2026-10-27T14:13:50.7117459Z \u001b[2m Test Files \u001b[22m \u001b[1m\u001b[31m1 failed\u001b[39m\u001b[22m\u001b[2m | \u001b[22m\u001b[1m\u001b[32m384 passed\u001b[39m\u001b[22m\u001b[90m (385)\u001b[39m",
+            "2026-10-27T14:13:50.7699335Z [current-version] Full test execution completed.",
+            "2026-10-27T14:13:50.7700563Z [current-version] Total 6548; passed 6547; failed 1.",
+            "2026-10-27T14:13:50.7701848Z [current-version] Blocking current-version failures: 1",
+            "2026-10-27T14:13:50.7704062Z [current-version] Visible non-blocking deferred failures: 0"
+          ]
+        }
+      ]
+    }
+  ]
+}

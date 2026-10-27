@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-27T14:43:37.808Z",
+  "method": "Anonymous read-only GETs",
+  "protectedGets": [
+    {
+      "route": "/api/clients",
+      "status": 401,
+      "denied": true
+    },
+    {
+      "route": "/api/campaigns",
+      "status": 401,
+      "denied": true
+    },
+    {
+      "route": "/api/metrics",
+      "status": 401,
+      "denied": true
+    },
+    {
+      "route": "/api/integrations",
+      "status": 401,
+      "denied": true
+    },
+    {
+      "route": "/api/attribution/models",
+      "status": 401,
+      "denied": true
+    }
+  ],
+  "deploymentIncludes": [
+    "4522f834",
+    "839bf508",
+    "ff3c5115",
+    "67279e8e",
+    "ee44ca77"
+  ],
+  "health": {
+    "ok": true,
+    "commit": "49202eaf76378c5dabf42f03e4a61aee63347253",
+    "nodeEnv": "production",
+    "ts": "2026-10-27T14:43:35.890Z"
+  },
+  "publicAuthenticationConfiguration": {
+    "entry": "/assets/index-Vdkf8qPm.js",
+    "publishableKeyModes": [
+      "test"
+    ],
+    "keyFingerprints": [
+      "d9dc36de3f92"
+    ],
+    "limits": "Public compiled configuration only; no account or provider authentication performed"
+  },
+  "protectedGetsPassed": true
+}

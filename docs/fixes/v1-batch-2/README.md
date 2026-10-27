@@ -6,6 +6,8 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 2 status
 
+**October 27 consolidated status:** [Batches 1–5 checkpoint](../v1-batch-8/BATCHES_1_TO_5_CHECKPOINT.md) accounts for all 74 original findings, the current 6,548/6,548 regression pass, deployed/read-only data checks and remaining live/historical acceptance. Earlier dated counts and queued-batch statements are historical; release acceptance is not silently closed.
+
 **Batch 2: COMMITTED, PUSHED AND DEPLOYED; LIVE ACCEPTANCE IN PROGRESS.** Runtime `839bf508bffea4742f992616753dc68eabcfab3e` is confirmed on Render on October21 at09:32 Amsterdam. All14 assigned code corrections are deployed. The production schema and Ptomo preservation checks pass, and the deployed signup existing-account link now reaches Sign In. Broader customer/provider acceptance and historical cleanup remain open; this is not V1 release certification. Batches3-8 remain queued.
 
 ## Latest validation and live acceptance

@@ -1,0 +1,348 @@
+{
+  "at": "2026-10-27T14:46:52.045Z",
+  "boundary": "Verified database identity and TLS; enforced REPEATABLE READ READ ONLY; aggregate metadata only; no provider calls or cleanup",
+  "readOnly": true,
+  "ownerColumns": [
+    {
+      "table": "metrics",
+      "present": true
+    },
+    {
+      "table": "integrations",
+      "present": true
+    },
+    {
+      "table": "performance_data",
+      "present": true
+    },
+    {
+      "table": "attribution_models",
+      "present": true
+    },
+    {
+      "table": "customer_journeys",
+      "present": true
+    }
+  ],
+  "requiredTables": [
+    {
+      "table": "inbound_webhook_receipts",
+      "present": true
+    },
+    {
+      "table": "service_account_resource_grants",
+      "present": true
+    },
+    {
+      "table": "ga4_refresh_work",
+      "present": true
+    },
+    {
+      "table": "ga4_daily_metrics",
+      "present": true
+    },
+    {
+      "table": "metric_snapshots",
+      "present": true
+    }
+  ],
+  "precisionColumns": [
+    {
+      "table_name": "benchmark_history",
+      "column_name": "current_value",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "benchmarks",
+      "column_name": "current_value",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "ga4_daily_metrics",
+      "column_name": "conversions",
+      "data_type": "double precision",
+      "numeric_precision": 53,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "kpis",
+      "column_name": "target_value",
+      "data_type": "numeric",
+      "numeric_precision": 18,
+      "numeric_scale": 2
+    },
+    {
+      "table_name": "kpis",
+      "column_name": "current_value",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    }
+  ],
+  "invalidIndexes": [],
+  "campaignOwnership": {
+    "total": 36,
+    "owner_missing": 0,
+    "client_missing": 0,
+    "owner_mismatch": 0
+  },
+  "connections": [
+    {
+      "table": "ga4_connections",
+      "total": 27,
+      "missing_parent": 14,
+      "active_with_parent": 8,
+      "active_plaintext_present": 0,
+      "active_encrypted_present": 8
+    },
+    {
+      "table": "google_sheets_connections",
+      "total": 209,
+      "missing_parent": 120,
+      "active_with_parent": 17,
+      "active_plaintext_present": 0,
+      "active_encrypted_present": 17
+    },
+    {
+      "table": "google_ads_connections",
+      "total": 0,
+      "missing_parent": 0,
+      "active_with_parent": 0,
+      "active_plaintext_present": 0,
+      "active_encrypted_present": 0
+    },
+    {
+      "table": "hubspot_connections",
+      "total": 11,
+      "missing_parent": 1,
+      "active_with_parent": 6,
+      "active_plaintext_present": 0,
+      "active_encrypted_present": 6
+    },
+    {
+      "table": "salesforce_connections",
+      "total": 16,
+      "missing_parent": 0,
+      "active_with_parent": 3,
+      "active_plaintext_present": 0,
+      "active_encrypted_present": 3
+    },
+    {
+      "table": "shopify_connections",
+      "total": 18,
+      "missing_parent": 0,
+      "active_with_parent": 4,
+      "active_plaintext_present": 0,
+      "active_encrypted_present": 4
+    }
+  ],
+  "sourceFamilies": {
+    "revenue": {
+      "sources": [
+        {
+          "source_type": "csv",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 6,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "csv",
+          "platform_context": "ga4",
+          "is_active": true,
+          "count": 1,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "csv",
+          "platform_context": "linkedin",
+          "is_active": false,
+          "count": 4,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "ga4",
+          "platform_context": "ga4",
+          "is_active": true,
+          "count": 3,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "google_sheets",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 6,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "google_sheets",
+          "platform_context": "linkedin",
+          "is_active": false,
+          "count": 3,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "hubspot",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 7,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "hubspot",
+          "platform_context": "ga4",
+          "is_active": true,
+          "count": 5,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "hubspot",
+          "platform_context": "linkedin",
+          "is_active": false,
+          "count": 5,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "hubspot",
+          "platform_context": "linkedin",
+          "is_active": true,
+          "count": 2,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "manual",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 6,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "manual",
+          "platform_context": "linkedin",
+          "is_active": false,
+          "count": 22,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "salesforce",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 2,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "salesforce",
+          "platform_context": "ga4",
+          "is_active": true,
+          "count": 2,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "salesforce",
+          "platform_context": "linkedin",
+          "is_active": false,
+          "count": 7,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "shopify",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 1,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "shopify",
+          "platform_context": "linkedin",
+          "is_active": false,
+          "count": 5,
+          "missing_parent": 0
+        }
+      ],
+      "records": {
+        "total": 605,
+        "missing_campaign": 0,
+        "missing_source": 0,
+        "source_campaign_mismatch": 0,
+        "source_currency_mismatch": 0,
+        "invalid_date_shape": 0
+      }
+    },
+    "spend": {
+      "sources": [
+        {
+          "source_type": "csv",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 9,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "google_sheets",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 4,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "manual",
+          "platform_context": "ga4",
+          "is_active": false,
+          "count": 4,
+          "missing_parent": 0
+        },
+        {
+          "source_type": "manual",
+          "platform_context": "ga4",
+          "is_active": true,
+          "count": 7,
+          "missing_parent": 0
+        }
+      ],
+      "records": {
+        "total": 3642697,
+        "missing_campaign": 2383107,
+        "missing_source": 3642664,
+        "source_campaign_mismatch": 0,
+        "source_currency_mismatch": 0,
+        "invalid_date_shape": 0
+      }
+    }
+  },
+  "duplicateDailyKeys": [
+    {
+      "table": "ga4_daily_metrics",
+      "groups": 0,
+      "extra_rows": 0
+    },
+    {
+      "table": "linkedin_daily_metrics",
+      "groups": 0,
+      "extra_rows": 0
+    },
+    {
+      "table": "google_ads_daily_metrics",
+      "groups": 0,
+      "extra_rows": 0
+    },
+    {
+      "table": "meta_daily_metrics",
+      "groups": 0,
+      "extra_rows": 0
+    }
+  ],
+  "legacyCandidates": {
+    "limitation": "These fingerprints identify candidates only; they do not prove historical provenance or authorize deletion.",
+    "retiredRevenue": 0,
+    "retiredSpend": 3267568,
+    "demoMetrics": {
+      "total": 4,
+      "unowned": 4
+    }
+  },
+  "orphanRefreshWork": 0
+}

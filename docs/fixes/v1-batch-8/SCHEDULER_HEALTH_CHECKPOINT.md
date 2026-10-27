@@ -1,6 +1,20 @@
 # Scheduler health reporting correction - October 27, 2026
 
-The constant healthy label is corrected locally. **84/84 targeted tests pass**, TypeScript and the server build pass. The user authorized committing and pushing this packet on October 27; hosted CI and deployment verification remain pending. Base revision is `997f1c39ba2904ff0805ddb154715a75b4267578`. V1-010's broader operational acceptance remains OPEN; this is not whole-app production sign-off.
+The constant healthy label correction is deployed and its current response is verified below. **84/84 targeted tests pass**, TypeScript and the server build pass. The fix was committed as `ee44ca77`; Render now serves descendant `49202eaf76378c5dabf42f03e4a61aee63347253`, with the health handler unchanged since that fix. Current-candidate hosted CI was not checked in this read-only follow-up. V1-010's broader operational acceptance remains OPEN; this is not whole-app production sign-off.
+
+## Deployed read-only verification, October 27 at 15:26 Amsterdam
+
+The [public deployment and scheduler receipt](validation-2026-10-27-health/deployed-2026-10-27T14-26-30-638Z.json) confirms:
+
+- `/api/health` reports `49202eaf76378c5dabf42f03e4a61aee63347253`. Git ancestry confirms it includes `ee44ca77`; `server/index.ts` has no intervening diff.
+- `/health/scheduler` returns HTTP 200 and `healthy`. Independently evaluating the recorded report errors, refresh statuses/errors and snapshot write failures yields the same result: no recorded failure. This verifies the observed success branch; failure branches remain covered by the existing 23 handler cases, not by deliberately causing a production failure.
+- Report polling is active (28 checks since this process started), with no retained error. Zero sends in this process does not establish email acceptance or delivery.
+- The GA4 daily timer is scheduled for **October 27, 20:00 Amsterdam / 19:00 UTC**. No full scheduled run has completed in this process, which started at 14:58 Amsterdam; the next natural run remains separate acceptance. No manual refresh or retry was triggered.
+- The financial observation records zero write failures and a `spend_unavailable` readiness reason. Missing spend is not a failed write or a configured spend source.
+
+The [enforced READ ONLY saved-state check at 15:27 Amsterdam](validation-2026-10-27-deployed/active-2026-10-27T14-27-00-580Z.json) confirms that the active campaign's public aligned completion (`14:20:11.360Z`) exactly matches its Executive Summary marker and completed revenue-change work. Financial and Executive Summary revenue both remain **EUR 8,003.96**, native GA4 remains **EUR 7,653.96**, and all inspected windows end October 26. Later input invalidation at `14:23:40Z` is retained in that work history; the earlier completion is not proof that all subsequent inputs have been republished or that a full native refresh ran under the current revision.
+
+Only anonymous status GETs and the existing scoped READ ONLY transaction were used. No production writes, provider operations, emails, user-browser access or job triggers occurred. No runtime code changed or new deployment is needed for this verification. The bounded deployment/status comparison is complete; full scheduler/recovery and release acceptance remain open.
 
 ## Confirmed cause and traced boundary
 

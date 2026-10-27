@@ -69,7 +69,8 @@ describe("GA4 external value auto-refresh regression guard", () => {
       totalScheduledRuns: 0,
     });
     expect(scheduler).toContain('runDailyAutoRefreshOnce("scheduled")');
-    expect(serverIndex).toContain("autoRefreshScheduler: getAutoRefreshSchedulerStatus(),");
+    expect(serverIndex).toContain("const autoRefreshScheduler = getAutoRefreshSchedulerStatus();");
+    expect(serverIndex).toMatch(/res\.json\(\{[\s\S]*?autoRefreshScheduler,/);
   });
 
   it("isolates financial refresh evidence to each campaign", () => {

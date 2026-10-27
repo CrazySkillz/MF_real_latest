@@ -1,0 +1,102 @@
+{
+  "at": "2026-10-27T14:59:01.030Z",
+  "baseHead": "49202eaf76378c5dabf42f03e4a61aee63347253",
+  "change": "One outdated scheduler source-text assertion corrected; no application runtime change",
+  "findings": [
+    {
+      "batch": 1,
+      "count": 20
+    },
+    {
+      "batch": 2,
+      "count": 14
+    },
+    {
+      "batch": 3,
+      "count": 10
+    },
+    {
+      "batch": 4,
+      "count": 24
+    },
+    {
+      "batch": 5,
+      "count": 6
+    }
+  ],
+  "totalFindings": 74,
+  "currentVersion": {
+    "total": 6548,
+    "passed": 6548,
+    "failed": 0,
+    "checks": [
+      {
+        "name": "start",
+        "exitCode": 0,
+        "error": null
+      },
+      {
+        "name": "tests",
+        "exitCode": 0,
+        "error": null
+      },
+      {
+        "name": "stop",
+        "exitCode": 0,
+        "error": null
+      }
+    ],
+    "changedTrackedFiles": [],
+    "databasesAfter": [
+      {
+        "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch8-20261026-pg",
+        "listen": "127.0.0.1",
+        "database": "ga4_alignment_test",
+        "other_sessions": 0,
+        "schemas": [],
+        "publicTables": []
+      },
+      {
+        "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch8-20261026-pg",
+        "listen": "127.0.0.1",
+        "database": "notifications_test",
+        "other_sessions": 0,
+        "schemas": [],
+        "publicTables": []
+      }
+    ]
+  },
+  "focused": {
+    "total": 111,
+    "passed": 111,
+    "failed": 0
+  },
+  "inputs": [
+    {
+      "file": "../validation-2026-10-27-ci-scheduler/batches15-final-execution.json",
+      "sha256": "315d561e3a708824c7d8a1625357b5e32e197c3ad4bd1d15456ee52e616b6c78"
+    },
+    {
+      "file": "../validation-2026-10-27-ci-scheduler/batches15-final-tests.log",
+      "sha256": "46ad37b094c5542ac655a7be684e415b8d740156c4582580d6aa7aeca4c791a2"
+    },
+    {
+      "file": "finding-inventory.json",
+      "sha256": "5f16323d283edabf4c898c22d07caa7d935a36e084d099ec211992118d9c987d"
+    },
+    {
+      "file": "public-deployment.json",
+      "sha256": "ec2c8c53c732a4b2bb02d2c376ef5c0215808b7da2c80d1491e1744a70dfca1f"
+    },
+    {
+      "file": "persisted-boundaries-final.json",
+      "sha256": "3083705da856d7f384d30358bd096f09cd25056f2a861ed3d08c0effed22de07"
+    },
+    {
+      "file": "hosted-ci.json",
+      "sha256": "32c444e59e1fe584b21950682ff94d835586a18b84065158614ba5a93e5bd563"
+    }
+  ],
+  "sourceManifestDigest": "43248ffb5ce25e77341cf3e2a7ff9a504b193df3f936db242d82372aacbf3b16",
+  "limit": "Execution proves the cases run. It does not close untested lifecycle, historical provenance, authenticated provider or release acceptance."
+}

@@ -1,0 +1,149 @@
+{
+  "checkedAt": "2026-10-27T14:26:30.638Z",
+  "method": "Anonymous read-only GETs; no refresh or retry triggered",
+  "requestedCommit": "ee44ca77",
+  "requestedCommitIncluded": true,
+  "health": {
+    "httpStatus": 200,
+    "data": {
+      "ok": true,
+      "commit": "49202eaf76378c5dabf42f03e4a61aee63347253",
+      "nodeEnv": "production",
+      "ts": "2026-10-27T14:26:28.400Z"
+    }
+  },
+  "scheduler": {
+    "httpStatus": 200,
+    "data": {
+      "status": "healthy",
+      "scheduler": {
+        "schedulerStartedAt": "2026-10-27T13:58:14.788Z",
+        "cronSchedule": "* * * * *",
+        "totalChecks": 28,
+        "totalSent": 0,
+        "totalFailed": 0,
+        "lastCheckTime": "2026-10-27T14:26:00.007Z",
+        "lastCheckFinishedAt": "2026-10-27T14:26:25.045Z",
+        "lastScheduledReportsFound": 3,
+        "lastDueReportsFound": 2,
+        "lastRefreshDeferredReports": 0,
+        "lastSuccessTime": null,
+        "lastErrorTime": null,
+        "lastError": null,
+        "uptime": 28390,
+        "successRate": "N/A"
+      },
+      "autoRefreshScheduler": {
+        "started": true,
+        "timerScheduled": false,
+        "inProgress": false,
+        "config": {
+          "enabled": true,
+          "reportingTimeZone": "UTC",
+          "hour": 23,
+          "minute": 0,
+          "runOnStartup": false,
+          "googleSheetsSpendIntervalMinutes": 1,
+          "salesforcePipelineIntervalMinutes": 5
+        },
+        "startedAt": "2026-10-27T13:58:14.797Z",
+        "nextRunAt": null,
+        "lastRunStartedAt": null,
+        "lastRunFinishedAt": null,
+        "lastRunTrigger": null,
+        "lastRunStatus": "idle",
+        "lastSkippedAt": null,
+        "lastErrorTime": null,
+        "lastError": null,
+        "lastRunSummary": null,
+        "totalRuns": 0,
+        "totalStartupRuns": 0,
+        "totalScheduledRuns": 0,
+        "totalManualRuns": 0,
+        "totalSkippedRuns": 0
+      },
+      "ga4DailyScheduler": {
+        "started": true,
+        "timerScheduled": true,
+        "inProgress": false,
+        "config": {
+          "reportingTimeZone": "Europe/Amsterdam",
+          "hour": 8,
+          "hours": [
+            8,
+            14,
+            20
+          ],
+          "minute": 0,
+          "runOnStartup": false
+        },
+        "startedAt": "2026-10-27T13:58:14.797Z",
+        "stoppedAt": null,
+        "nextRunAt": "2026-10-27T19:00:00.000Z",
+        "nextDataThroughDate": "2026-10-26",
+        "lastRunStartedAt": null,
+        "lastRunFinishedAt": null,
+        "lastRunTrigger": null,
+        "lastRunStatus": "idle",
+        "lastSkippedAt": null,
+        "lastErrorTime": null,
+        "lastError": null,
+        "totalRuns": 0,
+        "totalStartupRuns": 0,
+        "totalScheduledRuns": 0,
+        "totalManualRuns": 0,
+        "totalSnapshotBootstrapRuns": 0,
+        "totalSkippedRuns": 0,
+        "lastRecomputeRecordedAt": "2026-10-27T14:19:29.216Z",
+        "lastRecomputeEvidence": {
+          "campaignIdsProcessed": [
+            "de4775c3b435"
+          ],
+          "campaignIdsSkipped": [],
+          "campaignIdsFailed": [],
+          "kpiIdsUpdated": [],
+          "kpiIdsSkipped": [],
+          "kpiIdsFailed": [],
+          "benchmarkIdsUpdated": [],
+          "benchmarkIdsSkipped": [],
+          "benchmarkIdsFailed": []
+        },
+        "lastExecutiveSummarySnapshotRequestedAt": "2026-10-27T14:19:59.150Z",
+        "lastExecutiveSummarySnapshotRequestFailures": [],
+        "lastAlignedRefreshFailures": [],
+        "alignedRefreshCampaigns": [
+          {
+            "campaignIdHash": "b85505d40a0a",
+            "reportingDate": "2026-10-26",
+            "completedAt": "2026-10-27T13:08:41.549Z"
+          },
+          {
+            "campaignIdHash": "de4775c3b435",
+            "reportingDate": "2026-10-26",
+            "completedAt": "2026-10-27T14:20:11.360Z"
+          }
+        ],
+        "lastSnapshotBootstrapFailures": []
+      },
+      "financialDailySnapshot": {
+        "mode": "gated_write",
+        "snapshotWritesEnabled": true,
+        "financialSourceEvidenceCampaigns": 1,
+        "ga4DailyEvidenceCampaigns": 1,
+        "observedCampaigns": 1,
+        "readyCampaigns": 0,
+        "blockedCampaigns": 1,
+        "writtenCampaigns": 1,
+        "writeFailedCampaigns": 0,
+        "blockingReasons": {
+          "spend_unavailable": 1
+        },
+        "latestEvaluatedAt": "2026-10-27T14:19:59.149Z"
+      },
+      "timestamp": "2026-10-27T14:26:28.397Z"
+    }
+  },
+  "expectedStatus": "healthy",
+  "matchesRecordedState": true,
+  "failureReasons": []
+}

@@ -6,6 +6,8 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
+**October 27 consolidated status:** [Batches 1–5 checkpoint](../v1-batch-8/BATCHES_1_TO_5_CHECKPOINT.md) accounts for all 74 original findings, the current 6,548/6,548 regression pass, deployed/read-only data checks and remaining live/historical acceptance. Earlier dated failures and pending-deployment statements are historical; release acceptance is not silently closed.
+
 **IMPLEMENTATION CHECKPOINT COMPLETE; RELEASE ACCEPTANCE OPEN.** All 24 corrections are VERIFIED LOCALLY within their documented boundaries. The final transfer correction V1-069 is committed in `dc33df48` and deployed in `67279e8e`; public revision/health checks pass, while authenticated API/provider acceptance remains OPEN. Earlier corrections retain their recorded deployment/acceptance status. All 24 release acceptances remain OPEN: authenticated/provider, downstream, historical-data and operational evidence is still required. Dated checkpoints below preserve earlier counts; this current status supersedes them.
 
 ## Transfer deployment verification, October 23

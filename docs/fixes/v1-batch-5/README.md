@@ -1,5 +1,7 @@
 # Batch 5: CRM and commerce Revenue
 
+**October 27 consolidated status:** [Batches 1–5 checkpoint](../v1-batch-8/BATCHES_1_TO_5_CHECKPOINT.md) accounts for all 74 original findings, the current 6,548/6,548 regression pass, deployed/read-only data checks and remaining live/historical acceptance. Earlier dated failures and pending-deployment statements are historical; release acceptance is not silently closed.
+
 ### Batch 5 local audit completion October 24
 
 **The six assigned findings have completed local implementation and regression validation. Release acceptance remains OPEN; this is not whole-app production certification.** This checkpoint supersedes the older local failure counts below. The candidate is based on `f1dc2ef09271cd0951f2ca43c617693f87662cb6`; the new correction and test updates accompany the user-authorized commit and push; their deployment remains unverified. The user prohibited access to their browser. No further user-browser access, provider request, production write, forced refresh, reconnect or source mutation was performed. Automated browser tests use separate synthetic Chromium sessions without the user's profile.

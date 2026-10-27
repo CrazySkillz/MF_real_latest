@@ -32,6 +32,8 @@ October 27 recurring download incident (local fix; deployed acceptance pending):
 
 October 27 follow-up: `692118a5` did not resolve the recurring warning. Published-source and core refreshes could cancel the same request; the browser incorrectly treated TanStack Query's cancellation as a failed data read. It now awaits the replacement and rechecks the receipt. Download buttons wait during verification; schedule creation/editing remain independent. Exact reproduction, negative cases, production metadata and validation limits are in [the cancellation incident](../docs/fixes/v1-batch-8/REPORT_PUBLICATION_CANCELLATION_2026-10-27.md).
 
+October 27 UI clarification: ordinary background verification no longer inserts a page-wide updating paragraph. Both new and saved download controls wait during pending or failed verification and re-enable after successful recovery; genuine failure warnings and PDF accuracy guards remain. The isolated layout, control-state and recovery evidence is in the same incident record; authenticated live acceptance remains open.
+
 ## Reports Tab Structure
 
 The current GA4 `Reports` tab contains:

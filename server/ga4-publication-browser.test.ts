@@ -36,6 +36,7 @@ describe("GA4 publication in the rendered page", () => {
     let campaignCurrency = "EUR"; let financialCurrency = "EUR"; let financialRevenue: number | undefined; let failNative = false;
     let conversionCredit: number | undefined;
     let financialPublished = false;
+    let financialRequests = 0;
     const updatedAt = () => `${day === "2026-10-17" ? "2026-10-18" : "2026-10-19"}T${generation === 1 ? "06" : "12"}:06:00.000Z`;
     const totals = () => ({ sessions: generation === 1 ? 2977 : 3100, users: generation === 1 ? 2978 : 3101, conversions: conversionCredit ?? (generation === 1 ? 262 : 275), revenue: financialRevenue ?? (generation === 1 ? 65659.50 : 68000), engagedSessions: 2200, engagementRate: 0.724, pageviews: 4100 });
     let releaseFinancial: (() => void) | undefined;
@@ -59,6 +60,7 @@ describe("GA4 publication in the rendered page", () => {
         data = { success: !failDaily, propertyId: "123", startDate: "2026-09-18", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt(), lastCompletedRefreshAt: updatedAt(), refreshStatus: "current", refreshIsStale: false, overviewTotals: totals(), data: [{ date: day, ...totals() }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
         if (failDaily) status = 503;
       } else if (url.pathname.endsWith("/financial-daily-snapshot")) {
+        financialRequests++;
         if (waitFinancial) await waitFinancial;
         data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt(), metrics: { financialDaily: { currency: financialCurrency, currentValueWindow: { startDate: "2026-09-04", endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: financialRevenue ?? totals().revenue }, spend: { available: false }, conversions: { available: true, value: totals().conversions } } } } } };
         if (!financialPublished) data.snapshot = null;
@@ -106,8 +108,10 @@ describe("GA4 publication in the rendered page", () => {
       expect(dailyRequests()).toBe(initialDailyRequests);
 
       incomplete = false; waitFinancial = new Promise(resolve => { releaseFinancial = resolve; });
+      const beforePublicationRead = financialRequests;
       await page.clock.runFor(30_000);
-      await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("Updating displayed figures");
+      await browserExpect.poll(() => financialRequests).toBeGreaterThan(beforePublicationRead);
+      await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await browserExpect(page.getByText("€65,659.50", { exact: true }).first()).toBeVisible();
       releaseFinancial!(); waitFinancial = undefined;
       await browserExpect(page.getByText("3,100", { exact: true }).first()).toBeVisible();
@@ -133,8 +137,10 @@ describe("GA4 publication in the rendered page", () => {
       // new-date query runs; the existing warning identifies the older date.
       generation = 4; day = "2026-10-18";
       waitFinancial = new Promise(resolve => { releaseFinancial = resolve; });
+      const beforeNextDayRead = financialRequests;
       await page.clock.runFor(30_000);
-      await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("Updating displayed figures");
+      await browserExpect.poll(() => financialRequests).toBeGreaterThan(beforeNextDayRead);
+      await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await browserExpect(page.getByText("€68,000.00", { exact: true }).first()).toBeVisible();
       releaseFinancial!(); waitFinancial = undefined;
       await browserExpect(page.getByTestId("ga4-overview-reporting-dates")).toContainText("Oct 18, 2026");

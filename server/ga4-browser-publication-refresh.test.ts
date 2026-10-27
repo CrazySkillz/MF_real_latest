@@ -260,16 +260,19 @@ describe("GA4 browser publication coordination", () => {
     } finally { first.resolve({ revenue: 1 }); stop(); view.client.clear(); }
   });
   it.each([
-    ["pending new download", true, false, null, true],
-    ["verified new download", false, false, null, false],
-    ["schedule creation", true, true, null, false],
-    ["schedule edit", true, false, "report-a", false],
-  ])("keeps report controls usable for %s", (_name, pending, scheduled, editing, expected) => {
+    ["pending new download", true, false, false, null, true],
+    ["failed verification", false, true, false, null, true],
+    ["verified new download", false, false, false, null, false],
+    ["schedule creation", true, false, true, null, false],
+    ["schedule edit", true, false, false, "report-a", false],
+    ["schedule creation after failed verification", false, true, true, null, false],
+    ["schedule edit after failed verification", false, true, false, "report-a", false],
+  ])("keeps report controls usable for %s", (_name, pending, failed, scheduled, editing, expected) => {
     const start = page.indexOf("const isGA4ReportSubmitDisabled =") + "const isGA4ReportSubmitDisabled =".length;
     const expression = page.slice(start, page.indexOf(";", start));
     expect(compile("return " + expression, {
       ga4ReportForm: { name: "Report", reportType: "ads", scheduleEnabled: scheduled },
-      ga4PublicationDisplayPending: pending, editingGA4ReportId: editing,
+      ga4PublicationDisplayPending: pending, ga4PublicationDisplayFailed: failed, editingGA4ReportId: editing,
       createGA4ReportMutation: { isPending: false }, updateGA4ReportMutation: { isPending: false }, isGA4ReportEditUnchanged: false,
     })).toBe(expected);
   });

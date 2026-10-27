@@ -2,6 +2,15 @@
 
 ## Scope and controlling status
 
+**Latest user clarification, after `020e0e9f`:** the recurring text is
+"Updating displayed figures. Some sections may still show the previous update."
+on Overview and Reports. It eventually disappears, with intermittent download
+errors also reported. This is the pending message, not the named failed-request
+warning. The public route serves the current assets; prior hosted CI passed
+6,551 checks. Neither fact establishes deployed acceptance. The localized UI
+correction and its evidence are recorded below; authenticated live acceptance
+remains open.
+
 **Reopened October 27, after `49202eaf`:** the user reports the warning remains
 for several minutes after loading Reports. The earlier cancellation fix is not
 proof that this recurrence is resolved. Current read-only storage/handler checks
@@ -166,3 +175,55 @@ TypeScript, production client and server builds. `git diff --check` passes.
 The public deployment read during investigation still reported `49202eaf`.
 Publication of this correction and authenticated live acceptance are recorded
 separately; the user's several-minute symptom is not declared resolved here.
+
+## Follow-up: quiet refresh transitions and consistent download controls
+
+The clarified symptom has two confirmed UI causes. `ga4PublicationDisplayPending`
+includes ordinary background fetches. Rendering a paragraph for every pending
+read inserts and removes a row above all tab contents. Separately, both download
+buttons checked only pending state, whereas `downloadGA4Report` rejects both
+pending and failed verification. After a failed check, the button became enabled
+and offered an action guaranteed to fail immediately.
+
+The path traced is the page's scoped TanStack queries and publication receipt,
+the shared tab status paragraph, the new-report submit condition and saved-card
+Download control, and the actual PDF preflight. The API/storage reads, receipt
+verification, field-level report checks and PDF generation are unchanged.
+Routine pending reads now keep the page layout stable; genuine failed-check
+warnings remain visible. Both download entry points wait for successful checks,
+expose a busy attribute while checking, and re-enable automatically on recovery.
+Schedule creation and editing remain available because they do not generate a PDF.
+
+Only `client/src/pages/ga4-metrics.tsx` changes at runtime. Regression changes are
+in `server/ga4-ad-comparison-download-browser.test.ts`,
+`server/ga4-browser-publication-refresh.test.ts`, and
+`server/ga4-publication-browser.test.ts`.
+
+Evidence in the incident validation directory:
+
+- `quiet-refresh-before.json`: a held ordinary financial read reproduces the
+  unwanted paragraph in the real rendered page, with all fixture requests valid.
+- `quiet-controls-before.json`: the failed-verification case proves the enabled
+  button disagrees with the unchanged download guard.
+- `quiet-refresh-after.json`: the same held read preserves the Overview card's
+  vertical position and EUR 8,003.96; new and saved download controls stay disabled
+  while pending/failed, recover automatically, and generate six correct PDFs.
+- `quiet-refresh-regressions.json`: 190 checks pass, including a rendered-page
+  publication/date rollover test, failed-read recovery, hidden polling, currency
+  isolation, source/financial parity, report precision and subsection guards.
+
+All browser work uses fresh isolated profiles and intercepted fixture requests,
+with no access to the user's browser or production credentials. No production
+records are changed. There is no damaged-data cleanup for this presentation-only
+change. These results prove the UI defects and correction; they do not establish
+why any individual hosted request previously failed or how long it took. Genuine
+request failures continue to be surfaced and retried by the existing coordinator.
+
+Final local packet: **197 passing checks, zero failures**, across nine test files.
+The complementary `quiet-refresh-after.json` and
+`quiet-refresh-browser-neighbors.json` runs cover all seven report browser cases
+(36 PDFs); the separate publication browser test also passes. Filtering avoids
+running the same browser case twice and does not omit any of these scenarios.
+`quiet-refresh-build-checks.json` records passing TypeScript, production client
+and server builds. `git diff --check` passes. Deployment verification follows
+the commit/push; it does not substitute for authenticated live UI acceptance.

@@ -6495,7 +6495,7 @@ export default function GA4Metrics() {
   const isGA4ReportEditUnchanged = Boolean(editingGA4ReportId) && (!ga4ReportEditInitialSignature || ga4ReportFormSignature === ga4ReportEditInitialSignature);
   const isGA4ReportSubmitDisabled = !ga4ReportForm.name
     || !ga4ReportForm.reportType
-    || (!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && ga4PublicationDisplayPending)
+    || (!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed))
     || createGA4ReportMutation.isPending
     || updateGA4ReportMutation.isPending
     || isGA4ReportEditUnchanged;
@@ -6847,11 +6847,9 @@ export default function GA4Metrics() {
                   )}
                 </TabsList>
 
-                {ga4DailyResp !== undefined && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) && (
+                {ga4DailyResp !== undefined && ga4PublicationDisplayFailed && (
                   <p className="text-sm text-muted-foreground" role="status" data-testid="ga4-publication-display-status">
-                    {ga4PublicationDisplayFailed
-                      ? `Some figures could not refresh (${ga4FailedPublicationSection}). Previously loaded values remain visible; the page will check again automatically.`
-                      : "Updating displayed figures. Some sections may still show the previous update."}
+                    {`Some figures could not refresh (${ga4FailedPublicationSection}). Previously loaded values remain visible; the page will check again automatically.`}
                   </p>
                 )}
 
@@ -9261,7 +9259,9 @@ export default function GA4Metrics() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    disabled={ga4PublicationDisplayPending}
+                                    disabled={ga4PublicationDisplayPending || ga4PublicationDisplayFailed}
+                                    aria-busy={ga4PublicationDisplayPending}
+                                    title={ga4PublicationDisplayPending || ga4PublicationDisplayFailed ? "Download becomes available automatically after the data checks succeed." : undefined}
                                     onClick={async () => {
                                       let cfg: any = { sections: { overview: true } };
                                       try {
@@ -11380,6 +11380,8 @@ export default function GA4Metrics() {
               <div className="flex items-center gap-2">
                 <Button
                   disabled={isGA4ReportSubmitDisabled}
+                  aria-busy={!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && ga4PublicationDisplayPending}
+                  title={!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) ? "Download becomes available automatically after the data checks succeed." : undefined}
                   onClick={async () => {
                     if (ga4ReportForm.scheduleEnabled) {
                       // Scheduled report: validate, save to library

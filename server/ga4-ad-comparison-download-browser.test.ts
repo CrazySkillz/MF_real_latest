@@ -20,7 +20,7 @@ function compileRoute(name: string, bindings: Record<string, any>) {
 
 // A fresh, isolated browser: all requests are intercepted, no user profile or live services.
 describe("Ad Comparison precision through the real Reports page", () => {
-  it.each(["channel", "history", "published-sources", "initial-reports", "publication-handoff", "publication-gap"])("downloads with %s refresh timing and recovers after core refresh failures", async contextKind => {
+  it.each(["channel", "history", "published-sources", "initial-reports", "publication-handoff", "publication-gap", "background-read"])("downloads with %s refresh timing and recovers after core refresh failures", async contextKind => {
     const bundle = await build({
       stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
         import {QueryClientProvider} from '@tanstack/react-query';
@@ -38,6 +38,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
           window.fixtureRefreshErrors.push({name: error?.constructor?.name, message: error?.message}); throw error;
         });
         window.fixtureStatus = () => client.invalidateQueries({queryKey: ['/api/campaigns','a','ga4-publication-status']});
+        window.fixtureFinancial = () => client.invalidateQueries({queryKey: ['/api/campaigns','a','financial-daily-snapshot']});
         createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><TooltipProvider><Page/><Toaster/></TooltipProvider></QueryClientProvider>);`,
         loader: "tsx", resolveDir: process.cwd() },
       bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic",
@@ -60,6 +61,8 @@ describe("Ad Comparison precision through the real Reports page", () => {
     let releaseInsights!: () => void;
     const pendingInsights = new Promise<void>(resolve => { releaseInsights = resolve; });
     let holdInsights = true;
+    let holdFinancial = false, releaseFinancial!: () => void;
+    const pendingFinancial = new Promise<void>(resolve => { releaseFinancial = resolve; });
     const day = "2026-10-25", start = "2026-09-23", updatedAt = "2026-10-26T18:00:00Z";
     const rows = [
       { campaign: "yesop_prospecting", sessions: 346, users: 344, conversions: 19, revenue: 3400.434193, sessionKeyEventRate: 0.046242774566473986 },
@@ -123,7 +126,8 @@ describe("Ad Comparison precision through the real Reports page", () => {
       else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, totals, rows, revenueWindow: { source: "ga4", startDate: start, endDate: day }, meta: { currencyCode: "EUR" } };
       else if (url.pathname.endsWith("/ga4-to-date")) data = { success: true, propertyId: "123", startDate: start, endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals };
       else if (url.pathname.endsWith("/ga4-landing-pages") || url.pathname.endsWith("/ga4-conversion-events")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, rows: [] };
-      else if (url.pathname.includes("/platforms/google_analytics/")) data = [];
+      else if (url.pathname.includes("/platforms/google_analytics/")) data = contextKind === "background-read" && url.pathname.endsWith("/reports")
+        ? [{ id: "saved-ads", name: "Saved Ad Comparison", reportType: "ads", createdAt: updatedAt, configuration: JSON.stringify({ sections: { ads: true } }) }] : [];
       else if (url.pathname.endsWith("/revenue-sources")) data = { success: true, sources: sources.map(source => ({ ...source, isActive: true, currency: "EUR", materializedRevenueStatus: "available", lastTotalRevenue: source.revenue, completedDayRevenue: source.revenue, mappingConfig: null,
         ...(contextKind === "published-sources" ? { publicationStatus: "published", publicationHash: source.id + "-saved" } : {}),
       })) };
@@ -131,7 +135,10 @@ describe("Ad Comparison precision through the real Reports page", () => {
       else if (url.pathname.endsWith("/revenue-to-date")) data = { success: true, totalRevenue: 350, sourceIds: sources.map(source => source.id), endDate: day };
       else if (url.pathname.includes("revenue") || url.pathname.includes("spend")) data = { success: true, sources: [], sourceIds: [], totalRevenue: 0, totalSpend: 0, spendToDate: 0, rows: [], endDate: day };
       if (failed === "insights" && insightsContext) { status = 503; data = { success: false, error: "fixture Insights context failure" }; }
-      if (url.pathname.endsWith("/financial-daily-snapshot")) financialRequests++;
+      if (url.pathname.endsWith("/financial-daily-snapshot")) {
+        financialRequests++;
+        if (holdFinancial) await pendingFinancial;
+      }
       if (contextKind === "published-sources") {
         if (url.searchParams.has("statusOnly")) await new Promise(resolve => setTimeout(resolve, 300));
         if (url.pathname.endsWith("/revenue-sources")) await new Promise(resolve => setTimeout(resolve, 600));
@@ -143,11 +150,11 @@ describe("Ad Comparison precision through the real Reports page", () => {
       await page.getByRole("button", { name: "Create Report", exact: true }).click();
       await page.getByRole("dialog").getByText("Ad Comparison", { exact: true }).click();
     };
-    const downloadReport = async () => {
+    const downloadReport = async (saved = false) => {
       const pending = page.waitForEvent("download", { timeout: 20_000 });
-      await page.getByRole("button", { name: "Generate & Download Report" }).click();
+      await page.getByRole("button", { name: saved ? "Download" : "Generate & Download Report", exact: true }).click();
       const download = await pending;
-      expect(download.suggestedFilename()).toBe("GA4_Ad_Comparison_Report_2026-10-26.pdf");
+      expect(download.suggestedFilename()).toBe(saved ? "Saved_Ad_Comparison_2026-10-26.pdf" : "GA4_Ad_Comparison_Report_2026-10-26.pdf");
       const bytes = readFileSync((await download.path())!);
       expect(bytes.toString("latin1")).toContain("EUR 7,653.96");
       expect(bytes.toString("latin1")).toContain("EUR 8,003.96");
@@ -164,7 +171,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
         if (contextKind.startsWith("publication-")) await browserExpect.poll(() => statusRequests).toBeGreaterThanOrEqual(2);
         if (contextKind === "publication-gap") {
           await page.clock.runFor(180_000);
-          await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("Updating displayed figures");
+          await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
           expect(await page.evaluate(() => (window as any).fixtureWarnings)).toEqual([]);
           await openReport();
           await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeDisabled();
@@ -177,6 +184,26 @@ describe("Ad Comparison precision through the real Reports page", () => {
       }
       await browserExpect(page.getByText("Total Revenue", { exact: true }).locator("../..")).toContainText("€8,003.96");
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      if (contextKind === "background-read") {
+        const revenueCard = page.getByText("Total Revenue", { exact: true }).locator("../..");
+        const before = await revenueCard.boundingBox();
+        holdFinancial = true;
+        const previousReads = financialRequests;
+        await page.evaluate(() => { void (window as any).fixtureFinancial(); });
+        await browserExpect.poll(() => financialRequests).toBeGreaterThan(previousReads);
+        await browserExpect(page.getByText("Updating displayed figures. Some sections may still show the previous update.")).toHaveCount(0);
+        expect((await revenueCard.boundingBox())?.y).toBe(before?.y);
+        await browserExpect(revenueCard).toContainText("€8,003.96");
+        await page.getByRole("tab", { name: "Reports", exact: true }).click();
+        await browserExpect(page.getByRole("button", { name: "Download", exact: true })).toBeDisabled();
+        await openReport();
+        await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeDisabled();
+        expect(downloads).toHaveLength(0);
+        holdFinancial = false; releaseFinancial();
+        await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeEnabled();
+        await page.getByRole("button", { name: "Cancel", exact: true }).click();
+        await browserExpect(page.getByRole("button", { name: "Download", exact: true })).toBeEnabled();
+      }
       await page.getByRole("tab", { name: "Ad Comparison", exact: true }).click();
       await browserExpect(page.getByRole("row").filter({ hasText: "TOTAL" }).last()).toContainText("€8,003.96");
       await page.getByRole("tab", { name: "Reports", exact: true }).click();
@@ -210,10 +237,11 @@ describe("Ad Comparison precision through the real Reports page", () => {
           await page.clock.runFor(180_000);
           await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("could not refresh (daily)");
         }
+        if (contextKind === "background-read") await browserExpect(page.getByRole("button", { name: "Download", exact: true })).toBeDisabled();
         await openReport();
         const previousDownloads = downloads.length;
-        await page.getByRole("button", { name: "Generate & Download Report" }).click();
-        await browserExpect(page.getByText("Failed to generate report", { exact: true })).toBeVisible();
+        await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeDisabled();
+        await browserExpect(page.getByText("The latest displayed figures are still being checked. Please try the report again once the update finishes.")).toHaveCount(0);
         expect(downloads.length).toBe(previousDownloads);
         failed = "";
         await page.clock.runFor(30_000);
@@ -236,11 +264,12 @@ describe("Ad Comparison precision through the real Reports page", () => {
       await browserExpect.poll(() => financialRequests).toBeGreaterThan(beforeRecoveredRead);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await downloadReport();
-      expect(downloads).toHaveLength(5);
+      if (contextKind === "background-read") await downloadReport(true);
+      expect(downloads).toHaveLength(contextKind === "background-read" ? 6 : 5);
       expect(providerRequests).toBe(0);
       expect(errors).toEqual([]);
     } catch (error) {
       throw new Error(`${String(error)}\n${JSON.stringify({ errors, downloads, requests, refreshErrors: await page.evaluate(() => (window as any).fixtureRefreshErrors), pageText: (await page.locator("body").innerText()).slice(-5000) })}`);
-    } finally { releaseInsights(); await context.close(); await browser.close(); }
+    } finally { releaseInsights(); releaseFinancial(); await context.close(); await browser.close(); }
   }, 90_000);
 });

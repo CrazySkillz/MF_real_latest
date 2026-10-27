@@ -6897,7 +6897,7 @@ export default function GA4Metrics() {
                 <TabsContent value="overview" className="fade-in">
                   <div className="space-y-8">
                     <div className="text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">
-                      <p>Last successful update: {overviewGA4UpdatedAt} | <span className="font-medium">Scheduled refreshes:</span> {overviewRefreshSchedule}</p>
+                      <p><span className="font-medium">Last successful update:</span> {overviewGA4UpdatedAt} | <span className="font-medium">Scheduled refreshes:</span> {overviewRefreshSchedule}</p>
                     </div>
                     {/* Summary Cards */}
                     <div>

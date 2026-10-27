@@ -4035,7 +4035,7 @@ export default function GA4Metrics() {
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
       const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
-      const totalMetric = selectedMetric === "conversionRate"
+      const totalMetric = selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
         ? (() => {
             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
             const weightedRates = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversionRate || 0) * Number(c?.sessions || 0), 0);
@@ -6220,6 +6220,13 @@ export default function GA4Metrics() {
       campaignCurrency,
     ).revenueByCampaign;
   }, [campaignBreakdownAgg, campaignCurrency, revenueDisplaySources]);
+
+  const adComparisonChartRevenue = useMemo(() => Number((
+    (Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [])
+      .filter((row: any) => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(String(row?.campaign || "(not set)").trim())))
+      .reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)
+    + Array.from(campaignBreakdownMatchedExternalRevenue.values()).reduce((sum, amount) => sum + amount, 0)
+  ).toFixed(2)), [ga4Breakdown, importedGA4CampaignNames, campaignBreakdownMatchedExternalRevenue]);
 
   const adComparisonChartRows = useMemo(() => campaignBreakdownAgg.map((row) => ({
     ...row,
@@ -9406,6 +9413,7 @@ export default function GA4Metrics() {
                     campaignBreakdownAgg={adComparisonBreakdownAgg}
                     nativeRevenue={adComparisonNativeRevenue}
                     chartCampaignRows={adComparisonChartRows}
+                    chartRevenue={adComparisonChartRevenue}
                     breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}
                     breakdownUnavailable={adComparisonBreakdownUnavailable}
                     breakdownStale={Boolean(adComparisonBreakdownError && adComparisonBreakdown !== undefined)}

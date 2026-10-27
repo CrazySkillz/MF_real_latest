@@ -25,15 +25,49 @@ Salesforce = EUR 8,003.96; EUR 3,200 pipeline remains separate. No spend
 produces unavailable Spend/ROAS/ROI/CPA and no Profit card. The focused
 comparison/UI/financial-dependency/Insights/PDF packet passes 83 checks.
 
-**Open finding — chart subtotal rounding, not fixed by this review:**
+**Chart subtotal rounding — corrected locally; deployment validation pending:**
 `campaignBreakdownAgg` in `client/src/pages/ga4-metrics.tsx` rounds individual
 campaign revenues before `adComparisonChartRows` feeds `totalMetric` in
 `client/src/pages/ga4-ad-comparison.tsx`. Executing the current aggregation with
 native amounts 3400.434193 and 4253.52214 yields displayed campaign amounts
-3400.43 and 4253.52, hence a chart subtotal of EUR 7,653.95 rather than the
-native aggregate EUR 7,653.96. Revenue Breakdown and the tested PDF use the
-separate full-precision native sum and correctly total EUR 8,003.96. The
-chart-subtotal path remains unproven for native aggregate reconciliation.
+3400.43 and 4253.52, previously producing a chart subtotal of EUR 7,653.95
+rather than the native aggregate EUR 7,653.96. Revenue Breakdown and the
+report's overall TOTAL already used the separate full-precision native sum
+and correctly totaled EUR 8,003.96. The revenue-selected chart summary inside
+browser and scheduled PDFs had the same remaining rounding error.
+
+The correction sums scoped, unrounded native campaign amounts plus only the
+existing exact-mapped imported amounts, then rounds once for the subtotal.
+The browser derives it from the same `ga4Breakdown.rows` that feeds the chart;
+the scheduled renderer uses `nativeCampaignRevenueBreakdown.rows` before
+`mergeGA4OverviewCampaignRevenueRows` rounds the per-campaign display values.
+The frontend subtotal is shared with its PDF renderer; the scheduled payload
+carries its equivalent subtotal to its renderer. Per-campaign displayed
+values, sorting, leader selection, Revenue Breakdown, Overview totals,
+publication guards, provider reads, persistence, and source mappings are not
+changed by this fix. There is no persisted-data rewrite or cleanup.
+
+Trace: scheduler `getAcquisitionBreakdown` result -> stored Overview
+`campaignBreakdown` JSON -> `getGA4OverviewSnapshot` -> synchronized
+`/api/campaigns/:id/ga4-breakdown` response -> frontend campaign aggregation ->
+comparison summary / browser PDF. Scheduled PDFs read that same compatible
+snapshot before their display-row merge. Existing property, selected-campaign,
+date, currency, attribution, and failed-publication checks remain in place.
+
+Validation: the new positive/refund cases reproduced four failures in the
+frontend subtotal and four in scheduled PDF text before correction; zero
+cases remained valid. The final focused packet passes 119 checks, covering
+positive/zero/refund amounts, duplicate rows, unselected-row exclusion,
+mapped/unmapped imports, mapping failure guards, all metric selectors and
+existing display states. Two isolated browser cases pass, producing ten PDF
+downloads across valid, failed, recovered, and mismatched publication states;
+the no-spend journey selects Revenue and checks the corrected chart and PDF
+summary alongside EUR 8,003.96 overall revenue and separate pipeline.
+Final TypeScript, client build, server build, and diff checks pass. The three
+runtime files are `client/src/pages/ga4-metrics.tsx`,
+`client/src/pages/ga4-ad-comparison.tsx`, and `server/ga4-scheduled-report-pdf.ts`.
+Counts, source hashes, build results, and validation limits are recorded in
+the [subtotal validation receipt](../docs/fixes/v1-batch-8/validation-2026-10-27-report-incident/chart-subtotal-summary.json).
 
 This is a selected read/display/download journey with intercepted APIs, not
 live provider or production-data evidence. Source add/edit/delete, natural

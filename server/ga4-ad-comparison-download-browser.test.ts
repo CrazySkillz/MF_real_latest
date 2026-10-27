@@ -174,6 +174,10 @@ describe("Ad Comparison precision through the real Reports page", () => {
       expect(bytes.toString("latin1")).toContain("EUR 8,003.96");
       expect(bytes.toString("latin1")).toContain("EUR 250.00");
       expect(bytes.toString("latin1")).toContain("EUR 100.00");
+      if (pipelineJourney) {
+        expect(bytes.toString("latin1")).toContain("CAMPAIGN BREAKDOWN REVENUE");
+        expect(bytes.toString("latin1")).not.toContain("EUR 7,653.95");
+      }
       const artifact = "docs/fixes/v1-batch-7/validation-2026-10-26/precision2-ui-download.pdf";
       if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS || !existsSync(artifact)) writeFileSync(artifact, bytes);
       await browserExpect(page.getByRole("dialog")).toHaveCount(0);
@@ -238,6 +242,9 @@ describe("Ad Comparison precision through the real Reports page", () => {
       await browserExpect(page.getByRole("heading", { name: "Campaign Comparison", exact: true })).toBeVisible();
       await browserExpect(page.getByRole("row").filter({ hasText: "TOTAL" }).last()).toContainText("€8,003.96");
       if (pipelineJourney) {
+        await page.getByRole("combobox").click();
+        await page.getByRole("option", { name: "Revenue (High to Low)", exact: true }).click();
+        await browserExpect(page.getByText("Campaign Breakdown Revenue", { exact: true }).locator("..")).toContainText("€7,653.96");
         for (const [label, campaign, detail] of [
           ["Most Key Events", "yesop_paid_social", "21 Key Events"],
           ["Highest Conversion Rate", "yesop_paid_social", "8.14%"],

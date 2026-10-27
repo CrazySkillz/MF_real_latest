@@ -4,6 +4,7 @@ import ts from "typescript";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GA4AdComparison from "../client/src/pages/ga4-ad-comparison";
+import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
 
 vi.mock("@/components/ui/card", async () => {
   const React = await import("react");
@@ -38,6 +39,7 @@ function renderRevenueBreakdown(
   chartCampaignRows = nativeRows,
   campaignBreakdownAgg = nativeRows,
   nativeRevenue?: number,
+  chartOptions: { selectedMetric?: string; chartRevenue?: number } = {},
 ) {
   return renderToStaticMarkup(React.createElement(GA4AdComparison, {
     campaignBreakdownAgg,
@@ -53,10 +55,43 @@ function renderRevenueBreakdown(
     formatNumber: (value: number) => String(value),
     formatMoney: (value: number) => `$${value.toFixed(2)}`,
     revenueDisplaySources,
+    ...chartOptions,
   }));
 }
 
 describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
+  it.each([1, -1, 0].flatMap(sign => [false, true].map(mapped => ({ sign, mapped }))))("totals chart revenue before rounding, with signed native amounts and mapped=$mapped (sign $sign)", ({ sign, mapped }) => {
+    const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
+    const start = page.indexOf("const campaignBreakdownAgg = useMemo(() => {");
+    const end = page.indexOf("const sourceRevenueBreakdowns = useMemo(() => {", start);
+    expect(start).toBeGreaterThan(0); expect(end).toBeGreaterThan(start);
+    const rows = [
+      { campaign: "campaign-a", sessions: 173, users: 172, conversions: 9.5, revenue: 1700.2170965 * sign, sessionKeyEventRate: 0.05 },
+      { campaign: "campaign-a", sessions: 173, users: 172, conversions: 9.5, revenue: 1700.2170965 * sign, sessionKeyEventRate: 0.05 },
+      { campaign: "campaign-b", sessions: 258, users: 258, conversions: 21, revenue: 4253.52214 * sign, sessionKeyEventRate: 0.08 },
+      { campaign: "unselected", sessions: 1, revenue: 999999 },
+    ];
+    const sources = [{ sourceId: "crm", displayName: "CRM", sourceType: "hubspot", currency: "EUR", revenue: 250, mappingConfig: {
+      pipelineEnabled: true, pipelineTotalToDate: 3200,
+      campaignMappings: mapped ? [{ crmValue: "deal-a", linkedinCampaignName: "campaign-a" }] : [],
+      campaignValueRevenueTotals: [{ campaignValue: "deal-a", revenue: 250 }],
+    } }, { sourceId: "unmapped", displayName: "Unmapped", sourceType: "salesforce", currency: "EUR", revenue: 100 }];
+    const before = JSON.stringify({ rows, sources });
+    const bindings = { useMemo: (fn: () => unknown) => fn(), ga4Breakdown: { rows }, breakdownPlaceholder: false,
+      adComparisonBreakdown: { rows: [{ campaign: "campaign-a", revenue: 999 }] }, adComparisonBreakdownPlaceholder: false,
+      importedGA4CampaignNames: new Set(["campaign-a", "campaign-b"]), normalizeCampaignKey: (name: string) => name.trim().toLowerCase(),
+      campaignCurrency: "EUR", revenueDisplaySources: sources, resolveExactGA4CampaignBreakdownRevenue };
+    const aggregate = new Function(...Object.keys(bindings), ts.transpileModule(page.slice(start, end) + `return {
+      rows: adComparisonChartRows, subtotal: typeof adComparisonChartRevenue === "undefined" ? adComparisonChartRows.reduce((s, r) => s + r.revenue, 0) : adComparisonChartRevenue,
+    };`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
+    const expected = Number((7653.956333 * sign + (mapped ? 250 : 0)).toFixed(2));
+    expect(Number(aggregate.subtotal.toFixed(2))).toBe(expected);
+    const html = renderRevenueBreakdown("ready", sources, aggregate.rows, nativeRows, 999, { selectedMetric: "revenue", chartRevenue: aggregate.subtotal });
+    expect(html).toMatch(new RegExp(`Campaign Breakdown Revenue</div><div[^>]*>\\$${expected.toFixed(2).replace(".", "\\.")}</div>`));
+    expect(aggregate.rows.map((row: any) => row.revenue)).toEqual([Number((3400.434193 * sign).toFixed(2)) + (mapped ? 250 : 0), Number((4253.52214 * sign).toFixed(2))]);
+    expect(JSON.stringify({ rows, sources })).toBe(before);
+  });
+
   it.each([
     [1, "7653.96", "8003.96"], [-1, "-7653.96", "-7303.96"], [0, "0.00", "350.00"],
   ])("sums full-precision selected campaign amounts before rounding (sign %s)", (sign, native, total) => {

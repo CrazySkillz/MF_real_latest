@@ -29,6 +29,7 @@ interface GA4AdComparisonProps {
   campaignBreakdownAgg: CampaignAgg[];
   nativeRevenue?: number;
   chartCampaignRows: CampaignAgg[];
+  chartRevenue?: number;
   breakdownLoading: boolean;
   breakdownUnavailable?: boolean;
   breakdownStale?: boolean;
@@ -65,6 +66,7 @@ function GA4AdComparison({
   campaignBreakdownAgg,
   nativeRevenue,
   chartCampaignRows,
+  chartRevenue,
   breakdownLoading,
   breakdownUnavailable = false,
   breakdownStale = false,
@@ -159,13 +161,14 @@ function GA4AdComparison({
   };
 
   const totalMetric = useMemo(() => {
+    if (selectedMetric === "revenue" && chartRevenue !== undefined) return chartRevenue;
     if (selectedMetric === "conversionRate") {
       const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
       const weightedRates = sortedByMetric.reduce((s, c) => s + c.conversionRate * c.sessions, 0);
       return totalSessions > 0 ? weightedRates / totalSessions : 0;
     }
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
-  }, [sortedByMetric, selectedMetric]);
+  }, [sortedByMetric, selectedMetric, chartRevenue]);
 
   const summaryMetricLabel = selectedMetric === "revenue"
     ? "Campaign Breakdown Revenue"

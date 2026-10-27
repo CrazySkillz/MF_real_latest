@@ -1008,6 +1008,12 @@ async function buildGA4ReportPayload(report: any) {
     revenueDisplaySources,
     campaignCurrency,
   ).revenueByCampaign;
+  const adComparisonChartRevenue = Number((
+    (Array.isArray((nativeCampaignRevenueBreakdown as any)?.rows) ? (nativeCampaignRevenueBreakdown as any).rows : [])
+      .filter((row: any) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(String(row?.campaign || "(not set)").trim())))
+      .reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0)
+    + Array.from(campaignBreakdownMatchedExternalRevenue.values()).reduce((sum, amount) => sum + amount, 0)
+  ).toFixed(2));
 
   const adComparisonByCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
   for (const row of Array.isArray((adComparisonBreakdown as any)?.rows) ? (adComparisonBreakdown as any).rows : []) {
@@ -1150,6 +1156,7 @@ async function buildGA4ReportPayload(report: any) {
     campaignBreakdownAgg,
     adComparisonBreakdownAgg,
     adComparisonNativeRevenue,
+    adComparisonChartRevenue,
     adComparisonWindow,
     campaignBreakdownMatchedExternalRevenue,
     sourceRevenueBreakdowns,
@@ -1572,7 +1579,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
-    const totalMetric = selectedMetric === "conversionRate"
+    const totalMetric = selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
       ? (() => {
           const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
           const weightedRates = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversionRate || 0) * Number(row?.sessions || 0), 0);

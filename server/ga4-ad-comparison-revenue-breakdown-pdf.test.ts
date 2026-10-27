@@ -60,6 +60,40 @@ beforeEach(() => {
 
 afterEach(() => vi.useRealTimers());
 
+it.each([1, -1, 0].flatMap(sign => [false, true].map(mapped => ({ sign, mapped }))))("preserves chart subtotal precision in scheduled PDFs (sign $sign, mapped $mapped)", async ({ sign, mapped }) => {
+  const native = Number((7653.956333 * sign).toFixed(2));
+  const campaign = await storageMock.getCampaign();
+  storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(["campaign-a", "campaign-b"]) });
+  const snapshot = await storageMock.getGA4OverviewSnapshot();
+  storageMock.getGA4OverviewSnapshot.mockResolvedValue({ ...snapshot, campaignBreakdown: {
+    ...snapshot.campaignBreakdown, totals: { ...snapshot.campaignBreakdown.totals, revenue: native }, rows: [
+      { campaign: "campaign-a", sessions: 6, users: 6, conversions: 0.6, sessionKeyEventRate: 0.1, revenue: 3400.434193 * sign },
+      { campaign: "campaign-b", sessions: 4, users: 4, conversions: 0.4, sessionKeyEventRate: 0.1, revenue: 4253.52214 * sign },
+    ],
+  } });
+  const sources = [{ id: "source-1", sourceType: "hubspot", displayName: "HubSpot", revenue: 250 }, { id: "source-2", sourceType: "salesforce", displayName: "Salesforce", revenue: 100 }];
+  storageMock.getRevenueSources.mockResolvedValue(sources.map(source => ({ ...source, campaignId: campaign.id, currency: "USD", isActive: true,
+    mappingConfig: JSON.stringify({ pipelineEnabled: true, pipelineTotalToDate: 3200,
+      campaignMappings: mapped && source.id === "source-1" ? [{ crmValue: "deal-a", linkedinCampaignName: "campaign-a" }] : [],
+      campaignValueRevenueTotals: [{ campaignValue: "deal-a", revenue: source.revenue }],
+    }),
+  })));
+  storageMock.getRevenueBreakdownBySource.mockResolvedValue(sources.map(source => ({ ...source, sourceId: source.id, currency: "USD" })));
+  const financial = await storageMock.getLatestFinancialDailySnapshot();
+  financial.metrics.financialDaily.inputs.revenue.value = (native + 350).toFixed(2);
+  storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+  await buildGA4ScheduledPdfAttachment({
+    report: { id: "report-precision", campaignId: campaign.id, reportType: "ads", configuration: JSON.stringify({ adComparisonMetric: "revenue" }) },
+    reportName: "Chart precision", windowStart: "2026-09-01", windowEnd: "2026-09-15", campaignName: "Campaign",
+  });
+  const summary = pdfText.findIndex(text => text.toUpperCase() === "CAMPAIGN BREAKDOWN REVENUE");
+  expect(summary).toBeGreaterThan(-1);
+  const money = (value: number) => `USD ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  expect(pdfText[summary + 1]).toBe(money(native + (mapped ? 250 : 0)));
+  expect(pdfText).toContain(money(native + 350));
+  expect(pdfText).not.toContain("USD 3,200.00");
+});
+
 it("excludes today's imported source amount from the completed-day scheduled PDF", async () => {
   await buildGA4ScheduledPdfAttachment({
     report: { id: "report-1", campaignId: "campaign-1", reportType: "custom", configuration: JSON.stringify({ sections: { ads: true }, subsections: { ads: { revenueBreakdown: true } } }) },

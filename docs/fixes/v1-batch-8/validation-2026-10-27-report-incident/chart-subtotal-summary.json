@@ -1,0 +1,103 @@
+{
+  "at": "2026-10-27T21:06:27.142Z",
+  "baseCommit": "a483a30d",
+  "scope": "Campaign Comparison revenue subtotal: UI, browser PDF, scheduled PDF",
+  "before": [
+    {
+      "label": "chart-subtotal-before",
+      "passed": 11,
+      "failed": 4
+    },
+    {
+      "label": "chart-subtotal-scheduled-before",
+      "passed": 5,
+      "failed": 4
+    }
+  ],
+  "after": [
+    {
+      "label": "chart-subtotal-final",
+      "passed": 119,
+      "failed": 0
+    },
+    {
+      "label": "chart-subtotal-browser",
+      "passed": 2,
+      "failed": 0
+    }
+  ],
+  "browserPdfDownloads": 10,
+  "builds": [
+    {
+      "at": "2026-10-27T21:02:56.500Z",
+      "nodeEnv": "production",
+      "checks": [
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "error": null,
+          "log": "chart-subtotal-typecheck.log"
+        },
+        {
+          "name": "client-build",
+          "exitCode": 0,
+          "error": null,
+          "log": "chart-subtotal-client-build.log"
+        },
+        {
+          "name": "server-build",
+          "exitCode": 0,
+          "error": null,
+          "log": "chart-subtotal-server-build.log"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T21:05:12.100Z",
+      "nodeEnv": "production",
+      "checks": [
+        {
+          "name": "typecheck",
+          "exitCode": 0,
+          "error": null,
+          "log": "chart-subtotal-final-typecheck.log"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "ac32e9a5a602d4a18eb7d4648cced13a958977268db6ce19a28185ec7659c30b"
+    },
+    {
+      "path": "client/src/pages/ga4-ad-comparison.tsx",
+      "sha256": "1dcb3037f16f9efef8e3aa9d273dc066e0bfd4b2093ef2d3d996f5ee14adc23e"
+    },
+    {
+      "path": "server/ga4-scheduled-report-pdf.ts",
+      "sha256": "5b5b22f60c1ec2d7a4bfcc4abce39447b4d4ae948fe4b7cdaeda00c549c4d946"
+    },
+    {
+      "path": "server/ga4-ad-comparison-revenue-breakdown-render.test.ts",
+      "sha256": "e079a74b063bded1667c825350af38ec6edc8ff099187bd872c273b7b08079f0"
+    },
+    {
+      "path": "server/ga4-ad-comparison-revenue-breakdown-pdf.test.ts",
+      "sha256": "d059abe6ba119af534c95a68042e142209c3610b0105a1fa74cc8ccfc23d39b1"
+    },
+    {
+      "path": "server/ga4-ad-comparison-download-browser.test.ts",
+      "sha256": "530747a65a3ddad675811b91f865cd82ef1e6471acab7be75ef695e2d90f933c"
+    },
+    {
+      "path": "server/ga4-ad-comparison-accumulation-regression.test.ts",
+      "sha256": "40148c2b2d60e9cd7c2a425c954483fddb260225985a583609b5c993e1fc405b"
+    }
+  ],
+  "limits": [
+    "Isolated fixture data and browser; no personal browser or live providers accessed",
+    "No deployment or natural scheduled email delivery verified",
+    "No database writes or data cleanup"
+  ]
+}

@@ -194,7 +194,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(scheduledAggregateScope).not.toContain('nameKey');
     expect(component).toContain('No campaign data available. Ensure your GA4 property has UTM campaign tracking configured.');
     expect(component).toContain('Showing the last verified campaign breakdown. The latest refresh failed.');
-    expect(component).toContain('Ad Comparison is unavailable because the campaign breakdown could not be verified.');
+    expect(component).toContain('Campaign Comparison is unavailable because the campaign breakdown could not be verified.');
 
     for (const pdfScope of [browserPdfScope, scheduledPdfScope]) {
       expect(pdfScope).toContain('slice(0, 10)');

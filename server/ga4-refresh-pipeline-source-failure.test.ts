@@ -1372,7 +1372,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
         ["google_analytics", "campaign_deepdive"].map(platform => report(c.id, platform))));
       mocks.reportInsert.mockReturnValue({ values: mocks.reportClaim });
       mocks.reportClaim.mockReturnValue({ onConflictDoNothing: () => ({ returning: async () => [] }) });
-      mocks.reportSelect.mockReturnValue({ from: () => ({ where: () => ({ limit: async () => [{ status: "sent" }] }) }) });
+      mocks.reportSelect.mockReturnValue({ from: () => ({ where: () => Object.assign(Promise.resolve([]), { limit: async () => [{ status: "sent" }] }) }) });
       await checkScheduledReports();
       expect(mocks.reportClaim.mock.calls.map(([value]) => value.reportId)).toEqual([
         `${finishedCampaign}-google_analytics`, `${finishedCampaign}-campaign_deepdive`,

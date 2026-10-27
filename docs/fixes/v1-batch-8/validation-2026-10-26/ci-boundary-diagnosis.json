@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-26T22:23:41.765Z",
+  "boundary": "Actual CI classifier; synthetic Vitest results; no application execution",
+  "results": [
+    {
+      "name": "successful controls",
+      "expected": 0,
+      "actual": 0,
+      "pass": true
+    },
+    {
+      "name": "failed current assertion",
+      "expected": 1,
+      "actual": 1,
+      "pass": true
+    },
+    {
+      "name": "suite fails before assertions load",
+      "expected": 1,
+      "actual": 0,
+      "pass": false
+    },
+    {
+      "name": "unhandled worker error with passed assertions",
+      "expected": 1,
+      "actual": 0,
+      "pass": false
+    },
+    {
+      "name": "current assertions skipped",
+      "expected": 1,
+      "actual": 0,
+      "pass": false
+    }
+  ]
+}

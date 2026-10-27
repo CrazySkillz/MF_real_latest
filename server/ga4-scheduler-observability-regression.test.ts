@@ -66,8 +66,8 @@ describe("GA4 scheduler and scheduled report observability", () => {
     expect(daily).toMatch(/const campaigns = filterActiveSchedulerCampaigns\(\s*campaignId/);
     expect(daily).toContain('opts.includeTargetDraft ? campaignId : "",');
     expect(daily).toContain("? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]");
-    expect(daily).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true })");
-    expect(daily).toContain('if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap")) {');
+    expect(daily).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true, ...writeInputFor(processedCampaignId) })");
+    expect(daily).toContain('if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap" || refreshWriteInput.refreshScope)) {');
     expect(daily).toContain("if (!opts.suppressAlerts && !campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {");
   });
   it("updates report scheduler health metrics on every scheduled check", () => {

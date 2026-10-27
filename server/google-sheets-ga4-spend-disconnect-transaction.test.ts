@@ -40,19 +40,19 @@ const mocks = vi.hoisted(() => {
     try { return String(JSON.parse(String(row?.mappingConfig || '{}'))?.connectionId || ''); } catch { return ''; }
   };
   const tx = {
-    select: vi.fn(() => {
+    select: vi.fn(() => ({ from: vi.fn((table: any) => {
+      if (table[Symbol.for('drizzle:Name')] === 'campaigns') return { where: () => ({ orderBy: () => ({ for: async () => [{ id: 'campaign-1' }] }) }) };
       state.selectCall += 1;
       const call = state.selectCall;
       return {
-        from: vi.fn(() => ({
           where: vi.fn(async () => {
             if (call === 1) return state.sources.filter((source) => source.campaignId === 'campaign-1' && source.sourceType === 'google_sheets' && source.isActive);
             if (call === 2) return state.revenueSources.filter((source) => source.campaignId === 'campaign-1' && source.sourceType === 'google_sheets' && source.isActive);
             return state.connections.filter((connection) => connection.campaignId === 'campaign-1' && connection.isActive);
           }),
-        })),
       };
-    }),
+    }) })),
+    execute: vi.fn(async () => ({ rows: [{ name: null }] })),
     update: vi.fn(() => {
       state.updateCall += 1;
       const call = state.updateCall;

@@ -218,7 +218,7 @@ describe.skipIf(!testUrl)("Sheets Revenue handler-to-PostgreSQL persistence", ()
     const { DatabaseStorage } = await import("./storage");
     storage = new DatabaseStorage();
     const dialect = new PgDialect();
-    for (const table of [schema.campaigns, schema.revenueSources, schema.revenueRecords]) {
+    for (const table of [schema.campaigns, schema.revenueSources, schema.revenueRecords, schema.ga4RefreshWork]) {
       const columns = Object.values(getTableColumns(table)).map((column: any) => {
         const value = column.default;
         const defaultSql = value instanceof SQL ? dialect.sqlToQuery(value).sql : typeof value === "string" ? `'${value.replace(/'/g, "''")}'` : String(value);
@@ -228,7 +228,7 @@ describe.skipIf(!testUrl)("Sheets Revenue handler-to-PostgreSQL persistence", ()
     }
   });
   beforeEach(async () => {
-    await pool.query("TRUNCATE campaigns,revenue_sources,revenue_records");
+    await pool.query("TRUNCATE campaigns,revenue_sources,revenue_records,ga4_refresh_work");
     await db.insert(schema.campaigns).values(["a", "b"].map(id => ({ id, ownerId: `owner-${id}`, name: id, currency: "EUR", reportingTimeZone: "Europe/Amsterdam", status: "active" })));
   });
   afterAll(async () => {

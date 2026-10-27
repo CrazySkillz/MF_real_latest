@@ -1,0 +1,17 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/me/Documents/MF_real_latest[39m
+
+ [32m✓[39m server/v1-batch4-sheets-revenue-contract.test.ts [2m([22m[2m29 tests[22m[2m)[22m[33m 5209[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps valid EUR create/edit/refresh amounts, dates and generated header names [33m 326[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps valid USD create/edit/refresh amounts, dates and generated header names [33m 328[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves authorization, stale-source, provider-failure and currency mismatch boundaries [33m 445[2mms[22m[39m
+     [33m[2m✓[22m[39m persists only selected Revenue through add/edit/refresh and reconciles source and total reads [33m 500[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps actual last-good database records on invalid edit and refresh: ["Date","Revenue","Revenue"] [33m 332[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps actual last-good database records on invalid edit and refresh: ["Date","Revenue"] [33m 343[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m29 passed[39m[22m[90m (29)[39m
+[2m   Start at [22m 00:26:30
+[2m   Duration [22m 7.85s[2m (transform 923ms, setup 0ms, import 2.37s, tests 5.21s, environment 0ms)[22m
+
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-8/validation-2026-10-27/sheets-postgres.json

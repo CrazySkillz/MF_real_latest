@@ -50,6 +50,6 @@ describe("LinkedIn disconnect visibility regression guard", () => {
     expect(helper.indexOf("if (connection && connection.adAccountId && !(connection as any).spendOnly) {")).toBeLessThan(
       helper.indexOf("const latestSession = await storage.getLatestLinkedInImportSession(campaignId);"),
     );
-    expect(helper).toContain("linkedIn = {\n          connected: true,");
+    expect(helper).toMatch(/linkedIn = \{\s+connected: true,/);
   });
 });

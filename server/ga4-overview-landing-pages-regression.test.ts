@@ -57,7 +57,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(section).toContain("campaignFilter");
   });
 
-  it("refreshes on reload, focus, reconnect, and interval without cross-scope placeholder data", () => {
+  it("uses publication updates and fallback polling without cross-scope placeholder data", () => {
     const client = read("client/src/pages/ga4-metrics.tsx");
     const section = between(
       client,
@@ -66,10 +66,10 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     );
 
     expect(section).toContain("staleTime: 0");
-    expect(section).toContain("refetchOnWindowFocus: true");
-    expect(section).toContain("refetchOnReconnect: true");
-    expect(section).toContain("refetchInterval: 10 * 60 * 1000");
-    expect(section).toContain("refetchIntervalInBackground: true");
+    expect(section).toContain("refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError");
+    expect(section).toContain("refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError");
+    expect(section).toContain("refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000");
+    expect(section).toContain("refetchIntervalInBackground: false");
     expect(section).toContain("previousKey?.[1] === campaignId");
     expect(section).toContain("previousKey?.[4] === selectedGA4PropertyId");
     expect(section).toContain("params.set('readOnly', '1')");

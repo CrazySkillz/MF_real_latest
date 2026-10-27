@@ -1,0 +1,72 @@
+2026-10-26 23:46:24.931 CET [42480] LOG:  starting PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35215, 64-bit
+2026-10-26 23:46:24.933 CET [42480] LOG:  listening on IPv4 address "127.0.0.1", port 55443
+2026-10-26 23:46:25.099 CET [27280] LOG:  database system was shut down at 2026-10-26 23:43:16 CET
+2026-10-26 23:46:25.133 CET [42480] LOG:  database system is ready to accept connections
+2026-10-26 23:46:32.590 CET [43792] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-26 23:46:32.590 CET [43792] DETAIL:  Failing row contains (1b44d1cf-1edb-466c-bd34-37295d2c118d, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-26 22:46:32.589, 2026-10-26 23:46:32.586019).
+2026-10-26 23:46:32.590 CET [43792] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-26 23:46:32.654 CET [43792] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-26 23:46:32.654 CET [43792] DETAIL:  Failing row contains (317c862c-2ce0-477a-8937-cbd0bc41d076, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-26 22:46:32.653, 2026-10-26 23:46:32.649885).
+2026-10-26 23:46:32.654 CET [43792] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-26 23:46:32.714 CET [43792] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-26 23:46:32.714 CET [43792] DETAIL:  Failing row contains (0489c92b-b6e3-445b-af7c-a046bd0667e2, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-26 22:46:32.713, 2026-10-26 23:46:32.709582).
+2026-10-26 23:46:32.714 CET [43792] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-26 23:46:32.767 CET [43792] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-26 23:46:32.767 CET [43792] DETAIL:  Failing row contains (fda6cee0-7fef-4d0c-a05f-904d1cdccc68, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-26 22:46:32.765, 2026-10-26 23:46:32.762287).
+2026-10-26 23:46:32.767 CET [43792] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-26 23:46:32.819 CET [43792] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-26 23:46:32.819 CET [43792] DETAIL:  Failing row contains (e92f3a7d-3ffc-45fc-b48d-1e2678cf3681, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-26 22:46:32.818, 2026-10-26 23:46:32.8145).
+2026-10-26 23:46:32.819 CET [43792] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-26 23:46:33.399 CET [43792] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-26 23:46:33.399 CET [43792] DETAIL:  Failing row contains (c941ed84-354f-43c9-9387-9c25a047470a, null, null, performance, bad, null, manual, null, null, null, 10.00, Infinity, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-26 23:46:33.399217, 2026-10-26 23:46:33.399217).
+2026-10-26 23:46:33.399 CET [43792] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-26 23:46:33.536 CET [31632] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-26 23:46:33.536 CET [31632] DETAIL:  Failing row contains (71a46a83-f71e-42e6-819f-9ca267fbabff, bad, Infinity, null, null, neutral, 2026-10-26 23:46:33.534552, null).
+2026-10-26 23:46:33.536 CET [31632] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-26 23:46:33.609 CET [24396] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-26 23:46:33.609 CET [24396] DETAIL:  Failing row contains (23992c93-136d-4027-93fb-68e1a5e25782, bad, Infinity, 10.00, 0.00, average, 2026-10-26 23:46:33.607966, null).
+2026-10-26 23:46:33.609 CET [24396] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-26 23:46:33.742 CET [17088] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-26 23:46:33.742 CET [17088] DETAIL:  Failing row contains (724c085f-ef48-4364-8721-ea167d793d66, null, null, performance, bad, null, manual, null, null, null, 10.00, -Infinity, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-26 23:46:33.741606, 2026-10-26 23:46:33.741606).
+2026-10-26 23:46:33.742 CET [17088] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-26 23:46:33.922 CET [8764] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-26 23:46:33.922 CET [8764] DETAIL:  Failing row contains (6e0651be-33c4-40d2-9fed-3bfd0e4f3c03, bad, -Infinity, null, null, neutral, 2026-10-26 23:46:33.921195, null).
+2026-10-26 23:46:33.922 CET [8764] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-26 23:46:33.989 CET [40244] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-26 23:46:33.989 CET [40244] DETAIL:  Failing row contains (5ae2837c-6a9c-4e91-b18a-dbf64a8d4cfd, bad, -Infinity, 10.00, 0.00, average, 2026-10-26 23:46:33.987857, null).
+2026-10-26 23:46:33.989 CET [40244] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-26 23:46:34.124 CET [20460] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-26 23:46:34.124 CET [20460] DETAIL:  Failing row contains (e1ecadfb-a9ed-43ca-bde4-101984cd1ff5, null, null, performance, bad, null, manual, null, null, null, 10.00, NaN, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-26 23:46:34.123592, 2026-10-26 23:46:34.123592).
+2026-10-26 23:46:34.124 CET [20460] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-26 23:46:34.196 CET [39984] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-26 23:46:34.196 CET [39984] DETAIL:  Failing row contains (c51ecda8-852f-4e90-8ed2-8baecccc8f0a, bad, NaN, null, null, neutral, 2026-10-26 23:46:34.194448, null).
+2026-10-26 23:46:34.196 CET [39984] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-26 23:46:34.267 CET [44104] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-26 23:46:34.267 CET [44104] DETAIL:  Failing row contains (69cb7552-3e47-44ca-a5cd-69b6239ad25d, bad, NaN, 10.00, 0.00, average, 2026-10-26 23:46:34.265617, null).
+2026-10-26 23:46:34.267 CET [44104] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-26 23:46:34.402 CET [30688] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-26 23:46:34.402 CET [30688] DETAIL:  Failing row contains (8227bb1a-b4a4-432d-b817-3b4756b98040, a, 123, 2026-10-18, 0, 0, null, 0, Infinity, 0.00, 0.0000, null, f, 2026-10-26 23:46:34.401602, 2026-10-26 23:46:34.401602).
+2026-10-26 23:46:34.402 CET [30688] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-26 23:46:34.474 CET [33636] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-26 23:46:34.474 CET [33636] DETAIL:  Failing row contains (3acc8a02-22b7-4773-bb2f-ba70ea9918b7, a, 0, 0, 0, Infinity, 0, 0.00, null, automatic, null, 2026-10-26 23:46:34.472543, null).
+2026-10-26 23:46:34.474 CET [33636] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-26 23:46:34.610 CET [43864] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-26 23:46:34.610 CET [43864] DETAIL:  Failing row contains (1de4322f-f601-469b-b040-19be5ca3c2bd, a, 123, 2026-10-18, 0, 0, null, 0, -Infinity, 0.00, 0.0000, null, f, 2026-10-26 23:46:34.60939, 2026-10-26 23:46:34.60939).
+2026-10-26 23:46:34.610 CET [43864] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-26 23:46:34.680 CET [44584] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-26 23:46:34.680 CET [44584] DETAIL:  Failing row contains (67551ce1-2379-44d2-92e5-212862288368, a, 0, 0, 0, -Infinity, 0, 0.00, null, automatic, null, 2026-10-26 23:46:34.677884, null).
+2026-10-26 23:46:34.680 CET [44584] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-26 23:46:34.821 CET [33668] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-26 23:46:34.821 CET [33668] DETAIL:  Failing row contains (2987a04d-d5e2-428d-bb7a-03095bf6d033, a, 123, 2026-10-18, 0, 0, null, 0, NaN, 0.00, 0.0000, null, f, 2026-10-26 23:46:34.821295, 2026-10-26 23:46:34.821295).
+2026-10-26 23:46:34.821 CET [33668] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-26 23:46:34.891 CET [26812] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-26 23:46:34.891 CET [26812] DETAIL:  Failing row contains (d6e9c660-987c-45d4-8b11-1ac9cf224858, a, 0, 0, 0, NaN, 0, 0.00, null, automatic, null, 2026-10-26 23:46:34.890033, null).
+2026-10-26 23:46:34.891 CET [26812] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-26 23:46:35.273 CET [46672] WARNING:  there is no transaction in progress
+2026-10-26 23:46:35.689 CET [42480] LOG:  received fast shutdown request
+2026-10-26 23:46:35.691 CET [42480] LOG:  aborting any active transactions
+2026-10-26 23:46:35.706 CET [42480] LOG:  background worker "logical replication launcher" (PID 42816) exited with exit code 1
+2026-10-26 23:46:35.708 CET [18144] LOG:  shutting down
+2026-10-26 23:46:35.710 CET [18144] LOG:  checkpoint starting: shutdown immediate
+2026-10-26 23:46:35.960 CET [18144] LOG:  checkpoint complete: wrote 97 buffers (0.6%), wrote 2 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.078 s, sync=0.101 s, total=0.253 s; sync files=113, longest=0.003 s, average=0.001 s; distance=931 kB, estimate=931 kB; lsn=0/5BA9D80, redo lsn=0/5BA9D80
+2026-10-26 23:46:36.230 CET [42480] LOG:  database system is shut down

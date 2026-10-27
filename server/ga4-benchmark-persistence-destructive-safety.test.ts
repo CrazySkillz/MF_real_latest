@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => {
   });
   const state = { value: originalState(), failureStage: null as null | "notification" | "history" | "parent", deleteIndex: 0 };
   const tx = {
-    select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn(async () => state.value.benchmark ? [{ ...state.value.benchmark }] : []) })) })) })),
+    select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn(async () => state.value.benchmark ? [{ ...state.value.benchmark }] : []), orderBy: () => ({ for: async () => [{ id: "campaign-1" }] }) })) })) })),
+    execute: vi.fn(async () => ({ rows: [{ name: null }] })),
     update: vi.fn(() => ({ set: vi.fn((values: any) => ({ where: vi.fn(() => ({ returning: vi.fn(async () => {
       if (state.failureStage === "notification") throw new Error("forced Benchmark notification hide failure");
       state.value.notifications[0] = { ...state.value.notifications[0], ...values };
@@ -34,7 +35,9 @@ const mocks = vi.hoisted(() => {
     state.deleteIndex = 0;
     try { return await callback(tx); } catch (error) { state.value = before; throw error; }
   });
-  return { originalState, state, tx, db: { transaction } };
+  return { originalState, state, tx, db: { transaction,
+    select: () => ({ from: () => ({ where: async () => state.value.benchmark ? [{ ...state.value.benchmark }] : [] }) }),
+  } };
 });
 
 vi.mock("./db", () => ({ db: mocks.db, pool: null }));

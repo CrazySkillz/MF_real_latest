@@ -1,0 +1,331 @@
+{
+  "files": 46,
+  "passed": 710,
+  "nonpassing": 0,
+  "missing": [],
+  "changedHashes": [],
+  "checks": [
+    {
+      "file": "server/custom-report-regression.test.ts",
+      "passed": 45,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-ad-comparison-accumulation-regression.test.ts",
+      "passed": 8,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-ad-comparison-card-logic.test.ts",
+      "passed": 9,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-ad-comparison-download-browser.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-ad-comparison-revenue-breakdown-pdf.test.ts",
+      "passed": 3,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-ad-comparison-revenue-breakdown-render.test.ts",
+      "passed": 9,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-browser-publication-refresh.test.ts",
+      "passed": 37,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-browser-report-publication.test.ts",
+      "passed": 96,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-anomaly-location-regression.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-auth-scope-regression.test.ts",
+      "passed": 16,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-certification-gate.test.ts",
+      "passed": 11,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-copy-accuracy-regression.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-data-summary-accuracy-regression.test.ts",
+      "passed": 3,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-data-summary-empty-window.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-data-summary-history-window.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-data-summary-stale-warning.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-executive-financials.test.ts",
+      "passed": 9,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-findings-completeness-regression.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-findings-daily-failure.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-findings-spend-advice.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-findings-target-list-failure.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-findings-verified-zero.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-live-production-regression.test.ts",
+      "passed": 12,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-production-path.test.ts",
+      "passed": 22,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-regression.test.ts",
+      "passed": 15,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-report-parity-regression.test.ts",
+      "passed": 4,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-scheduler-validation-regression.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-snapshot-display.test.ts",
+      "passed": 19,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-trends-campaign-start.test.ts",
+      "passed": 5,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-trends-chart-regression.test.ts",
+      "passed": 3,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-trends-coverage-route.test.ts",
+      "passed": 11,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-insights-trends-zero-days.test.ts",
+      "passed": 8,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-kpi-real-path-parity-regression.test.ts",
+      "passed": 52,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-kpi-report-consumer-regression.test.ts",
+      "passed": 10,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-kpi-reporting-window-regression.test.ts",
+      "passed": 4,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-overview-conversion-events-scheduled-pdf.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-overview-landing-pages-scheduled-pdf.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-publication-browser.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-report-attachment-filename.test.ts",
+      "passed": 28,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-report-saved-publication.test.ts",
+      "passed": 48,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/ga4-ui-regression.test.ts",
+      "passed": 49,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/report-email-regression.test.ts",
+      "passed": 28,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/report-pdf-artifact.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/shopify-downstream-content-regression.test.ts",
+      "passed": 15,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/v1-batch7-insights-targets.test.ts",
+      "passed": 87,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    },
+    {
+      "file": "server/v1-batch7-report-artifacts.test.ts",
+      "passed": 22,
+      "failed": 0,
+      "status": "passed",
+      "hashMatches": true
+    }
+  ]
+}

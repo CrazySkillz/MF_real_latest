@@ -379,7 +379,7 @@ describe("Meta production readiness regression guard", () => {
     );
 
     expect(modal).toContain('platformContext === "meta" ? "Meta" : "Google Ads"');
-    expect(modal).toContain("const needsCampaignMapping = (platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram' || platformContext === 'tiktok')");
+    expect(modal).toContain("const needsCampaignMapping = (platformContext === 'ga4' || platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram' || platformContext === 'tiktok')");
     expect(modal).toContain('fetch(`/api/meta/${campaignId}/campaigns`');
     expect(modal).toContain('selectedIds.has(String(c?.id || ""))');
     expect(modal).toContain('renderPlatformCampaignMapping(csvCampaignValues)');
@@ -393,7 +393,7 @@ describe("Meta production readiness regression guard", () => {
     expect(salesforce).toContain('renderAdPlatformCampaignMappings()');
     expect(shopify).toContain('const isMeta = platformContext === "meta";');
     expect(shopify).toContain('? `/api/meta/${campaignId}/campaigns`');
-    expect(shopify).toContain('(isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok) && selectedCampaignMappings.length > 0');
+    expect(shopify).toContain('(isGA4 || isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok) && selectedCampaignMappings.length > 0');
 
     expect(routes).toContain("const getActiveMetaCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {");
     expect(routes).toContain('if (!id || (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok")) return null;');
@@ -627,7 +627,7 @@ describe("Meta production readiness regression guard", () => {
     expect(loadingState).not.toContain("<Sidebar />");
   });
 
-  it("keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth", () => {
+  it("returns the Create Campaign confirm Back button to the immediately preceding setup step", () => {
     const page = read("client", "src", "pages", "campaigns.tsx");
     const handler = sliceBetween(
       page,
@@ -642,7 +642,9 @@ describe("Meta production readiness regression guard", () => {
 
     expect(handler).toContain("setSelectedWizardPlatform(null);");
     expect(handler).toContain("setWizardPlatformConnected(false);");
-    expect(handler).toContain("setWizardStep(2);");
+    expect(handler).toContain("const backStep = wizardConfirmBackStep || (selectedWizardPlatform === 'google-analytics' ? 4 : selectedWizardPlatform ? 3 : 2)");
+    expect(handler).toContain("if (backStep === 2)");
+    expect(handler).toContain("setWizardStep(backStep);");
     expect(confirmStep).toContain("onClick={handleBackFromConfirm}");
     expect(confirmStep).not.toContain("onClick={() => setWizardStep(3)}");
   });

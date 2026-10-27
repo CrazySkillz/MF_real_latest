@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-26T22:30:52.030Z",
+  "results": [
+    {
+      "mode": "pass",
+      "exit": 0,
+      "assertionFailures": 0,
+      "receipt": {
+        "reason": "passed",
+        "errors": []
+      },
+      "expectedOutcomeVerified": true
+    },
+    {
+      "mode": "assertion-failure",
+      "exit": 1,
+      "assertionFailures": 1,
+      "receipt": {
+        "reason": "failed",
+        "errors": []
+      },
+      "expectedOutcomeVerified": true
+    },
+    {
+      "mode": "unhandled",
+      "exit": 1,
+      "assertionFailures": 0,
+      "receipt": {
+        "reason": "passed",
+        "errors": [
+          "CONTROLLED_UNHANDLED_FIXTURE"
+        ]
+      },
+      "expectedOutcomeVerified": true
+    }
+  ]
+}

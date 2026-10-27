@@ -104,7 +104,7 @@ describe("GA4 Upload CSV revenue downstream propagation", () => {
     expect(endpoints).toContain("const hasCompletedDayRevenue = totalsBySource.has(sourceId);");
     expect(endpoints).toContain("const completedDayRevenue = hasCompletedDayRevenue ? Number(totalsBySource.get(sourceId) || 0) : 0;");
     expect(endpoints).toContain("const hasLatestRevenue = latestTotalsBySource.has(sourceId);");
-    expect(endpoints).toContain("const latestRevenue = hasLatestRevenue ? Number(latestTotalsBySource.get(sourceId) || 0) : cfgTotal;");
+    expect(endpoints).toContain("const latestRevenue = hasLatestRevenue ? Number(latestTotalsBySource.get(sourceId) || 0) : platformContext === 'google_ads' ? 0 : cfgTotal;");
   });
 
   it("feeds imported CSV revenue into Total Revenue, Profit, ROAS, and ROI but not CPA", () => {

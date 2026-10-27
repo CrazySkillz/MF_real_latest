@@ -254,7 +254,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(scheduler.indexOf("await runGoogleSheetsSpendAutoRefreshOnce()")).toBeLessThan(scheduler.indexOf("await runGoogleSheetsRevenueAutoRefreshOnce()"));
     expect(metrics).toContain("const getImportedRevenueRefetchInterval");
     expect(metrics).toContain('toLowerCase() === "google_sheets"');
-    expect(metrics).toContain("? 15 * 1000 : 10 * 60 * 1000");
+    expect(metrics).toContain("? 15_000 : 10 * 60 * 1000");
 
     for (const queryName of ["importedRevenueToDateResp", "revenueSourcesResp", "revenueBreakdownResp"]) {
       const queryStart = metrics.indexOf(`const { data: ${queryName},`);

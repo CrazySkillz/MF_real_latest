@@ -75,7 +75,7 @@ describe("GA4 Google Sheets revenue downstream propagation", () => {
 
     expect(refresh).toContain("const sourceId = String(source.id);");
     expect(refresh).toContain('storage.replaceRevenueSourceWithRecords(campaignId, sourceId, "google_sheets", platformContext');
-    expect(refresh).toContain('records as any, String(source.mappingConfig || "")');
+    expect(refresh).toContain('records as any, source.mappingConfig ?? null, refreshWriteInput');
     expect(refresh).not.toContain("storage.createRevenueSource");
     expect(refresh).not.toContain("storage.deleteRevenueRecordsBySource");
   });
@@ -133,6 +133,6 @@ describe("GA4 Google Sheets revenue downstream propagation", () => {
     }
     expect(polling).toContain('toLowerCase() === "google_sheets"');
     expect(polling).toContain('toLowerCase() === "ga4"');
-    expect(polling).toContain("? 15 * 1000 : 10 * 60 * 1000");
+    expect(polling).toContain("? 15_000 : 10 * 60 * 1000");
   });
 });

@@ -28,7 +28,7 @@ describe("GA4 materialized revenue authority", () => {
     expect(route).toContain('const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null);');
     expect(route).toContain('? materializedRevenueAvailable ? Number(Number(latestRevenue || 0).toFixed(2)) : null');
     expect(route).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');
-    expect(route).toContain('const latestRevenue = hasLatestRevenue ? Number(latestTotalsBySource.get(sourceId) || 0) : cfgTotal;');
+    expect(route).toContain("const latestRevenue = hasLatestRevenue ? Number(latestTotalsBySource.get(sourceId) || 0) : platformContext === 'google_ads' ? 0 : cfgTotal;");
   });
 
   it("does not add stale HubSpot connection revenue to outcome totals", () => {

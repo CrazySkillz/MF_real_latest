@@ -27,7 +27,7 @@ describe('Batch 3 retained shared job cancellation', () => {
   beforeEach(() => {
     vi.resetAllMocks(); fixture.signals.length = 0;
     for (const method of ['log', 'warn', 'error'] as const) vi.spyOn(console, method).mockImplementation(() => {});
-    fixture.storage.getCampaign.mockResolvedValue({ id: 'fixture' });
+    fixture.storage.getCampaign.mockResolvedValue({ id: 'fixture', ownerId: 'owner-fixture', status: 'active' });
     fixture.storage.getLatestLinkedInImportSession.mockResolvedValue({ id: 'previous', selectedMetricKeys: ['clicks'] });
     fixture.storage.getLinkedInImportMetrics.mockResolvedValue([{ campaignUrn: '123', campaignName: 'Selected' }]);
     fixture.storage.getLinkedInDailyMetrics.mockResolvedValue([]);

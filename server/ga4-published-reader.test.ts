@@ -7,6 +7,7 @@ import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
+import { getInternalGA4RefreshWriteInput } from "./internal-request-auth";
 
 const source = readFileSync("server/routes-oauth.ts", "utf8");
 const file = ts.createSourceFile("routes-oauth.ts", source, ts.ScriptTarget.Latest, true);
@@ -45,7 +46,7 @@ describe("published GA4 readers", () => {
     storage.getSpendSources.mockResolvedValue([{ id: "s", currency: "EUR" }]); storage.getRevenueSources.mockResolvedValue([{ id: "r", currency: "EUR" }]);
     storage.getSpendBreakdownBySource.mockResolvedValue([{ sourceId: "s", spend: 20, currency: "EUR" }]); storage.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "r", revenue: 30, currency: "EUR" }]);
     provider = { getTotalsWithRevenue: vi.fn().mockResolvedValue({ currencyCode: "EUR", revenueMetric: "totalRevenue", totals: { sessions: 31, users: 26, conversions: 6, revenue: 110 } }), getAcquisitionBreakdown: vi.fn().mockRejectedValue(new Error("no live request")) };
-    bindings = { storage, ga4Service: provider, ensureCampaignAccess: vi.fn().mockResolvedValue({ ...campaign }),
+    bindings = { storage, ga4Service: provider, getInternalGA4RefreshWriteInput, ensureCampaignAccess: vi.fn().mockResolvedValue({ ...campaign }),
       parseGA4CampaignFilter: (value: string) => value ? [value] : [], isNoRevenueFilter: () => false,
       normalizePropertyIdForMock: (id: string) => id.replace("properties/", ""), isYesopMockProperty: (id: string) => id === "yesop", isSupportedGA4ConnectionMethod: () => true,
       getReportingDateWindow, resolveGA4ImportToDateWindow, isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource, financialDailySnapshotInputSchema,

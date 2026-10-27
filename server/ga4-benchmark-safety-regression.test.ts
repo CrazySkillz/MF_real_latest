@@ -31,7 +31,7 @@ describe('GA4 Benchmark safety regression guard', () => {
     const notifications = read('server', 'benchmark-notifications.ts');
     const emailAlerts = read('server', 'services', 'alert-monitoring.ts');
 
-    const jobLoopStart = jobs.indexOf('for (const campaign of campaigns) {');
+    const jobLoopStart = jobs.indexOf('for (let campaign of campaigns) {');
     const jobWorkStart = jobs.indexOf('    try {', jobLoopStart);
     const jobCampaignGate = jobs.slice(jobLoopStart, jobWorkStart);
     expect(jobLoopStart).toBeGreaterThan(-1);
@@ -45,7 +45,7 @@ describe('GA4 Benchmark safety regression guard', () => {
     expect(notificationCampaignStart).toBeGreaterThan(-1);
     expect(notificationWorkStart).toBeGreaterThan(notificationCampaignStart);
     expect(notificationCampaignGate).toContain('ownerId');
-    expect(notificationCampaignGate).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");');
+    expect(notificationCampaignGate).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);');
     expect(notificationCampaignGate).toMatch(/if \(!\w*[Oo]wner\w*\) \{[\s\S]*continue;/);
 
     const campaignLookupStart = emailAlerts.indexOf('private async getExistingCampaignName');

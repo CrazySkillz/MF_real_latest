@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => {
   };
 
   const tx = {
+    select: vi.fn(() => ({ from: () => ({ where: () => ({ orderBy: () => ({ for: async () => [{ id: "campaign-1" }] }) }) }) })),
+    execute: vi.fn(async () => ({ rows: [{ name: null }] })),
     update: vi.fn(() => ({
       set: vi.fn((values: any) => ({
         where: vi.fn(() => ({

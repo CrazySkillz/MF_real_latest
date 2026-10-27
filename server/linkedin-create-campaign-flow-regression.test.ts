@@ -17,15 +17,16 @@ describe("LinkedIn Create Campaign flow regression guard", () => {
 
   it("refreshes LinkedIn source and aggregate queries after campaign activation", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf-8");
-    const start = page.indexOf("const handleConnectorsComplete = async");
-    const end = page.indexOf("const handleBackToForm", start);
+    const start = page.indexOf("const finishCampaignCreation = async");
+    const end = page.indexOf("const handleConnectorsComplete", start);
     const handler = page.slice(start, end);
+    expect(page).toContain("await finishCampaignCreation(draftCampaignId)");
 
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] })');
-    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId] })');
-    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId, "connected-platforms"] })');
-    expect(handler).toContain("queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/outcome-totals`], exact: false })");
-    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId, "executive-summary"] })');
+    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", createdId] })');
+    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", createdId, "connected-platforms"] })');
+    expect(handler).toContain("queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${createdId}/outcome-totals`], exact: false })");
+    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", createdId, "executive-summary"] })');
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false })');
   });
 });

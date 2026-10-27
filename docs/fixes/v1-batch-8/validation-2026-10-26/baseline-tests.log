@@ -1,0 +1,4 @@
+(node:43624) [DEP0129] DeprecationWarning: _channel is deprecated. Use ChildProcess.channel instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Sourcemap for "C:/Users/me/Documents/MF_real_latest/node_modules/node-cron/dist/esm/node-cron.js" points to missing source files
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-8/validation-2026-10-26/baseline.json

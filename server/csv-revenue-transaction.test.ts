@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => {
     failureStage: "records" as "source" | "delete" | "records" | "stale",
   };
   const tx = {
+    select: vi.fn(() => ({ from: () => ({ where: () => ({ orderBy: () => ({ for: async () => [{ id: "campaign-1" }] }) }) }) })),
     update: vi.fn(() => ({
       set: vi.fn((values: any) => ({
         where: vi.fn(() => ({

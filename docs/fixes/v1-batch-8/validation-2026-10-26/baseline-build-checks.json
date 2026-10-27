@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-26T22:19:07.593Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "baseline-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "baseline-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "baseline-server-build.log"
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+[
+  {
+    "file": "server/campaign-kpi-ui-regression.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0
+  },
+  {
+    "file": "server/campaign-section-ui-parity-scheduled-pdf.test.ts",
+    "status": "passed",
+    "passed": 15,
+    "failed": 0
+  },
+  {
+    "file": "server/executive-summary-scheduled-pdf.test.ts",
+    "status": "passed",
+    "passed": 5,
+    "failed": 0
+  },
+  {
+    "file": "server/ga4-ad-comparison-revenue-breakdown-pdf.test.ts",
+    "status": "passed",
+    "passed": 3,
+    "failed": 0
+  },
+  {
+    "file": "server/ga4-insights-report-parity-regression.test.ts",
+    "status": "passed",
+    "passed": 4,
+    "failed": 0
+  },
+  {
+    "file": "server/ga4-overview-conversion-events-scheduled-pdf.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0
+  },
+  {
+    "file": "server/ga4-overview-landing-pages-scheduled-pdf.test.ts",
+    "status": "passed",
+    "passed": 1,
+    "failed": 0
+  },
+  {
+    "file": "server/kpi-math.test.ts",
+    "status": "passed",
+    "passed": 19,
+    "failed": 0
+  },
+  {
+    "file": "server/pdf-parser-regression.test.ts",
+    "status": "passed",
+    "passed": 12,
+    "failed": 0
+  },
+  {
+    "file": "server/performance-summary-scheduled-pdf.test.ts",
+    "status": "passed",
+    "passed": 5,
+    "failed": 0
+  },
+  {
+    "file": "server/platform-comparison-regression.test.ts",
+    "status": "passed",
+    "passed": 7,
+    "failed": 0
+  },
+  {
+    "file": "server/report-pdf-artifact.test.ts",
+    "status": "passed",
+    "passed": 2,
+    "failed": 0
+  },
+  {
+    "file": "server/v1-batch7-metric-boundaries.test.ts",
+    "status": "passed",
+    "passed": 37,
+    "failed": 0
+  },
+  {
+    "file": "server/v1-batch7-metric-routes.test.ts",
+    "status": "passed",
+    "passed": 12,
+    "failed": 0
+  },
+  {
+    "file": "server/v1-batch7-report-artifacts.test.ts",
+    "status": "passed",
+    "passed": 22,
+    "failed": 0
+  },
+  {
+    "file": "server/v1-batch7-retained-routes.test.ts",
+    "status": "passed",
+    "passed": 25,
+    "failed": 0
+  },
+  {
+    "file": "server/v1-batch7-retained-values.test.ts",
+    "status": "passed",
+    "passed": 61,
+    "failed": 0
+  },
+  {
+    "file": "server/v1-batch7-retired-dashboard.test.ts",
+    "status": "passed",
+    "passed": 13,
+    "failed": 0
+  },
+  {
+    "file": "server/v1-batch7-source-goal-values.test.ts",
+    "status": "passed",
+    "passed": 67,
+    "failed": 0
+  }
+]

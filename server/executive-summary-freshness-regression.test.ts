@@ -3,14 +3,18 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("Executive Summary freshness warning propagation", () => {
-  it("dates successful GA4 source truth to the latest completed reporting day", () => {
+  it("dates saved GA4 source truth to its latest row within the selected completed window", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/executive-summary"');
-    const sourceTruthStart = routes.indexOf("const metrics = await ga4Service.getMetricsWithAutoRefresh", routeStart);
-    const sourceTruthEnd = routes.indexOf("usedGA4SourceTruth = true;", sourceTruthStart);
+    const sourceTruthStart = routes.indexOf("// Fetch GA4 metrics", routeStart);
+    const sourceTruthEnd = routes.indexOf("// Fetch Custom Integration metrics", sourceTruthStart);
     const sourceTruth = routes.slice(sourceTruthStart, sourceTruthEnd);
 
-    expect(sourceTruth).toContain("ga4LastUpdate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone, now).endDate;");
+    expect(sourceTruthStart).toBeGreaterThan(routeStart);
+    expect(sourceTruthEnd).toBeGreaterThan(sourceTruthStart);
+    expect(sourceTruth).toContain("storage.getGA4DailyMetrics(id, primaryPropertyId, ga4Start, ga4End)");
+    expect(sourceTruth).toContain("ga4LastUpdate = scopedRows.map((row: any) => String(row.date)).sort().at(-1) || null;");
+    expect(sourceTruth).not.toContain("getMetricsWithAutoRefresh");
   });
 
   it("marks fallback age warnings stale and restores only that explicit warning through v3", () => {

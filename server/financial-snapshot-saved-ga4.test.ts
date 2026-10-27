@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
   getGA4PublicationVersion: vi.fn(),
+  getGA4RevenuePublication: vi.fn(),
   getCampaign: vi.fn(), getGA4Connections: vi.fn(), getGA4DailyMetrics: vi.fn(), getGA4OverviewSnapshot: vi.fn(),
   getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
@@ -41,6 +42,7 @@ describe("financial snapshot reuses the verified GA4 Overview", () => {
     Object.values(storageMock).forEach((mock) => mock.mockReset());
     Object.values(provider).forEach((mock) => mock.mockReset());
     storageMock.getGA4PublicationVersion.mockResolvedValue(null);
+    storageMock.getGA4RevenuePublication.mockResolvedValue({ version: 1, reportingDate, sources: { "revenue-1": "fixture-source-version" }, pendingSourceIds: [] });
     storageMock.getCampaign.mockResolvedValue({ id: campaignId, currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: '["sale_a","sale_b"]' });
     storageMock.getGA4Connections.mockResolvedValue([{ campaignId, propertyId, isPrimary: true, isActive: true, importStartDate: "2026-10-15", method: "access_token", accessToken: "test-token" }]);
     storageMock.getGA4DailyMetrics.mockResolvedValue(dailyRows());
@@ -61,6 +63,9 @@ describe("financial snapshot reuses the verified GA4 Overview", () => {
   it("publishes the saved aggregate despite newer provider figures, retaining aggregate precision and external sources", async () => {
     const result = await write();
     expect(result.status).toBe("written");
+    expect(storageMock.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      revenuePublication: await storageMock.getGA4RevenuePublication(campaignId, reportingDate),
+    }));
     expect(result.snapshot?.inputs).toEqual({
       revenue: { value: "130.01", available: true, sources: ["ga4", "revenue-source:revenue-1"] },
       spend: { value: "20.00", available: true, sources: ["canonical_spend_sources"] },

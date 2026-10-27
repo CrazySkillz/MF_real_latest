@@ -1,5 +1,7 @@
 # Batch 7: Diagnostics, goals, retained pages, alerts and reports
 
+**October 26 latest supplied-download acceptance:** The user supplied `GA4_Ad_Comparison_Report_2026-10-26 (2).pdf` and confirmed success after the dependency fix. Rendered-page/text inspection confirms native EUR 7,653.96 + EUR 350 imports = **EUR 8,003.96**, without clipping. [Artifact identity and limits](../v1-batch-8/LOCAL_RELEASE_CHECKPOINT.md#deployed-observations-and-supplied-pdf). All **710 recent report checks** also pass in the Batch 8 full run. This supersedes earlier download-unverified statements; the natural emailed attachment expected October 27 and wider source/lifecycle/release gates remain unverified. No new report runtime changes.
+
 [Release index](../../V1_RELEASE_READINESS.md) · [Finding checklist](../../audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md)
 
 This is the detailed home for this batch's assigned findings. Read the required repository references first, then the release index, checklist and this record. Documentation records evidence; verify actual current code before changing behavior. Original audit paths and line numbers describe the recorded baseline, not an assertion that the defect remains unchanged.

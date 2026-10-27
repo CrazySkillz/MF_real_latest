@@ -73,8 +73,11 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(route).toContain('overviewStartDate');
     expect(route).toContain('overviewTotals');
     expect(route).not.toContain('getGA4HistoricalImportStartDate(\n        (selectedConnection as any)?.connectedAt');
-    expect(route).toContain('lookbackDays: existingConnection.lookbackDays');
-    expect(route).toContain('importStartDate: existingConnection.importStartDate');
+    expect(route).toContain('storage.commitGA4OAuthConnection(campaignId, pending.id, propertyId, selectedProperty.name, importStartDate)');
+    const storage = read('server/storage.ts');
+    const commit = storage.slice(storage.indexOf('async commitGA4OAuthConnection('), storage.indexOf('async createGA4Connection('));
+    expect(commit).toContain('lookbackDays: 30');
+    expect(commit).toContain('importStartDate: sameProperty ? existing.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : importStartDate');
     expect(page).toContain('overviewSummaryTotals');
     expect(page).toContain('Imported GA4 data, updated daily');
     expect(page).toContain('"ga4-landing-pages", "import-to-date"');

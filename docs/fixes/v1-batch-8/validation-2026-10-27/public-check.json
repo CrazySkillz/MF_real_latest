@@ -1,0 +1,194 @@
+{
+  "at": "2026-10-26T23:27:32.272Z",
+  "origin": "https://marketforensics.onrender.com",
+  "methods": [
+    "GET"
+  ],
+  "authenticated": false,
+  "results": [
+    {
+      "route": "/api/health",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "commit": "ea0b843afbb8946eaaa248ea57786651cd3d457b",
+        "nodeEnv": "production",
+        "ts": "2026-10-26T23:27:31.581Z"
+      }
+    },
+    {
+      "route": "/health/scheduler",
+      "status": 200,
+      "body": {
+        "status": "healthy",
+        "scheduler": {
+          "schedulerStartedAt": "2026-10-26T21:49:43.051Z",
+          "cronSchedule": "* * * * *",
+          "totalChecks": 98,
+          "totalSent": 0,
+          "totalFailed": 0,
+          "lastCheckTime": "2026-10-26T23:27:00.005Z",
+          "lastCheckFinishedAt": "2026-10-26T23:27:23.297Z",
+          "lastScheduledReportsFound": 3,
+          "lastDueReportsFound": 0,
+          "lastRefreshDeferredReports": 0,
+          "lastSuccessTime": null,
+          "lastErrorTime": null,
+          "lastError": null,
+          "uptime": 31550,
+          "successRate": "N/A"
+        },
+        "autoRefreshScheduler": {
+          "started": true,
+          "timerScheduled": false,
+          "inProgress": false,
+          "config": {
+            "enabled": true,
+            "reportingTimeZone": "UTC",
+            "hour": 23,
+            "minute": 0,
+            "runOnStartup": false,
+            "googleSheetsSpendIntervalMinutes": 1,
+            "salesforcePipelineIntervalMinutes": 5
+          },
+          "startedAt": "2026-10-26T21:49:43.059Z",
+          "nextRunAt": null,
+          "lastRunStartedAt": "2026-10-26T23:26:38.895Z",
+          "lastRunFinishedAt": "2026-10-26T23:27:18.404Z",
+          "lastRunTrigger": "manual",
+          "lastRunStatus": "failed",
+          "lastSkippedAt": null,
+          "lastErrorTime": "2026-10-26T23:27:18.404Z",
+          "lastError": "GA4 financial refresh request failed (500)",
+          "lastRunSummary": null,
+          "totalRuns": 41,
+          "totalStartupRuns": 0,
+          "totalScheduledRuns": 0,
+          "totalManualRuns": 41,
+          "totalSkippedRuns": 0
+        },
+        "ga4DailyScheduler": {
+          "started": true,
+          "timerScheduled": true,
+          "inProgress": false,
+          "config": {
+            "reportingTimeZone": "Europe/Amsterdam",
+            "hour": 8,
+            "hours": [
+              8,
+              14,
+              20
+            ],
+            "minute": 0,
+            "runOnStartup": false
+          },
+          "startedAt": "2026-10-26T21:49:43.060Z",
+          "stoppedAt": null,
+          "nextRunAt": "2026-10-27T07:00:00.000Z",
+          "nextDataThroughDate": "2026-10-26",
+          "lastRunStartedAt": "2026-10-26T21:49:55.758Z",
+          "lastRunFinishedAt": "2026-10-26T21:50:05.422Z",
+          "lastRunTrigger": "snapshot_bootstrap",
+          "lastRunStatus": "failed",
+          "lastSkippedAt": null,
+          "lastErrorTime": "2026-10-26T21:50:05.422Z",
+          "lastError": "GA4_REFRESH_WORK_OWNERSHIP_LOST",
+          "totalRuns": 1,
+          "totalStartupRuns": 0,
+          "totalScheduledRuns": 0,
+          "totalManualRuns": 0,
+          "totalSnapshotBootstrapRuns": 1,
+          "totalSkippedRuns": 0,
+          "lastRecomputeRecordedAt": "2026-10-26T23:02:44.786Z",
+          "lastRecomputeEvidence": {
+            "campaignIdsProcessed": [
+              "de4775c3b435"
+            ],
+            "campaignIdsSkipped": [],
+            "campaignIdsFailed": [],
+            "kpiIdsUpdated": [],
+            "kpiIdsSkipped": [],
+            "kpiIdsFailed": [],
+            "benchmarkIdsUpdated": [],
+            "benchmarkIdsSkipped": [],
+            "benchmarkIdsFailed": []
+          },
+          "lastExecutiveSummarySnapshotRequestedAt": "2026-10-26T23:03:15.454Z",
+          "lastExecutiveSummarySnapshotRequestFailures": [],
+          "lastAlignedRefreshFailures": [],
+          "alignedRefreshCampaigns": [
+            {
+              "campaignIdHash": "55d083f55e0c",
+              "reportingDate": "2026-10-25",
+              "completedAt": "2026-10-26T19:08:00.117Z"
+            },
+            {
+              "campaignIdHash": "b85505d40a0a",
+              "reportingDate": "2026-10-25",
+              "completedAt": "2026-10-26T19:10:12.439Z"
+            },
+            {
+              "campaignIdHash": "de4775c3b435",
+              "reportingDate": "2026-10-26",
+              "completedAt": "2026-10-26T23:03:26.936Z"
+            }
+          ],
+          "lastSnapshotBootstrapFailures": [
+            {
+              "campaignIdHash": "57141d52e81b",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "b0f65e7c7bfb",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "4ba3d83a9f51",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "d9920c47fecf",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "518aea3dc6ff",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "6caf32c94dbe",
+              "reason": "GA4_REFRESH_WORK_OWNERSHIP_LOST"
+            }
+          ]
+        },
+        "financialDailySnapshot": {
+          "mode": "gated_write",
+          "snapshotWritesEnabled": true,
+          "financialSourceEvidenceCampaigns": 2,
+          "ga4DailyEvidenceCampaigns": 0,
+          "observedCampaigns": 0,
+          "readyCampaigns": 0,
+          "blockedCampaigns": 0,
+          "writtenCampaigns": 0,
+          "writeFailedCampaigns": 0,
+          "blockingReasons": {},
+          "latestEvaluatedAt": null
+        },
+        "timestamp": "2026-10-26T23:27:31.556Z"
+      }
+    },
+    {
+      "route": "/api/campaigns",
+      "status": 401,
+      "body": {
+        "message": "Your session expired. Please refresh and try again."
+      }
+    },
+    {
+      "route": "/api/clients",
+      "status": 401,
+      "body": {
+        "message": "Your session expired. Please refresh and try again."
+      }
+    }
+  ]
+}

@@ -34,6 +34,8 @@ type AssertionResult = {
 
 type TestFileResult = {
   name: string;
+  status?: string;
+  message?: string;
   assertionResults: AssertionResult[];
 };
 
@@ -42,6 +44,7 @@ export type VitestJsonResult = {
   numPassedTests: number;
   numFailedTests: number;
   testResults: TestFileResult[];
+  unhandledErrors?: string[];
 };
 
 type LocatedAssertion = AssertionResult & { file: string };
@@ -146,7 +149,7 @@ export function classifyCurrentVersionResults(
         if (assertion.status === "passed" || assertion.status === "failed") {
           observedDeferred.add(identity);
         }
-      } else if (assertion.status === "failed") {
+      } else if (assertion.status !== "passed") {
         currentFailures.push({ ...assertion, file });
       }
     }
@@ -171,6 +174,7 @@ function runVitest(
 ): { report: VitestJsonResult; status: number | null } {
   const tempDirectory = mkdtempSync(join(tmpdir(), "ga4-kpi-test-boundary-"));
   const outputFile = join(tempDirectory, "vitest.json");
+  const errorFile = join(tempDirectory, "run-errors.json");
   const vitestCli = resolve(root, "node_modules/vitest/vitest.mjs");
   const args = [
     vitestCli,
@@ -178,6 +182,7 @@ function runVitest(
     "--pool",
     "forks",
     "--reporter=json",
+    `--reporter=${resolve(root, "scripts/ga4-test-run-errors.cjs")}`,
     `--outputFile=${outputFile}`,
   ];
 
@@ -190,6 +195,7 @@ function runVitest(
   try {
     const result = spawnSync(process.execPath, args, {
       cwd: root,
+      env: { ...process.env, CURRENT_VERSION_TEST_ERRORS_FILE: errorFile },
       stdio: "inherit",
       shell: false,
     });
@@ -197,6 +203,9 @@ function runVitest(
       throw result.error;
     }
     const report = JSON.parse(readFileSync(outputFile, "utf8")) as VitestJsonResult;
+    const runErrors = JSON.parse(readFileSync(errorFile, "utf8"));
+    if (!Array.isArray(runErrors.errors) || !["passed", "failed", "interrupted"].includes(runErrors.reason)) throw new Error("Incomplete test-run error receipt.");
+    report.unhandledErrors = [...runErrors.errors, ...(runErrors.reason === "interrupted" ? ["Test run interrupted"] : [])];
     return { report, status: result.status };
   } finally {
     rmSync(tempDirectory, { recursive: true, force: true });
@@ -211,7 +220,7 @@ function printFailures(label: string, failures: LocatedAssertion[]): void {
 }
 
 function runCurrentVersion(root: string, manifest: CurrentVersionTestManifest): number {
-  const { report } = runVitest(root, null);
+  const { report, status } = runVitest(root, null);
   const classification = classifyCurrentVersionResults(report, manifest, root);
   const deferredFailures = classification.deferredResults.filter(
     (result) => result.status === "failed",
@@ -229,7 +238,11 @@ function runCurrentVersion(root: string, manifest: CurrentVersionTestManifest): 
     );
   }
 
-  return classification.currentFailures.length === 0 &&
+  const incompleteRun = ![0, 1].includes(status ?? -1) || (status !== 0 && report.numFailedTests === 0)
+    || Boolean(report.unhandledErrors?.length) || report.numTotalTests === 0
+    || report.testResults.some(file => Boolean(file.message) || (file.status === "failed" && !file.assertionResults.some(test => test.status === "failed")));
+  if (incompleteRun) console.error("[current-version] Test run failed to complete cleanly; release gate blocked.");
+  return !incompleteRun && classification.currentFailures.length === 0 &&
     classification.missingDeferred.length === 0
     ? 0
     : 1;

@@ -4,6 +4,7 @@ import { createServer, type Server } from 'node:http';
 import ts from 'typescript';
 import { GoogleAnalytics4Service } from './analytics';
 import { fetchCompleteSalesforceQuery } from './utils/salesforce-pagination';
+import { validateHubspotSearchPage } from './utils/hubspot-pagination';
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 const connection = { propertyId: '123', accessToken: 'fixture' };
@@ -151,7 +152,7 @@ describe('Batch 3 diagnostic and Salesforce timeout boundaries', () => {
     const transport = vi.fn(async (_url, init) => {
       if (++call === 1) {
         await new Promise(resolve => setTimeout(resolve, 110_000));
-        return json({ records: [{ Id: 'first' }], done: false, nextRecordsUrl: '/next' });
+        return json({ records: [{ Id: 'first' }], totalSize: 2, done: false, nextRecordsUrl: '/next' });
       }
       return waitForAbort(init.signal);
     });
@@ -177,7 +178,7 @@ describe('Batch 3 diagnostic and Salesforce timeout boundaries', () => {
     }).outputText;
     const failure = new DOMException('Response body interrupted', 'AbortError');
     const transport = vi.fn(async () => ({ ok: true, json: async () => { throw failure; } }));
-    const helper = new Function('fetchWithTimeout', compiled)(transport);
+    const helper = new Function('fetchWithTimeout', 'validateHubspotSearchPage', compiled)(transport, validateHubspotSearchPage);
     await expect(helper('fixture', {})).rejects.toBe(failure);
     transport.mockResolvedValue(json({ results: [], total: 0 }) as any);
     expect(await helper('fixture', {})).toEqual({ results: [], total: 0 });
@@ -207,16 +208,36 @@ describe('Batch 3 diagnostic and Salesforce timeout boundaries', () => {
   });
   it.each([
     ['token', '  async function refreshGoogleSheetsToken(', '    const fetchWithTimeout =', '\n\n    const refreshResponse', 'fetchWithTimeout', 15000],
-    ['data', '// Try to fetch spreadsheet data with timeout', '      const fetchWithTimeout =', '\n\n      // Check for fresh cached data', 'fetchWithTimeout', 30000],
-    ['retry', '// Retry the request with new token (using same timeout helper)', '          const fetchWithTimeoutRetry =', '\n\n          // Build range', 'fetchWithTimeoutRetry', 30000],
+    ['data', '// Try to fetch spreadsheet data with timeout', '      const fetchWithTimeout =', '\n\n      let rows:', 'fetchWithTimeout', 30000],
+    ['retry', '// Try to fetch spreadsheet data with timeout', '      const fetchWithTimeout =', '\n\n      let rows:', 'fetchWithTimeout', 30000],
   ] as const)('keeps nested Sheets %s deadlines through body parsing and preserves caller cancellation', async (_name, anchor, begin, end, name, duration) => {
     const source = readFileSync('server/routes-oauth.ts', 'utf8').replace(/\r\n/g, '\n');
     const start = source.indexOf(begin, source.indexOf(anchor));
     const finish = source.indexOf(end, start);
     expect(start).toBeGreaterThan(0); expect(finish).toBeGreaterThan(start);
-    const helper = new Function('fetch', ts.transpileModule(`${source.slice(start, finish)}\nreturn ${name};`, {
+    const transport = vi.fn((_url: string, init: RequestInit) => Promise.resolve({ json: () => waitForAbort(init.signal) }));
+    let helper = new Function('fetch', ts.transpileModule(`${source.slice(start, finish)}\nreturn ${name};`, {
       compilerOptions: { target: ts.ScriptTarget.ES2022 },
-    }).outputText)((_url: string, init: RequestInit) => Promise.resolve({ json: () => waitForAbort(init.signal) }));
+    }).outputText)(transport);
+    if (_name === 'retry') {
+      const retryStart = source.indexOf('rows = await readCompleteGoogleSheetsData(connection,', finish);
+      const retryEnd = source.indexOf('connection.lastDataRefreshAt', retryStart);
+      expect(retryStart).toBeGreaterThan(finish); expect(retryEnd).toBeGreaterThan(retryStart);
+      const fetchWithTimeout = helper;
+      helper = async (url: string, options: RequestInit) => {
+        transport.mockResolvedValueOnce({ status: 401 } as any);
+        const refresh = vi.fn(async () => 'renewed-fixture');
+        const run = new Function('connection', 'accessToken', 'readCompleteGoogleSheetsData', 'refreshGoogleSheetsToken', 'fetchWithTimeout',
+          ts.transpileModule(`return (async () => { let rows; ${source.slice(retryStart, retryEnd)} return rows; })();`, {
+            compilerOptions: { target: ts.ScriptTarget.ES2022 },
+          }).outputText);
+        const response = await run({ refreshToken: 'fixture' }, 'expired-fixture',
+          (_connection: unknown, fetchPage: Function) => fetchPage(url, options.signal), refresh, fetchWithTimeout);
+        expect(refresh).toHaveBeenCalledTimes(1);
+        expect(transport.mock.lastCall?.[1].headers).toEqual({ Authorization: 'Bearer renewed-fixture' });
+        return response;
+      };
+    }
     const response = await helper('https://fixture.invalid', {});
     const result = response.json().catch((error: Error) => error);
     await vi.advanceTimersByTimeAsync(duration);

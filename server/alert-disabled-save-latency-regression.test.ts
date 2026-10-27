@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 const mocks = vi.hoisted(() => ({
   rows: [] as any[],
@@ -68,7 +69,10 @@ describe.each([
       const [id, update] = mocks.updateNotification.mock.calls[0];
       expect(id).toBe("old-alert");
       expect(update.read).toBe(true);
-      expect(JSON.parse(update.metadata)).toMatchObject({ benchmarkId: "rule", resolved: true, resolvedReason: "cleared" });
+      const metadata = new PgDialect().sqlToQuery(update.metadata);
+      expect(metadata.sql).toContain('ELSE (COALESCE(NULLIF("notifications"."metadata",');
+      expect(metadata.sql).toContain("->> 'resolved', 'false') = 'true' THEN");
+      expect(JSON.parse(String(metadata.params[0]))).toMatchObject({ resolved: true, resolvedReason: "cleared" });
     }
   });
 

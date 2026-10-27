@@ -57,10 +57,17 @@ describe('Google Ads automatic and saved goal values', () => {
     expect(f.storage.getCampaign).not.toHaveBeenCalled();
     expect(bind(page, 'getGoalCurrentValue')(row)).toBe(137);
   });
-  it.each(['linkedin', 'instagram', 'tiktok', 'google_sheets'])('does not change %s goals', async platformType => {
+  it.each(['linkedin', 'instagram', 'tiktok'])('does not change %s goals', async platformType => {
     const f = fixture(), row = goal({ platformType });
     expect(await f.resolve(row)).toBe(row);
     expect(f.storage.getCampaign).not.toHaveBeenCalled();
+  });
+  it('keeps unavailable automatic Sheets goals out of Google Ads reads and preserves their saved value', async () => {
+    const f = fixture(), row = goal({ platformType: 'google_sheets' });
+    expect(await f.resolve(row)).toMatchObject({ currentValue: '137', __alertDecisionEligible: false, __alertDecisionReason: 'unavailable' });
+    expect(f.storage.getGoogleAdsConnection).not.toHaveBeenCalled();
+    expect(f.storage.getGoogleAdsDailyMetrics).not.toHaveBeenCalled();
+    expect(row.currentValue).toBe('137');
   });
   it.each([['1', 100, true], ['137', 10, false]])('aligns live page and alert decisions when saved value is %s', async (saved, spend, breached) => {
     const f = fixture(); f.storage.getGoogleAdsDailyMetrics.mockResolvedValue([daily({ spend })]);

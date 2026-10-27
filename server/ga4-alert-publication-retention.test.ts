@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 const state = vi.hoisted(() => ({ rules: [] as any[], alerts: [] as any[], reason: "unavailable" as string | null,
   update: vi.fn(), updateNotification: vi.fn(), insert: vi.fn() }));
@@ -52,7 +53,10 @@ describe("financial alert history during an unverified publication", () => {
       state.reason = null;
       await check("campaign-1", "2026-10-16");
       expect(state.updateNotification).toHaveBeenCalledWith("alert-1", expect.objectContaining({ read: true }));
-      expect(JSON.parse(state.updateNotification.mock.calls[0][1].metadata)).toMatchObject({ resolved: true, resolvedReason: "cleared" });
+      const metadata = new PgDialect().sqlToQuery(state.updateNotification.mock.calls[0][1].metadata);
+      expect(metadata.sql).toContain('ELSE (COALESCE(NULLIF("notifications"."metadata",');
+      expect(metadata.sql).toContain("->> 'resolved', 'false') = 'true' THEN");
+      expect(JSON.parse(String(metadata.params[0]))).toMatchObject({ resolved: true, resolvedReason: "cleared" });
     });
     it(`still clears a disabled ${kind} rule`, async () => {
       state.rules[0].alertsEnabled = false;

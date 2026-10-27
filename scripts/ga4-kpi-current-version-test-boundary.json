@@ -223,7 +223,7 @@
     {
       "group": "future-platforms",
       "file": "server/meta-production-regression.test.ts",
-      "fullName": "Meta production readiness regression guard keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth"
+      "fullName": "Meta production readiness regression guard returns the Create Campaign confirm Back button to the immediately preceding setup step"
     },
     {
       "group": "future-platforms",

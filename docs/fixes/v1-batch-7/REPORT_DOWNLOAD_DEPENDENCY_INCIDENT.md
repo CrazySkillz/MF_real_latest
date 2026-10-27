@@ -1,6 +1,8 @@
 # Report download dependency incident - October 26, 2026
 
-Base: `e1b113d70bb54e58a5fc93d4ab8cc5a45372ed04`. The user reported the same "latest displayed figures are still being checked" error after deployment. The prior 702-check packet proved numeric output and core-query recovery, but not pending/failed Insights inputs during a different report type. Deployed download acceptance is unverified; earlier passing tests are not evidence for this missing case.
+**Latest acceptance:** The user confirms successful download and supplies the October 26 `(2).pdf`, generated 22:54:32, SHA-256 `f31da8d4d25a51008634b09cc0e9ae833611d19ba26f0e8017bededa52a027a7`. Rendered-page/text inspection confirms EUR 7,653.96 native + EUR 350 imports = **EUR 8,003.96** and legible, unclipped output. All 710 report checks pass again in the Batch 8 full run. [Current evidence and limits](../v1-batch-8/LOCAL_RELEASE_CHECKPOINT.md). The natural emailed artifact expected October 27 remains pending; this is bounded download acceptance, not whole-section certification.
+
+Incident base: `e1b113d70bb54e58a5fc93d4ab8cc5a45372ed04`. The user reported the same "latest displayed figures are still being checked" error after deployment. The prior 702-check packet proved numeric output and core-query recovery, but not pending/failed Insights inputs during a different report type. Earlier passing tests were not evidence for this missing case.
 
 ## Confirmed local root cause and exact path
 
@@ -28,4 +30,4 @@ The same global state feeds page warnings and KPI input freshness. Separating In
 
 ## Remaining limits
 
-No personal browser, production account/database, or real email is accessed. The exact production failing request remains unobserved; the reproduced dependency is established by code and a failing-before/passing-after browser test. New deployed download acceptance and the natural emailed artifact remain pending. A core-data failure must still reject a report; this correction does not bypass it or certify every Reports/Batch 7 path.
+No personal browser, production account/database, or real email is accessed. The exact production failing request remains unobserved; the reproduced dependency is established by code and a failing-before/passing-after browser test. The supplied download is now accepted as recorded above; the natural emailed artifact remains pending. A core-data failure must still reject a report; this correction does not bypass it or certify every Reports/Batch 7 path.

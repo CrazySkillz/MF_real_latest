@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-26T22:47:12.260Z",
+  "base": "ea0b843afbb8946eaaa248ea57786651cd3d457b",
+  "method": "Latest per-file result: full run plus the exact precision suite on its required port. Not a single clean full-suite run.",
+  "runs": [
+    "consolidated.json",
+    "precision-isolated.json"
+  ],
+  "files": 382,
+  "total": 6477,
+  "passed": 6354,
+  "failed": 123,
+  "pending": 0,
+  "skipped": 0,
+  "todo": 0,
+  "suiteErrors": [],
+  "unhandledErrors": [],
+  "cleanup": [
+    {
+      "label": "consolidated",
+      "stopped": true,
+      "changedTrackedFiles": [],
+      "emptyDatabases": true
+    },
+    {
+      "label": "precision-isolated",
+      "stopped": true,
+      "changedTrackedFiles": [],
+      "emptyDatabases": true
+    }
+  ],
+  "limits": "All 123 assertion failures remain open in consolidated-reconciliation.json. No application change or release certification."
+}

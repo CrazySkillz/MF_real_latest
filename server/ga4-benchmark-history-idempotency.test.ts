@@ -74,7 +74,9 @@ const mocks = vi.hoisted(() => {
       if (lockAcquired) releaseLock?.();
     }
   });
-  return { state, execute, insert, update, db: { transaction } };
+  return { state, execute, insert, update, db: { transaction,
+    select: () => ({ from: () => ({ where: async () => state.benchmarkExists ? [{ id: "benchmark-1" }] : [] }) }),
+  } };
 });
 
 vi.mock("./db", () => ({ db: mocks.db, pool: null }));

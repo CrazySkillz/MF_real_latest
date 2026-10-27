@@ -33,7 +33,8 @@ describe("GA4 Overview scheduler snapshot contract", () => {
     const method = between(storage, "async replaceGA4DailyMetricsWindow", "async getGA4DailyMetrics");
     expect(scheduler).toContain("const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9");
     expect(scheduler).toContain("expected.revenue) > revenueRoundingTolerance");
-    expect(method).toContain("await db.transaction");
+    expect(method).toContain("? this.withGA4RefreshTransaction.bind(this) : db.transaction.bind(db)");
+    expect(method).toContain("await transaction(async (tx: any) => {");
     expect(method).toContain("await tx.delete(ga4DailyMetrics)");
     expect(method).toContain("await tx.insert(ga4DailyMetrics)");
     expect(method).toContain("await tx.insert(ga4OverviewSnapshots)");

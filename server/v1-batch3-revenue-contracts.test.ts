@@ -62,10 +62,12 @@ describe("V1-035 revenue materialization fallback", () => {
     storage.getRevenueBreakdownBySource.mockRejectedValue(Object.assign(new Error("Currency mismatch"), { code: "GA4_REVENUE_CURRENCY_INTEGRITY_ERROR" }));
     await expect(total(storage)).rejects.toMatchObject({ code: "GA4_REVENUE_CURRENCY_INTEGRITY_ERROR" });
   });
-  it("does not require future-created sources or change another platform's completeness policy", async () => {
+  it("requires materialization regardless of connection date without changing another platform's completeness policy", async () => {
     const storage = storageFixture();
     storage.getRevenueSources.mockResolvedValue([{ id: "future", createdAt: "2026-10-19T00:00:00Z" }]);
-    expect(await total(storage)).toMatchObject({ totalRevenue: 0, sourceIds: [] });
+    await expect(total(storage)).rejects.toMatchObject({ code: 'GA4_REVENUE_MATERIALIZATION_INCOMPLETE', sourceIds: ['future'] });
+    expect(storage.getRevenueBreakdownBySource).toHaveBeenCalledWith('campaign-1', '1900-01-01', '2999-12-31', 'ga4');
+    storage.getRevenueBreakdownBySource.mockClear();
     expect(await storage.getRevenueTotalForRange("campaign-1", "1900-01-01", "2026-10-18", "linkedin"))
       .toMatchObject({ totalRevenue: 0, sourceIds: [] });
     expect(storage.getRevenueBreakdownBySource).not.toHaveBeenCalled();

@@ -234,7 +234,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain('await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {');
     expect(source).toContain('...(campaignId ? { campaignId } : {})');
     expect(source.indexOf('await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {')).toBeLessThan(
-      source.indexOf("if (!finishEachCampaign) await publishRefresh(await refreshAllGA4DailyMetrics({ campaignId, ...refreshWriteInput,"),
+      source.indexOf("if (!finishEachCampaign) await publishRefresh(savedRevenueRefresh || await refreshAllGA4DailyMetrics({ campaignId, ...refreshWriteInput,"),
     );
   });
 
@@ -498,7 +498,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("const reportingWindow = getReportingDateWindow(lookbackDays, (c as any)?.reportingTimeZone, now);");
     expect(source).toContain("for (const connection of activeConnections)");
     expect(source).toContain("connection?.isActive !== false");
-    expect(source).toContain("const storageStartDate =");
+    expect(source).toContain("let storageStartDate =");
     expect(source).toMatch(/getTimeSeriesData\([\s\S]*?propertyId,\s*campaignFilter,\s*reportingWindow\.endDate,/);
     expect(source).toContain("getTrendsDailyPresenceWithToken(");
     expect(source).toContain("GA4 reported activity for a date without a complete daily metric row");

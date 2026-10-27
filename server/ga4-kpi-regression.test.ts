@@ -22,15 +22,16 @@ describe("GA4 KPI regression guard", () => {
       "utf-8"
     );
 
-    expect(schedulerFile).toContain("const activeKPIsRaw = await db.select()");
+    expect(schedulerFile).toContain("const activeKPIsRaw = transaction");
+    expect(schedulerFile).toContain("transaction.select().from(kpis).where(and(eq(kpis.campaignId, requestedCampaignId)");
     expect(schedulerFile).toContain(".from(kpis);");
     expect(schedulerFile).toContain("const activeKPIs = activeKPIsRaw;");
     expect(schedulerFile).not.toContain("latestGa4ByCampaignMetric");
     expect(schedulerFile).not.toContain("resolveKPIAlerts(String((kpi as any).id), 'superseded');");
     expect(schedulerFile).toContain("if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === \"undefined\") {");
-    expect(schedulerFile).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
+    expect(schedulerFile).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);");
     expect(schedulerFile).toContain("if (shouldTriggerAlert(kpi)) {");
-    expect(schedulerFile).toContain("await createKPIAlert(kpi);");
+    expect(schedulerFile).toContain("await createKPIAlert(kpi, transaction ? { transaction } : {});");
   });
 
   it("opens GA4 Create KPI with a clean empty form state", () => {

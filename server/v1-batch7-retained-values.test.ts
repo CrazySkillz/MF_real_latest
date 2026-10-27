@@ -162,7 +162,7 @@ describe("V1-064 current KPI export contracts", () => {
     expect(filename).toMatch(/\.pdf$/); expect(saved!.subarray(0, 5).toString()).toBe("%PDF-");
     expect(Math.max(...positions.map(p => p.page))).toBeGreaterThan(1);
     for (const position of positions) { expect(position.x + position.width).toBeLessThanOrEqual(191); expect(position.y).toBeLessThanOrEqual(288); }
-    writeFileSync("docs/fixes/v1-batch-7/validation-2026-10-26/retained-kpi-export.pdf", saved!);
+    if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS) writeFileSync("docs/fixes/v1-batch-7/validation-2026-10-26/retained-kpi-export.pdf", saved!);
   });
   it("reports a PDF-generation failure instead of showing success", async () => {
     const toasts: any[] = [], closed: any[] = [];

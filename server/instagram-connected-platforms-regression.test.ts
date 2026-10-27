@@ -22,10 +22,11 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(route).not.toContain("refreshInstagram");
   });
 
-  it("renders the Instagram Connected Platforms card shell with guarded analytics exposure", () => {
+  it("retains the guarded Instagram card definition while the GA4-first list excludes it", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf-8");
 
-    expect(page).toContain('import { SiGoogle, SiFacebook, SiInstagram');
+    expect(page).toContain('import { SiGoogle, SiGoogleanalytics, SiFacebook, SiInstagram');
+    expect(page).toContain('const platformMetrics = allPlatformMetrics.filter(({ platform }) => platform === "Google Analytics");');
     expect(page).toContain('const isInstagramConnected = platformStatusMap.get("instagram")?.connected === true;');
     expect(page).toContain('platform: "Instagram Ads"');
     expect(page).toContain("connected: isInstagramConnected");
@@ -84,7 +85,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(connectBlock).toContain("selectedCampaignIds.length === 0");
     expect(connectBlock).toContain('title: "Instagram campaign required"');
     expect(connectBlock).toContain("`/api/instagram/${draftCampaignId}/connect-test`");
-    expect(connectBlock).toContain("setWizardStep(5)");
+    expect(connectBlock).toContain("goToConfirmStep(3)");
+    expect(page).toContain("selectedPlatforms = selectedPlatforms.filter(isCreateCampaignPlatformEnabled)");
     expect(finalizeStart).toBeGreaterThanOrEqual(0);
     expect(finalizeGuard).toContain("selectedPlatforms.includes('instagram')");
     expect(finalizeGuard).toContain("`/api/instagram/${draftCampaignId}/connection`");
@@ -264,8 +266,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     const validationEnd = routes.indexOf("const zRevenueMapping = z", validationStart);
     const validation = routes.slice(validationStart, validationEnd);
 
-    expect(validation).toContain('z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"])');
-    expect(routes).toContain("RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram', 'tiktok', 'google_sheets']");
+    expect(validation).toContain('z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"])');
+    expect(routes).toContain("RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram', 'tiktok', 'google_sheets', 'custom_integration']");
     expect(validation).toContain("type PlatformContext = z.infer<typeof zPlatformContext>;");
     expect(validation).toContain("): PlatformContext | null => {");
     expect(routes).not.toContain("/api/instagram/oauth");
@@ -289,26 +291,28 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(routes).toContain('platformContext === "instagram"');
     expect(salesforce).toContain('const isInstagram = platformContext === "instagram";');
     expect(salesforce).toContain('`/api/instagram/${campaignId}/campaigns`');
-    expect(salesforce).toContain('const platformLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram"');
+    expect(salesforce).toContain('const platformLabel = isGA4 ? "GA4" : isTikTok ? "TikTok" : isInstagram ? "Instagram"');
     expect(hubspot).toContain('const isInstagram = platformContext === "instagram";');
     expect(hubspot).toContain('`/api/instagram/${campaignId}/campaigns`');
-    expect(hubspot).toContain('const platformLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram"');
+    expect(hubspot).toContain('const platformLabel = isGA4 ? "GA4" : isTikTok ? "TikTok" : isInstagram ? "Instagram"');
     expect(shopify).toContain('const isInstagram = platformContext === "instagram";');
     expect(shopify).toContain('`/api/instagram/${campaignId}/campaigns`');
     expect(shopify).toContain('isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok');
     expect(modal).toContain("platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram'");
     expect(modal).toContain('`/api/instagram/${campaignId}/campaigns`');
-    expect(modal).toContain('const platformLabel = platformContext === "tiktok" ? "TikTok" : platformContext === "instagram" ? "Instagram"');
+    expect(modal).toContain('const platformLabel = platformContext === "ga4" ? "GA4" : platformContext === "tiktok" ? "TikTok" : platformContext === "instagram" ? "Instagram"');
   });
 
   it("writes Instagram test daily metrics from test connect and explicit test refresh only", () => {
-    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8").replace(/\r\n/g, "\n");
     const connectStart = routes.indexOf('app.post("/api/instagram/:campaignId/connect-test"');
     const connectEnd = routes.indexOf("/**\n   * Update selected Instagram campaigns", connectStart);
     const connectRoute = routes.slice(connectStart, connectEnd);
     const routeStart = routes.indexOf('app.post("/api/instagram/:campaignId/refresh-test"');
     const routeEnd = routes.indexOf("/**\n   * Manually refresh live Instagram daily metrics", routeStart);
     const route = routes.slice(routeStart, routeEnd);
+    expect(connectEnd).toBeGreaterThan(connectStart);
+    expect(routeEnd).toBeGreaterThan(routeStart);
 
     expect(connectStart).toBeGreaterThanOrEqual(0);
     expect(connectRoute).toContain("ensureCampaignAccess");
@@ -333,10 +337,11 @@ describe("Instagram Connected Platforms regression guard", () => {
   });
 
   it("manual Instagram refresh imports only selected live Instagram placement rows", () => {
-    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8").replace(/\r\n/g, "\n");
     const routeStart = routes.indexOf('app.post("/api/instagram/:campaignId/refresh"');
     const routeEnd = routes.indexOf("/**\n   * Get Meta analytics data for a campaign", routeStart);
     const route = routes.slice(routeStart, routeEnd);
+    expect(routeEnd).toBeGreaterThan(routeStart);
     const metaClient = readFileSync(join(process.cwd(), "server", "services", "meta-graph-api.ts"), "utf-8");
 
     expect(routeStart).toBeGreaterThanOrEqual(0);
@@ -411,7 +416,7 @@ describe("Instagram Connected Platforms regression guard", () => {
 
     for (const route of [manualRoute, csvRoute, sheetsRoute]) {
       expect(route).toContain("platformContext");
-      expect(route).toContain("updateRevenueSource");
+      expect(route).toContain(route === csvRoute ? "storage.replaceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull, 'csv', platformContext" : "updateRevenueSource");
       expect(route).toContain('platformContext,');
     }
     expect(manualRoute).toContain('String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext');
@@ -589,16 +594,16 @@ describe("Instagram Connected Platforms regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
     const kpiRefresh = readFileSync(join(process.cwd(), "server", "utils", "kpi-refresh.ts"), "utf-8");
 
-    expect(modal).toContain("type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets';");
-    expect(modal).toContain("platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : platformContext === 'google_sheets' ? 'google_sheets_revenue' : 'revenue'");
+    expect(modal).toContain("type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';");
+    expect(modal).toContain("platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : platformContext === 'google_sheets' ? 'google_sheets_revenue' : platformContext === 'custom_integration' ? 'custom_integration_revenue' : 'revenue'");
     expect(modal).toContain('platformContext === \'instagram\' ? "Add Instagram revenue attribution"');
     expect(modal).toContain("Choose the source that attributes revenue back to Instagram ad activity.");
     expect(sheetsAuth).toContain("'instagram_revenue'");
-    expect(sheetsAuth).toContain("purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue'");
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(sheetsAuth).toContain("purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'meta_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue'");
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
     expect(routes).toContain("platformContextRaw === \"instagram\" ? \"instagram\"");
-    expect(routes).toContain("purpose === \"spend\" || purpose === \"revenue\" || purpose === \"general\" || purpose === \"linkedin_revenue\" || purpose === \"google_ads_revenue\" || purpose === \"instagram_revenue\" || purpose === \"tiktok_revenue\"");
-    expect(routes).toContain('["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]');
+    expect(routes).toContain("purpose === \"spend\" || purpose === \"revenue\" || purpose === \"general\" || purpose === \"linkedin_revenue\" || purpose === \"meta_revenue\" || purpose === \"google_ads_revenue\" || purpose === \"instagram_revenue\" || purpose === \"tiktok_revenue\"");
+    expect(routes).toContain('["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]');
     expect(page).toContain("AddRevenueWizardModal");
     expect(page).toContain("platformContext=\"instagram\"");
     expect(page).toContain("revenue-sources?platformContext=instagram");

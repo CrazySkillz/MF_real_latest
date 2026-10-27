@@ -832,7 +832,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const scheduledSendBlock = sliceBetween(
       scheduler,
       "const snapshotPayload = {",
-      "let sent = await sendReportEmailWithRetry"
+      "await sendReportEmailWithRetry(report, recipients, {"
     );
     const testSendBlock = sliceBetween(
       scheduler,
@@ -858,10 +858,10 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
     expect(scheduledSendBlock).toContain("const pdfBuffer = await buildPdfAttachmentForReport({");
     expect(scheduledSendBlock).toContain("isTest: false");
-    expect(scheduler).toContain("attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\\s+/g, \"_\")}_${windowEnd}.pdf`, content: pdfBuffer } : null");
+    expect(scheduler).toContain("attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\\s+/g, \"_\")}_${snapshotPlatformType === \"google_analytics\" ? snapshotPayload.generatedAt.slice(0, 10) : windowEnd}.pdf`, content: pdfBuffer } : null");
     expect(testSendBlock).toContain("const pdfBuffer = await buildPdfAttachmentForReport({");
     expect(testSendBlock).toContain("isTest: true");
-    expect(scheduler).toContain("attachment: pdfBuffer ? { filename: `${safeName}_${windowEnd}.pdf`, content: pdfBuffer } : null");
+    expect(scheduler).toContain("attachment: pdfBuffer ? { filename: `${safeName}_${report.platformType === \"google_analytics\" ? now.toISOString().slice(0, 10) : windowEnd}.pdf`, content: pdfBuffer } : null");
     expect(emailAttachmentBlock).toContain("attachments: meta?.attachment ? [{ filename: meta.attachment.filename, content: meta.attachment.content, contentType: 'application/pdf' }] : undefined");
 
     expect(payloadBlock).toContain("const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));");

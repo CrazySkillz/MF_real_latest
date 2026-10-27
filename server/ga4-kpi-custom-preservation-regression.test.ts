@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
+  getGA4PublicationVersion: vi.fn(),
   getCampaign: vi.fn(),
   getCampaigns: vi.fn(),
   getGA4Connections: vi.fn(),
@@ -70,6 +71,7 @@ describe("GA4 custom KPI recompute preservation", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-28T12:00:00.000Z"));
     resetMocks();
+    storageMock.getGA4PublicationVersion.mockResolvedValue(null);
 
     storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", status: "active", ownerId: "owner-1", startDate: "2026-06-01T00:00:00.000Z", reportingTimeZone: "UTC", currency: "USD" });
     storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true, method: "access_token", accessToken: "token", importStartDate: "2026-06-01" }]);
@@ -218,7 +220,7 @@ describe("GA4 custom KPI recompute preservation", () => {
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });
 
     expect(storageMock.updateKPI).toHaveBeenCalledTimes(1);
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "1300" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "1300", publicationVersion: { campaignId: "campaign-1", version: null } });
     expect(storageMock.updateKPI).not.toHaveBeenCalledWith("kpi-custom-name", expect.anything());
     expect(storageMock.updateKPI).not.toHaveBeenCalledWith("kpi-custom-marker", expect.anything());
 

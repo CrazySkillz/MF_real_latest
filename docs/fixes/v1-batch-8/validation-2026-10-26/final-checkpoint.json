@@ -1,0 +1,130 @@
+{
+  "at": "2026-10-26T22:50:45.370Z",
+  "head": "ea0b843afbb8946eaaa248ea57786651cd3d457b",
+  "status": "IN PROGRESS / NO-GO",
+  "applicationRuntimeChanged": false,
+  "productionDataChanged": false,
+  "committed": false,
+  "pushed": false,
+  "changedTrackedFiles": [
+    "docs/V1_RELEASE_READINESS.md",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+    "docs/fixes/v1-batch-7/README.md",
+    "docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md",
+    "docs/fixes/v1-batch-7/REPORT_DOWNLOAD_DEPENDENCY_INCIDENT.md",
+    "docs/fixes/v1-batch-8/README.md",
+    "scripts/ga4-kpi-current-version-test-boundary.ts",
+    "server/financial-snapshot-saved-ga4.test.ts",
+    "server/v1-batch7-retained-values.test.ts"
+  ],
+  "testHashes": {
+    "scripts/ga4-kpi-current-version-test-boundary.ts": "5fdf7bb7ab8d93f04963481384f19b84428ec52a64c19c5c295c64945d555c14",
+    "server/financial-snapshot-saved-ga4.test.ts": "380da4e8bde08c9c6305b1d1ec32aafaaee4b9a4d439f1ba88dd89874fd75a77",
+    "server/v1-batch7-retained-values.test.ts": "86421614db09dfca8ebf0aff41a4fd86973f170a84fd00e29746f1c61a0ef705",
+    "scripts/ga4-test-run-errors.cjs": "dc71c7ea957fd3d89f8b876001712383a298e6377f1b1019699582763251b13d",
+    "server/v1-batch8-ci-completion.test.ts": "73ec2a4c32b0b3e75dc30f32168440b00654e475748d439934dc70dbfad90a3c"
+  },
+  "documentHashes": {
+    "docs/V1_RELEASE_READINESS.md": "6a8bb836a295f2c90656c7dec0b1a9af62e196a3aeebf26117da79737f73173d",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md": "8a3687ce91159acfbb70c50e287be676e725815906fac6400d07ed29f176c8d7",
+    "docs/fixes/v1-batch-7/README.md": "6934b8b001ba072bc161471811f79f0c18b1f64e988ad8de8e3e5f144e7f7911",
+    "docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md": "b95b9dd6196b07351d198a35dedd15fd82093f069f840160a4ef15dd2aa09761",
+    "docs/fixes/v1-batch-7/REPORT_DOWNLOAD_DEPENDENCY_INCIDENT.md": "23052d95b26b3fab4cdbf9a5ce32ce9f4049468874644d85bdfd76e21a81e989",
+    "docs/fixes/v1-batch-8/README.md": "d5b8d911971ff61c453ffd4049e861a967829e88a3c2e349393bc7d9011c6820",
+    "docs/fixes/v1-batch-8/LOCAL_RELEASE_CHECKPOINT.md": "83e57de7d1bfa6bce1cb919c5171b09a68e7a05f3dd88fc96ee3143add0d0cb9"
+  },
+  "executionChangedAfterRun": [
+    "docs/V1_RELEASE_READINESS.md",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+    "docs/fixes/v1-batch-7/README.md",
+    "docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md",
+    "docs/fixes/v1-batch-7/REPORT_DOWNLOAD_DEPENDENCY_INCIDENT.md",
+    "docs/fixes/v1-batch-8/README.md"
+  ],
+  "latestTests": {
+    "at": "2026-10-26T22:47:12.260Z",
+    "base": "ea0b843afbb8946eaaa248ea57786651cd3d457b",
+    "method": "Latest per-file result: full run plus the exact precision suite on its required port. Not a single clean full-suite run.",
+    "runs": [
+      "consolidated.json",
+      "precision-isolated.json"
+    ],
+    "files": 382,
+    "total": 6477,
+    "passed": 6354,
+    "failed": 123,
+    "pending": 0,
+    "skipped": 0,
+    "todo": 0,
+    "suiteErrors": [],
+    "unhandledErrors": [],
+    "cleanup": [
+      {
+        "label": "consolidated",
+        "stopped": true,
+        "changedTrackedFiles": [],
+        "emptyDatabases": true
+      },
+      {
+        "label": "precision-isolated",
+        "stopped": true,
+        "changedTrackedFiles": [],
+        "emptyDatabases": true
+      }
+    ],
+    "limits": "All 123 assertion failures remain open in consolidated-reconciliation.json. No application change or release certification."
+  },
+  "reportNeighbors": {
+    "files": 46,
+    "passed": 710
+  },
+  "docs": {
+    "mode": "documentation-only",
+    "documents": 10,
+    "findings": 130,
+    "open": 120,
+    "deferred": 10,
+    "closed": 0,
+    "localLinks": 1426,
+    "inboundLinks": 13,
+    "checks": "PASS",
+    "limitation": "Layout, assignment, status and local-link integrity only; no runtime or release certification."
+  },
+  "builds": {
+    "at": "2026-10-26T22:19:07.593Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "baseline-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "baseline-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "baseline-server-build.log"
+      }
+    ]
+  },
+  "finalTypecheck": {
+    "at": "2026-10-26T22:31:49.007Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "final-typecheck.log"
+      }
+    ]
+  },
+  "limits": "123 unresolved assertions; recorded scheduler failures; hosted CI, authenticated/provider, complete semantic/downstream, operational and advisory gates remain open. Natural report email and postponed Google Ads are separate pending acceptances."
+}

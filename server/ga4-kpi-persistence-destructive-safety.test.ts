@@ -23,9 +23,11 @@ const mocks = vi.hoisted(() => {
       from: vi.fn(() => ({
         where: vi.fn(() => ({
           limit: vi.fn(async () => state.value.kpi ? [{ ...state.value.kpi }] : []),
+          orderBy: () => ({ for: async () => [{ id: "campaign-1" }] }),
         })),
       })),
     })),
+    execute: vi.fn(async () => ({ rows: [{ name: null }] })),
     update: vi.fn(() => ({
       set: vi.fn((values: any) => ({
         where: vi.fn(() => ({
@@ -61,7 +63,9 @@ const mocks = vi.hoisted(() => {
       throw error;
     }
   });
-  return { originalState, state, tx, db: { transaction } };
+  return { originalState, state, tx, db: { transaction,
+    select: () => ({ from: () => ({ where: async () => state.value.kpi ? [{ ...state.value.kpi }] : [] }) }),
+  } };
 });
 
 vi.mock("./db", () => ({ db: mocks.db, pool: null }));

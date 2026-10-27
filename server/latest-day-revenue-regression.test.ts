@@ -59,7 +59,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(schedulerFile).toContain("dateField: mappingConfig.dateField,");
     expect(schedulerFile).not.toContain("stageIds: mappingConfig.stageIds,");
     expect(routesFile).toContain("if ((!accessToken || shouldRefresh) && conn.refreshToken) {");
-    expect(routesFile).toContain("accessToken = await refreshHubspotToken(conn);");
+    expect(routesFile).toContain("accessToken = await refreshHubspotToken(conn, refreshWriteInput);");
     expect(routesFile).toContain("HubSpot access token missing and no refresh token available. Please reconnect HubSpot.");
   });
 
@@ -69,7 +69,7 @@ describe("Latest Day Revenue regression guard", () => {
       "utf-8"
     );
 
-    expect(routesFile).toContain("Confirmed revenue must use closed-won-ish stages; Pipeline Proxy stays separate.");
+    expect(routesFile).toContain("if (!derived.length || effectiveStageIds.some(id => !derived.includes(id))) throw new Error('Confirmed HubSpot revenue requires verified closed-won stages.');");
     expect(routesFile).toContain("const derived = deriveDefaultClosedWonStageIds(pipelines);");
     expect(routesFile).not.toContain('const derived = platformCtx === "linkedin" ? deriveDefaultNonLostStageIds(pipelines) : deriveDefaultClosedWonStageIds(pipelines);');
   });
@@ -221,10 +221,10 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain('if (field === "tags") return getShopifyOrderTags(o)[0] || "";');
     expect(routesFile).toMatch(/const values = field === "tags"\s*\?\s*getShopifyOrderTags\(o\)/);
     expect(schedulerFile).toContain("campaignField: mappingConfig.campaignField,");
-    expect(schedulerFile).toContain("async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {");
+    expect(schedulerFile).toContain("async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean> {");
     expect(schedulerFile).toContain("...(sourceId ? { sourceId } : {}),");
     expect(schedulerFile).toContain('String(s.sourceType || "").toLowerCase() === "shopify"');
-    expect(schedulerFile).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id))");
+    expect(schedulerFile).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id), refreshWriteInput)");
   });
 
   it("Revenue Sources modal keeps active source definitions visible when breakdown rows exist", () => {
@@ -282,9 +282,9 @@ describe("Latest Day Revenue regression guard", () => {
     expect(revenueSourcesRoute).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext)');
     expect(revenueSourcesRoute).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", "2999-12-31", platformContext)');
     expect(revenueSourcesRoute).toContain('.catch(() => ({ rows: [] as any[], succeeded: false }))');
-    expect(revenueSourcesRoute).toContain('const pendingCompletedDay = isGa4RevenueSource && boundedBreakdownResult.succeeded && (');
-    expect(revenueSourcesRoute).toContain('!isCreatedThroughReportingDate(source?.createdAt, breakdownEndDate, (campaign as any)?.reportingTimeZone)');
-    expect(revenueSourcesRoute).toContain('|| (!hasCompletedDayRevenue && hasLatestRevenue)');
+    expect(revenueSourcesRoute).toContain('const pendingCompletedDay = isGa4RevenueSource && boundedBreakdownResult.succeeded && latestBreakdownResult.succeeded');
+    expect(revenueSourcesRoute).toContain('&& hasLatestRevenue && (!hasCompletedDayRevenue || latestTotalsBySource.get(sourceId) !== totalsBySource.get(sourceId))');
+    expect(revenueSourcesRoute).not.toContain('isCreatedThroughReportingDate(source?.createdAt');
     expect(revenueSourcesRoute).toContain('const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null);');
     expect(revenueSourcesRoute).toContain('boundedRevenueZero: pendingCompletedDay && completedDayRevenue === 0,');
     expect(revenueSourcesRoute).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');
@@ -329,11 +329,11 @@ describe("Latest Day Revenue regression guard", () => {
       "utf-8"
     );
 
-    expect(schedulerFile).toContain("async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {");
+    expect(schedulerFile).toContain("async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean> {");
     expect(schedulerFile).toContain("dateField: mappingConfig.dateField,");
     expect(schedulerFile).toContain("...(sourceId ? { sourceId } : {}),");
     expect(schedulerFile).toContain('String(s.sourceType || "").toLowerCase() === "salesforce"');
-    expect(schedulerFile).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id))");
+    expect(schedulerFile).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id), refreshWriteInput)");
     expect(rateLimiterFile).toContain("isInternalAutoRefreshRequest(req)");
   });
 

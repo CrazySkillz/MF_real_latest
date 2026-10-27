@@ -33,20 +33,22 @@ const mocks = vi.hoisted(() => {
     try { return String(JSON.parse(String(row?.mappingConfig || '{}'))?.connectionId || ''); } catch { return ''; }
   };
   const tx = {
-    select: vi.fn(() => {
+    select: vi.fn(() => ({ from: vi.fn((table: any) => {
+      if (table[Symbol.for('drizzle:Name')] === 'campaigns') return { where: () => Object.assign(Promise.resolve([{ id: 'campaign-1', ownerId: 'owner-1' }]), { orderBy: () => ({ for: async () => [{ id: 'campaign-1' }] }) }) };
+      if (table[Symbol.for('drizzle:Name')] === 'ga4_refresh_work') return { where: async () => [] };
       state.selectCall += 1;
       const call = state.selectCall;
       return {
-        from: vi.fn(() => ({
           where: vi.fn(async () => {
             if (call === 1) return state.sources.filter((source) => source.campaignId === 'campaign-1' && source.sourceType === 'google_sheets' && source.isActive);
             if (call === 2) return state.spendSources.filter((source) => source.campaignId === 'campaign-1' && source.isActive);
             return state.connections.filter((connection) => connection.campaignId === 'campaign-1' && connection.isActive);
           }),
-        })),
       };
-    }),
-    update: vi.fn(() => {
+    }) })),
+    execute: vi.fn(async () => ({ rows: [{ name: 'ga4_refresh_work' }] })),
+    update: vi.fn((table: any) => {
+      if (table[Symbol.for('drizzle:Name')] === 'ga4_refresh_work') return { set: () => ({ where: () => ({ returning: async () => [] }) }) };
       state.updateCall += 1;
       const call = state.updateCall;
       return {

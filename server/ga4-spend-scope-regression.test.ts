@@ -92,13 +92,17 @@ describe("GA4 spend source-scope regression guard", () => {
     expect(routes).not.toContain('requestedPlatformContext === "ga4" ? null');
   });
 
-  it("keeps the GA4 aggregate scheduler scoped while generic auto-refresh stays unscoped", () => {
+  it("keeps GA4 aggregate and automatic financial snapshots scoped through the shared writer", () => {
     const scheduler = read("server/scheduler.ts");
     const autoRefresh = read("server/auto-refresh-scheduler.ts");
 
     expect(scheduler).toContain('storage.getSpendTotalForRange(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4")');
     expect(scheduler).not.toContain("storage.getSpendTotalForRange(campaignId, startDate, endDate)");
     expect(autoRefresh).toContain("storage.getSpendSources(campaignId)");
-    expect(autoRefresh).toContain('storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate)');
+    expect(autoRefresh).toContain('writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })');
+    expect(autoRefresh).toContain('storage.getSpendSources(campaignId, guarded ? "ga4" : undefined)');
+    const writer = read("server/utils/financial-daily-snapshot-writer.ts");
+    expect(writer).toContain('dependencies.getSpendSources(campaignId, "ga4")');
+    expect(writer).toContain('dependencies.getSpendTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4")');
   });
 });

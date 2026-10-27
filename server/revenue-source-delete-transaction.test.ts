@@ -16,7 +16,14 @@ const mocks = vi.hoisted(() => {
     failureStage: null as "source" | "records" | "conflict" | null,
   };
   const tx = {
-    update: vi.fn(() => ({
+    // This transaction fixture has no connected GA4 property or existing publication work.
+    select: vi.fn(() => ({ from: (table: any) => ({ where: () => {
+      const rows = table[Symbol.for("drizzle:Name")] === "campaigns" ? [{ id: "campaign-1", ownerId: "owner-1" }] : [];
+      return Object.assign(Promise.resolve(rows), { orderBy: () => ({ for: async () => rows }) });
+    } }) })),
+    execute: vi.fn(async () => ({ rows: [{ name: "ga4_refresh_work" }] })),
+    update: vi.fn((table: any) => table[Symbol.for("drizzle:Name")] === "ga4_refresh_work"
+      ? { set: () => ({ where: () => ({ returning: async () => [] }) }) } : ({
       set: vi.fn((values: any) => ({
         where: vi.fn(() => ({
           returning: vi.fn(async () => {

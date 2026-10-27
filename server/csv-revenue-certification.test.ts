@@ -121,7 +121,7 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
 
   it("validates structure, mapped headers, amounts, and dates before the GA4 transaction", () => {
     const route = csvProcessRoute();
-    const parseIndex = route.indexOf('parseCsvText(csvText, MAX_CSV_ROWS_PROCESS, { strict: platformContext === "ga4" })');
+    const parseIndex = route.indexOf('parseCsvText(csvText, MAX_CSV_ROWS_PROCESS, { strict: true })');
     const headerIndex = route.indexOf("!parsedHeaders.includes(column)");
     const amountIndex = route.indexOf("findInvalidGa4CsvRevenueAmountRows(parsedRows");
     const dateIndex = route.indexOf("findInvalidGa4CsvRevenueDateRows(parsedRows");

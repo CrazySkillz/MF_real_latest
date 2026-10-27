@@ -135,7 +135,7 @@ describe("financial daily snapshot observation", () => {
     expect(autoRefresh).toContain("getCampaignAutoRefreshFailures({");
     expect(autoRefresh).not.toContain('status: failure ? "failed" : "success"');
     expect(ga4Daily).toContain('recordFinancialDailySnapshotRefreshEvidence("ga4_daily"');
-    expect(ga4Daily).toContain("writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate })");
+    expect(ga4Daily).toContain("writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate, ...writeInputFor(processedCampaignId) })");
     expect(routes).toContain("observeFinancialDailySnapshotReadiness({");
     expect(index).toContain("financialDailySnapshot: getFinancialDailySnapshotObservationStatus()");
     expect(autoRefresh).not.toContain("upsertFinancialDailySnapshot");

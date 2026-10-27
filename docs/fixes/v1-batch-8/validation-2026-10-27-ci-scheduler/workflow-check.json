@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-27T05:58:19.819Z",
+  "checks": "PASS",
+  "postgres": "ephemeral PostgreSQL 18 on loopback port 55444",
+  "browser": "installed before blocking test gate",
+  "databases": [
+    "ga4_alignment_test",
+    "notifications_test"
+  ],
+  "applicationDatabase": "empty",
+  "providerCredentials": "none in workflow",
+  "limitation": "Parsed workflow and fixture script; hosted Linux execution still required"
+}

@@ -181,6 +181,8 @@ function runVitest(
     "run",
     "--pool",
     "forks",
+    "--maxWorkers=2",
+    "--reporter=default",
     "--reporter=json",
     `--reporter=${resolve(root, "scripts/ga4-test-run-errors.cjs")}`,
     `--outputFile=${outputFile}`,

@@ -5,6 +5,23 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: v1_audit
+          POSTGRES_DB: ga4_alignment_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:55444:5432
+        options: >-
+          --health-cmd "pg_isready -U v1_audit -d ga4_alignment_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: ''
+      GA4_TEST_DATABASE_URL: postgresql://v1_audit@127.0.0.1:55444/ga4_alignment_test
+      NOTIFICATION_TEST_DATABASE_URL: postgresql://v1_audit@127.0.0.1:55444/notifications_test
+      V1_BATCH7_PRESERVE_ARTIFACTS: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -13,6 +30,15 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --ignore-scripts
+      - run: npx --no-install playwright install --with-deps chromium
+      - name: Create isolated notification fixture database
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          const client = new pg.Client({ host: '127.0.0.1', port: 55444, user: 'v1_audit', database: 'ga4_alignment_test' });
+          try { await client.connect(); await client.query('CREATE DATABASE notifications_test'); }
+          finally { await client.end(); }
+          NODE
       - run: npm run check:ga4-kpi-certification
       - run: npm run test:current-version
       - name: Retained deferred-source evidence (non-blocking)

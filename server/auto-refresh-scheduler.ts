@@ -873,7 +873,7 @@ export async function refreshGoogleSheetsDataForCampaign(campaignId: string): Pr
 }
 
 export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
-  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
+  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress || (global as any).__ga4DailyRefreshInProgress) {
     console.log("[Google Sheets Spend Refresh] Skipping run (refresh already in progress)");
     return;
   }
@@ -904,7 +904,7 @@ export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
 }
 
 export async function runGoogleSheetsRevenueAutoRefreshOnce(): Promise<void> {
-  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
+  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress || (global as any).__ga4DailyRefreshInProgress) {
     console.log("[Google Sheets Revenue Refresh] Skipping run (refresh already in progress)");
     return;
   }
@@ -939,7 +939,7 @@ export async function runGoogleSheetsRevenueAutoRefreshOnce(): Promise<void> {
 }
 
 export async function runHubSpotPipelineAutoRefreshOnce(): Promise<void> {
-  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
+  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress || (global as any).__ga4DailyRefreshInProgress) {
     console.log("[HubSpot Pipeline Refresh] Skipping run (refresh already in progress)");
     return;
   }
@@ -979,7 +979,7 @@ export async function runHubSpotPipelineAutoRefreshOnce(): Promise<void> {
 }
 
 export async function runSalesforcePipelineAutoRefreshOnce(): Promise<void> {
-  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
+  if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress || (global as any).__ga4DailyRefreshInProgress) {
     console.log("[Salesforce Pipeline Refresh] Skipping run (refresh already in progress)");
     return;
   }

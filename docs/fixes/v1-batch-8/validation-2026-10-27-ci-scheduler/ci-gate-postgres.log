@@ -1,0 +1,382 @@
+2026-10-27 06:50:07.189 CET [2608] LOG:  starting PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35215, 64-bit
+2026-10-27 06:50:07.192 CET [2608] LOG:  listening on IPv4 address "127.0.0.1", port 55444
+2026-10-27 06:50:07.349 CET [44548] LOG:  database system was shut down at 2026-10-27 00:35:59 CET
+2026-10-27 06:50:07.393 CET [2608] LOG:  database system is ready to accept connections
+2026-10-27 06:51:55.656 CET [45372] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:51:55.656 CET [45372] LOG:  unexpected EOF on client connection with an open transaction
+2026-10-27 06:51:58.584 CET [44124] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:01.803 CET [41892] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:52:01.803 CET [41892] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:52:05.021 CET [46776] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:08.440 CET [13320] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:52:08.440 CET [13320] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:52:11.934 CET [39472] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:52:11.934 CET [39472] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:52:12.146 CET [10504] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:12.147 CET [18728] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:12.147 CET [19884] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:17.700 CET [32216] ERROR:  canceling statement due to statement timeout
+2026-10-27 06:52:17.700 CET [32216] STATEMENT:  SELECT pg_sleep(2)
+2026-10-27 06:52:31.039 CET [1788] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:34.150 CET [30548] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:52:34.150 CET [30548] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:52:37.115 CET [29184] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:40.302 CET [45756] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:52:40.302 CET [45756] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:52:43.357 CET [15240] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:46.521 CET [36884] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:52:46.521 CET [36884] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:52:49.677 CET [42468] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:52.871 CET [27852] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:52:52.871 CET [27852] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:52:56.076 CET [18464] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:52:59.306 CET [42676] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:52:59.306 CET [42676] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:53:02.544 CET [32188] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:53:05.747 CET [24220] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:53:05.747 CET [24220] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:53:09.288 CET [37468] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:53:09.288 CET [37468] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:53:09.480 CET [16024] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:53:09.481 CET [28852] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:53:09.481 CET [26532] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:53:12.824 CET [12536] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:53:12.824 CET [12536] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:53:16.289 CET [45540] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:53:16.289 CET [45540] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:53:16.480 CET [45980] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:53:16.481 CET [22468] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:53:16.481 CET [11284] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:53:25.210 CET [31200] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:53:25.210 CET [31200] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:53:33.520 CET [39048] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:53:34.060 CET [43680] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:53:34.060 CET [43680] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:54:38.301 CET [33712] ERROR:  canceling statement due to lock timeout
+2026-10-27 06:54:38.301 CET [33712] CONTEXT:  while locking tuple (0,176) in relation "campaigns"
+2026-10-27 06:54:38.301 CET [33712] STATEMENT:  select "id", "owner_id", "client_id", "name", "client_website", "label", "budget", "currency", "conversion_value", "ga4_campaign_filter", "reporting_time_zone", "type", "platform", "impressions", "clicks", "spend", "status", "industry", "trend_keywords", "start_date", "end_date", "pacing_start_date", "pacing_end_date", "created_at" from "campaigns" where ("campaigns"."id" = $1 and "campaigns"."owner_id" = $2) for update
+2026-10-27 06:54:42.342 CET [33712] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:54:42.342 CET [33712] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:54:42.536 CET [42576] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:54:42.536 CET [42576] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:54:42.568 CET [31188] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-27 06:54:42.568 CET [31188] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-27 06:54:42.568 CET [31188] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, default, default)
+2026-10-27 06:54:42.709 CET [31188] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-27 06:54:42.709 CET [31188] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-27 06:54:42.709 CET [31188] STATEMENT:  insert into "revenue_records" ("id", "campaign_id", "revenue_source_id", "date", "revenue", "currency", "external_id", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, default, $6, default, default)
+2026-10-27 06:54:42.763 CET [44600] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:54:42.763 CET [44600] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:54:42.984 CET [24036] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:54:42.984 CET [24036] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:54:43.196 CET [11024] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:54:43.196 CET [11024] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:54:43.331 CET [31188] WARNING:  there is no transaction in progress
+2026-10-27 06:54:43.388 CET [44540] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:54:43.388 CET [44540] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:54:43.569 CET [31188] WARNING:  there is no transaction in progress
+2026-10-27 06:54:43.581 CET [7312] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:54:43.581 CET [7312] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:54:43.735 CET [31188] WARNING:  there is no transaction in progress
+2026-10-27 06:54:43.784 CET [39292] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:54:43.784 CET [39292] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:55:07.326 CET [44152] LOG:  checkpoint starting: time
+2026-10-27 06:55:19.782 CET [46860] ERROR:  new row for relation "kpis" violates check constraint "reject_current_value"
+2026-10-27 06:55:19.782 CET [46860] DETAIL:  Failing row contains (kpi-a, a, google_analytics, performance, Sessions, sessions, manual, null, null, null, 100.00, 20, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-27 06:55:19.710001, 2026-10-27 05:55:19.78).
+2026-10-27 06:55:19.782 CET [46860] STATEMENT:  update "kpis" set "current_value" = $1, "updated_at" = $2 where "kpis"."id" = $3
+2026-10-27 06:55:30.248 CET [41360] ERROR:  test activation failure
+2026-10-27 06:55:30.248 CET [41360] CONTEXT:  PL/pgSQL function reject_initial_activation() line 1 at RAISE
+2026-10-27 06:55:30.248 CET [41360] STATEMENT:  update "campaigns" set "status" = $1 where ("campaigns"."id" = $2 and "campaigns"."owner_id" = $3 and "campaigns"."status" = $4)
+2026-10-27 06:55:33.849 CET [25452] ERROR:  fixture overview failure
+2026-10-27 06:55:33.849 CET [25452] CONTEXT:  PL/pgSQL function reject_overview() line 1 at RAISE
+2026-10-27 06:55:33.849 CET [25452] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-27 06:55:37.463 CET [44152] LOG:  checkpoint complete: wrote 234 buffers (1.4%), wrote 11 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=28.848 s, sync=1.050 s, total=30.138 s; sync files=609, longest=0.024 s, average=0.002 s; distance=8980 kB, estimate=8980 kB; lsn=0/8903778, redo lsn=0/8439E18
+2026-10-27 06:55:37.658 CET [47100] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:55:38.076 CET [37504] ERROR:  invalid input syntax for type numeric: "invalid"
+2026-10-27 06:55:38.076 CET [37504] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-27 06:55:38.076 CET [37504] STATEMENT:  insert into "revenue_records" ("id", "campaign_id", "revenue_source_id", "date", "revenue", "currency", "external_id", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, default, default)
+2026-10-27 06:55:44.242 CET [43852] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:55:47.629 CET [37504] ERROR:  fixture deletion failure
+2026-10-27 06:55:47.629 CET [37504] CONTEXT:  PL/pgSQL function reject_revenue_delete() line 1 at RAISE
+2026-10-27 06:55:47.629 CET [37504] STATEMENT:  delete from "revenue_records" where ("revenue_records"."revenue_source_id" = $1 and "revenue_records"."campaign_id" = $2)
+2026-10-27 06:55:47.887 CET [12300] ERROR:  fixture deletion failure
+2026-10-27 06:55:47.887 CET [12300] CONTEXT:  PL/pgSQL function reject_revenue_delete() line 1 at RAISE
+2026-10-27 06:55:47.887 CET [12300] STATEMENT:  delete from "revenue_records" where ("revenue_records"."revenue_source_id" = $1 and "revenue_records"."campaign_id" = $2)
+2026-10-27 06:55:48.131 CET [37504] ERROR:  fixture deletion failure
+2026-10-27 06:55:48.131 CET [37504] CONTEXT:  PL/pgSQL function reject_revenue_delete() line 1 at RAISE
+2026-10-27 06:55:48.131 CET [37504] STATEMENT:  delete from "revenue_records" where ("revenue_records"."revenue_source_id" = $1 and "revenue_records"."campaign_id" = $2)
+2026-10-27 06:55:48.359 CET [12300] ERROR:  fixture deletion failure
+2026-10-27 06:55:48.359 CET [12300] CONTEXT:  PL/pgSQL function reject_revenue_delete() line 1 at RAISE
+2026-10-27 06:55:48.359 CET [12300] STATEMENT:  delete from "revenue_records" where ("revenue_records"."revenue_source_id" = $1 and "revenue_records"."campaign_id" = $2)
+2026-10-27 06:55:48.603 CET [37504] ERROR:  fixture deletion failure
+2026-10-27 06:55:48.603 CET [37504] CONTEXT:  PL/pgSQL function reject_revenue_delete() line 1 at RAISE
+2026-10-27 06:55:48.603 CET [37504] STATEMENT:  delete from "revenue_records" where ("revenue_records"."revenue_source_id" = $1 and "revenue_records"."campaign_id" = $2)
+2026-10-27 06:55:48.842 CET [12300] ERROR:  fixture deletion failure
+2026-10-27 06:55:48.842 CET [12300] CONTEXT:  PL/pgSQL function reject_revenue_delete() line 1 at RAISE
+2026-10-27 06:55:48.842 CET [12300] STATEMENT:  delete from "revenue_records" where ("revenue_records"."revenue_source_id" = $1 and "revenue_records"."campaign_id" = $2)
+2026-10-27 06:55:49.102 CET [37504] ERROR:  fixture deletion failure
+2026-10-27 06:55:49.102 CET [37504] CONTEXT:  PL/pgSQL function reject_revenue_delete() line 1 at RAISE
+2026-10-27 06:55:49.102 CET [37504] STATEMENT:  delete from "revenue_records" where ("revenue_records"."revenue_source_id" = $1 and "revenue_records"."campaign_id" = $2)
+2026-10-27 06:55:50.702 CET [11668] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-27 06:55:58.834 CET [15112] ERROR:  fixture persistence failure
+2026-10-27 06:55:58.834 CET [15112] CONTEXT:  PL/pgSQL function reject_fixture_write() line 1 at RAISE
+2026-10-27 06:55:58.834 CET [15112] STATEMENT:  insert into "report_snapshots" ("id", "report_id", "campaign_id", "platform_type", "report_type", "window_start", "window_end", "snapshot_json", "has_estimated", "generated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default, default) returning "id", "report_id", "campaign_id", "platform_type", "report_type", "window_start", "window_end", "snapshot_json", "has_estimated", "generated_at", "created_at"
+2026-10-27 06:55:59.176 CET [15112] ERROR:  fixture persistence failure
+2026-10-27 06:55:59.176 CET [15112] CONTEXT:  PL/pgSQL function reject_fixture_write() line 1 at RAISE
+2026-10-27 06:55:59.176 CET [15112] STATEMENT:  update "report_send_events" set "snapshot_id" = $1, "status" = $2, "error" = $3, "sent_at" = $4 where "report_send_events"."id" = $5
+2026-10-27 06:55:59.511 CET [15112] ERROR:  fixture persistence failure
+2026-10-27 06:55:59.511 CET [15112] CONTEXT:  PL/pgSQL function reject_fixture_write() line 1 at RAISE
+2026-10-27 06:55:59.511 CET [15112] STATEMENT:  update "linkedin_reports" set "last_sent_at" = GREATEST("linkedin_reports"."last_sent_at", $1::timestamp) where "linkedin_reports"."id" = $2
+2026-10-27 06:56:01.000 CET [43928] ERROR:  relation "email_alert_events" does not exist at character 94
+2026-10-27 06:56:01.000 CET [43928] STATEMENT:  select "id", "provider", "error", "metadata", "provider_response_id", "delivery_status" from "email_alert_events" where ("email_alert_events"."kind" = $1 and "email_alert_events"."entity_type" = $2 and "email_alert_events"."entity_id" = $3 and "email_alert_events"."id" = $4) order by "email_alert_events"."created_at" desc limit $5
+2026-10-27 06:56:01.512 CET [15112] ERROR:  fixture persistence failure
+2026-10-27 06:56:01.512 CET [15112] CONTEXT:  PL/pgSQL function reject_fixture_write() line 1 at RAISE
+2026-10-27 06:56:01.512 CET [15112] STATEMENT:  insert into "email_alert_events" ("id", "kind", "entity_type", "entity_id", "dedupe_key", "campaign_id", "campaign_name", "to", "subject", "provider", "success", "delivery_status", "provider_response_id", "attempt_count", "last_attempt_at", "next_attempt_at", "delivered_at", "failed_at", "error", "metadata", "created_at") values ($1, $2, $3, $4, default, $5, $6, $7, $8, $9, $10, $11, default, default, default, default, default, default, default, $12, default)
+2026-10-27 06:56:06.743 CET [15112] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:56:06.743 CET [15112] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:56:07.137 CET [30640] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:56:07.137 CET [30640] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:56:07.569 CET [36016] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-27 06:56:07.569 CET [36016] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-27 06:56:08.775 CET [45724] LOG:  could not receive data from client: An established connection was aborted by the software in your host machine.
+	
+2026-10-27 06:56:08.775 CET [45724] LOG:  unexpected EOF on client connection with an open transaction
+2026-10-27 06:56:08.931 CET [17500] ERROR:  canceling statement due to statement timeout
+2026-10-27 06:56:08.931 CET [17500] STATEMENT:  SELECT pg_sleep(1)
+2026-10-27 06:56:09.146 CET [17500] FATAL:  terminating connection due to idle-in-transaction timeout
+2026-10-27 06:56:27.152 CET [30392] ERROR:  fixture failure
+2026-10-27 06:56:27.152 CET [30392] CONTEXT:  PL/pgSQL function reject_transfer() line 1 at RAISE
+2026-10-27 06:56:27.152 CET [30392] STATEMENT:  update "ga4_connections" set "campaign_id" = $1 where ("ga4_connections"."campaign_id" = $2 and "ga4_connections"."id" in ($3)) returning "id"
+2026-10-27 06:56:27.315 CET [30392] ERROR:  fixture failure
+2026-10-27 06:56:27.315 CET [30392] CONTEXT:  PL/pgSQL function reject_transfer() line 1 at RAISE
+2026-10-27 06:56:27.315 CET [30392] STATEMENT:  update "google_sheets_connections" set "campaign_id" = $1 where ("google_sheets_connections"."campaign_id" = $2 and "google_sheets_connections"."id" in ($3)) returning "id"
+2026-10-27 06:56:27.484 CET [30392] ERROR:  fixture failure
+2026-10-27 06:56:27.484 CET [30392] CONTEXT:  PL/pgSQL function reject_transfer() line 1 at RAISE
+2026-10-27 06:56:27.484 CET [30392] STATEMENT:  update "linkedin_connections" set "campaign_id" = $1 where ("linkedin_connections"."campaign_id" = $2 and "linkedin_connections"."id" in ($3)) returning "id"
+2026-10-27 06:56:27.675 CET [30392] ERROR:  fixture failure
+2026-10-27 06:56:27.675 CET [30392] CONTEXT:  PL/pgSQL function reject_transfer() line 1 at RAISE
+2026-10-27 06:56:27.675 CET [30392] STATEMENT:  update "meta_connections" set "campaign_id" = $1 where ("meta_connections"."campaign_id" = $2 and "meta_connections"."id" in ($3)) returning "id"
+2026-10-27 06:56:27.864 CET [30392] ERROR:  fixture audit failure
+2026-10-27 06:56:27.864 CET [30392] CONTEXT:  PL/pgSQL function reject_audit() line 1 at RAISE
+2026-10-27 06:56:27.864 CET [30392] STATEMENT:  insert into "ga4_connection_lifecycle_events" ("id", "connection_id", "campaign_id", "property_id", "action", "actor", "reason", "changed_at") values (default, $1, $2, $3, $4, $5, $6, default)
+2026-10-27 06:56:42.616 CET [46648] ERROR:  isolated failure
+2026-10-27 06:56:42.616 CET [46648] CONTEXT:  PL/pgSQL function fail_cleanup() line 1 at RAISE
+2026-10-27 06:56:42.616 CET [46648] STATEMENT:  delete from "spend_records" where ("spend_records"."campaign_id" = $1 and "spend_records"."spend_source_id" in ($2, $3))
+2026-10-27 06:56:43.200 CET [46648] WARNING:  there is no transaction in progress
+2026-10-27 06:56:46.325 CET [44888] ERROR:  canceling statement due to lock timeout
+2026-10-27 06:56:46.325 CET [44888] CONTEXT:  while locking tuple (0,1) in relation "campaigns"
+2026-10-27 06:56:46.325 CET [44888] STATEMENT:  select "id" from "campaigns" where "campaigns"."id" in ($1) order by "campaigns"."id" for update
+2026-10-27 06:56:49.863 CET [33260] WARNING:  there is no transaction in progress
+2026-10-27 06:56:50.514 CET [33260] ERROR:  forced currency invalidation failure
+2026-10-27 06:56:50.514 CET [33260] CONTEXT:  PL/pgSQL function reject_currency_invalidation() line 1 at RAISE
+2026-10-27 06:56:50.514 CET [33260] STATEMENT:  delete from "ga4_overview_snapshots" where "ga4_overview_snapshots"."campaign_id" = $1
+2026-10-27 06:56:54.797 CET [33260] ERROR:  null value in column "source_type" of relation "revenue_sources" violates not-null constraint
+2026-10-27 06:56:54.797 CET [33260] DETAIL:  Failing row contains (afdf3711-be50-48e0-a198-9b4cf8fa157c, a, null, ga4, null, null, original, t, 2026-10-27 06:56:54.794629, 2026-10-27 06:56:54.794629).
+2026-10-27 06:56:54.797 CET [33260] STATEMENT:  insert into "revenue_sources" ("id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at") values (default, $1, $2, $3, default, default, $4, $5, default, default) returning "id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at"
+2026-10-27 06:56:57.292 CET [38496] ERROR:  forced cache failure
+2026-10-27 06:56:57.292 CET [38496] CONTEXT:  PL/pgSQL function reject_sheets_cache() line 1 at RAISE
+2026-10-27 06:56:57.292 CET [38496] STATEMENT:  update "google_sheets_connections" set "access_token" = $1, "refresh_token" = $2, "client_secret" = $3, "encrypted_tokens" = $4, "cached_data" = $5, "last_data_refresh_at" = $6 where "google_sheets_connections"."id" = $7 returning "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "cached_data", "last_data_refresh_at", "connected_at", "created_at"
+2026-10-27 06:56:57.333 CET [38496] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-27 06:56:57.333 CET [38496] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where ("google_sheets_connections"."campaign_id" = $1 and "google_sheets_connections"."is_active" = $2) order by "google_sheets_connections"."connected_at"
+2026-10-27 06:56:57.351 CET [33260] ERROR:  column "sheet_name" of relation "google_sheets_connections" does not exist at character 101
+2026-10-27 06:56:57.351 CET [33260] STATEMENT:  insert into "google_sheets_connections" ("id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at") values (default, $1, $2, default, default, default, $3, $4, $5, default, $6, $7, default, $8, $9, default, default, default, default, default, default) returning "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at"
+2026-10-27 06:56:57.411 CET [33260] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-27 06:56:57.411 CET [33260] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-27 06:56:57.419 CET [33260] ERROR:  forced invalidation failure
+2026-10-27 06:56:57.419 CET [33260] CONTEXT:  PL/pgSQL function reject_legacy_invalidation() line 1 at RAISE
+2026-10-27 06:56:57.419 CET [33260] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-27 06:56:57.445 CET [33260] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-27 06:56:57.445 CET [33260] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-27 06:56:57.467 CET [33260] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-27 06:56:57.467 CET [33260] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1 limit $2
+2026-10-27 06:56:57.661 CET [33260] ERROR:  forced invalidation failure
+2026-10-27 06:56:57.661 CET [33260] CONTEXT:  PL/pgSQL function reject_invalidation() line 1 at RAISE
+2026-10-27 06:56:57.661 CET [33260] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-27 06:57:20.063 CET [37944] WARNING:  there is no transaction in progress
+2026-10-27 06:57:20.171 CET [37944] ERROR:  invalid input syntax for type numeric: "invalid-number"
+2026-10-27 06:57:20.171 CET [37944] CONTEXT:  unnamed portal parameter $6 = '...'
+2026-10-27 06:57:20.171 CET [37944] STATEMENT:  insert into "google_ads_daily_metrics" ("id", "campaign_id", "google_campaign_id", "google_campaign_name", "date", "impressions", "clicks", "spend", "conversions", "conversion_value", "ctr", "cpc", "cpm", "interaction_rate", "video_views", "search_impression_share", "cost_per_conversion", "conversion_rate", "ga4_revenue", "ga4_utm_name", "imported_at") values (default, $1, $2, default, $3, $4, $5, $6, default, default, default, default, default, default, default, default, default, default, default, default, default)
+2026-10-27 06:57:20.306 CET [37944] ERROR:  fixture freshness failure
+2026-10-27 06:57:20.306 CET [37944] CONTEXT:  PL/pgSQL function deny_fixture_freshness() line 1 at RAISE
+2026-10-27 06:57:20.306 CET [37944] STATEMENT:  update "google_ads_connections" set "last_refresh_at" = $1 where "google_ads_connections"."id" = $2 returning "id"
+2026-10-27 06:57:21.537 CET [37944] WARNING:  there is no transaction in progress
+2026-10-27 06:57:21.638 CET [37944] ERROR:  invalid input syntax for type numeric: "invalid-number"
+2026-10-27 06:57:21.638 CET [37944] CONTEXT:  unnamed portal parameter $6 = '...'
+2026-10-27 06:57:21.638 CET [37944] STATEMENT:  insert into "ga4_google_ads_spend_daily_metrics" ("id", "campaign_id", "google_campaign_id", "google_campaign_name", "date", "impressions", "clicks", "spend", "imported_at") values (default, $1, $2, default, $3, $4, $5, $6, default)
+2026-10-27 06:57:21.778 CET [37944] ERROR:  fixture freshness failure
+2026-10-27 06:57:21.778 CET [37944] CONTEXT:  PL/pgSQL function deny_fixture_freshness() line 1 at RAISE
+2026-10-27 06:57:21.778 CET [37944] STATEMENT:  update "ga4_google_ads_spend_connections" set "last_refresh_at" = $1 where "ga4_google_ads_spend_connections"."id" = $2 returning "id"
+2026-10-27 06:57:24.592 CET [37944] ERROR:  invalid input syntax for type numeric: "invalid"
+2026-10-27 06:57:24.592 CET [37944] CONTEXT:  unnamed portal parameter $6 = '...'
+2026-10-27 06:57:24.592 CET [37944] STATEMENT:  insert into "google_ads_daily_metrics" ("id", "campaign_id", "google_campaign_id", "google_campaign_name", "date", "impressions", "clicks", "spend", "conversions", "conversion_value", "ctr", "cpc", "cpm", "interaction_rate", "video_views", "search_impression_share", "cost_per_conversion", "conversion_rate", "ga4_revenue", "ga4_utm_name", "imported_at") values (default, $1, $2, default, $3, $4, $5, $6, default, default, default, default, default, default, default, default, default, default, default, default, default)
+2026-10-27 06:57:24.648 CET [37944] ERROR:  invalid input syntax for type numeric: "invalid"
+2026-10-27 06:57:24.648 CET [37944] CONTEXT:  unnamed portal parameter $6 = '...'
+2026-10-27 06:57:24.648 CET [37944] STATEMENT:  insert into "ga4_google_ads_spend_daily_metrics" ("id", "campaign_id", "google_campaign_id", "google_campaign_name", "date", "impressions", "clicks", "spend", "imported_at") values (default, $1, $2, default, $3, $4, $5, $6, default)
+2026-10-27 06:57:25.296 CET [37944] ERROR:  fixture delete failed
+2026-10-27 06:57:25.296 CET [37944] CONTEXT:  PL/pgSQL function deny_fixture_delete() line 1 at RAISE
+2026-10-27 06:57:25.296 CET [37944] STATEMENT:  delete from "spend_records" where ("spend_records"."spend_source_id" = $1 and "spend_records"."campaign_id" = $2)
+2026-10-27 06:57:25.380 CET [37944] ERROR:  fixture delete failed
+2026-10-27 06:57:25.380 CET [37944] CONTEXT:  PL/pgSQL function deny_fixture_delete() line 1 at RAISE
+2026-10-27 06:57:25.380 CET [37944] STATEMENT:  delete from "ga4_google_ads_spend_connections" where "ga4_google_ads_spend_connections"."campaign_id" = $1 returning "id"
+2026-10-27 06:57:31.549 CET [35720] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-27 06:57:31.549 CET [35720] DETAIL:  Failing row contains (596743ae-d0d0-4f48-a9f8-c7df763a7ba9, a, property-a, 2026-10-16, 2026-10-16, {"meta": {"dailyHistoryRefresh": {"scope": "new-scope", "version..., {}, {}, 2026-10-27 05:57:31.546, 2026-10-27 06:57:31.532849).
+2026-10-27 06:57:31.549 CET [35720] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-27 06:57:32.163 CET [35720] ERROR:  duplicate key value violates unique constraint "ga4_daily_metrics_pkey"
+2026-10-27 06:57:32.163 CET [35720] DETAIL:  Key (id)=(a9c31908-0aff-4fc7-a852-1591ce9a95f5) already exists.
+2026-10-27 06:57:32.163 CET [35720] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, default)
+2026-10-27 06:57:32.528 CET [35720] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-27 06:57:32.528 CET [35720] DETAIL:  Failing row contains (23cc04a2-1830-4135-8060-d62a8414968a, a, property-a, 2025-06-03, 2026-10-16, {"rejectForTest": true}, {}, {}, 2026-10-27 05:57:32.526, 2026-10-27 06:57:32.374469).
+2026-10-27 06:57:32.528 CET [35720] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-27 06:57:32.768 CET [35720] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-27 06:57:32.768 CET [35720] DETAIL:  Failing row contains (e0171c5a-89df-4cae-82b8-07dd821f147b, a, property-a, 2026-10-16, 2026-10-16, {"rejectForTest": true}, {}, {}, 2026-10-27 05:57:32.765, 2026-10-27 06:57:32.755098).
+2026-10-27 06:57:32.768 CET [35720] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-27 06:57:33.139 CET [45880] FATAL:  terminating connection due to administrator command
+2026-10-27 06:57:33.139 CET [45880] CONTEXT:  SQL statement "SELECT pg_advisory_xact_lock(55439001)"
+	PL/pgSQL function hold_overview_write() line 1 at PERFORM
+2026-10-27 06:57:33.139 CET [45880] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-27 06:58:01.637 CET [16760] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-27 06:58:01.637 CET [16760] DETAIL:  Failing row contains (7e4781b5-4af0-4a0d-bdba-8388620c7f39, a, google_ads, performance, CPC fixture, cpc, manual, null, null, {"currentValueMode": "manual"}, 2.00, NaN, null, EUR, null, medium, tracking, monthly, 30, 7day, null, 2.00, above, t, f, null, f, daily, null, all, null, 2026-10-27 06:58:01.612546, 2026-10-25 12:00:00).
+2026-10-27 06:58:01.637 CET [16760] STATEMENT:  update "kpis" set "calculation_config" = $1, "current_value" = $2, "updated_at" = $3 where "kpis"."id" = $4 returning "id", "campaign_id", "platform_type", "category", "name", "metric", "source_type", "metric_key", "aggregation_method", "calculation_config", "target_value", "current_value", "last_computed_value", "unit", "description", "priority", "status", "timeframe", "tracking_period", "rolling_average", "target_date", "alert_threshold", "alert_condition", "alerts_enabled", "email_notifications", "email_recipients", "slack_notifications", "alert_frequency", "last_alert_sent", "apply_to", "specific_campaign_id", "created_at", "updated_at"
+2026-10-27 06:58:02.015 CET [13964] ERROR:  fixture delete failure
+2026-10-27 06:58:02.015 CET [13964] CONTEXT:  PL/pgSQL function deny_fixture_delete() line 1 at RAISE
+2026-10-27 06:58:02.015 CET [13964] STATEMENT:  delete from "kpis" where "kpis"."id" = $1
+2026-10-27 06:58:03.293 CET [13964] ERROR:  new row for relation "benchmarks" violates check constraint "benchmarks_current_value_finite"
+2026-10-27 06:58:03.293 CET [13964] DETAIL:  Failing row contains (9e6facec-0bd9-45d8-acff-3c27dad863d1, a, google_ads, performance, CPC fixture, cpc, null, 2.00, NaN, EUR, industry, null, null, {"currentValueMode": "manual"}, null, null, monthly, active, 6750.00, medium, all, null, null, 2.00, above, t, f, null, daily, null, 2026-10-27 06:58:03.26861, 2026-10-27 06:58:03.26861, 2026-10-25 12:00:00).
+2026-10-27 06:58:03.293 CET [13964] STATEMENT:  update "benchmarks" set "current_value" = $1, "calculation_config" = $2, "updated_at" = $3 where "benchmarks"."id" = $4 returning "id", "campaign_id", "platform_type", "category", "name", "metric", "description", "benchmark_value", "current_value", "unit", "benchmark_type", "competitor_name", "source", "calculation_config", "industry", "geo_location", "period", "status", "variance", "confidence_level", "apply_to", "specific_campaign_id", "linkedin_campaign_name", "alert_threshold", "alert_condition", "alerts_enabled", "email_notifications", "email_recipients", "alert_frequency", "last_alert_sent", "last_updated", "created_at", "updated_at"
+2026-10-27 06:58:03.564 CET [36624] ERROR:  fixture delete failure
+2026-10-27 06:58:03.564 CET [36624] CONTEXT:  PL/pgSQL function deny_fixture_delete() line 1 at RAISE
+2026-10-27 06:58:03.564 CET [36624] STATEMENT:  delete from "benchmarks" where "benchmarks"."id" = $1
+2026-10-27 06:58:19.811 CET [40644] ERROR:  new row for relation "ga4_refresh_work" violates check constraint "test_claim_failure"
+2026-10-27 06:58:19.811 CET [40644] DETAIL:  Failing row contains (e86be865-9e83-4dfa-93c7-30d13c8cfbbb, a, 2026-10-27 05:58:18.988+01, 2026-10-17, e899f75318a78915ba9e4de1855832ee56b42d3227bad6cad4230a86431c6f18, {"version": 1, "campaign": {"id": "a", "status": "active", "owne..., running, 966f85e8-00e5-4fcd-9d1d-1199a87b9ef8, 2026-10-27 07:00:19.810922+01, 2026-10-27 06:58:19.810923+01, null, 2026-10-27 06:58:19.810923+01, 1, null, t, null, f).
+2026-10-27 06:58:19.811 CET [40644] STATEMENT:  update "ga4_refresh_work" set "status" = $1, "lease_token" = $2, "lease_expires_at" = clock_timestamp() + $3 * interval '1 millisecond', "started_at" = clock_timestamp(), "attempt_count" = "ga4_refresh_work"."attempt_count" + 1, "next_attempt_at" = $4, "updated_at" = clock_timestamp() where ("ga4_refresh_work"."id" = $5 and "ga4_refresh_work"."campaign_id" = $6 and "ga4_refresh_work"."status" = $7) returning "id", "campaign_id", "due_at", "reporting_date", "scope_hash", "scope", "status", "lease_token", "lease_expires_at", "started_at", "completed_at", "attempt_count", "next_attempt_at", "suppress_alerts", "retryable", "last_error", "updated_at"
+2026-10-27 06:58:22.742 CET [40644] ERROR:  new row for relation "ga4_refresh_work" violates check constraint "ga4_refresh_work_state"
+2026-10-27 06:58:22.742 CET [40644] DETAIL:  Failing row contains (f9243a90-e642-43aa-b0f2-12ffe3de5efc, a, 2026-10-27 05:58:17.988+01, 2026-10-17, e8d2d0545ecf06b15ed84a375901b4c5d672fb4f5ea515660639b4654e882eaa, {"version": 1, "campaign": {"id": "a", "status": "active", "owne..., completed, efc0f6d2-3c11-4ad4-8459-9f7fa091817c, 2026-10-27 07:00:22.725208+01, 2026-10-27 06:58:22.725209+01, null, 2026-10-27 06:58:22.725209+01, 1, null, t, null, f).
+2026-10-27 06:58:22.742 CET [40644] STATEMENT:  UPDATE ga4_refresh_work SET status='completed' WHERE id=$1
+2026-10-27 06:58:22.750 CET [40604] ERROR:  duplicate key value violates unique constraint "ga4_refresh_work_running_campaign"
+2026-10-27 06:58:22.750 CET [40604] DETAIL:  Key (campaign_id)=(a) already exists.
+2026-10-27 06:58:22.750 CET [40604] STATEMENT:  UPDATE ga4_refresh_work SET status='running',lease_token='other',lease_expires_at=now()+interval '1 minute',started_at=now() WHERE id=$1
+2026-10-27 06:58:42.527 CET [24992] WARNING:  there is no transaction in progress
+2026-10-27 06:58:43.394 CET [24992] WARNING:  there is no transaction in progress
+2026-10-27 06:58:43.580 CET [24992] ERROR:  invalid input syntax for type json
+2026-10-27 06:58:43.580 CET [24992] DETAIL:  Token "invalid" is invalid.
+2026-10-27 06:58:43.580 CET [24992] CONTEXT:  JSON data, line 1: invalid...
+2026-10-27 06:58:43.580 CET [24992] STATEMENT:  update "notifications" set "read" = $1, "metadata" = (COALESCE(NULLIF("notifications"."metadata", '')::jsonb, '{}'::jsonb) || jsonb_build_object('dismissedAt', NOW(), 'dismissedBy', 'system', 'dismissalReason', 'campaign_deleted'))::text where "notifications"."campaign_id" = $2
+2026-10-27 06:58:43.819 CET [31164] ERROR:  new row for relation "revenue_records" violates check constraint "fixture_reject"
+2026-10-27 06:58:43.819 CET [31164] DETAIL:  Failing row contains (27e99594-1405-4f80-bdd7-2bf9764d226b, a, 5d28d2c9-ce57-49f4-bba4-b43034567885, 2026-10-21, 40.00, EUR, null, csv, null, 2026-10-27 06:58:43.811736).
+2026-10-27 06:58:43.819 CET [31164] STATEMENT:  insert into "revenue_records" ("id", "campaign_id", "revenue_source_id", "date", "revenue", "currency", "external_id", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, default, $6, default, default)
+2026-10-27 06:58:43.949 CET [31164] ERROR:  new row for relation "revenue_records" violates check constraint "fixture_reject"
+2026-10-27 06:58:43.949 CET [31164] DETAIL:  Failing row contains (7d5b666a-536d-4ea4-958a-3d77cbfa32ca, a, fb3fc37d-407f-430e-9f2c-1644e44af0e6, 2026-10-21, 40.00, EUR, null, csv, null, 2026-10-27 06:58:43.939788).
+2026-10-27 06:58:43.949 CET [31164] STATEMENT:  insert into "revenue_records" ("id", "campaign_id", "revenue_source_id", "date", "revenue", "currency", "external_id", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, default, $6, default, default)
+2026-10-27 06:58:44.178 CET [24992] WARNING:  there is no transaction in progress
+2026-10-27 06:58:44.958 CET [32580] WARNING:  there is no transaction in progress
+2026-10-27 06:59:01.006 CET [24704] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 06:59:01.006 CET [24704] DETAIL:  Failing row contains (4b6c4e34-a2e5-407b-9043-a7b7576c785f, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 05:59:01.003, 2026-10-27 06:59:00.99888).
+2026-10-27 06:59:01.006 CET [24704] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 06:59:01.068 CET [24704] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 06:59:01.068 CET [24704] DETAIL:  Failing row contains (149d7014-ac93-4404-8843-e9a1affd900c, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 05:59:01.066, 2026-10-27 06:59:01.063701).
+2026-10-27 06:59:01.068 CET [24704] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 06:59:01.128 CET [24704] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 06:59:01.128 CET [24704] DETAIL:  Failing row contains (993d9b44-6efd-47c7-a1b0-ee63c471f975, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 05:59:01.126, 2026-10-27 06:59:01.12262).
+2026-10-27 06:59:01.128 CET [24704] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 06:59:01.177 CET [24704] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 06:59:01.177 CET [24704] DETAIL:  Failing row contains (83f99011-c2da-4bc7-9dfb-5d6634c38f92, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 05:59:01.175, 2026-10-27 06:59:01.172293).
+2026-10-27 06:59:01.177 CET [24704] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 06:59:01.229 CET [24704] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 06:59:01.229 CET [24704] DETAIL:  Failing row contains (10a6e78a-3f5a-4719-99c3-74478786dd6b, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 05:59:01.227, 2026-10-27 06:59:01.223144).
+2026-10-27 06:59:01.229 CET [24704] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 06:59:01.868 CET [24704] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-27 06:59:01.868 CET [24704] DETAIL:  Failing row contains (75970c3c-859b-4f37-9184-f7ce5bc2d0a2, null, null, performance, bad, null, manual, null, null, null, 10.00, Infinity, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-27 06:59:01.86798, 2026-10-27 06:59:01.86798).
+2026-10-27 06:59:01.868 CET [24704] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-27 06:59:01.984 CET [44560] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-27 06:59:01.984 CET [44560] DETAIL:  Failing row contains (cfdfc479-14e9-45a6-a6fe-d244f0d4b275, bad, Infinity, null, null, neutral, 2026-10-27 06:59:01.982816, null).
+2026-10-27 06:59:01.984 CET [44560] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-27 06:59:02.092 CET [43920] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-27 06:59:02.092 CET [43920] DETAIL:  Failing row contains (199a210b-270d-4d07-bee6-2096844d88f3, bad, Infinity, 10.00, 0.00, average, 2026-10-27 06:59:02.08961, null).
+2026-10-27 06:59:02.092 CET [43920] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-27 06:59:02.302 CET [19924] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-27 06:59:02.302 CET [19924] DETAIL:  Failing row contains (6b60c2d2-d128-4444-858f-97f710c651a4, null, null, performance, bad, null, manual, null, null, null, 10.00, -Infinity, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-27 06:59:02.301068, 2026-10-27 06:59:02.301068).
+2026-10-27 06:59:02.302 CET [19924] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-27 06:59:02.405 CET [37380] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-27 06:59:02.405 CET [37380] DETAIL:  Failing row contains (97d690b5-a267-4cf9-a9e9-a109d763a600, bad, -Infinity, null, null, neutral, 2026-10-27 06:59:02.403378, null).
+2026-10-27 06:59:02.405 CET [37380] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-27 06:59:02.503 CET [46792] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-27 06:59:02.503 CET [46792] DETAIL:  Failing row contains (dde12b70-a199-4c8a-bd11-de965a760911, bad, -Infinity, 10.00, 0.00, average, 2026-10-27 06:59:02.501269, null).
+2026-10-27 06:59:02.503 CET [46792] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-27 06:59:02.702 CET [22296] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-27 06:59:02.702 CET [22296] DETAIL:  Failing row contains (500dd42d-3a71-4991-a473-344f52cedb83, null, null, performance, bad, null, manual, null, null, null, 10.00, NaN, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-27 06:59:02.701485, 2026-10-27 06:59:02.701485).
+2026-10-27 06:59:02.702 CET [22296] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-27 06:59:02.801 CET [10920] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-27 06:59:02.801 CET [10920] DETAIL:  Failing row contains (14a1c819-c2ec-4053-b852-99d31bed3f48, bad, NaN, null, null, neutral, 2026-10-27 06:59:02.799426, null).
+2026-10-27 06:59:02.801 CET [10920] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-27 06:59:02.887 CET [43696] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-27 06:59:02.887 CET [43696] DETAIL:  Failing row contains (c31ef3d6-e921-4ea1-836e-5a13f164ce89, bad, NaN, 10.00, 0.00, average, 2026-10-27 06:59:02.886054, null).
+2026-10-27 06:59:02.887 CET [43696] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-27 06:59:03.079 CET [30392] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-27 06:59:03.079 CET [30392] DETAIL:  Failing row contains (8753cf85-b811-41e2-bfc2-13f6a19a40dd, a, 123, 2026-10-18, 0, 0, null, 0, Infinity, 0.00, 0.0000, null, f, 2026-10-27 06:59:03.078782, 2026-10-27 06:59:03.078782).
+2026-10-27 06:59:03.079 CET [30392] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-27 06:59:03.270 CET [38980] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-27 06:59:03.270 CET [38980] DETAIL:  Failing row contains (c4860c8f-9367-4462-8b0b-8e2d65d8862f, a, 0, 0, 0, Infinity, 0, 0.00, null, automatic, null, 2026-10-27 06:59:03.26806, null).
+2026-10-27 06:59:03.270 CET [38980] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-27 06:59:03.423 CET [29440] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-27 06:59:03.423 CET [29440] DETAIL:  Failing row contains (8f111860-0247-4025-8f7e-48ec7e25940f, a, 123, 2026-10-18, 0, 0, null, 0, -Infinity, 0.00, 0.0000, null, f, 2026-10-27 06:59:03.422906, 2026-10-27 06:59:03.422906).
+2026-10-27 06:59:03.423 CET [29440] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-27 06:59:03.497 CET [300] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-27 06:59:03.497 CET [300] DETAIL:  Failing row contains (ff283e83-4c37-449c-883e-94c3e798e9ec, a, 0, 0, 0, -Infinity, 0, 0.00, null, automatic, null, 2026-10-27 06:59:03.495478, null).
+2026-10-27 06:59:03.497 CET [300] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-27 06:59:03.646 CET [5508] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-27 06:59:03.646 CET [5508] DETAIL:  Failing row contains (c9c70df9-1a21-4783-b512-99e48be7e43c, a, 123, 2026-10-18, 0, 0, null, 0, NaN, 0.00, 0.0000, null, f, 2026-10-27 06:59:03.645727, 2026-10-27 06:59:03.645727).
+2026-10-27 06:59:03.646 CET [5508] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-27 06:59:03.725 CET [43600] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-27 06:59:03.725 CET [43600] DETAIL:  Failing row contains (534b4085-8e00-469a-b24a-f7b89bb09967, a, 0, 0, 0, NaN, 0, 0.00, null, automatic, null, 2026-10-27 06:59:03.723178, null).
+2026-10-27 06:59:03.725 CET [43600] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-27 06:59:04.113 CET [43168] WARNING:  there is no transaction in progress
+2026-10-27 06:59:22.622 CET [45272] ERROR:  new row for relation "spend_records" violates check constraint "fixture_insert_failure"
+2026-10-27 06:59:22.622 CET [45272] DETAIL:  Failing row contains (885a5232-f97c-44cf-82ef-3966c1ce510a, a, d1e55c89-fa13-44ca-b44b-0f77dd22489b, 2026-10-27, 100.00, EUR, manual, null, 2026-10-27 06:59:22.614638).
+2026-10-27 06:59:22.622 CET [45272] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, default)
+2026-10-27 06:59:22.893 CET [45272] ERROR:  new row for relation "spend_records" violates check constraint "fixture_insert_failure"
+2026-10-27 06:59:22.893 CET [45272] DETAIL:  Failing row contains (320e1895-86be-4b24-8176-2d4921032e0f, a, source-a, 2026-10-27, 100.00, EUR, manual, null, 2026-10-27 06:59:22.886002).
+2026-10-27 06:59:22.893 CET [45272] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, default)
+2026-10-27 06:59:23.185 CET [45272] ERROR:  isolated delete failure
+2026-10-27 06:59:23.185 CET [45272] CONTEXT:  PL/pgSQL function fixture_delete_failure() line 1 at RAISE
+2026-10-27 06:59:23.185 CET [45272] STATEMENT:  delete from "spend_records" where ("spend_records"."campaign_id" = $1 and "spend_records"."spend_source_id" = $2)
+2026-10-27 06:59:37.052 CET [43744] ERROR:  fixture failure
+2026-10-27 06:59:37.052 CET [43744] CONTEXT:  PL/pgSQL function fail_move() line 1 at RAISE
+2026-10-27 06:59:37.052 CET [43744] STATEMENT:  update "custom_integrations" set "campaign_id" = $1 where "custom_integrations"."id" = $2
+2026-10-27 06:59:37.906 CET [46012] ERROR:  invalid input syntax for type numeric: "not-a-number"
+2026-10-27 06:59:37.906 CET [46012] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-27 06:59:37.906 CET [46012] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, default, default)
+2026-10-27 06:59:37.917 CET [46012] ERROR:  invalid input syntax for type numeric: "not-a-number"
+2026-10-27 06:59:37.917 CET [46012] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-27 06:59:37.917 CET [46012] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, default, default)
+2026-10-27 06:59:53.655 CET [25688] FATAL:  terminating connection due to administrator command
+2026-10-27 07:00:07.688 CET [44152] LOG:  checkpoint starting: time
+2026-10-27 07:01:06.178 CET [44152] LOG:  checkpoint complete: wrote 498 buffers (3.0%), wrote 9 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=54.228 s, sync=1.415 s, total=58.491 s; sync files=1415, longest=0.007 s, average=0.001 s; distance=23183 kB, estimate=23183 kB; lsn=0/9AEF938, redo lsn=0/9ADDB38
+2026-10-27 07:03:34.038 CET [2608] LOG:  received fast shutdown request
+2026-10-27 07:03:34.041 CET [2608] LOG:  aborting any active transactions
+2026-10-27 07:03:34.057 CET [2608] LOG:  background worker "logical replication launcher" (PID 13836) exited with exit code 1
+2026-10-27 07:03:34.058 CET [44152] LOG:  shutting down
+2026-10-27 07:03:34.060 CET [44152] LOG:  checkpoint starting: shutdown immediate
+2026-10-27 07:03:34.113 CET [44152] LOG:  checkpoint complete: wrote 14 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.021 s, sync=0.016 s, total=0.055 s; sync files=12, longest=0.003 s, average=0.002 s; distance=100 kB, estimate=20874 kB; lsn=0/9AF6CA0, redo lsn=0/9AF6CA0
+2026-10-27 07:03:34.208 CET [2608] LOG:  database system is shut down

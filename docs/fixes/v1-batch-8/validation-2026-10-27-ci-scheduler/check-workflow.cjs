@@ -1,0 +1,11 @@
+﻿const fs=require('node:fs'),assert=require('node:assert/strict'),yaml=require('yaml'),ts=require('typescript');
+const file='.github/workflows/test.yml';const workflow=yaml.parse(fs.readFileSync(file,'utf8'));const job=workflow.jobs['unit-tests'];
+assert.equal(job.permissions.contents,'read');assert.equal(job.env.DATABASE_URL,'');assert.equal(job.services.postgres.image,'postgres:18');
+assert.deepEqual(job.services.postgres.ports,['127.0.0.1:55444:5432']);assert.equal(job.services.postgres.env.POSTGRES_USER,'v1_audit');assert.equal(job.services.postgres.env.POSTGRES_DB,'ga4_alignment_test');
+for(const [key,db]of [['GA4_TEST_DATABASE_URL','ga4_alignment_test'],['NOTIFICATION_TEST_DATABASE_URL','notifications_test']])assert.equal(job.env[key],`postgresql://v1_audit@127.0.0.1:55444/${db}`);
+const runs=job.steps.map(s=>s.run||'');const gate=runs.indexOf('npm run test:current-version');const browser=runs.indexOf('npx --no-install playwright install --with-deps chromium');const fixture=runs.findIndex(s=>s.includes('CREATE DATABASE notifications_test'));
+assert.ok(browser>0&&browser<gate&&fixture>browser&&fixture<gate);assert.notEqual(job.steps[gate]['continue-on-error'],true);
+const script=runs[fixture].split("<<'NODE'\n")[1].replace(/\nNODE\n?$/,'');const parsed=ts.createSourceFile('fixture.mjs',script,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);assert.equal(parsed.parseDiagnostics.length,0);
+assert.equal(job.env.V1_BATCH7_PRESERVE_ARTIFACTS,'1');
+const result={at:new Date().toISOString(),checks:'PASS',postgres:'ephemeral PostgreSQL 18 on loopback port 55444',browser:'installed before blocking test gate',databases:['ga4_alignment_test','notifications_test'],applicationDatabase:'empty',providerCredentials:'none in workflow',limitation:'Parsed workflow and fixture script; hosted Linux execution still required'};
+fs.writeFileSync('docs/fixes/v1-batch-8/validation-2026-10-27-ci-scheduler/workflow-check.json',JSON.stringify(result,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(result));

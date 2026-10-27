@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-27T06:01:46.080Z",
+  "results": [
+    {
+      "name": "legacy port",
+      "accepted": true,
+      "pass": true
+    },
+    {
+      "name": "shared fixture port",
+      "accepted": true,
+      "pass": true
+    },
+    {
+      "name": "remote host",
+      "accepted": false,
+      "pass": true
+    },
+    {
+      "name": "other database",
+      "accepted": false,
+      "pass": true
+    },
+    {
+      "name": "other port",
+      "accepted": false,
+      "pass": true
+    },
+    {
+      "name": "query override",
+      "accepted": false,
+      "pass": true
+    },
+    {
+      "name": "application URL present",
+      "accepted": false,
+      "pass": true
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+2026-10-27 07:04:18.974 CET [44380] LOG:  starting PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35215, 64-bit
+2026-10-27 07:04:18.976 CET [44380] LOG:  listening on IPv4 address "127.0.0.1", port 55444
+2026-10-27 07:04:19.116 CET [45648] LOG:  database system was shut down at 2026-10-27 07:03:34 CET
+2026-10-27 07:04:19.158 CET [44380] LOG:  database system is ready to accept connections
+2026-10-27 07:04:27.703 CET [8264] WARNING:  there is no transaction in progress
+2026-10-27 07:04:28.358 CET [8264] ERROR:  forced currency invalidation failure
+2026-10-27 07:04:28.358 CET [8264] CONTEXT:  PL/pgSQL function reject_currency_invalidation() line 1 at RAISE
+2026-10-27 07:04:28.358 CET [8264] STATEMENT:  delete from "ga4_overview_snapshots" where "ga4_overview_snapshots"."campaign_id" = $1
+2026-10-27 07:04:32.728 CET [8264] ERROR:  null value in column "source_type" of relation "revenue_sources" violates not-null constraint
+2026-10-27 07:04:32.728 CET [8264] DETAIL:  Failing row contains (52c9db59-2b34-407f-90cf-ab25778475c5, a, null, ga4, null, null, original, t, 2026-10-27 07:04:32.726223, 2026-10-27 07:04:32.726223).
+2026-10-27 07:04:32.728 CET [8264] STATEMENT:  insert into "revenue_sources" ("id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at") values (default, $1, $2, $3, default, default, $4, $5, default, default) returning "id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at"
+2026-10-27 07:04:35.332 CET [46536] ERROR:  forced cache failure
+2026-10-27 07:04:35.332 CET [46536] CONTEXT:  PL/pgSQL function reject_sheets_cache() line 1 at RAISE
+2026-10-27 07:04:35.332 CET [46536] STATEMENT:  update "google_sheets_connections" set "access_token" = $1, "refresh_token" = $2, "client_secret" = $3, "encrypted_tokens" = $4, "cached_data" = $5, "last_data_refresh_at" = $6 where "google_sheets_connections"."id" = $7 returning "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "cached_data", "last_data_refresh_at", "connected_at", "created_at"
+2026-10-27 07:04:35.375 CET [46536] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-27 07:04:35.375 CET [46536] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where ("google_sheets_connections"."campaign_id" = $1 and "google_sheets_connections"."is_active" = $2) order by "google_sheets_connections"."connected_at"
+2026-10-27 07:04:35.392 CET [8264] ERROR:  column "sheet_name" of relation "google_sheets_connections" does not exist at character 101
+2026-10-27 07:04:35.392 CET [8264] STATEMENT:  insert into "google_sheets_connections" ("id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at") values (default, $1, $2, default, default, default, $3, $4, $5, default, $6, $7, default, $8, $9, default, default, default, default, default, default) returning "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at"
+2026-10-27 07:04:35.448 CET [8264] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-27 07:04:35.448 CET [8264] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-27 07:04:35.458 CET [8264] ERROR:  forced invalidation failure
+2026-10-27 07:04:35.458 CET [8264] CONTEXT:  PL/pgSQL function reject_legacy_invalidation() line 1 at RAISE
+2026-10-27 07:04:35.458 CET [8264] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-27 07:04:35.485 CET [8264] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-27 07:04:35.485 CET [8264] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-27 07:04:35.515 CET [8264] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-27 07:04:35.515 CET [8264] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1 limit $2
+2026-10-27 07:04:35.758 CET [8264] ERROR:  forced invalidation failure
+2026-10-27 07:04:35.758 CET [8264] CONTEXT:  PL/pgSQL function reject_invalidation() line 1 at RAISE
+2026-10-27 07:04:35.758 CET [8264] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-27 07:04:49.823 CET [21708] LOG:  skipping analyze of "revenue_sources" --- lock not available
+2026-10-27 07:04:53.309 CET [1724] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 07:04:53.309 CET [1724] DETAIL:  Failing row contains (c1864f67-0ed3-4724-8ed4-460321580056, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 06:04:53.307, 2026-10-27 07:04:53.304653).
+2026-10-27 07:04:53.309 CET [1724] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 07:04:53.365 CET [1724] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 07:04:53.365 CET [1724] DETAIL:  Failing row contains (bd14f064-7d38-4f9b-9594-5e97b6be7efc, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 06:04:53.364, 2026-10-27 07:04:53.360278).
+2026-10-27 07:04:53.365 CET [1724] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 07:04:53.422 CET [1724] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 07:04:53.422 CET [1724] DETAIL:  Failing row contains (a6decf26-bee2-471b-82a6-9ad7d9c39652, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 06:04:53.42, 2026-10-27 07:04:53.417815).
+2026-10-27 07:04:53.422 CET [1724] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 07:04:53.478 CET [1724] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 07:04:53.478 CET [1724] DETAIL:  Failing row contains (fb5754bc-381c-4368-b0a7-5e9673b78ae6, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 06:04:53.476, 2026-10-27 07:04:53.472224).
+2026-10-27 07:04:53.478 CET [1724] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 07:04:53.535 CET [1724] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "fixture_revenue"
+2026-10-27 07:04:53.535 CET [1724] DETAIL:  Failing row contains (8e3f10e3-26b2-4c4d-a58f-b31b44e1e5d6, a, 123, 2026-10-18, 8, 10, 5, 20, 9, 999.00, 0.5000, null, f, 2026-10-27 06:04:53.533, 2026-10-27 07:04:53.530222).
+2026-10-27 07:04:53.535 CET [1724] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, default)
+2026-10-27 07:04:54.178 CET [1724] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-27 07:04:54.178 CET [1724] DETAIL:  Failing row contains (5d32a2dc-2197-4a68-8ab8-1700491ba20d, null, null, performance, bad, null, manual, null, null, null, 10.00, Infinity, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-27 07:04:54.177983, 2026-10-27 07:04:54.177983).
+2026-10-27 07:04:54.178 CET [1724] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-27 07:04:54.271 CET [44908] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-27 07:04:54.271 CET [44908] DETAIL:  Failing row contains (a6ec697c-e2fb-41db-8953-e416cb178472, bad, Infinity, null, null, neutral, 2026-10-27 07:04:54.269609, null).
+2026-10-27 07:04:54.271 CET [44908] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-27 07:04:54.372 CET [10720] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-27 07:04:54.372 CET [10720] DETAIL:  Failing row contains (97822144-efb9-46cd-9284-e751b853088a, bad, Infinity, 10.00, 0.00, average, 2026-10-27 07:04:54.371109, null).
+2026-10-27 07:04:54.372 CET [10720] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-27 07:04:54.522 CET [44688] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-27 07:04:54.522 CET [44688] DETAIL:  Failing row contains (f9c8bafc-98a1-49b6-add4-8f51c53139c3, null, null, performance, bad, null, manual, null, null, null, 10.00, -Infinity, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-27 07:04:54.521973, 2026-10-27 07:04:54.521973).
+2026-10-27 07:04:54.522 CET [44688] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-27 07:04:54.605 CET [38064] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-27 07:04:54.605 CET [38064] DETAIL:  Failing row contains (3362d518-2640-42c0-add8-2c9385232555, bad, -Infinity, null, null, neutral, 2026-10-27 07:04:54.604391, null).
+2026-10-27 07:04:54.605 CET [38064] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-27 07:04:54.696 CET [19968] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-27 07:04:54.696 CET [19968] DETAIL:  Failing row contains (9cccddd9-92b1-4ee4-9aa3-4fd88f01c53b, bad, -Infinity, 10.00, 0.00, average, 2026-10-27 07:04:54.693674, null).
+2026-10-27 07:04:54.696 CET [19968] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-27 07:04:54.843 CET [19436] ERROR:  new row for relation "kpis" violates check constraint "kpis_current_value_finite"
+2026-10-27 07:04:54.843 CET [19436] DETAIL:  Failing row contains (58848d39-e6a1-40dd-956a-899b377b5e8a, null, null, performance, bad, null, manual, null, null, null, 10.00, NaN, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-27 07:04:54.842745, 2026-10-27 07:04:54.842745).
+2026-10-27 07:04:54.843 CET [19436] STATEMENT:  INSERT INTO kpis(name,target_value,unit,current_value) VALUES ('bad',10,'count',$1)
+2026-10-27 07:04:54.937 CET [32884] ERROR:  new row for relation "kpi_progress" violates check constraint "kpi_progress_value_finite"
+2026-10-27 07:04:54.937 CET [32884] DETAIL:  Failing row contains (d39d2733-c769-4600-b7d5-ba26170c8dd7, bad, NaN, null, null, neutral, 2026-10-27 07:04:54.936757, null).
+2026-10-27 07:04:54.937 CET [32884] STATEMENT:  INSERT INTO kpi_progress(kpi_id,value) VALUES ('bad',$1)
+2026-10-27 07:04:55.141 CET [14424] ERROR:  new row for relation "benchmark_history" violates check constraint "benchmark_history_current_value_finite"
+2026-10-27 07:04:55.141 CET [14424] DETAIL:  Failing row contains (2fa9da98-4912-439b-9128-17f5b72dd184, bad, NaN, 10.00, 0.00, average, 2026-10-27 07:04:55.140089, null).
+2026-10-27 07:04:55.141 CET [14424] STATEMENT:  INSERT INTO benchmark_history(benchmark_id,current_value,benchmark_value,variance) VALUES ('bad',$1,10,0)
+2026-10-27 07:04:55.389 CET [10256] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-27 07:04:55.389 CET [10256] DETAIL:  Failing row contains (5026a9b4-827f-4d38-884a-7f9db4f57dfe, a, 123, 2026-10-18, 0, 0, null, 0, Infinity, 0.00, 0.0000, null, f, 2026-10-27 07:04:55.388734, 2026-10-27 07:04:55.388734).
+2026-10-27 07:04:55.389 CET [10256] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-27 07:04:55.472 CET [43392] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-27 07:04:55.472 CET [43392] DETAIL:  Failing row contains (d08bbf5d-f8bf-4b78-afb6-afbe7081289a, a, 0, 0, 0, Infinity, 0, 0.00, null, automatic, null, 2026-10-27 07:04:55.470716, null).
+2026-10-27 07:04:55.472 CET [43392] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-27 07:04:55.642 CET [17264] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-27 07:04:55.642 CET [17264] DETAIL:  Failing row contains (e9c36a91-234c-4406-9c93-2cd4290e544c, a, 123, 2026-10-18, 0, 0, null, 0, -Infinity, 0.00, 0.0000, null, f, 2026-10-27 07:04:55.642133, 2026-10-27 07:04:55.642133).
+2026-10-27 07:04:55.642 CET [17264] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-27 07:04:55.741 CET [40728] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-27 07:04:55.741 CET [40728] DETAIL:  Failing row contains (2ce23cfb-8afa-4eb7-af1e-c7f9504b62e9, a, 0, 0, 0, -Infinity, 0, 0.00, null, automatic, null, 2026-10-27 07:04:55.739692, null).
+2026-10-27 07:04:55.741 CET [40728] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-27 07:04:55.887 CET [23960] ERROR:  new row for relation "ga4_daily_metrics" violates check constraint "ga4_daily_metrics_conversions_finite"
+2026-10-27 07:04:55.887 CET [23960] DETAIL:  Failing row contains (f7c80fb7-01c9-4c02-8e04-6b6dc4bd83e2, a, 123, 2026-10-18, 0, 0, null, 0, NaN, 0.00, 0.0000, null, f, 2026-10-27 07:04:55.8868, 2026-10-27 07:04:55.8868).
+2026-10-27 07:04:55.887 CET [23960] STATEMENT:  INSERT INTO ga4_daily_metrics(campaign_id,property_id,date,conversions) VALUES ('a','123',$1,$2)
+2026-10-27 07:04:55.972 CET [38648] ERROR:  new row for relation "metric_snapshots" violates check constraint "metric_snapshots_total_conversions_finite"
+2026-10-27 07:04:55.972 CET [38648] DETAIL:  Failing row contains (17580a70-b9a2-4219-894e-2fab157e88ec, a, 0, 0, 0, NaN, 0, 0.00, null, automatic, null, 2026-10-27 07:04:55.970606, null).
+2026-10-27 07:04:55.972 CET [38648] STATEMENT:  INSERT INTO metric_snapshots(campaign_id,total_conversions) VALUES ('a',$1)
+2026-10-27 07:04:56.370 CET [1504] WARNING:  there is no transaction in progress
+2026-10-27 07:05:02.866 CET [26744] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-27 07:05:02.866 CET [26744] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-27 07:05:02.866 CET [26744] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, default, default)
+2026-10-27 07:05:03.020 CET [26744] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-27 07:05:03.020 CET [26744] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-27 07:05:03.020 CET [26744] STATEMENT:  insert into "revenue_records" ("id", "campaign_id", "revenue_source_id", "date", "revenue", "currency", "external_id", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, default, $6, default, default)
+2026-10-27 07:05:03.743 CET [26744] WARNING:  there is no transaction in progress
+2026-10-27 07:05:03.984 CET [26744] WARNING:  there is no transaction in progress
+2026-10-27 07:05:04.157 CET [26744] WARNING:  there is no transaction in progress
+2026-10-27 07:05:16.280 CET [44380] LOG:  received fast shutdown request
+2026-10-27 07:05:16.283 CET [44380] LOG:  aborting any active transactions
+2026-10-27 07:05:16.297 CET [44380] LOG:  background worker "logical replication launcher" (PID 42324) exited with exit code 1
+2026-10-27 07:05:16.300 CET [18544] LOG:  shutting down
+2026-10-27 07:05:16.302 CET [18544] LOG:  checkpoint starting: shutdown immediate
+2026-10-27 07:05:16.978 CET [18544] LOG:  checkpoint complete: wrote 266 buffers (1.6%), wrote 10 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=0.105 s, sync=0.274 s, total=0.679 s; sync files=340, longest=0.004 s, average=0.001 s; distance=7916 kB, estimate=7916 kB; lsn=0/A2B1F48, redo lsn=0/A2B1F48
+2026-10-27 07:05:17.485 CET [44380] LOG:  database system is shut down

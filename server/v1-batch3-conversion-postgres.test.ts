@@ -14,7 +14,7 @@ import { DatabaseStorage } from "./storage";
 const testUrl = String(process.env.GA4_TEST_DATABASE_URL || "");
 if (testUrl) {
   const url = new URL(testUrl);
-  if (url.hostname !== "127.0.0.1" || url.port !== "55443" || url.pathname !== "/ga4_alignment_test"
+  if (url.hostname !== "127.0.0.1" || !["55443", "55444"].includes(url.port) || url.pathname !== "/ga4_alignment_test"
     || url.search || process.env.DATABASE_URL) throw new Error("Requires isolated localhost GA4 fixture database");
 }
 const schemaName = `ga4_precision_${randomUUID().replace(/-/g, "")}`;

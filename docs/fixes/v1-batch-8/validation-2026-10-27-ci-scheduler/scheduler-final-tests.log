@@ -1,0 +1,278 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/me/Documents/MF_real_latest[39m
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2msalesforce item removal preserves remaining revenue and rejects stale selection (stale: true)
+[22m[39m[Salesforce Save Mappings] Error: Error: Salesforce revenue source changed. Refresh and try again.
+    at save (C:/Users/me/Documents/MF_real_latest/server/storage.ts:3241:30)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1511:22
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:619:22)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:237:24
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20 {
+  code: [32m'SALESFORCE_REVENUE_SOURCE_CHANGED'[39m
+}
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mhubspot item removal preserves remaining revenue and rejects stale selection (stale: true)
+[22m[39m[HubSpot Save Mappings] Failed to materialize revenue records: Error: HubSpot revenue source changed. Refresh and try again.
+    at save (C:/Users/me/Documents/MF_real_latest/server/storage.ts:3363:30)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1511:22
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:596:26)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:237:24
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20 {
+  code: [32m'HUBSPOT_REVENUE_SOURCE_CHANGED'[39m
+}
+[HubSpot Save Mappings] Error: Error: HubSpot revenue source changed. Refresh and try again.
+    at save (C:/Users/me/Documents/MF_real_latest/server/storage.ts:3363:30)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1511:22
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:596:26)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:237:24
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20 {
+  code: [32m'HUBSPOT_REVENUE_SOURCE_CHANGED'[39m
+}
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mhubspot retains all saved source facts after provider TimeoutError
+[22m[39m[HubSpot Save Mappings] Error: DOMException [TimeoutError]: fixture interrupted body
+[90m    at new DOMException (node:internal/per_context/domexception:53:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:255:88
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mhubspot retains all saved source facts after provider AbortError
+[22m[39m[HubSpot Save Mappings] Error: DOMException [AbortError]: fixture interrupted body
+[90m    at new DOMException (node:internal/per_context/domexception:53:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:255:88
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mhubspot retains all saved source facts after provider SyntaxError
+[22m[39m[HubSpot Save Mappings] Error: SyntaxError: fixture invalid JSON
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:255:46
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+[90mstdout[2m | server/ga4-refresh-input-invalidation-postgres.test.ts[2m > [22m[2mGA4 refresh invalidation on ordinary input edits[2m > [22m[2mkeeps legacy Sheets writes and work invalidation in the same transaction
+[22m[39m[Storage] sheet_name/purpose column not found, using fallback query
+
+[90mstdout[2m | server/ga4-refresh-input-invalidation-postgres.test.ts[2m > [22m[2mGA4 refresh invalidation on ordinary input edits[2m > [22m[2mkeeps legacy Sheets writes and work invalidation in the same transaction
+[22m[39m[Storage] sheet_name/purpose column not found, using fallback insert for createGoogleSheetsConnection
+
+[90mstdout[2m | server/ga4-refresh-input-invalidation-postgres.test.ts[2m > [22m[2mGA4 refresh invalidation on ordinary input edits[2m > [22m[2mkeeps legacy Sheets writes and work invalidation in the same transaction
+[22m[39m[Storage] sheet_name column not found, using fallback update for updateGoogleSheetsConnection
+
+[90mstdout[2m | server/ga4-refresh-input-invalidation-postgres.test.ts[2m > [22m[2mGA4 refresh invalidation on ordinary input edits[2m > [22m[2mkeeps legacy Sheets writes and work invalidation in the same transaction
+[22m[39m[Storage] sheet_name column not found, using fallback update for updateGoogleSheetsConnection
+
+[90mstdout[2m | server/ga4-refresh-input-invalidation-postgres.test.ts[2m > [22m[2mGA4 refresh invalidation on ordinary input edits[2m > [22m[2mkeeps legacy Sheets writes and work invalidation in the same transaction
+[22m[39m[Storage] sheet_name column not found, using fallback query for deleteGoogleSheetsConnection
+
+ [32m✓[39m server/ga4-refresh-input-invalidation-postgres.test.ts [2m([22m[2m64 tests[22m[2m)[22m[33m 10442[2mms[22m[39m
+     [33m[2m✓[22m[39m V1-073 requires a surviving campaign before source replacement (durable table=true) [33m 348[2mms[22m[39m
+     [33m[2m✓[22m[39m serializes an ordinary input edit behind an owned write, then refuses its late follow-up [33m 308[2mms[22m[39m
+Sourcemap for "C:/Users/me/Documents/MF_real_latest/node_modules/node-cron/dist/esm/node-cron.js" points to missing source files
+[90mstderr[2m | server/ga4-refresh-pipeline-source-failure.test.ts[2m > [22m[2mGA4 ordered refresh source-discovery failures[2m > [22m[2mautomatic durable ownership integration[2m > [22m[2mdiscards a late provider response after lease-loss
+[22m[39m[GA4 Daily] Refresh failed for campaign campaign-a, property campaign-a-property: GA4_REFRESH_WORK_OWNERSHIP_LOST
+
+[90mstderr[2m | server/ga4-refresh-pipeline-source-failure.test.ts[2m > [22m[2mGA4 ordered refresh source-discovery failures[2m > [22m[2mautomatic durable ownership integration[2m > [22m[2mdiscards a late provider response after deadline
+[22m[39m[GA4 Daily] Refresh failed for campaign campaign-a, property campaign-a-property: GA4_REFRESH_WORK_OWNERSHIP_LOST
+
+ [32m✓[39m server/ga4-refresh-pipeline-source-failure.test.ts [2m([22m[2m221 tests[22m[2m)[22m[33m 8768[2mms[22m[39m
+ [32m✓[39m server/v1-batch3-conversion-postgres.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 3783[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects nonfinite observed goal value -Infinity [33m 323[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects nonfinite observed goal value NaN [33m 445[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects nonfinite Infinity in both widened columns [33m 431[2mms[22m[39m
+     [33m[2m✓[22m[39m migrates existing integers losslessly, repeats without table rewrite and rolls back atomically [33m 308[2mms[22m[39m
+[90mstdout[2m | server/ga4-auto-refresh-regression.test.ts[2m > [22m[2mGA4 external value auto-refresh regression guard[2m > [22m[2mexecutes the bounded revenue pass only for the exact eligible campaign source
+[22m[39m[Auto Refresh] ✅ Google Sheets revenue synced for campaign campaign-1: $25 from 1 rows
+
+ [32m✓[39m server/ga4-auto-refresh-regression.test.ts [2m([22m[2m27 tests[22m[2m)[22m[33m 417[2mms[22m[39m
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mskips inactive campaigns before reading their GA4 connections
+[22m[39m[GA4 Daily] Refresh starting (lookbackDays=90)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mskips inactive campaigns before reading their GA4 connections
+[22m[39m[GA4 Daily] Refresh done (campaignsProcessed=0, campaignsFailed=0, rowsUpserted=0)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2madmits only an explicitly targeted draft for its initial GA4 import
+[22m[39m[GA4 Daily] Refresh starting (lookbackDays=90, campaignId=campaign-1)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2madmits only an explicitly targeted draft for its initial GA4 import
+[22m[39m[GA4 Daily] Refresh done (campaignsProcessed=0, campaignsFailed=0, rowsUpserted=0)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mmaterializes explicit zero rows for every absent completed date and excludes inactive properties
+[22m[39m[GA4 Daily] Refresh starting (lookbackDays=90)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mmaterializes explicit zero rows for every absent completed date and excludes inactive properties
+[22m[39m[GA4 Daily] Refresh done (campaignsProcessed=1, campaignsFailed=0, rowsUpserted=6)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mpreserves last-good storage instead of writing a false zero for provider activity without a complete row
+[22m[39m[GA4 Daily] Refresh starting (lookbackDays=90)
+
+[90mstderr[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mpreserves last-good storage instead of writing a false zero for provider activity without a complete row
+[22m[39m[GA4 Daily] Refresh failed for campaign campaign-1, property properties/active: Cannot read properties of null (reading 'select')
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mpreserves last-good storage instead of writing a false zero for provider activity without a complete row
+[22m[39m[GA4 Daily] Refresh done (campaignsProcessed=0, campaignsFailed=1, rowsUpserted=0)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mpreserves last-good storage when any provider daily value is invalid
+[22m[39m[GA4 Daily] Refresh starting (lookbackDays=90)
+
+[90mstderr[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mpreserves last-good storage when any provider daily value is invalid
+[22m[39m[GA4 Daily] Refresh failed for campaign campaign-1, property properties/active: GA4 returned an invalid daily metric value
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mpreserves last-good storage when any provider daily value is invalid
+[22m[39m[GA4 Daily] Refresh done (campaignsProcessed=0, campaignsFailed=1, rowsUpserted=0)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mpublishes all Overview tables atomically with reconciled scheduler facts
+[22m[39m[GA4 Daily] Refresh starting (lookbackDays=90)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mpublishes all Overview tables atomically with reconciled scheduler facts
+[22m[39m[GA4 Daily] Refresh done (campaignsProcessed=1, campaignsFailed=0, rowsUpserted=4)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mkeeps the last complete Overview snapshot when the provider report currency is not verified
+[22m[39m[GA4 Daily] Refresh starting (lookbackDays=90)
+
+[90mstderr[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mkeeps the last complete Overview snapshot when the provider report currency is not verified
+[22m[39m[GA4 Daily] Refresh failed for campaign campaign-1, property properties/active: GA4_CURRENCY_UNVERIFIED: GA4 Overview report currency is unverified
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mkeeps the last complete Overview snapshot when the provider report currency is not verified
+[22m[39m[GA4 Daily] Refresh done (campaignsProcessed=0, campaignsFailed=1, rowsUpserted=0)
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mkeeps the last complete Overview snapshot when detail totals do not reconcile
+[22m[39m[GA4 Daily] Refresh starting (lookbackDays=90)
+
+[90mstderr[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mkeeps the last complete Overview snapshot when detail totals do not reconcile
+[22m[39m[GA4 Daily] Refresh failed for campaign campaign-1, property properties/active: GA4 Overview detail totals do not reconcile with scheduler daily facts: event_conversions_unknown_high
+
+[90mstdout[2m | server/ga4-daily-scheduler-regression.test.ts[2m > [22m[2mGA4 daily scheduler timing[2m > [22m[2mkeeps the last complete Overview snapshot when detail totals do not reconcile
+[22m[39m[GA4 Daily] Refresh done (campaignsProcessed=0, campaignsFailed=1, rowsUpserted=0)
+
+ [32m✓[39m server/ga4-daily-scheduler-regression.test.ts [2m([22m[2m43 tests[22m[2m)[22m[33m 354[2mms[22m[39m
+[90mstdout[2m | server/salesforce-pipeline-automation-ui.test.ts[2m > [22m[2mSalesforce Pipeline Proxy automatic refresh and provenance[2m > [22m[2mrefreshes pipeline-enabled and revenue-only sources while preserving stable IDs
+[22m[39m[Auto Refresh] Salesforce reprocess complete for campaign campaign-1: source=sf-valid, totalRevenue=350, materializedRecordCount=3, dateField=CloseDate, dates=2026-09-02,2026-09-05,2026-09-10, unmatchedSelectedValues=none
+
+[90mstdout[2m | server/salesforce-pipeline-automation-ui.test.ts[2m > [22m[2mSalesforce Pipeline Proxy automatic refresh and provenance[2m > [22m[2mrefreshes pipeline-enabled and revenue-only sources while preserving stable IDs
+[22m[39m[Auto Refresh] Salesforce reprocess complete for campaign campaign-1: source=sf-revenue-only, totalRevenue=350, materializedRecordCount=3, dateField=CloseDate, dates=2026-09-02,2026-09-05,2026-09-10, unmatchedSelectedValues=none
+
+ [32m✓[39m server/salesforce-pipeline-automation-ui.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 131[2mms[22m[39m
+[90mstderr[2m | server/hubspot-pipeline-automation-ui.test.ts[2m > [22m[2mHubSpot Pipeline Proxy automatic stage transition[2m > [22m[2mpolls eligible GA4 HubSpot sources and requires a stage only when Pipeline Proxy is enabled
+[22m[39m[HubSpot Pipeline Refresh] Error processing campaign campaign-1: Body is unusable: Body has already been read
+
+ [32m✓[39m server/hubspot-pipeline-automation-ui.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 148[2mms[22m[39m
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mrejects salesforce replies and failure audit writes after lease expiry
+[22m[39m[Salesforce Save Mappings] Error: Error: GA4_REFRESH_WORK_OWNERSHIP_LOST
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1657:24
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:619:22)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:426:20
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mrejects hubspot replies and failure audit writes after lease expiry
+[22m[39m[HubSpot Save Mappings] Failed to materialize revenue records: Error: GA4_REFRESH_WORK_OWNERSHIP_LOST
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1657:24
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:596:26)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:426:20
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+ [32m✓[39m server/ga4-scheduler-observability-regression.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mrejects shopify replies and failure audit writes after lease expiry
+[22m[39m[Shopify Save Mappings] Failed to materialize revenue records: Error: GA4_REFRESH_WORK_OWNERSHIP_LOST
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1657:24
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:582:17)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:426:20
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mrejects shopify replies and failure audit writes after lease expiry
+[22m[39m[Shopify Save Mappings] Failed to persist refresh failure state: GA4_REFRESH_WORK_OWNERSHIP_LOST
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mrejects delayed salesforce data after the source is edited
+[22m[39m[Salesforce Save Mappings] Error: Error: Salesforce revenue source changed. Refresh and try again.
+    at save (C:/Users/me/Documents/MF_real_latest/server/storage.ts:3241:30)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1658:22
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:619:22)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:434:13
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20 {
+  code: [32m'SALESFORCE_REVENUE_SOURCE_CHANGED'[39m
+}
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mrejects delayed hubspot data after the source is edited
+[22m[39m[HubSpot Save Mappings] Failed to materialize revenue records: Error: HubSpot revenue source changed. Refresh and try again.
+    at save (C:/Users/me/Documents/MF_real_latest/server/storage.ts:3363:30)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1658:22
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:596:26)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:434:13
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20 {
+  code: [32m'HUBSPOT_REVENUE_SOURCE_CHANGED'[39m
+}
+[HubSpot Save Mappings] Error: Error: HubSpot revenue source changed. Refresh and try again.
+    at save (C:/Users/me/Documents/MF_real_latest/server/storage.ts:3363:30)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1658:22
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:596:26)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:434:13
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20 {
+  code: [32m'HUBSPOT_REVENUE_SOURCE_CHANGED'[39m
+}
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mrejects delayed shopify data after the source is edited
+[22m[39m[Shopify Save Mappings] Failed to materialize revenue records: Error: Shopify revenue source changed since preview
+    at save (C:/Users/me/Documents/MF_real_latest/server/storage.ts:3475:33)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at C:/Users/me/Documents/MF_real_latest/server/storage.ts:1658:22
+    at NodePgSession.transaction [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4mdrizzle-orm[24m/node-postgres/session.js:142:22[90m)[39m
+    at eval (eval at revenueRoute (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:166:3), <anonymous>:582:17)
+    at Object.invoke (C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:171:5)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-financial-source-ownership-postgres.test.ts:434:13
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+[90mstderr[2m | server/ga4-financial-source-ownership-postgres.test.ts[2m > [22m[2mfinancial source saves with real PostgreSQL refresh ownership[2m > [22m[2mrejects delayed shopify data after the source is edited
+[22m[39m[Shopify Save Mappings] Failed to persist refresh failure state: GA4_REFRESH_TARGET_SCOPE_CHANGED
+
+ [32m✓[39m server/v1-batch8-ci-completion.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m server/ga4-kpi-current-version-test-boundary.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m server/v1-batch8-interval-publication.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m server/ga4-financial-source-ownership-postgres.test.ts [2m([22m[2m233 tests[22m[2m)[22m[33m 49267[2mms[22m[39m
+     [33m[2m✓[22m[39m salesforce item removal preserves remaining revenue and rejects stale selection (stale: false) [33m 640[2mms[22m[39m
+     [33m[2m✓[22m[39m salesforce item removal preserves remaining revenue and rejects stale selection (stale: true) [33m 447[2mms[22m[39m
+     [33m[2m✓[22m[39m hubspot item removal preserves remaining revenue and rejects stale selection (stale: false) [33m 398[2mms[22m[39m
+     [33m[2m✓[22m[39m hubspot item removal preserves remaining revenue and rejects stale selection (stale: true) [33m 301[2mms[22m[39m
+     [33m[2m✓[22m[39m spend rolls back every effect when the lease expires inside its write [33m 1404[2mms[22m[39m
+     [33m[2m✓[22m[39m spend records rolls back every effect when the lease expires inside its write [33m 1376[2mms[22m[39m
+     [33m[2m✓[22m[39m revenue rolls back every effect when the lease expires inside its write [33m 1380[2mms[22m[39m
+     [33m[2m✓[22m[39m salesforce rolls back every effect when the lease expires inside its write [33m 1377[2mms[22m[39m
+     [33m[2m✓[22m[39m hubspot rolls back every effect when the lease expires inside its write [33m 1351[2mms[22m[39m
+     [33m[2m✓[22m[39m shopify rolls back every effect when the lease expires inside its write [33m 1374[2mms[22m[39m
+     [33m[2m✓[22m[39m shopify state rolls back every effect when the lease expires inside its write [33m 1349[2mms[22m[39m
+     [33m[2m✓[22m[39m rechecks the spend mapping after waiting for a concurrent editor [33m 420[2mms[22m[39m
+     [33m[2m✓[22m[39m runs the actual hubspot owned route and defers follow-up calculations [33m 324[2mms[22m[39m
+     [33m[2m✓[22m[39m runs the actual shopify owned route and defers follow-up calculations [33m 336[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects salesforce replies and failure audit writes after lease expiry [33m 331[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m      Tests [22m [1m[32m669 passed[39m[22m[90m (669)[39m
+[2m   Start at [22m 07:04:21
+[2m   Duration [22m 54.91s[2m (transform 6.31s, setup 0ms, import 25.46s, tests 73.47s, environment 4ms)[22m
+
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-8/validation-2026-10-27-ci-scheduler/scheduler-final.json

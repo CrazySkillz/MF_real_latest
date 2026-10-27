@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-27T05:51:58.796Z",
+  "readOnly": true,
+  "rows": [
+    {
+      "campaignHash": "6caf32c94dbe",
+      "sourceHash": "428552cf603a",
+      "status": "failed",
+      "lastFailureAt": "2026-10-27T05:51:42.285Z",
+      "error": "Shopify OAuth credentials could not be renewed. Reconnect Shopify."
+    }
+  ]
+}

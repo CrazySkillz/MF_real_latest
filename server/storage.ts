@@ -819,6 +819,18 @@ export class DatabaseStorage implements IStorage {
     }
     return campaign || undefined;
     };
+    // The edit form resubmits unchanged inputs with the name. Compare under the
+    // campaign lock so a rename cannot clear readiness or cancel valid work.
+    if (updateData.name !== undefined && Object.keys(options).length === 0) {
+      const renamed = await db.transaction(async (tx: any) => {
+        const [previous] = await tx.select().from(campaigns).where(eq(campaigns.id, id)).for("update");
+        if (!previous) return { campaign: undefined };
+        if (!Object.entries(updateData).every(([key, value]) => key === "name" || value === undefined
+          || JSON.stringify(value) === JSON.stringify((previous as any)[key]))) return null;
+        return { campaign: await write(tx) };
+      });
+      if (renamed) return renamed.campaign;
+    }
     if ("refreshScope" in options && options.refreshScope?.campaignId !== id) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     return "refreshScope" in options ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : this.writeGA4RefreshInputChange(id, write).catch(error => {
       if (error?.message === "GA4_REFRESH_TARGET_SCOPE_CHANGED") return undefined;

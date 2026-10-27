@@ -112,6 +112,76 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
   });
   const benchmark = { campaignId: "a", platformType: "google_analytics", category: "traffic", name: "Sessions", metric: "sessions", benchmarkValue: "100", unit: "count" };
   const source = { campaignId: "a", sourceType: "google_sheets", platformContext: "ga4", mappingConfig: "original" };
+  async function publishedCampaign() {
+    const scope = await claim();
+    await pool.query("UPDATE ga4_refresh_work SET status='completed',lease_token=NULL,lease_expires_at=NULL,completed_at=now() WHERE id=$1", [scope.work.id]);
+    for (const campaignId of ["a", "b"]) await database.current.insert(schema.metricSnapshots).values({ campaignId,
+      snapshotType: "executive_summary_daily", reportingDate: date,
+      notes: `ga4_aligned_refresh_v1:${date}:2026-10-18T08:00:00Z`, metrics: { sessions: 3433 } });
+    return {
+      work: (await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows,
+      snapshots: (await pool.query("SELECT * FROM metric_snapshots ORDER BY campaign_id")).rows,
+      version: await storage.getGA4PublicationVersion("a"),
+    };
+  }
+  it.each([false, true])("preserves the completed publication on a campaign rename (full edit form=%s)", async fullForm => {
+    await database.current.update(schema.campaigns).set({ budget: "30000.00", startDate: new Date("2026-09-04T00:00:00Z") });
+    const before = await publishedCampaign();
+    const values = fullForm ? schema.insertCampaignSchema.partial().parse({ name: "Promo", clientWebsite: null,
+      label: null, budget: "30000.00", currency: "EUR", conversionValue: null,
+      reportingTimeZone: "Europe/Amsterdam", startDate: "2026-09-04", endDate: null }) : { name: "Promo" };
+    expect(await storage.updateCampaign("a", values)).toMatchObject({ id: "a", name: "Promo", currency: "EUR" });
+    expect((await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows).toEqual(before.work);
+    expect((await pool.query("SELECT * FROM metric_snapshots ORDER BY campaign_id")).rows).toEqual(before.snapshots);
+    expect(await storage.getGA4PublicationVersion("a")).toBe(before.version);
+    expect((await storage.getCampaign("b"))?.name).toBe("b");
+  });
+  it("preserves a running worker on rename and still rejects its later real input edit", async () => {
+    const scope = await claim();
+    await storage.updateCampaign("a", { name: "Promo" });
+    expect(await accepts(scope)).toBe(true);
+    await expect(storage.getGA4PublicationVersion("a")).rejects.toThrow("GA4_REFRESH_PUBLICATION_BUSY");
+    await storage.updateCampaign("a", { name: "Promo", ga4CampaignFilter: "other" });
+    await expect(accepts(scope)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+  });
+  it.each([
+    { currency: "USD" }, { reportingTimeZone: "UTC" }, { ga4CampaignFilter: "other" }, { status: "paused" },
+    { budget: "31000.00" }, { conversionValue: "5.00" }, { spend: "20.00" }, { clientId: "other-client" },
+  ])("still invalidates a rename accompanied by changed inputs: %j", async change => {
+    await publishedCampaign();
+    await storage.updateCampaign("a", { name: "Promo", ...change });
+    expect((await pool.query("SELECT scope_hash FROM ga4_refresh_work WHERE campaign_id='a'")).rows[0].scope_hash).toMatch(/^invalidated:/);
+    expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a'")).rows[0].notes).toBeNull();
+    expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='b'")).rows[0].notes).toContain("ga4_aligned_refresh_v1:");
+  });
+  it("does not restore a missing publication marker during a rename", async () => {
+    await publishedCampaign();
+    await pool.query("UPDATE metric_snapshots SET notes=NULL WHERE campaign_id='a'");
+    await storage.updateCampaign("a", { name: "Promo" });
+    expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a'")).rows[0].notes).toBeNull();
+    expect(await storage.updateCampaign("missing", { name: "Promo" })).toBeUndefined();
+  });
+  it("rejects a rename waiting behind deletion without touching another campaign's publication", async () => {
+    const before = await publishedCampaign();
+    const deleting = await pool.connect();
+    let rename: Promise<unknown> | undefined;
+    try {
+      await deleting.query("BEGIN"); await deleting.query("DELETE FROM campaigns WHERE id='a'");
+      let settled = false;
+      rename = storage.updateCampaign("a", { name: "Promo" }).then(value => { settled = true; return value; });
+      await new Promise(resolve => setTimeout(resolve, 30)); expect(settled).toBe(false);
+      await deleting.query("COMMIT");
+      expect(await rename).toBeUndefined();
+      expect((await pool.query("SELECT * FROM metric_snapshots ORDER BY campaign_id")).rows).toEqual(before.snapshots);
+    } finally { await deleting.query("ROLLBACK"); deleting.release(); await rename; }
+  });
+  it("retains worker ownership guards for a rename supplied by an owned refresh", async () => {
+    const scope = await claim();
+    await expect(storage.updateCampaign("b", { name: "Promo" }, { refreshScope: scope })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    await pool.query("UPDATE ga4_refresh_work SET lease_expires_at=now()-interval '1 second' WHERE id=$1", [scope.work.id]);
+    await expect(storage.updateCampaign("a", { name: "Promo" }, { refreshScope: scope })).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+    expect((await storage.getCampaign("a"))?.name).toBe("a");
+  });
   it("V1-087 handles an ordinary currency write chosen from a stale API read without invalidating a same-currency edit", async () => {
     await database.current.insert(schema.ga4DailyMetrics).values({ campaignId: "a", propertyId: "property-a", date, revenue: "100.00" });
     await storage.updateCampaign("a", { currency: "EUR", name: "Renamed" });

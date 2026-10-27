@@ -93,6 +93,10 @@ GA4 connection lifecycle boundary:
 
 ## GA4 Refresh Status Display
 
+October 27 campaign-rename correction (local validation; deployment pending): the All Campaigns edit form resubmits unchanged fields with the name. `updateCampaign` previously invalidated durable work and removed the aligned-refresh marker even when only the name changed. Promo's read-only persisted evidence confirmed completed work invalidated at rename time, missing readiness, and intact financial/native values. The storage method now compares the submitted fields against the locked campaign row and preserves publication only when every submitted non-name field is unchanged. Real input edits and owned-worker guards retain the existing path. An already missing marker is never fabricated; existing scoped startup/scheduled recovery must successfully republish it. [Root cause, rounding evidence, tests and limits](../docs/fixes/v1-batch-8/promo-rename-2026-10-27.md).
+
+The browser Summary prefers the lightweight `ga4-daily?statusOnly=1` completion status, which checks the full aligned-publication marker. Its separate last-successful-update timestamp describes the saved GA4 import. These can differ when GA4 has imported successfully but the aligned publication is missing.
+
 The existing `Overview` Summary subtitle displays the selected campaign/property's GA4 refresh state: running, last attempt failed, waiting for the scheduled refresh, or overdue. Current data retains the normal Summary caption. Values remain visible while the status changes.
 
 `/api/campaigns/:id/ga4-daily` adds `refreshStatus` and a sanitized `refreshAttempt` containing only the reporting date, start/finish timestamps and outcome. Access and active-connection selection remain campaign-scoped. The scheduler records each property's attempt and marks success only after its daily/Overview storage operation returns. A failure in another campaign or property does not supply this status.

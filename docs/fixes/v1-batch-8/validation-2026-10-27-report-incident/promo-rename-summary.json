@@ -1,0 +1,64 @@
+﻿{
+    "at":  "2026-10-27T21:55:38.6168790Z",
+    "baseCommit":  "8cecf3d0ab151824567ec136fd8e7ef93dff5527",
+    "scope":  "Campaign name-only edits preserve GA4 publication; exact Promo rounding validation",
+    "before":  {
+                   "skipped":  0,
+                   "failed":  3,
+                   "passed":  73
+               },
+    "after":  {
+                  "skipped":  0,
+                  "failed":  0,
+                  "passed":  439
+              },
+    "builds":  [
+                   {
+                       "name":  "typecheck",
+                       "exitCode":  0,
+                       "error":  null,
+                       "log":  "promo-rename-typecheck.log"
+                   },
+                   {
+                       "name":  "server-build",
+                       "exitCode":  0,
+                       "error":  null,
+                       "log":  "promo-rename-server-build.log"
+                   }
+               ],
+    "liveEvidence":  {
+                         "propertyId":  "542352127",
+                         "capturedAt":  "2026-10-27T21:54:28.850Z",
+                         "productionWrites":  0,
+                         "campaign":  "Promo",
+                         "markerMissing":  true,
+                         "nativeRevenue":  80433.85,
+                         "totalRevenue":  80683.85,
+                         "csvRevenue":  250,
+                         "transaction":  "REPEATABLE READ READ ONLY"
+                     },
+    "files":  [
+                  {
+                      "sha256":  "028f8a3e2ed327e1a3b3d0a2c9b98e06ba7a62d85e68ce5186f32f90a3a070f3",
+                      "path":  "server/storage.ts"
+                  },
+                  {
+                      "sha256":  "0d7406c2f99aeaa0530b166da0c497b3d7cfb69d24b1c03259f8b3a1fc067512",
+                      "path":  "server/ga4-refresh-input-invalidation-postgres.test.ts"
+                  },
+                  {
+                      "sha256":  "c9c5ae8214a98aac43030e5106a2fcf83114b57d58db1afe63e4e4d498d076b9",
+                      "path":  "server/ga4-ad-comparison-revenue-breakdown-render.test.ts"
+                  },
+                  {
+                      "sha256":  "58410fba4c722218bf7d51c321105c1773d846a1dac61737d2fb09348c20c2b4",
+                      "path":  "server/ga4-ad-comparison-revenue-breakdown-pdf.test.ts"
+                  }
+              ],
+    "limits":  [
+                   "Not committed or deployed",
+                   "Existing missing marker requires successful normal scoped recovery",
+                   "Live UI and production PDF/email checks not performed",
+                   "No financial calculation or source amount changed"
+               ]
+}

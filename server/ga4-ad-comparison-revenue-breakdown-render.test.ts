@@ -174,7 +174,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     expect(html).toContain("Revenue Breakdown");
     expect(html).toContain("Top Campaigns by Sessions");
     expect(html).not.toContain("All Campaigns");
-    expect(html).toMatch(/GA4 Revenue \(imported to date\)<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
+    expect(html).toMatch(/GA4 Revenue<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
     expect(html).not.toContain("Exact zero source");
     expect(html).toContain("No additional revenue sources");
     expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>\$0\.00<\/td>/);

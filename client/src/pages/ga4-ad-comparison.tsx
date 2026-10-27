@@ -362,7 +362,6 @@ function GA4AdComparison({
           <CardContent className="p-5">
             <div className="text-sm font-medium text-muted-foreground/70">Campaigns Compared</div>
             <div className="text-2xl font-bold text-foreground mt-1">{chartSummaryRows.length}</div>
-            <div className="text-xs text-muted-foreground/70 mt-1">From GA4 Overview Campaign Breakdown</div>
           </CardContent>
         </Card>
       </div>
@@ -404,7 +403,7 @@ function GA4AdComparison({
               </thead>
               <tbody>
                 <tr className="border-b">
-                  <td className="px-3 py-2 text-foreground">GA4 Revenue (imported to date)</td>
+                  <td className="px-3 py-2 text-foreground">GA4 Revenue</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4RevenueForBreakdown)}</td>
                 </tr>
                 {(revenueState === 'ready' || revenueState === 'stale') && visibleRevenueDisplaySources.map((s) => (

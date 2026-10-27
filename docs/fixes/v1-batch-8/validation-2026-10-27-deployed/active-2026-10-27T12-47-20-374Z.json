@@ -1,0 +1,261 @@
+{
+  "at": "2026-10-27T12:47:20.374Z",
+  "campaignHash": "de4775c3b435",
+  "reportingDate": "2026-10-26",
+  "readOnly": true,
+  "campaign": {
+    "status": "active",
+    "currency": "EUR",
+    "reporting_time_zone": "Europe/Amsterdam"
+  },
+  "snapshots": [
+    {
+      "type": "financial_daily",
+      "date": "2026-10-26",
+      "recordedAt": "2026-10-27T12:44:38.272Z",
+      "financial": {
+        "inputs": {
+          "spend": {
+            "value": null,
+            "sources": [],
+            "available": false
+          },
+          "revenue": {
+            "value": "8003.96",
+            "sources": [
+              "ga4",
+              "revenue-source:0f203656-5684-442c-9d20-5cb0839ba922",
+              "revenue-source:3ce1521e-9f07-4cba-8516-de34634e6c79"
+            ],
+            "available": true
+          },
+          "conversions": {
+            "value": 40,
+            "sources": [
+              "ga4"
+            ],
+            "available": true
+          }
+        },
+        "version": "financial_daily_snapshot_v1",
+        "currency": "EUR",
+        "currentValueWindow": {
+          "mode": "initial_import_to_latest_completed_day",
+          "endDate": "2026-10-26",
+          "startDate": "2026-09-23",
+          "dataThroughDate": "2026-10-26",
+          "reportingTimeZone": "Europe/Amsterdam"
+        }
+      },
+      "aligned": false,
+      "alignedAt": null
+    },
+    {
+      "type": "executive_summary_daily",
+      "date": "2026-10-26",
+      "recordedAt": "2026-10-27T12:44:59.695Z",
+      "executive": {
+        "currency": "EUR",
+        "window": {
+          "mode": "initial_import_to_latest_completed_day",
+          "endDate": "2026-10-26",
+          "startDate": "2026-09-23",
+          "dataThroughDate": "2026-10-26",
+          "reportingTimeZone": "Europe/Amsterdam"
+        },
+        "totals": {
+          "cpa": {
+            "value": null,
+            "sources": [],
+            "available": false
+          },
+          "cvr": {
+            "value": 6.622516556291391,
+            "sources": [
+              "conversions",
+              "sessions"
+            ],
+            "available": true
+          },
+          "roi": {
+            "value": null,
+            "sources": [],
+            "available": false
+          },
+          "roas": {
+            "value": null,
+            "sources": [],
+            "available": false
+          },
+          "spend": {
+            "value": null,
+            "sources": [],
+            "available": false
+          },
+          "users": {
+            "value": 602,
+            "sources": [
+              "ga4"
+            ],
+            "available": true
+          },
+          "revenue": {
+            "value": 8003.96,
+            "sources": [
+              "ga4",
+              "revenue_HubSpot (Deals)",
+              "revenue_Salesforce (Opportunities)"
+            ],
+            "available": true
+          },
+          "sessions": {
+            "value": 604,
+            "sources": [
+              "ga4"
+            ],
+            "available": true
+          },
+          "conversions": {
+            "value": 40,
+            "sources": [
+              "ga4"
+            ],
+            "available": true
+          }
+        }
+      },
+      "aligned": true,
+      "alignedAt": "2026-10-27T12:45:14.003Z"
+    }
+  ],
+  "overview": [
+    {
+      "window_start": "2026-09-23",
+      "window_end": "2026-10-26",
+      "updated_at": "2026-10-27T07:10:48.021Z",
+      "totals": {
+        "users": 602,
+        "revenue": 7653.96,
+        "sessions": 604,
+        "conversions": 40,
+        "sessionsRaw": 604,
+        "engagementRate": 0.5910596026490066,
+        "engagedSessions": 357
+      }
+    }
+  ],
+  "work": [
+    {
+      "kind": "daily",
+      "workHash": "da8d2591dcd4",
+      "invalidated": true,
+      "status": "completed",
+      "reporting_date": "2026-10-26",
+      "due_at": "2026-10-27T07:00:00.000Z",
+      "started_at": "2026-10-27T07:09:20.657Z",
+      "completed_at": "2026-10-27T07:11:49.861Z",
+      "updated_at": "2026-10-27T12:43:33.259Z",
+      "attempt_count": 1,
+      "retryable": true,
+      "last_error": null
+    },
+    {
+      "kind": "daily",
+      "workHash": "65938afeabb0",
+      "invalidated": true,
+      "status": "pending",
+      "reporting_date": "2026-10-26",
+      "due_at": "2026-10-26T19:00:00.000Z",
+      "started_at": "2026-10-27T06:38:49.608Z",
+      "completed_at": null,
+      "updated_at": "2026-10-27T12:43:33.260Z",
+      "attempt_count": 1,
+      "retryable": true,
+      "last_error": null
+    },
+    {
+      "kind": "daily",
+      "workHash": "37cc05238785",
+      "invalidated": true,
+      "status": "completed",
+      "reporting_date": "2026-10-26",
+      "due_at": "2026-10-26T19:00:00.000Z",
+      "started_at": "2026-10-27T05:33:44.048Z",
+      "completed_at": "2026-10-27T05:36:13.608Z",
+      "updated_at": "2026-10-27T12:43:33.259Z",
+      "attempt_count": 1,
+      "retryable": true,
+      "last_error": null
+    },
+    {
+      "kind": "daily",
+      "workHash": "a45582da5ca4",
+      "invalidated": true,
+      "status": "completed",
+      "reporting_date": "2026-10-25",
+      "due_at": "2026-10-26T13:00:00.000Z",
+      "started_at": "2026-10-26T13:08:54.177Z",
+      "completed_at": "2026-10-26T13:11:21.780Z",
+      "updated_at": "2026-10-27T12:43:33.259Z",
+      "attempt_count": 1,
+      "retryable": true,
+      "last_error": null
+    },
+    {
+      "kind": "revenue_change",
+      "workHash": "35d49fe385c9",
+      "invalidated": false,
+      "status": "completed",
+      "reporting_date": "2026-10-26",
+      "due_at": "2026-10-27T12:43:34.799Z",
+      "started_at": "2026-10-27T12:44:05.511Z",
+      "completed_at": "2026-10-27T12:45:14.003Z",
+      "updated_at": "2026-10-27T12:45:19.570Z",
+      "attempt_count": 1,
+      "retryable": true,
+      "last_error": null
+    },
+    {
+      "kind": "revenue_change",
+      "workHash": "548e2655aeef",
+      "invalidated": true,
+      "status": "pending",
+      "reporting_date": "2026-10-26",
+      "due_at": "2026-10-27T12:43:21.169Z",
+      "started_at": null,
+      "completed_at": null,
+      "updated_at": "2026-10-27T12:43:33.259Z",
+      "attempt_count": 0,
+      "retryable": true,
+      "last_error": null
+    },
+    {
+      "kind": "revenue_change",
+      "workHash": "3d8eac5ea474",
+      "invalidated": true,
+      "status": "completed",
+      "reporting_date": "2026-10-26",
+      "due_at": "2026-10-27T12:28:34.804Z",
+      "started_at": "2026-10-27T12:28:46.941Z",
+      "completed_at": "2026-10-27T12:29:56.939Z",
+      "updated_at": "2026-10-27T12:43:33.258Z",
+      "attempt_count": 1,
+      "retryable": true,
+      "last_error": null
+    },
+    {
+      "kind": "revenue_change",
+      "workHash": "febd21f2bad8",
+      "invalidated": true,
+      "status": "completed",
+      "reporting_date": "2026-10-26",
+      "due_at": "2026-10-27T12:03:33.804Z",
+      "started_at": "2026-10-27T12:03:52.996Z",
+      "completed_at": "2026-10-27T12:05:02.354Z",
+      "updated_at": "2026-10-27T12:43:33.258Z",
+      "attempt_count": 1,
+      "retryable": true,
+      "last_error": null
+    }
+  ]
+}

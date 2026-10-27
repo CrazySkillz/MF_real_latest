@@ -28,6 +28,8 @@ Replacement precision correction (`e1b113d7`): both PDFs use a separate total of
 
 Download dependency correction (October 26; deployment acceptance pending): Insights history and live channel requests refresh independently from the core publication receipt. They must not block unrelated report types. Insights/Custom Insights still wait for their required context and reject failed required inputs; core status/data/token/financial checks remain. The failing-before/passing-after normal-page browser evidence and scope are in `docs/fixes/v1-batch-7/REPORT_DOWNLOAD_DEPENDENCY_INCIDENT.md`.
 
+October 27 recurring download incident (local fix; deployed acceptance pending): the separate native Ad Comparison request still contacted GA4 while verifying an already saved publication. It now reads the synchronized campaign/property snapshot, as Overview and the scheduled Ad Comparison PDF already do. Core publication and report accuracy guards remain unchanged. Before/after route and browser evidence, read-only persisted-data verification, and remaining limits are in [the incident record](../docs/fixes/v1-batch-8/REPORT_DOWNLOAD_INCIDENT_2026-10-27.md). This does not certify Reports as a whole.
+
 ## Reports Tab Structure
 
 The current GA4 `Reports` tab contains:

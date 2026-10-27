@@ -13521,7 +13521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (overviewCampaignBreakdown && importToDateWindow && resolvedPropertyId) {
+      if ((overviewCampaignBreakdown || adComparisonCampaignBreakdown) && importToDateWindow && resolvedPropertyId) {
         const snapshot = await getSynchronizedGA4OverviewSnapshot(campaignId, resolvedPropertyId, importToDateWindow.startDate, expectedSnapshotEndDate);
         if (!snapshot) return res.status(409).json({
           success: false,

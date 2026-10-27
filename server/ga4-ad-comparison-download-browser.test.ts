@@ -1,7 +1,22 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
+import ts from "typescript";
 import { chromium, expect as browserExpect } from "@playwright/test";
 import { describe, expect, it } from "vitest";
+
+// Execute the real API handler for the report's native breakdown, including its snapshot gate.
+const routeSource = ts.createSourceFile("routes-oauth.ts", readFileSync("server/routes-oauth.ts", "utf8"), ts.ScriptTarget.Latest, true);
+const definitions: Record<string, string> = {};
+function visitRoute(node: ts.Node) {
+  if (ts.isVariableDeclaration(node) && node.name.getText(routeSource) === "getSynchronizedGA4OverviewSnapshot") definitions.snapshot = node.initializer!.getText(routeSource);
+  if (ts.isCallExpression(node) && node.expression.getText(routeSource) === "app.get" && node.arguments[0]?.getText(routeSource) === '"/api/campaigns/:id/ga4-breakdown"') definitions.route = node.arguments.at(-1)!.getText(routeSource);
+  ts.forEachChild(node, visitRoute);
+}
+visitRoute(routeSource);
+function compileRoute(name: string, bindings: Record<string, any>) {
+  if (!definitions[name]) throw new Error(`Missing production definition: ${name}`);
+  return new Function(...Object.keys(bindings), ts.transpileModule(`return (${definitions[name]});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
+}
 
 // A fresh, isolated browser: all requests are intercepted, no user profile or live services.
 describe("Ad Comparison precision through the real Reports page", () => {
@@ -43,6 +58,21 @@ describe("Ad Comparison precision through the real Reports page", () => {
       { campaign: "yesop_paid_social", sessions: 258, users: 258, conversions: 21, revenue: 4253.52214, sessionKeyEventRate: 0.08139534883720931 },
     ];
     const totals = { sessions: 604, users: 602, conversions: 40, revenue: 7653.96, pageviews: 1000, engagedSessions: 300, engagementRate: 300 / 604 };
+    let providerRequests = 0;
+    const storage = {
+      getGA4Connection: async () => ({ propertyId: "123", importStartDate: start, accessToken: "expired" }),
+      getGA4OverviewSnapshot: async () => ({ campaignId: "a", propertyId: "123", windowStart: start, windowEnd: day, updatedAt,
+        campaignBreakdown: { rows, totals, meta: { currencyCode: "EUR", revenueMetric: "totalRevenue" } } }),
+      getLatestGA4DailyMetric: async () => ({ date: day }),
+    };
+    const breakdownHandler = compileRoute("route", { storage,
+      ensureCampaignAccess: async () => ({ id: "a", currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: rows.map(row => row.campaign) }),
+      parseGA4CampaignFilter: (value: any) => value, isYesopMockProperty: () => false,
+      resolveGA4ImportToDateWindow: () => ({ startDate: start, endDate: day, dataThroughDate: day, days: 33, reportingTimeZone: "Europe/Amsterdam" }),
+      getSynchronizedGA4OverviewSnapshot: compileRoute("snapshot", { storage }),
+      ga4Service: { getAcquisitionBreakdown: async () => { providerRequests++; throw new Error("TOKEN_EXPIRED"); } },
+      console: { error: () => {} },
+    });
     const sources = [
       { id: "hubspot", sourceId: "hubspot", sourceType: "hubspot", displayName: "HubSpot", revenue: 250 },
       { id: "salesforce", sourceId: "salesforce", sourceType: "salesforce", displayName: "Salesforce", revenue: 100 },
@@ -63,6 +93,12 @@ describe("Ad Comparison precision through the real Reports page", () => {
         : url.pathname.endsWith("/ga4-daily") && url.searchParams.get("days") === "60";
       if (holdInsights && insightsContext) await pendingInsights;
       let data: any = { success: true }, status = 200;
+      if (url.pathname.endsWith("/ga4-breakdown") && url.searchParams.get("adComparisonCampaignBreakdown") === "1") {
+        await breakdownHandler({ params: { id: "a" }, query: Object.fromEntries(url.searchParams) }, {
+          status(code: number) { status = code; return this; }, json(body: any) { data = body; return this; },
+        });
+        await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) }); return;
+      }
       const property = { propertyId: "123", propertyName: "Isolated fixture", isPrimary: true, lookbackDays: 30 };
       if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Precision regression", currency: "EUR", status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify(rows.map(row => row.campaign)), createdAt: `${start}T00:00:00Z` };
       else if (url.pathname.includes("/ga4/check-connection/") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
@@ -150,6 +186,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await downloadReport();
       expect(downloads).toHaveLength(5);
+      expect(providerRequests).toBe(0);
       expect(errors).toEqual([]);
     } catch (error) {
       throw new Error(`${String(error)}\n${JSON.stringify({ errors, downloads, requests, pageText: (await page.locator("body").innerText()).slice(-5000) })}`);

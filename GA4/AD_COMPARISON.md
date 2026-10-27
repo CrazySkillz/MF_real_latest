@@ -121,7 +121,8 @@ The tab is built from:
 
 - the synchronized, daily-scheduler-published GA4 Overview Campaign Breakdown
   snapshot for the chart, leader cards, and two summary cards
-- separate native GA4 Ad Comparison rows for Revenue Breakdown
+- separate native GA4 Ad Comparison aggregates for Revenue Breakdown, read from
+  the same synchronized snapshot without adding imported revenue
 - selected GA4 campaign/property scope from campaign setup
 - active, materialized revenue source rows for the same campaign and GA4
   platform context; only revenue uniquely matched by the normalized allocation key is added to the
@@ -349,8 +350,9 @@ It refreshes from the same refreshed inputs that power the GA4 page:
    rewrite the snapshot.
 3. Revenue source definitions and exact materialized breakdown rows are
    refetched.
-4. The separate native GA4 Ad Comparison request refreshes the GA4 row used by
-   Revenue Breakdown for its import-to-date window.
+4. The separate native GA4 Ad Comparison request reads that same synchronized
+   snapshot for Revenue Breakdown's import-to-date window; it does not make a
+   provider request or renew tokens during page/report verification.
 5. Normalized comparison rows are rebuilt and the live tab renders from them.
 
 Do not add a separate Ad Comparison scheduler unless the product design explicitly changes.

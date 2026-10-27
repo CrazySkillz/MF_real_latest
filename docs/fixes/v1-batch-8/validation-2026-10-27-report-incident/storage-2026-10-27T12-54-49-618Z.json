@@ -1,0 +1,104 @@
+{
+  "at": "2026-10-27T12:54:49.618Z",
+  "checks": [
+    {
+      "method": "getGA4PublicationVersion",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 498,
+      "available": true
+    },
+    {
+      "method": "getGA4OverviewSnapshot",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 447,
+      "available": true
+    },
+    {
+      "method": "getGA4DailyMetrics",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 380,
+      "rows": 34,
+      "available": true
+    },
+    {
+      "method": "getExecutiveSummaryDailyComparisonData",
+      "latestDayOnly": true,
+      "passed": true,
+      "elapsedMs": 627,
+      "available": true
+    },
+    {
+      "method": "getLatestFinancialDailySnapshot",
+      "latestDayOnly": true,
+      "passed": true,
+      "elapsedMs": 500,
+      "available": true
+    },
+    {
+      "method": "getRevenueSources",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 465,
+      "rows": 2,
+      "available": true
+    },
+    {
+      "method": "getSpendSources",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 338,
+      "rows": 0,
+      "available": true
+    },
+    {
+      "method": "getGA4RevenuePublicationStatus",
+      "latestDayOnly": true,
+      "passed": false,
+      "elapsedMs": 330,
+      "code": "25006",
+      "message": "cannot execute SELECT FOR SHARE in a read-only transaction"
+    },
+    {
+      "method": "getRevenueTotalForRange",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 500,
+      "available": true
+    },
+    {
+      "method": "getRevenueTotalForRange",
+      "latestDayOnly": true,
+      "passed": true,
+      "elapsedMs": 488,
+      "available": true
+    },
+    {
+      "method": "getRevenueBreakdownBySource",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 492,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "method": "getSpendTotalForRange",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 548,
+      "available": true
+    },
+    {
+      "method": "getSpendBreakdownBySource",
+      "latestDayOnly": false,
+      "passed": true,
+      "elapsedMs": 494,
+      "rows": 0,
+      "available": true
+    }
+  ],
+  "readOnly": true,
+  "connectionMethod": "access_token"
+}

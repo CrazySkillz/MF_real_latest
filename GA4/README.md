@@ -95,7 +95,7 @@ Important meaning:
 - the GA4 page is the platform-specific analytics layer for that campaign
 - the GA4 page is not the campaign-wide rollup page
 - the GA4 property and GA4 campaign values are selected during setup; the GA4 analytics page displays the saved scope and does not provide a post-setup campaign picker
-- the current GA4 tabs are `Overview`, `KPIs`, `Benchmarks`, `Ad Comparison`,
+- the current GA4 tabs are `Overview`, `KPIs`, `Benchmarks`, `Campaign Comparison`,
   `Insights`, and `Reports`
 - the configured historical lookback establishes the fixed initial-import boundary; current GA4 Summary traffic values then accumulate through the latest completed reporting day instead of rolling forward with the original lookback length
 - the setup picker must discover real UTM campaign values from GA4 campaign dimensions where available, GA4 manual UTM campaign dimensions where available, and `pageLocation` `utm_campaign` fallback when fresh tagged traffic has not yet populated GA4 attribution dimensions

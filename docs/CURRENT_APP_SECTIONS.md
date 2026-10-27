@@ -303,7 +303,7 @@ and campaign values saved during setup. Its current tabs are:
 1. Overview
 2. KPIs
 3. Benchmarks
-4. Ad Comparison
+4. Campaign Comparison
 5. Insights
 6. Reports
 
@@ -326,7 +326,7 @@ hour range; Weekly KPI and Benchmark reminders also require a weekday.
 - **Benchmarks:** executive status counts, Benchmark cards, create/edit/delete
   controls, custom reference values, and optional alert/email schedules. The
   current create flow does not offer automatic industry benchmark suggestions.
-- **Ad Comparison:** compares GA4 campaign rows rather than individual ads or
+- **Campaign Comparison:** compares GA4 campaign rows rather than individual ads or
   creatives. It includes conditional leader cards, a metric selector and chart,
   totals, campaign count, and Revenue Breakdown.
 - **Insights:** Executive Financials, Trends, Data Summary, tracker cards, and

@@ -6865,7 +6865,7 @@ export default function GA4Metrics() {
                     <>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
-                  <TabsTrigger value="campaigns">Ad Comparison</TabsTrigger>
+                  <TabsTrigger value="campaigns">Campaign Comparison</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                     </>

@@ -188,7 +188,7 @@ function GA4AdComparison({
       <Card>
         <CardContent className="p-8 text-center">
           <p className="text-destructive">
-            Ad Comparison is unavailable because the campaign breakdown could not be verified. Refresh the page to try again.
+            Campaign Comparison is unavailable because the campaign breakdown could not be verified. Refresh the page to try again.
           </p>
         </CardContent>
       </Card>
@@ -213,7 +213,7 @@ function GA4AdComparison({
       {/* Header */}
       <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:items-end">
         <div className="md:col-span-2">
-          <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
+          <h3 className="text-lg font-semibold text-foreground">Campaign Comparison</h3>
           <p className="text-sm text-muted-foreground/70">
             {selectedMetric === "revenue"
               ? "Revenue matches GA4 Overview Campaign Breakdown"
@@ -366,7 +366,7 @@ function GA4AdComparison({
       </>}
 
       {breakdownUnavailable ? (
-        <Card><CardContent className="p-8 text-center text-destructive">Native Ad Comparison detail is unavailable.</CardContent></Card>
+        <Card><CardContent className="p-8 text-center text-destructive">Native Campaign Comparison detail is unavailable.</CardContent></Card>
       ) : breakdownLoading && campaignBreakdownAgg.length === 0 ? (
         <Card aria-busy="true">
           <CardHeader className="pb-2">
@@ -380,7 +380,7 @@ function GA4AdComparison({
           </CardContent>
         </Card>
       ) : campaignBreakdownAgg.length === 0 ? (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">No native Ad Comparison detail available.</CardContent></Card>
+        <Card><CardContent className="p-8 text-center text-muted-foreground">No native Campaign Comparison detail available.</CardContent></Card>
       ) : <>
       {/* Revenue Breakdown sub-table */}
       <Card>

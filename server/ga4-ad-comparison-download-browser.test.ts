@@ -20,7 +20,7 @@ function compileRoute(name: string, bindings: Record<string, any>) {
 
 // A fresh, isolated browser: all requests are intercepted, no user profile or live services.
 describe("Ad Comparison precision through the real Reports page", () => {
-  it.each(["channel", "history", "published-sources", "initial-reports", "publication-handoff", "publication-gap", "background-read", "landing-pages", "conversion-events", "report-library"])("downloads with %s refresh timing and recovers after core refresh failures", async contextKind => {
+  it.each(["channel", "history", "published-sources", "initial-reports", "publication-handoff", "publication-gap", "background-read", "landing-pages", "conversion-events", "report-library", "revenue-pipeline-no-spend"])("downloads with %s refresh timing and recovers after core refresh failures", async contextKind => {
     const bundle = await build({
       stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
         import {QueryClientProvider} from '@tanstack/react-query';
@@ -91,6 +91,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       { id: "hubspot", sourceId: "hubspot", sourceType: "hubspot", displayName: "HubSpot", revenue: 250 },
       { id: "salesforce", sourceId: "salesforce", sourceType: "salesforce", displayName: "Salesforce", revenue: 100 },
     ];
+    const pipelineJourney = contextKind === "revenue-pipeline-no-spend";
     await page.clock.install({ time: new Date("2026-10-26T19:00:00Z") });
     await context.route("**/*", async route => {
       const request = route.request(), url = new URL(request.url());
@@ -133,7 +134,8 @@ describe("Ad Comparison precision through the real Reports page", () => {
         ? [{ id: "saved-ads", name: "Saved Ad Comparison", reportType: "ads", createdAt: updatedAt, configuration: JSON.stringify({ sections: { ads: true } }) }]
         : ["landing-pages", "conversion-events"].includes(contextKind) && url.pathname.endsWith("/reports")
           ? [{ id: "saved-overview", name: "Saved Overview", reportType: "overview", createdAt: updatedAt, configuration: JSON.stringify({ sections: { overview: true } }) }] : [];
-      else if (url.pathname.endsWith("/revenue-sources")) data = { success: true, sources: sources.map(source => ({ ...source, isActive: true, currency: "EUR", materializedRevenueStatus: "available", lastTotalRevenue: source.revenue, completedDayRevenue: source.revenue, mappingConfig: null,
+      else if (url.pathname === "/api/hubspot/a/pipeline-proxy" && pipelineJourney) data = { success: true, sourceId: "hubspot", pipelineEnabled: true, mode: "current_stage", currency: "EUR", lastUpdatedAt: updatedAt, totalToDate: 3200, pipelineStageLabel: "Contract Sent", pipelineValueRevenueTotals: [{ campaignValue: "yesop_prospecting", revenue: 3200 }] };
+      else if (url.pathname.endsWith("/revenue-sources")) data = { success: true, sources: sources.map(source => ({ ...source, isActive: true, currency: "EUR", materializedRevenueStatus: "available", lastTotalRevenue: source.revenue, completedDayRevenue: source.revenue, mappingConfig: pipelineJourney && source.id === "hubspot" ? { pipelineEnabled: true, pipelineStageLabel: "Contract Sent", selectedValues: ["yesop_prospecting"] } : null,
         ...(contextKind === "published-sources" ? { publicationStatus: "published", publicationHash: source.id + "-saved" } : {}),
       })) };
       else if (url.pathname.endsWith("/revenue-breakdown")) data = { success: true, sources, endDate: day };
@@ -196,6 +198,22 @@ describe("Ad Comparison precision through the real Reports page", () => {
       }
       await browserExpect(page.getByText("Total Revenue", { exact: true }).locator("../..")).toContainText("€8,003.96");
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      if (pipelineJourney) {
+        const revenueCard = page.getByText("Total Revenue", { exact: true }).locator("../..");
+        const pipelineCard = page.getByText("Expected Revenue", { exact: true }).locator("../..");
+        await browserExpect(pipelineCard).toContainText("€3,200.00");
+        await browserExpect(page.getByText("Total Spend", { exact: true }).locator("../..")).toContainText("Unavailable");
+        for (const metric of ["ROAS", "ROI", "CPA"]) await browserExpect(page.getByText(metric, { exact: true }).locator("..")).toContainText("Unavailable");
+        await browserExpect(page.getByText("Profit", { exact: true })).toHaveCount(0);
+        await revenueCard.getByRole("button", { name: "Sources (3)", exact: true }).click();
+        for (const amount of ["€7,653.96", "€250.00", "€100.00"]) await browserExpect(page.getByRole("dialog")).toContainText(amount);
+        await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+        await pipelineCard.getByRole("button", { name: "Sources (1)", exact: true }).click();
+        await browserExpect(page.getByRole("dialog")).toContainText("Contract Sent");
+        await browserExpect(page.getByRole("dialog")).toContainText("€3,200.00");
+        await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+        await browserExpect(revenueCard).toContainText("€8,003.96");
+      }
       if (contextKind === "background-read") {
         const revenueCard = page.getByText("Total Revenue", { exact: true }).locator("../..");
         const before = await revenueCard.boundingBox();
@@ -216,8 +234,21 @@ describe("Ad Comparison precision through the real Reports page", () => {
         await page.getByRole("button", { name: "Cancel", exact: true }).click();
         await browserExpect(page.getByRole("button", { name: "Download", exact: true })).toBeEnabled();
       }
-      await page.getByRole("tab", { name: "Ad Comparison", exact: true }).click();
+      await page.getByRole("tab", { name: "Campaign Comparison", exact: true }).click();
+      await browserExpect(page.getByRole("heading", { name: "Campaign Comparison", exact: true })).toBeVisible();
       await browserExpect(page.getByRole("row").filter({ hasText: "TOTAL" }).last()).toContainText("€8,003.96");
+      if (pipelineJourney) {
+        for (const [label, campaign, detail] of [
+          ["Most Key Events", "yesop_paid_social", "21 Key Events"],
+          ["Highest Conversion Rate", "yesop_paid_social", "8.14%"],
+          ["Needs Attention", "yesop_prospecting", "4.62%"],
+        ]) {
+          const card = page.getByText(label, { exact: true }).locator("../..");
+          await browserExpect(card).toContainText(campaign);
+          await browserExpect(card).toContainText(detail);
+        }
+        await browserExpect(page.getByText("€3,200.00", { exact: true })).toHaveCount(0);
+      }
       await page.getByRole("tab", { name: "Reports", exact: true }).click();
       await openReport();
       if (contextKind === "publication-handoff") expect(await page.evaluate(() => (window as any).fixtureWarnings)).toEqual([]);

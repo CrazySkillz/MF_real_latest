@@ -10,6 +10,36 @@ exact revision has not yet been deployed and validated at runtime.
 
 October 26 replacement precision packet: after the user confirmed rollback downloads work, the raw selected native sum is now calculated separately from unchanged campaign display values. The EUR 8,003.95 / EUR 8,003.96 discrepancy is corrected in local live/browser/scheduled tests. 702 checks in 46 files and TypeScript/client/server builds pass; five PDFs / seven pages were inspected. The user authorized commit/push; deployment acceptance remains pending, so this does not establish production readiness. Exact paths, failure/recovery coverage and limits are in [the current checkpoint](../docs/fixes/v1-batch-7/REPORT_CLOSEOUT_CHECKPOINT.md).
 
+### October 27 revenue / pipeline / no-spend journey review
+
+The visible GA4 tab, heading, and tab-specific empty/error copy are now
+`Campaign Comparison`. Internal tab values, APIs, report types, report names,
+and calculations are unchanged by this label edit.
+
+Bounded isolated-browser evidence: `ga4-ad-comparison-download-browser.test.ts`
+case `revenue-pipeline-no-spend` passes Overview, Revenue Sources, Pipeline
+Proxy Sources, comparison leaders, Revenue Breakdown, and five PDF downloads
+across success, refresh failure, recovery, and mismatched financial data.
+The fixture has EUR 7,653.96 native revenue + EUR 250 HubSpot + EUR 100
+Salesforce = EUR 8,003.96; EUR 3,200 pipeline remains separate. No spend
+produces unavailable Spend/ROAS/ROI/CPA and no Profit card. The focused
+comparison/UI/financial-dependency/Insights/PDF packet passes 83 checks.
+
+**Open finding — chart subtotal rounding, not fixed by this review:**
+`campaignBreakdownAgg` in `client/src/pages/ga4-metrics.tsx` rounds individual
+campaign revenues before `adComparisonChartRows` feeds `totalMetric` in
+`client/src/pages/ga4-ad-comparison.tsx`. Executing the current aggregation with
+native amounts 3400.434193 and 4253.52214 yields displayed campaign amounts
+3400.43 and 4253.52, hence a chart subtotal of EUR 7,653.95 rather than the
+native aggregate EUR 7,653.96. Revenue Breakdown and the tested PDF use the
+separate full-precision native sum and correctly total EUR 8,003.96. The
+chart-subtotal path remains unproven for native aggregate reconciliation.
+
+This is a selected read/display/download journey with intercepted APIs, not
+live provider or production-data evidence. Source add/edit/delete, natural
+schedulers, saved-report delivery, persisted-data cleanup, and whole KPI /
+Benchmark / Insights lifecycle validation were not exercised in this review.
+
 **Historical full live-tab status: CLEAN-CERTIFIED / PRODUCTION_READY** for Client2 /
 Campaign2 `eee3e654-b736-4e8e-86ec-1050e4d905c0`, active GA4 property
 `542352127`, saved values `yesop_retargeti` and `yesop_email_nurture`, USD,

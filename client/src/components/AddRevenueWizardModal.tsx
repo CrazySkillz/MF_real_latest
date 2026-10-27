@@ -1872,7 +1872,7 @@ export function AddRevenueWizardModal(props: {
               }`}
           >
             {step === "select" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {!hideCrmSources && (
                   <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "shopify" || crmDisconnecting === "shopify" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("shopify")}>
                     <CardHeader>

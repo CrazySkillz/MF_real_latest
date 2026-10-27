@@ -30,6 +30,8 @@ Download dependency correction (October 26; deployment acceptance pending): Insi
 
 October 27 recurring download incident (local fix; deployed acceptance pending): the separate native Ad Comparison request still contacted GA4 while verifying an already saved publication. It now reads the synchronized campaign/property snapshot, as Overview and the scheduled Ad Comparison PDF already do. Core publication and report accuracy guards remain unchanged. Before/after route and browser evidence, read-only persisted-data verification, and remaining limits are in [the incident record](../docs/fixes/v1-batch-8/REPORT_DOWNLOAD_INCIDENT_2026-10-27.md). This does not certify Reports as a whole.
 
+October 27 follow-up: `692118a5` did not resolve the recurring warning. Published-source and core refreshes could cancel the same request; the browser incorrectly treated TanStack Query's cancellation as a failed data read. It now awaits the replacement and rechecks the receipt. Download buttons wait during verification; schedule creation/editing remain independent. Exact reproduction, negative cases, production metadata and validation limits are in [the cancellation incident](../docs/fixes/v1-batch-8/REPORT_PUBLICATION_CANCELLATION_2026-10-27.md).
+
 ## Reports Tab Structure
 
 The current GA4 `Reports` tab contains:

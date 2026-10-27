@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-27T13:44:32.428Z",
+  "checks": [
+    {
+      "method": "revenue-publication-inputs",
+      "financialRevenue": "8003.96",
+      "receiptDate": "2026-10-26",
+      "completed": true,
+      "sources": [
+        {
+          "sourceType": "hubspot",
+          "hashMatchesPublishedReceipt": true,
+          "pendingCompletedDay": false
+        },
+        {
+          "sourceType": "salesforce",
+          "hashMatchesPublishedReceipt": true,
+          "pendingCompletedDay": false
+        }
+      ]
+    }
+  ],
+  "readOnly": true,
+  "connectionMethod": "access_token"
+}

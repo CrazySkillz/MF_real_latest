@@ -1,5 +1,10 @@
 # Recurring Ad Comparison download failure — October 27, 2026
 
+Follow-up: the user reported the same banner after `692118a5` deployed. This
+saved-breakdown correction was insufficient to close the incident. The separately
+reproduced browser cancellation race and its correction are recorded in
+[the controlling follow-up](REPORT_PUBLICATION_CANCELLATION_2026-10-27.md).
+
 Status: localized fix and regression validation complete; the user authorized
 commit and push. Deployment and deployed UI acceptance remain pending. Reports and Ad Comparison remain
 UNVERIFIED as whole sections. This incident supersedes an assumption that the

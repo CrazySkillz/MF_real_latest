@@ -5,7 +5,7 @@ import { getExpectedScheduledRefreshAt, getReportingDateWindow, resolveGA4Refres
 
 // Exercise the installed query observer's browser timers, with no DOM/provider/server.
 vi.hoisted(() => { (globalThis as any).window = {}; });
-import { QueryClient, QueryObserver, focusManager } from "@tanstack/react-query";
+import { QueryClient, QueryObserver, focusManager, isCancelledError } from "@tanstack/react-query";
 
 const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
 const routes = readFileSync("server/routes-oauth.ts", "utf8");
@@ -53,7 +53,7 @@ function browser(client = new QueryClient({ defaultOptions: { queries: { retry: 
   const block = page.slice(page.indexOf("  const ga4PublicationScope ="), page.indexOf("  const deriveBenchmarkCategoryFromMetric"));
   const render = (status: any = { campaignId: "a", propertyId: "123", publicationToken: "p1" }, error = false, campaignId = "a", property = "123") => {
     const values = compile(block + "return { isGA4PublicationQuery, isGA4InsightsContextQuery, ga4InsightsContextFetching, ga4PublicationDisplayPending, ga4PublicationDisplayFailed };", {
-      campaignId, selectedGA4PropertyId: property, ga4ConnectionUsable: true, queryClient: client,
+      campaignId, selectedGA4PropertyId: property, ga4ConnectionUsable: true, queryClient: client, isCancelledError,
       platformKPIs: [{ id: "k-a" }], benchmarks: [{ id: "b-a" }],
       useQuery: (options: any) => { queryOptions = options; return { data: status, dataUpdatedAt: Date.now(), isError: error, refetch: async () => completionResult || ({ data: status, isError: error }) }; },
       useRef: () => receipt,
@@ -198,6 +198,79 @@ describe("GA4 browser publication coordination", () => {
       expect(fetchData).toHaveBeenCalledTimes(2);
       expect(view.client.getQueryData(key)).toEqual([{ currentValue: 3000 }]);
     } finally { stop(); view.client.clear(); }
+  });
+  it.each([1, 3])("waits for the replacement read after %i overlapping source-publication invalidations", async count => {
+    const view = browser(), key = ["/api/campaigns", "a", "financial-daily-snapshot", "2026-10-17", "EUR"];
+    view.client.setQueryData(key, { revenue: 8003.96 });
+    const reads = Array.from({ length: count + 1 }, deferred);
+    const fetchData = vi.fn().mockImplementation(() => reads[fetchData.mock.calls.length - 1].promise);
+    const observer = new QueryObserver(view.client, { queryKey: key, queryFn: fetchData }); const stop = observer.subscribe(() => {});
+    try {
+      view.render().effect();
+      for (let index = 0; index < count; index++) {
+        void view.client.invalidateQueries({ queryKey: key });
+        await vi.waitFor(() => expect(fetchData).toHaveBeenCalledTimes(index + 2));
+        await new Promise(resolve => setTimeout(resolve, 10));
+        expect(view.state.failed).toBe(false); expect(view.render().ga4PublicationDisplayPending).toBe(true);
+      }
+      for (const read of reads.slice(0, -1)) read.resolve({ revenue: 1 });
+      reads.at(-1)!.resolve({ revenue: 8003.96 });
+      await vi.waitFor(() => expect(view.state.pending).toBe(false));
+      expect(view.state.failed).toBe(false); expect(view.client.getQueryData(key)).toEqual({ revenue: 8003.96 });
+    } finally { stop(); view.client.clear(); }
+  });
+  it("still replaces an earlier in-flight read when a new publication first arrives", async () => {
+    const view = browser(), key = ["/api/campaigns", "a", "financial-daily-snapshot", "2026-10-17", "EUR"];
+    const old = deferred(), fresh = deferred();
+    view.client.setQueryData(key, { revenue: 8003.96 });
+    const fetchData = vi.fn().mockReturnValueOnce(old.promise).mockReturnValue(fresh.promise);
+    const observer = new QueryObserver(view.client, { queryKey: key, queryFn: fetchData }); const stop = observer.subscribe(() => {});
+    try {
+      void observer.refetch(); view.render().effect();
+      await vi.waitFor(() => expect(fetchData).toHaveBeenCalledTimes(2));
+      old.resolve({ revenue: 1 });
+      expect(view.render().ga4PublicationDisplayPending).toBe(true);
+      fresh.resolve({ revenue: 8003.96 });
+      await vi.waitFor(() => expect(view.state.pending).toBe(false));
+      expect(view.state.failed).toBe(false); expect(view.client.getQueryData(key)).toEqual({ revenue: 8003.96 });
+    } finally { stop(); view.client.clear(); }
+  });
+  it("does not swallow a real request error whose message happens to say CancelledError", async () => {
+    const view = browser(), key = ["/api/platforms/google_analytics/kpis", "a"];
+    view.client.setQueryData(key, []);
+    const observer = new QueryObserver(view.client, { queryKey: key, queryFn: async () => { throw new Error("CancelledError"); } });
+    const stop = observer.subscribe(() => {});
+    try { view.render().effect(); await vi.waitFor(() => expect(view.state.failed).toBe(true)); }
+    finally { stop(); view.client.clear(); }
+  });
+  it.each(["failed replacement", "changed token"])("does not certify a cancelled read followed by %s", async kind => {
+    const view = browser(), key = ["/api/campaigns", "a", "financial-daily-snapshot", "2026-10-17", "EUR"];
+    const first = deferred(), replacement = deferred();
+    view.client.setQueryData(key, { revenue: 8003.96 });
+    const fetchData = vi.fn().mockReturnValueOnce(first.promise).mockReturnValue(replacement.promise);
+    const observer = new QueryObserver(view.client, { queryKey: key, queryFn: fetchData }); const stop = observer.subscribe(() => {});
+    try {
+      view.render().effect(); void view.client.invalidateQueries({ queryKey: key });
+      await vi.waitFor(() => expect(fetchData).toHaveBeenCalledTimes(2));
+      if (kind === "changed token") { view.completionResult = { data: { publicationToken: "p2" }, isError: false }; replacement.resolve({ revenue: 8003.96 }); }
+      else replacement.reject(new Error("real database failure"));
+      await vi.waitFor(() => expect(view.state.failed).toBe(true));
+      expect(view.render().ga4PublicationDisplayFailed).toBe(true); expect(view.receipt.current.token).toBe("");
+    } finally { first.resolve({ revenue: 1 }); stop(); view.client.clear(); }
+  });
+  it.each([
+    ["pending new download", true, false, null, true],
+    ["verified new download", false, false, null, false],
+    ["schedule creation", true, true, null, false],
+    ["schedule edit", true, false, "report-a", false],
+  ])("keeps report controls usable for %s", (_name, pending, scheduled, editing, expected) => {
+    const start = page.indexOf("const isGA4ReportSubmitDisabled =") + "const isGA4ReportSubmitDisabled =".length;
+    const expression = page.slice(start, page.indexOf(";", start));
+    expect(compile("return " + expression, {
+      ga4ReportForm: { name: "Report", reportType: "ads", scheduleEnabled: scheduled },
+      ga4PublicationDisplayPending: pending, editingGA4ReportId: editing,
+      createGA4ReportMutation: { isPending: false }, updateGA4ReportMutation: { isPending: false }, isGA4ReportEditUnchanged: false,
+    })).toBe(expected);
   });
   it.each([null, { campaignId: "a", propertyId: "123", publicationToken: null }, { campaignId: "other", propertyId: "123", publicationToken: "p1" }, { campaignId: "a", propertyId: "999", publicationToken: "p1" }])("does not refetch for missing/incomplete/foreign receipts: %j", status => {
     const view = browser(); const invalidate = vi.spyOn(view.client, "invalidateQueries"); view.render(status).effect();

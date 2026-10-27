@@ -1,5 +1,5 @@
 import { conversionCreditsMatch } from "@shared/metric-math";
-import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching, isCancelledError } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, Activity, Info, Trophy } from "lucide-react";
@@ -1911,7 +1911,20 @@ export default function GA4Metrics() {
     // Insights context refreshes independently; it must not block unrelated report types.
     void queryClient.invalidateQueries({ predicate: isGA4InsightsContextQuery });
     // Inactive tabs are marked stale; only mounted, enabled queries are fetched.
-    void queryClient.invalidateQueries({ predicate: query => isGA4PublicationQuery(query) && !isGA4InsightsContextQuery(query) }, { throwOnError: true }).then(async () => {
+    const refreshPublishedQueries = async () => {
+      let cancelRefetch = true;
+      while (ga4PublicationReceipt.current === receipt) {
+        try {
+          await queryClient.invalidateQueries({ predicate: query => isGA4PublicationQuery(query) && !isGA4InsightsContextQuery(query) }, { throwOnError: true, cancelRefetch });
+          return;
+        } catch (error) {
+          if (!isCancelledError(error)) throw error;
+          // A source refresh replaced this read. Await its replacement without cancelling it again.
+          cancelRefetch = false;
+        }
+      }
+    };
+    void refreshPublishedQueries().then(async () => {
       if (ga4PublicationReceipt.current !== receipt) return;
       const checked = await refetchGA4PublicationStatus();
       if (checked.isError || checked.data?.publicationToken !== token) throw new Error("GA4 publication changed while the page was refreshing");
@@ -6469,6 +6482,7 @@ export default function GA4Metrics() {
   const isGA4ReportEditUnchanged = Boolean(editingGA4ReportId) && (!ga4ReportEditInitialSignature || ga4ReportFormSignature === ga4ReportEditInitialSignature);
   const isGA4ReportSubmitDisabled = !ga4ReportForm.name
     || !ga4ReportForm.reportType
+    || (!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && ga4PublicationDisplayPending)
     || createGA4ReportMutation.isPending
     || updateGA4ReportMutation.isPending
     || isGA4ReportEditUnchanged;
@@ -9234,6 +9248,7 @@ export default function GA4Metrics() {
                                   <Button
                                     variant="outline"
                                     size="sm"
+                                    disabled={ga4PublicationDisplayPending}
                                     onClick={async () => {
                                       let cfg: any = { sections: { overview: true } };
                                       try {

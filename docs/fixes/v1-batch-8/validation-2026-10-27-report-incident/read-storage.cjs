@@ -31,6 +31,20 @@ let client;
   vm.runInNewContext(bundle.outputFiles[0].text, { module: exported, exports: exported.exports, require: createRequire(path.resolve('package.json')),
     readonlyDb, process: { env: { NODE_ENV: 'production' } }, console: { log() {}, warn() {}, error() {} }, Buffer, URL, Date, setTimeout, clearTimeout, fetch: blockedFetch });
   const storage = exported.exports.storage;
+  if (process.argv.includes('--publication-inputs')) {
+    // Inspect only the inputs to the publication-status reader; its FOR SHARE
+    // lock cannot be taken in this deliberately READ ONLY diagnostic transaction.
+    const current = await storage.readGA4RevenuePublication(readonlyDb, campaignId, day);
+    const financial = await storage.getLatestFinancialDailySnapshot(campaignId, day);
+    const receipt = financial?.metrics?.revenuePublication;
+    const work = receipt?.workId ? (await client.query('SELECT status FROM ga4_refresh_work WHERE id=$1 AND campaign_id=$2', [receipt.workId, campaignId])).rows[0] : null;
+    result.checks.push({ method: 'revenue-publication-inputs', financialRevenue: financial?.metrics?.financialDaily?.inputs?.revenue?.value,
+      receiptDate: receipt?.reportingDate, completed: !receipt?.workId || work?.status === 'completed',
+      sources: (await storage.getRevenueSources(campaignId, 'ga4')).map(source => ({ sourceType: source.sourceType,
+        hashMatchesPublishedReceipt: current.sources[source.id] === receipt?.sources?.[source.id],
+        pendingCompletedDay: current.pendingSourceIds.includes(source.id) })) });
+    await client.query('ROLLBACK'); return;
+  }
   if (process.argv.includes('--breakdown-route')) {
     const ts = require('typescript');
     const source = ts.createSourceFile('routes-oauth.ts', fs.readFileSync('server/routes-oauth.ts', 'utf8'), ts.ScriptTarget.Latest, true);

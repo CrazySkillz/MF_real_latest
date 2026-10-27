@@ -1,0 +1,243 @@
+{
+  "at": "2026-10-27T08:19:15.755Z",
+  "readOnly": true,
+  "connections": [
+    {
+      "idHash": "9319b31eb33f",
+      "campaignHash": "b1ffdb56204d",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2025-11-14T15:37:37.341Z",
+      "connected_at": "2025-11-14T15:37:37.341Z"
+    },
+    {
+      "idHash": "845535449a90",
+      "campaignHash": "6fe3de41b5cc",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-01-02T10:55:15.204Z",
+      "connected_at": "2026-01-02T10:55:15.204Z"
+    },
+    {
+      "idHash": "2b0c6dbddc12",
+      "campaignHash": "0b4aaab0597c",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-01-03T13:15:26.407Z",
+      "connected_at": "2026-01-03T13:15:26.407Z"
+    },
+    {
+      "idHash": "c8783ad26071",
+      "campaignHash": "30b1a0223f77",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-01-13T21:53:45.252Z",
+      "connected_at": "2026-01-13T21:53:45.252Z"
+    },
+    {
+      "idHash": "b8804deacdab",
+      "campaignHash": "993d948b4906",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-02-13T14:28:29.943Z",
+      "connected_at": "2026-02-13T14:28:29.943Z"
+    },
+    {
+      "idHash": "cd43d72ada71",
+      "campaignHash": "c9908c534cdb",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-02-13T15:16:24.187Z",
+      "connected_at": "2026-02-13T15:16:24.187Z"
+    },
+    {
+      "idHash": "097bdb22371a",
+      "campaignHash": "f716bee8c1c1",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-02-13T15:30:38.383Z",
+      "connected_at": "2026-02-13T15:30:38.383Z"
+    },
+    {
+      "idHash": "f8986f0e2044",
+      "campaignHash": "41c5e3476710",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-02-13T15:55:32.314Z",
+      "connected_at": "2026-02-13T15:55:32.314Z"
+    },
+    {
+      "idHash": "d7cdc392abb7",
+      "campaignHash": "8460eb013897",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-03-17T09:21:47.291Z",
+      "connected_at": "2026-03-17T09:21:47.291Z"
+    },
+    {
+      "idHash": "4d6732eef52a",
+      "campaignHash": "ae7b0d79ce87",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-03-27T08:48:51.750Z",
+      "connected_at": "2026-03-27T08:48:51.750Z"
+    },
+    {
+      "idHash": "0dccd4c505a4",
+      "campaignHash": "22bca0fdac95",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-04-26T09:40:49.118Z",
+      "connected_at": "2026-04-26T09:40:49.118Z"
+    },
+    {
+      "idHash": "18d3d86c393a",
+      "campaignHash": "8f76d5e00ce1",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-04-26T10:40:44.480Z",
+      "connected_at": "2026-04-26T10:40:44.480Z"
+    },
+    {
+      "idHash": "3fe9fbde8118",
+      "campaignHash": "d4095936f31a",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-05-01T10:34:02.462Z",
+      "connected_at": "2026-05-01T10:34:02.462Z"
+    },
+    {
+      "idHash": "ae3ddd22959e",
+      "campaignHash": "5403137e2308",
+      "method": "access_token",
+      "is_active": true,
+      "is_primary": true,
+      "created_at": "2026-05-09T22:37:30.368Z",
+      "connected_at": "2026-05-09T22:37:30.368Z"
+    }
+  ],
+  "reports": [
+    {
+      "idHash": "e9a7823b1a08",
+      "campaignHash": "39fcf4c6a2ec",
+      "platform_type": "linkedin",
+      "report_type": "benchmarks",
+      "status": "active",
+      "schedule_enabled": false,
+      "created_at": "2025-12-03T22:39:27.244Z",
+      "updated_at": "2025-12-03T22:39:27.244Z",
+      "last_sent_at": null
+    },
+    {
+      "idHash": "eef98e86b929",
+      "campaignHash": "39fcf4c6a2ec",
+      "platform_type": "linkedin",
+      "report_type": "ads",
+      "status": "active",
+      "schedule_enabled": false,
+      "created_at": "2025-12-03T22:40:07.197Z",
+      "updated_at": "2025-12-03T22:40:07.197Z",
+      "last_sent_at": null
+    },
+    {
+      "idHash": "20235d8e93ae",
+      "campaignHash": "39fcf4c6a2ec",
+      "platform_type": "linkedin",
+      "report_type": "ads",
+      "status": "active",
+      "schedule_enabled": false,
+      "created_at": "2025-12-03T22:52:10.130Z",
+      "updated_at": "2025-12-03T22:52:10.130Z",
+      "last_sent_at": null
+    },
+    {
+      "idHash": "172999030a1e",
+      "campaignHash": "39fcf4c6a2ec",
+      "platform_type": "linkedin",
+      "report_type": "benchmarks",
+      "status": "active",
+      "schedule_enabled": false,
+      "created_at": "2025-12-03T22:52:46.549Z",
+      "updated_at": "2025-12-03T22:52:46.549Z",
+      "last_sent_at": null
+    },
+    {
+      "idHash": "9e060b354842",
+      "campaignHash": "39fcf4c6a2ec",
+      "platform_type": "linkedin",
+      "report_type": "overview",
+      "status": "active",
+      "schedule_enabled": false,
+      "created_at": "2025-12-03T23:08:24.362Z",
+      "updated_at": "2026-05-16T21:38:01.663Z",
+      "last_sent_at": null
+    },
+    {
+      "idHash": "a9b690424276",
+      "campaignHash": "39fcf4c6a2ec",
+      "platform_type": "linkedin",
+      "report_type": "ads",
+      "status": "active",
+      "schedule_enabled": false,
+      "created_at": "2025-12-03T23:09:38.425Z",
+      "updated_at": "2026-05-16T21:38:02.134Z",
+      "last_sent_at": "2026-05-14T09:00:03.041Z"
+    }
+  ],
+  "distinctMissingCampaigns": 15,
+  "references": {
+    "ga4_refresh_work": 0,
+    "revenue_sources": 0,
+    "spend_sources": 0,
+    "kpis": 7,
+    "benchmarks": 1,
+    "metric_snapshots": 459,
+    "ga4_daily_metrics": 0,
+    "ga4_overview_snapshots": 0,
+    "google_sheets_connections": 0,
+    "hubspot_connections": 1,
+    "salesforce_connections": 0,
+    "shopify_connections": 0
+  },
+  "sendEvents": [
+    {
+      "status": "skipped",
+      "count": 5
+    },
+    {
+      "status": "sent",
+      "count": 63
+    },
+    {
+      "status": "failed",
+      "count": 68
+    }
+  ],
+  "reportSnapshots": 134,
+  "emailAudits": [
+    {
+      "delivery_status": "pending",
+      "count": 268
+    }
+  ],
+  "checks": {
+    "exactPriorRowCounts": true,
+    "allReportSchedulesDisabled": true,
+    "noRefreshWork": true,
+    "noPendingReportRecovery": true,
+    "noKnownActiveSourceOrGoalReferences": false
+  }
+}

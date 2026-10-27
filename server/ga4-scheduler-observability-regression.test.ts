@@ -27,7 +27,7 @@ describe("GA4 scheduler and scheduled report observability", () => {
 
     expect(index).toContain('import { getGA4DailySchedulerStatus, startGA4DailyScheduler } from "./ga4-daily-scheduler";');
     expect(index).toContain("startGA4DailyScheduler(port)");
-    expect(index).toContain("ga4DailyScheduler: getGA4DailySchedulerStatus()");
+    expect(index).toContain("const ga4DailyScheduler = getGA4DailySchedulerStatus();");
     expect(daily).toContain("export function getGA4DailySchedulerStatus()");
     expect(daily).toContain("timerScheduled: Boolean((global as any).ga4DailySchedulerTimer)");
     expect(daily).toContain("nextRunAt: toIsoOrNull(ga4DailySchedulerStatus.nextRunAt)");

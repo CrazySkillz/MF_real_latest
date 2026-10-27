@@ -1,0 +1,309 @@
+{
+  "at": "2026-10-27T08:05:16.795Z",
+  "clientNames": [
+    "Insta",
+    "Google",
+    "GA4 single",
+    "new_testersw",
+    "tert",
+    "client1",
+    "Client2",
+    "new_client"
+  ],
+  "knownCampaignHashes": [
+    "6caf32c94dbe",
+    "57141d52e81b",
+    "b0f65e7c7bfb",
+    "4ba3d83a9f51",
+    "d9920c47fecf",
+    "518aea3dc6ff",
+    "f15d247e7a62"
+  ],
+  "readOnly": true,
+  "remainingNamedClients": [],
+  "remainingKnownCampaigns": [],
+  "abn": [
+    {
+      "name": "V1 Batch 5 Test",
+      "status": "active",
+      "currency": "EUR",
+      "client_name": "ABN",
+      "owner_hash": "d57d01592772",
+      "client_hash": "6be34241134f",
+      "owner_matches": true
+    }
+  ],
+  "knownCampaignChildren": [
+    {
+      "table": "ab_tests",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "attribution_insights",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "attribution_results",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "benchmarks",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "conversion_events",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "custom_integration_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "custom_integrations",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "email_alert_events",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "ga4_connection_lifecycle_events",
+      "retainedHistory": true,
+      "count": 6
+    },
+    {
+      "table": "ga4_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "ga4_daily_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "ga4_google_ads_spend_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "ga4_google_ads_spend_daily_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "ga4_overview_snapshots",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "ga4_refresh_work",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "google_ads_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "google_ads_daily_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "google_sheets_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "hubspot_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "inbound_webhook_receipts",
+      "retainedHistory": true,
+      "count": 0
+    },
+    {
+      "table": "instagram_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "instagram_daily_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "kpi_reports",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "kpis",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "linkedin_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "linkedin_daily_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "linkedin_import_sessions",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "linkedin_reports",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "meta_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "meta_daily_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "metric_snapshots",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "mimosaas_tracking_attributions",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "mimosaas_tracking_campaign_mappings",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "mimosaas_tracking_configurations",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "mimosaas_tracking_daily_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "mimosaas_tracking_daily_snapshots",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "mimosaas_tracking_publication_runs",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "notifications",
+      "retainedHistory": true,
+      "count": 1
+    },
+    {
+      "table": "report_snapshots",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "revenue_records",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "revenue_sources",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "salesforce_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "shopify_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "spend_records",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "spend_sources",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "tiktok_connections",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "tiktok_daily_metrics",
+      "retainedHistory": false,
+      "count": 0
+    },
+    {
+      "table": "touchpoints",
+      "retainedHistory": false,
+      "count": 0
+    }
+  ],
+  "orphanWorkAndSchedules": {
+    "ga4_refresh_work": 0,
+    "ga4_connections": 14,
+    "linkedin_reports": 6,
+    "kpi_reports": 0
+  },
+  "knownCampaignVisibleNotifications": 0,
+  "orphanReportScheduleStates": [
+    {
+      "platform_type": "linkedin",
+      "status": "active",
+      "schedule_enabled": false,
+      "count": 6
+    }
+  ],
+  "orphanGA4ConnectionStates": [
+    {
+      "is_active": true,
+      "method": "access_token",
+      "count": 14
+    }
+  ],
+  "checks": {
+    "eightNamedClientsAbsent": true,
+    "sevenKnownCampaignsAbsent": true,
+    "knownCampaignOperationalChildrenAbsent": true,
+    "knownCampaignNotificationsHidden": true,
+    "noOrphanGA4RefreshWork": true,
+    "noOrphanGA4Connections": false,
+    "abnCampaignPresentAndOwned": true
+  }
+}

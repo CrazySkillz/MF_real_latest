@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-27T08:36:49.743Z",
+  "exitCode": 1,
+  "error": null,
+  "tests": 84,
+  "passed": 83,
+  "failed": 1,
+  "skipped": 0,
+  "failedSuites": 2,
+  "success": false,
+  "failures": [
+    {
+      "name": "financial daily snapshot observation keeps the GET route read-only and connects the gated writer after either refresh",
+      "error": "AssertionError: expected 'import express, { type Request, Respo…' to contain 'financialDailySnapshot: getFinancialD…'\n    at C:/Users/me/Documents/MF_real_latest/server/financial-daily-snapshot-observation.test.ts:140:19\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)\n    at runTest (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:12)"
+    }
+  ]
+}

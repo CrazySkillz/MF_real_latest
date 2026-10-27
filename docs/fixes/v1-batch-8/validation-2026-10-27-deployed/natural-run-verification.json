@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-27T07:14:30.517Z",
+  "checks": {
+    "enforcedReadOnly": true,
+    "workCompleted": true,
+    "exactCompletion": true,
+    "nativeFresh": true,
+    "financialFresh": true,
+    "executiveFresh": true,
+    "matchingRevenue": true,
+    "matchingWindow": true,
+    "matchingCurrency": true,
+    "completedDay": true,
+    "activeNotInFailures": true
+  },
+  "passed": true,
+  "completedAt": "2026-10-27T07:11:49.861Z",
+  "totalRevenue": 8003.96,
+  "nativeGA4Revenue": 7653.96,
+  "overallBatchStatus": "failed",
+  "otherCampaignFailures": [
+    {
+      "campaignIdHash": "6caf32c94dbe",
+      "stage": "campaign_pipeline_failed"
+    },
+    {
+      "campaignIdHash": "57141d52e81b",
+      "stage": "campaign_pipeline_failed"
+    },
+    {
+      "campaignIdHash": "b0f65e7c7bfb",
+      "stage": "campaign_pipeline_failed"
+    },
+    {
+      "campaignIdHash": "4ba3d83a9f51",
+      "stage": "campaign_pipeline_failed"
+    },
+    {
+      "campaignIdHash": "d9920c47fecf",
+      "stage": "campaign_pipeline_failed"
+    },
+    {
+      "campaignIdHash": "518aea3dc6ff",
+      "stage": "campaign_pipeline_failed"
+    }
+  ]
+}

@@ -131,12 +131,19 @@ process.on('uncaughtException', (error: Error) => {
     app.get('/health/scheduler', (_req: Request, res: Response) => {
       try {
         const metrics = getSchedulerMetrics();
+        const autoRefreshScheduler = getAutoRefreshSchedulerStatus();
+        const ga4DailyScheduler = getGA4DailySchedulerStatus();
+        const financialDailySnapshot = getFinancialDailySnapshotObservationStatus();
+        // Report errors are retained: another report's success does not prove recovery.
+        const hasRecordedFailure = Boolean(metrics.lastError || metrics.lastErrorTime
+          || [autoRefreshScheduler, ga4DailyScheduler].some(state => state.lastRunStatus === 'failed' || state.lastError)
+          || financialDailySnapshot.writeFailedCampaigns > 0);
         res.json({
-          status: 'healthy',
+          status: hasRecordedFailure ? 'unhealthy' : 'healthy',
           scheduler: metrics,
-          autoRefreshScheduler: getAutoRefreshSchedulerStatus(),
-          ga4DailyScheduler: getGA4DailySchedulerStatus(),
-          financialDailySnapshot: getFinancialDailySnapshotObservationStatus(),
+          autoRefreshScheduler,
+          ga4DailyScheduler,
+          financialDailySnapshot,
           timestamp: new Date().toISOString(),
         });
       } catch (error) {

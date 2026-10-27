@@ -1,5 +1,9 @@
 # Batch 8: Release checks and deployed operational acceptance
 
+**October 27 scheduler health correction (local):** [Exact change and evidence](SCHEDULER_HEALTH_CHECKPOINT.md). The public monitoring handler now reports recorded failures instead of a constant healthy label. **84/84** targeted tests, TypeScript and server build pass. No scheduler execution, financial calculation, report generation or production data changes. User-authorized submission; hosted CI and deployment verification remain pending. Deployed monitoring and broader V1-010 acceptance remain OPEN; **V1 NO-GO**. Earlier deployed evidence below remains scoped to `997f1c39`.
+
+**October 27 deployed verification (current):** [997f1c39 verification and user deletion](DEPLOYED_VERIFICATION_997F1C39.md). Hosted CI passes **6,497/6,497** plus retained 52/52; **V1-012 is CLOSED**. The active report campaign's natural refresh passed at **08:11:49 Amsterdam**. After the user deleted eight redundant clients, read-only checks confirm their names and the seven known campaigns absent, their operational children removed across 48 inspected tables, no orphan GA4 refresh work, and ABN revenue still **EUR 8,003.96**. Fourteen other orphan GA4 connection rows and six unscheduled orphan reports remain for separate disposition; their origin is unproven. V1-010 and the other six Batch 8 findings remain open. No agent runtime or production-data mutation. Earlier active/redundant and pending-CI statements are historical; **V1 remains NO-GO**.
+
 **October 27 CI/scheduler follow-up (current):** [Confirmed causes, changes and validation](CI_AND_SCHEDULER_CHECKPOINT.md). Missing hosted test prerequisites are corrected locally; the actual CI command passes **6,477/6,477** before the runtime correction. Four scheduler guard lines now prevent interval refreshes overlapping GA4 publication; final related checks pass **669/669**, including 20 new cases. TypeScript/server build pass. The user confirmed Campaign3 is redundant; its separate saved Shopify renewal failure remains tracked, without campaign/connection/data changes. User-authorized submission; hosted CI, deployment verification and the complete existing release gates remain pending. **Batch 8 IN PROGRESS; V1 NO-GO.** Older runtime-unchanged/current-status statements below describe earlier packets.
 
 **October 27 current GA4-first checkpoint:** [Regression reconciliation and complete gate status](GA4_FIRST_REGRESSION_CHECKPOINT.md). **6,477 passed / zero failed / zero skipped**, 382 files, including all 710 recent report checks; TypeScript passes. All 123 prior failures are traced and resolved locally, with nine explicit assertion-name mappings and no waivers. Tests/CI/evidence only: application runtime, campaigns, connections and calculations are unchanged. LinkedIn/Meta/TikTok/Instagram metric certification is outside V1; shared isolation guards remain tested. Production scheduler failures, hosted CI, natural email, postponed Google Ads and documented live/operational gates remain open. **Batch 8 IN PROGRESS; V1 NO-GO.** User-authorized submission; this controls over older current-suite and uncommitted statements below.
@@ -20,7 +24,7 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 **New initial-publication gate, October 23:** [V1-011-F1](../v1-batch-3/README.md#initial-financial-publication-follow-up-october-23) is corrected locally after a user-created campaign exposed missing financial publication. Initial snapshot, activation and completion now share one transaction. Latest related results: **533 passed / one OPEN assertion / zero skipped**; TypeScript/server build pass. The correction, tests and evidence are committed in `1f0dfb3d`; deployment verification is pending. Exact existing-campaign recovery and a fresh deployed initial import are required before continuing Batch 5 provider acceptance; no whole-app gate is closed.
 
-**OPEN. V1 remains NO-GO.** All eight assigned release-gate findings remain open. Some bounded checks pass; none certifies the full application.
+**OPEN. V1 remains NO-GO.** Seven assigned release-gate findings remain open; V1-012 automated validation is closed on `997f1c39`. Bounded checks do not certify the full application.
 
 **October 23 Ptomo UI follow-up: bounded freshness check PASS.** The [user screenshot](../v1-batch-3/README.md#ptomo-afternoon-refresh-october-23) shows GA4 updated at 14:08 and financial figures at 14:09 GMT+2, both through October 22. This satisfies the requested UI follow-up using later afternoon evidence; no repeat morning screenshot is needed. Exact 08:00 execution/process attribution, provider reconciliation, recovery and full downstream acceptance remain OPEN. No code or production-data change occurred.
 
@@ -102,7 +106,7 @@ These records retain their own dates and verification limits. Use the current fi
 | Finding | Severity | Fix status | Release acceptance |
 |---|---|---|---|
 | [V1-010](#v1-010) | P1 | OPEN | OPEN |
-| [V1-012](#v1-012) | P1 | OPEN | OPEN |
+| [V1-012](#v1-012) | P1 | CLOSED | CLOSED |
 | [V1-013](#v1-013) | P1 | OPEN | OPEN |
 | [V1-014](#v1-014) | P1 | OPEN | OPEN |
 | [V1-016](#v1-016) | P1 | OPEN | OPEN |
@@ -128,15 +132,15 @@ On exact HEAD, `/health/scheduler` reports healthy/200 while latest GA4 daily an
 
 ### V1-012
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
 **Original audit evidence** (baseline `777aae6f`; evidence classification: automated validation not clean):
 
-Full controlled suite: 3,789 passed /182 failed /zero skipped. [Each failure](../../audits/v1-2026-10-19/VALIDATION.md) retains a stable ID and OPEN status. All37 incomplete-fixture behavior failures now map to missing publication-version setup;108 audit-copy assertions pass after exact fixture/guard-expectation repair, with runtime unchanged. [Root causes and mapping](../../audits/v1-2026-10-19/GA4_FAILED_TEST_ROOT_CAUSES.md). Original tests still require agreed corrections and complete rerun. Deferred CI tests remain safety obligations where routes/jobs exist.
+Full controlled suite at the original baseline: 3,789 passed /182 failed /zero skipped. [Original failure evidence](../../audits/v1-2026-10-19/VALIDATION.md) retains its historical IDs/status. All37 incomplete-fixture behavior failures mapped to missing publication-version setup;108 audit-copy assertions passed after exact fixture/guard-expectation repair, with runtime unchanged. [Original root causes and mapping](../../audits/v1-2026-10-19/GA4_FAILED_TEST_ROOT_CAUSES.md). Deferred CI tests remain safety obligations where routes/jobs exist.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** CLOSED on deployed `997f1c39` by the [current regression reconciliation](GA4_FIRST_REGRESSION_CHECKPOINT.md), [CI prerequisite correction](CI_AND_SCHEDULER_CHECKPOINT.md), and [successful hosted execution](DEPLOYED_VERIFICATION_997F1C39.md#exact-revision-and-automated-checks): 6,497/6,497 tests across 383 files, complete execution with no failures/skips, plus the separate 52/52 retained-deferred checks. No failures were waived. Earlier intermediate counts remain historical; a later failing revision reopens this finding. This closes automated-validation acceptance only, not live lifecycle coverage, scheduler health, complete analytics semantics or whole-app readiness.
 
 ### V1-013
 

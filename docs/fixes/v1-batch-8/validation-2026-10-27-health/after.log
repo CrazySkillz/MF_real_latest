@@ -1,0 +1,1291 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/me/Documents/MF_real_latest[39m
+
+ [32m✓[39m server/v1-batch8-scheduler-health.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m server/v1-batch2-scheduler-startup.test.ts [2m([22m[2m26 tests[22m[2m)[22m[33m 513[2mms[22m[39m
+ [31m❯[39m server/financial-daily-snapshot-observation.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 62[2mms[22m[39m
+     [32m✓[39m returns a separate copy of exact campaign/stage evidence and clears it on the next stage run[32m 4[2mms[22m[39m
+     [32m✓[39m observes readiness only after both same-day campaign refreshes completed[32m 28[2mms[22m[39m
+     [32m✓[39m reports a successful gated write without exposing campaign identity[32m 1[2mms[22m[39m
+     [32m✓[39m clears stale evidence when either scheduler starts a new run[32m 3[2mms[22m[39m
+[31m     [31m×[31m keeps the GET route read-only and connects the gated writer after either refresh[39m[32m 25[2mms[22m[39m
+ [32m✓[39m server/financial-daily-snapshot-readiness.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m server/ga4-scheduler-observability-regression.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m server/v1-batch8-interval-publication.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m server/financial-daily-snapshot-observation.test.ts[2m > [22mfinancial daily snapshot observation[2m > [22mkeeps the GET route read-only and connects the gated writer after either refresh
+[31m[1mAssertionError[22m: expected 'import express, { type Request, Respo…' to contain 'financialDailySnapshot: getFinancialD…'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- financialDailySnapshot: getFinancialDailySnapshotObservationStatus()[39m
+[31m+ import express, { type Request, Response, NextFunction } from "express";[39m
+[31m+ import { registerRoutes } from "./routes-oauth";[39m
+[31m+ import { setupVite, serveStatic, log } from "./vite";[39m
+[31m+ import { snapshotScheduler } from "./scheduler";[39m
+[31m+ import { executiveSummarySnapshotScheduler } from "./executive-summary-snapshot-scheduler";[39m
+[31m+ import { startKPIScheduler } from "./kpi-scheduler";[39m
+[31m+ import { startReportScheduler, getSchedulerMetrics } from "./report-scheduler";[39m
+[31m+ import { startLinkedInScheduler } from "./linkedin-scheduler";[39m
+[31m+ import { startMetaScheduler } from "./meta-scheduler";[39m
+[31m+ import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler";[39m
+[31m+ import { getAutoRefreshSchedulerStatus, startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";[39m
+[31m+ import { getGA4DailySchedulerStatus, startGA4DailyScheduler } from "./ga4-daily-scheduler";[39m
+[31m+ import { startGoogleAdsScheduler } from "./google-ads-scheduler";[39m
+[31m+ import { startInstagramScheduler } from "./instagram-scheduler";[39m
+[31m+ import { startTikTokScheduler } from "./tiktok-scheduler";[39m
+[31m+ import { startAlertEmailScheduler } from "./alert-email-scheduler";[39m
+[31m+ import { db } from "./db";[39m
+[31m+ import { sql } from "drizzle-orm";[39m
+[31m+ import { clerkMiddleware } from "@clerk/express";[39m
+[31m+ import { getFinancialDailySnapshotObservationStatus } from "./utils/financial-daily-snapshot-observation";[39m
+[31m+ import { assertProductionTokenEncryptionConfigured } from "./utils/tokenVault";[39m
+[31m+ import { readFileSync } from "node:fs";[39m
+[31m+ import { resolve } from "node:path";[39m
+[31m+ [39m
+[31m+ assertProductionTokenEncryptionConfigured();[39m
+[31m+ const app = express();[39m
+[31m+ let applicationReady = false;[39m
+[31m+ app.use((_req, res, next) => {[39m
+[31m+   if (!applicationReady) {[39m
+[31m+     res.setHeader("Retry-After", "5");[39m
+[31m+     return res.status(503).json({ status: "initializing" });[39m
+[31m+   }[39m
+[31m+   next();[39m
+[31m+ });[39m
+[31m+ [39m
+[31m+ // Set Express environment mode based on NODE_ENV[39m
+[31m+ app.set("env", process.env.NODE_ENV || "development");[39m
+[31m+ // Trust proxy headers on platforms like Render so req.protocol reflects X-Forwarded-Proto (https)[39m
+[31m+ // This prevents OAuth redirect_uri mismatches (http vs https).[39m
+[31m+ app.set("trust proxy", 1);[39m
+[31m+ [39m
+[31m+ const contentSecurityPolicy = [[39m
+[31m+   "default-src 'self'",[39m
+[31m+   "base-uri 'self'",[39m
+[31m+   "object-src 'none'",[39m
+[31m+   "frame-ancestors 'none'",[39m
+[31m+   "form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com",[39m
+[31m+   "script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com",[39m
+[31m+   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",[39m
+[31m+   "font-src 'self' data: https://fonts.gstatic.com",[39m
+[31m+   "img-src 'self' data: blob: https:",[39m
+[31m+   "connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*",[39m
+[31m+   "frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com",[39m
+[31m+   "worker-src 'self' blob:",[39m
+[31m+   "manifest-src 'self'",[39m
+[31m+ ].join("; ");[39m
+[31m+ [39m
+[31m+ app.use((req, res, next) => {[39m
+[31m+   res.setHeader("X-Content-Type-Options", "nosniff");[39m
+[31m+   res.setHeader("X-Frame-Options", "DENY");[39m
+[31m+   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");[39m
+[31m+   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");[39m
+[31m+   if (app.get("env") === "production") {[39m
+[31m+     res.setHeader("Content-Security-Policy", contentSecurityPolicy);[39m
+[31m+     if (req.secure) {[39m
+[31m+       res.setHeader("Strict-Transport-Security", "max-age=31536000");[39m
+[31m+     }[39m
+[31m+   }[39m
+[31m+   next();[39m
+[31m+ });[39m
+[31m+ [39m
+[31m+ // ----------------------------------------------------------------------------[39m
+[31m+ // Clerk authentication middleware[39m
+[31m+ // ----------------------------------------------------------------------------[39m
+[31m+ // @clerk/express looks for CLERK_PUBLISHABLE_KEY; fall back to VITE_ prefixed var[39m
+[31m+ if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.VITE_CLERK_PUBLISHABLE_KEY) {[39m
+[31m+   process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;[39m
+[31m+ }[39m
+[31m+ app.use(clerkMiddleware());[39m
+[31m+ [39m
+[31m+ // Conditionally apply body parsing - skip for webhook routes that use multer[39m
+[31m+ app.use((req, res, next) => {[39m
+[31m+   // Skip body parsing for Mailgun/SendGrid inbound webhooks (they use multer for multipart/form-data)[39m
+[31m+   if (req.path === '/api/mailgun/inbound' || req.path === '/api/sendgrid/inbound') {[39m
+[31m+     return next();[39m
+[31m+   }[39m
+[31m+   // Apply body parsing for all other routes[39m
+[31m+   express.json()(req, res, (err) => {[39m
+[31m+     if (err) return next(err);[39m
+[31m+     express.urlencoded({ extended: false })(req, res, next);[39m
+[31m+   });[39m
+[31m+ });[39m
+[31m+ [39m
+[31m+ // API routes middleware - ensure all API routes are handled first[39m
+[31m+ app.use('/api', (req, res, next) => {[39m
+[31m+   const start = Date.now();[39m
+[31m+   const path = req.path.replace(/^(\/(?:webhook\/custom-integration|email\/inbound)\/)[^/]+/, "$1[redacted]");[39m
+[31m+   res.on("finish", () => {[39m
+[31m+     const duration = Date.now() - start;[39m
+[31m+     let logLine = `${req.method} /api${path} ${res.statusCode} in ${duration}ms`;[39m
+[31m+ [39m
+[31m+     if (logLine.length > 80) {[39m
+[31m+       logLine = logLine.slice(0, 79) + "…";[39m
+[31m+     }[39m
+[31m+ [39m
+[31m+     log(logLine);[39m
+[31m+   });[39m
+[31m+ [39m
+[31m+   next();[39m
+[31m+ });[39m
+[31m+ [39m
+[31m+ // Global error handlers to prevent server crashes[39m
+[31m+ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {[39m
+[31m+   console.error('❌ Unhandled Promise Rejection:', reason);[39m
+[31m+   console.error('Stack:', reason?.stack || 'No stack trace');[39m
+[31m+   // Don't exit the process - let the server continue running[39m
+[31m+ });[39m
+[31m+ [39m
+[31m+ process.on('uncaughtException', (error: Error) => {[39m
+[31m+   console.error('❌ Uncaught Exception:', error);[39m
+[31m+   console.error('Stack:', error.stack);[39m
+[31m+   // Don't exit the process - let the server continue running[39m
+[31m+   // In production, you might want to gracefully shutdown here[39m
+[31m+ });[39m
+[31m+ [39m
+[31m+ (async () => {[39m
+[31m+   try {[39m
+[31m+     const server = await registerRoutes(app);[39m
+[31m+ [39m
+[31m+     // Health check endpoint for monitoring[39m
+[31m+     app.get('/health/scheduler', (_req: Request, res: Response) => {[39m
+[31m+       try {[39m
+[31m+         const metrics = getSchedulerMetrics();[39m
+[31m+         const autoRefreshScheduler = getAutoRefreshSchedulerStatus();[39m
+[31m+         const ga4DailyScheduler = getGA4DailySchedulerStatus();[39m
+[31m+         const financialDailySnapshot = getFinancialDailySnapshotObservationStatus();[39m
+[31m+         // Report errors are retained: another report's success does not prove recovery.[39m
+[31m+         const hasRecordedFailure = Boolean(metrics.lastError || metrics.lastErrorTime[39m
+[31m+           || [autoRefreshScheduler, ga4DailyScheduler].some(state => state.lastRunStatus === 'failed' || state.lastError)[39m
+[31m+           || financialDailySnapshot.writeFailedCampaigns > 0);[39m
+[31m+         res.json({[39m
+[31m+           status: hasRecordedFailure ? 'unhealthy' : 'healthy',[39m
+[31m+           scheduler: metrics,[39m
+[31m+           autoRefreshScheduler,[39m
+[31m+           ga4DailyScheduler,[39m
+[31m+           financialDailySnapshot,[39m
+[31m+           timestamp: new Date().toISOString(),[39m
+[31m+         });[39m
+[31m+       } catch (error) {[39m
+[31m+         res.status(500).json({[39m
+[31m+           status: 'unhealthy',[39m
+[31m+           error: error instanceof Error ? error.message : String(error),[39m
+[31m+           timestamp: new Date().toISOString(),[39m
+[31m+         });[39m
+[31m+       }[39m
+[31m+     });[39m
+[31m+ [39m
+[31m+     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {[39m
+[31m+       const status = err.status || err.statusCode || 500;[39m
+[31m+       const message = err.message || "Internal Server Error";[39m
+[31m+ [39m
+[31m+       res.status(status).json({ message });[39m
+[31m+       throw err;[39m
+[31m+     });[39m
+[31m+ [39m
+[31m+     // importantly only setup vite in development and after[39m
+[31m+     // setting up all the other routes so the catch-all route[39m
+[31m+     // doesn't interfere with the other routes[39m
+[31m+     if (app.get("env") === "development") {[39m
+[31m+       await setupVite(app, server);[39m
+[31m+     } else {[39m
+[31m+       serveStatic(app);[39m
+[31m+     }[39m
+[31m+ [39m
+[31m+     // ALWAYS serve the app on the port specified in the environment variable PORT[39m
+[31m+     // Other ports are firewalled. Default to 5000 if not specified.[39m
+[31m+     // this serves both the API and the client.[39m
+[31m+     // It is the only port that is not firewalled.[39m
+[31m+     const port = parseInt(process.env.PORT || '5000', 10);[39m
+[31m+     server.listen(port, "0.0.0.0", () => {[39m
+[31m+       log(`serving on port ${port}`);[39m
+[31m+ [39m
+[31m+       // Bind for infrastructure discovery; health and application requests remain 503 until ready.[39m
+[31m+       setTimeout(async () => {[39m
+[31m+         try {[39m
+[31m+         if (!db) throw new Error('DATABASE_URL is required to initialize the application');[39m
+[31m+         await db.transaction(async (migrationDb: any) => {[39m
+[31m+         const db = migrationDb;[39m
+[31m+         await db.execute(sql`SET LOCAL lock_timeout = '10s'`);[39m
+[31m+         await db.execute(sql`SELECT pg_advisory_xact_lock(hashtext('mf_schema_startup_v1'))`);[39m
+[31m+         const base = await db.execute(sql`SELECT to_regclass('campaigns') AS name`);[39m
+[31m+         if (!base.rows[0]?.name) {[39m
+[31m+           const existing = await db.execute(sql`SELECT tablename FROM pg_tables WHERE schemaname = current_schema() LIMIT 1`);[39m
+[31m+           if (existing.rows.length) throw new Error('Incomplete database schema; reviewed upgrade required');[39m
+[31m+           await db.execute(sql.raw(readFileSync(resolve(process.cwd(), 'migrations/v1-bootstrap.sql'), 'utf8')));[39m
+[31m+         }[39m
+[31m+         try {[39m
+[31m+           log('Running database migrations...');[39m
+[31m+ [39m
+[31m+           // Migration: Campaign ownership (authorization)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE campaigns[39m
+[31m+             ADD COLUMN IF NOT EXISTS owner_id TEXT;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_campaigns_owner_id ON campaigns(owner_id);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: encrypted token storage for integrations (tokens/secrets at rest)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE ga4_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_sheets_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE linkedin_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE hubspot_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE salesforce_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE shopify_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE meta_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 1: Add KPI campaign scope columns[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE kpis [39m
+[31m+             ADD COLUMN IF NOT EXISTS apply_to TEXT DEFAULT 'all',[39m
+[31m+             ADD COLUMN IF NOT EXISTS specific_campaign_id TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: Add KPI calculation config (stores user-selected source inputs for blended campaign KPIs)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE kpis[39m
+[31m+             ADD COLUMN IF NOT EXISTS calculation_config JSONB;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: Add Benchmark calculation config (stores user-selected source inputs for campaign-level benchmarks)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE benchmarks[39m
+[31m+             ADD COLUMN IF NOT EXISTS calculation_config JSONB;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: Widen KPI numeric columns to avoid DECIMAL overflow for enterprise-scale values.[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE kpis[39m
+[31m+             ALTER COLUMN target_value TYPE DECIMAL(18, 2),[39m
+[31m+             ALTER COLUMN current_value TYPE NUMERIC,[39m
+[31m+             ALTER COLUMN last_computed_value TYPE NUMERIC,[39m
+[31m+             ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: Keep KPI progress history at the same enterprise-scale capacity as live KPI values.[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE kpi_progress[39m
+[31m+             ALTER COLUMN value TYPE NUMERIC,[39m
+[31m+             ALTER COLUMN rolling_average_7d TYPE NUMERIC,[39m
+[31m+             ALTER COLUMN rolling_average_30d TYPE NUMERIC;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 2: Add notifications metadata column[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE notifications [39m
+[31m+             ADD COLUMN IF NOT EXISTS metadata TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Standalone Shopify refresh failures are not Notifications. This exact-kind cleanup[39m
+[31m+           // preserves KPI, Benchmark, and every unrelated notification row.[39m
+[31m+           await db.execute(sql`[39m
+[31m+             DELETE FROM notifications[39m
+[31m+             WHERE metadata IS NOT NULL[39m
+[31m+               AND metadata::text ~ '"kind"[[:space:]]*:[[:space:]]*"shopify_revenue_refresh_failure"';[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: Email audit events (production-grade observability for alert/report/test sends)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS email_alert_events ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               kind TEXT NOT NULL DEFAULT 'generic',[39m
+[31m+               entity_type TEXT,[39m
+[31m+               entity_id TEXT,[39m
+[31m+               dedupe_key TEXT,[39m
+[31m+               campaign_id TEXT,[39m
+[31m+               campaign_name TEXT,[39m
+[31m+               "to" TEXT NOT NULL,[39m
+[31m+               subject TEXT NOT NULL,[39m
+[31m+               provider TEXT,[39m
+[31m+               success BOOLEAN NOT NULL DEFAULT false,[39m
+[31m+               delivery_status TEXT NOT NULL DEFAULT 'pending',[39m
+[31m+               provider_response_id TEXT,[39m
+[31m+               attempt_count INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               last_attempt_at TIMESTAMP,[39m
+[31m+               next_attempt_at TIMESTAMP,[39m
+[31m+               delivered_at TIMESTAMP,[39m
+[31m+               failed_at TIMESTAMP,[39m
+[31m+               error TEXT,[39m
+[31m+               metadata TEXT,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE email_alert_events[39m
+[31m+             ADD COLUMN IF NOT EXISTS dedupe_key TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS delivery_status TEXT NOT NULL DEFAULT 'pending',[39m
+[31m+             ADD COLUMN IF NOT EXISTS provider_response_id TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0,[39m
+[31m+             ADD COLUMN IF NOT EXISTS last_attempt_at TIMESTAMP,[39m
+[31m+             ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMP,[39m
+[31m+             ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP,[39m
+[31m+             ADD COLUMN IF NOT EXISTS failed_at TIMESTAMP;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS email_alert_events_dedupe_key_unique[39m
+[31m+             ON email_alert_events (dedupe_key);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: Add GA4 campaign filter to campaigns (so each MetricMind campaign maps to one GA4 campaign)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE campaigns[39m
+[31m+             ADD COLUMN IF NOT EXISTS ga4_campaign_filter TEXT;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE campaigns[39m
+[31m+             ADD COLUMN IF NOT EXISTS reporting_time_zone TEXT NOT NULL DEFAULT 'UTC';[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: Add date-only budget pacing boundaries without changing financial campaign dates[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE campaigns[39m
+[31m+             ADD COLUMN IF NOT EXISTS pacing_start_date TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS pacing_end_date TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: Add an idempotent reporting-day identity for forward-only financial snapshots[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE metric_snapshots[39m
+[31m+             ADD COLUMN IF NOT EXISTS reporting_date TEXT;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS metric_snapshots_financial_day_unique[39m
+[31m+             ON metric_snapshots (campaign_id, reporting_date)[39m
+[31m+             WHERE snapshot_type = 'financial_daily' AND reporting_date IS NOT NULL;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS metric_snapshots_executive_summary_day_unique[39m
+[31m+             ON metric_snapshots (campaign_id, reporting_date)[39m
+[31m+             WHERE snapshot_type = 'executive_summary_daily' AND reporting_date IS NOT NULL;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // GA4 daily metrics (persisted daily facts powering "daily values" GA4 UI)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS ga4_daily_metrics ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               property_id TEXT NOT NULL,[39m
+[31m+               date TEXT NOT NULL,[39m
+[31m+               users INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               sessions INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               engaged_sessions INTEGER,[39m
+[31m+               pageviews INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               conversions INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               revenue DECIMAL(15, 2) NOT NULL DEFAULT 0,[39m
+[31m+               engagement_rate DECIMAL(7, 4) DEFAULT 0,[39m
+[31m+               revenue_metric TEXT,[39m
+[31m+               is_simulated BOOLEAN NOT NULL DEFAULT false,[39m
+[31m+               updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               UNIQUE (campaign_id, property_id, date)[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE ga4_daily_metrics[39m
+[31m+             ADD COLUMN IF NOT EXISTS engaged_sessions INTEGER;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_ga4_daily_metrics_campaign_date[39m
+[31m+             ON ga4_daily_metrics(campaign_id, date);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Atomic GA4 Overview detail payload published by the daily scheduler.[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS ga4_overview_snapshots ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               property_id TEXT NOT NULL,[39m
+[31m+               window_start TEXT NOT NULL,[39m
+[31m+               window_end TEXT NOT NULL,[39m
+[31m+               campaign_breakdown JSONB NOT NULL,[39m
+[31m+               landing_pages JSONB NOT NULL,[39m
+[31m+               conversion_events JSONB NOT NULL,[39m
+[31m+               updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS ga4_overview_snapshots_campaign_property_unique[39m
+[31m+             ON ga4_overview_snapshots (campaign_id, property_id);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // GA4 connection lifecycle audit and fail-closed protection against silent deactivation.[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS ga4_connection_lifecycle_events ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               connection_id TEXT NOT NULL,[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               property_id TEXT,[39m
+[31m+               action TEXT NOT NULL CHECK (action IN ('connected', 'reactivated', 'disconnected')),[39m
+[31m+               actor TEXT NOT NULL,[39m
+[31m+               reason TEXT NOT NULL,[39m
+[31m+               changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS ga4_connection_lifecycle_events_connection_changed_idx[39m
+[31m+             ON ga4_connection_lifecycle_events (connection_id, changed_at DESC);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS ga4_connection_lifecycle_events_campaign_changed_idx[39m
+[31m+             ON ga4_connection_lifecycle_events (campaign_id, changed_at DESC);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE OR REPLACE FUNCTION enforce_and_audit_ga4_connection_lifecycle()[39m
+[31m+             RETURNS TRIGGER[39m
+[31m+             LANGUAGE plpgsql[39m
+[31m+             AS $function$[39m
+[31m+             DECLARE[39m
+[31m+               lifecycle_actor TEXT := COALESCE(NULLIF(current_setting('app.ga4_connection_actor', true), ''), current_user);[39m
+[31m+               lifecycle_reason TEXT := NULLIF(current_setting('app.ga4_connection_reason', true), '');[39m
+[31m+             BEGIN[39m
+[31m+               IF TG_OP = 'UPDATE' AND OLD.is_active = true AND NEW.is_active = false THEN[39m
+[31m+                 RAISE EXCEPTION 'GA4_CONNECTION_DEACTIVATION_BLOCKED: use the campaign-scoped disconnect path';[39m
+[31m+               END IF;[39m
+[31m+               IF TG_OP = 'INSERT' THEN[39m
+[31m+                 INSERT INTO ga4_connection_lifecycle_events[39m
+[31m+                   (connection_id, campaign_id, property_id, action, actor, reason)[39m
+[31m+                 VALUES[39m
+[31m+                   (NEW.id, NEW.campaign_id, NEW.property_id, 'connected', lifecycle_actor,[39m
+[31m+                    COALESCE(lifecycle_reason, 'ga4_connection_created'));[39m
+[31m+                 RETURN NEW;[39m
+[31m+               END IF;[39m
+[31m+               IF TG_OP = 'DELETE' THEN[39m
+[31m+                 INSERT INTO ga4_connection_lifecycle_events[39m
+[31m+                   (connection_id, campaign_id, property_id, action, actor, reason)[39m
+[31m+                 VALUES[39m
+[31m+                   (OLD.id, OLD.campaign_id, OLD.property_id, 'disconnected', lifecycle_actor,[39m
+[31m+                    COALESCE(lifecycle_reason, 'ga4_connection_deleted'));[39m
+[31m+                 RETURN OLD;[39m
+[31m+               END IF;[39m
+[31m+               IF OLD.is_active = false AND NEW.is_active = true THEN[39m
+[31m+                 INSERT INTO ga4_connection_lifecycle_events[39m
+[31m+                   (connection_id, campaign_id, property_id, action, actor, reason)[39m
+[31m+                 VALUES[39m
+[31m+                   (NEW.id, NEW.campaign_id, NEW.property_id, 'reactivated', lifecycle_actor,[39m
+[31m+                    COALESCE(lifecycle_reason, 'ga4_connection_reactivated'));[39m
+[31m+               END IF;[39m
+[31m+               RETURN NEW;[39m
+[31m+             END;[39m
+[31m+             $function$;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             DO $trigger$[39m
+[31m+             BEGIN[39m
+[31m+               CREATE TRIGGER ga4_connection_lifecycle_guard[39m
+[31m+               BEFORE INSERT OR UPDATE OR DELETE ON ga4_connections[39m
+[31m+               FOR EACH ROW EXECUTE FUNCTION enforce_and_audit_ga4_connection_lifecycle();[39m
+[31m+             EXCEPTION WHEN duplicate_object THEN[39m
+[31m+               NULL;[39m
+[31m+             END;[39m
+[31m+             $trigger$;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // LinkedIn daily metrics (persisted daily facts powering LinkedIn Insights anomaly detection)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS linkedin_daily_metrics ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               date TEXT NOT NULL,[39m
+[31m+               impressions INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               clicks INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               reach INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               engagements INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               conversions INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               leads INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               spend DECIMAL(15, 2) NOT NULL DEFAULT 0,[39m
+[31m+               video_views INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               viral_impressions INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               UNIQUE (campaign_id, date)[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_linkedin_daily_metrics_campaign_date[39m
+[31m+             ON linkedin_daily_metrics(campaign_id, date);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // LinkedIn connections: track last successful refresh (used for data coverage UI across tabs)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE linkedin_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS last_refresh_at TIMESTAMP;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Reports: ensure schedule fields exist + add snapshots/send-events tables (production-grade auditability)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE linkedin_reports[39m
+[31m+             ADD COLUMN IF NOT EXISTS schedule_time_zone TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS quarter_timing TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS report_snapshots ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               report_id TEXT NOT NULL,[39m
+[31m+               campaign_id TEXT,[39m
+[31m+               platform_type TEXT NOT NULL DEFAULT 'linkedin',[39m
+[31m+               report_type TEXT NOT NULL,[39m
+[31m+               window_start TEXT,[39m
+[31m+               window_end TEXT,[39m
+[31m+               snapshot_json TEXT NOT NULL,[39m
+[31m+               has_estimated BOOLEAN NOT NULL DEFAULT false,[39m
+[31m+               generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS report_send_events ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               report_id TEXT NOT NULL,[39m
+[31m+               snapshot_id TEXT,[39m
+[31m+               scheduled_key TEXT NOT NULL,[39m
+[31m+               time_zone TEXT,[39m
+[31m+               recipients TEXT[],[39m
+[31m+               status TEXT NOT NULL DEFAULT 'pending',[39m
+[31m+               error TEXT,[39m
+[31m+               sent_at TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS ux_report_send_events_report_scheduled_key[39m
+[31m+             ON report_send_events(report_id, scheduled_key);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Spend tables for GA4 financials (generic spend ingestion from any source)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS spend_sources ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               source_type TEXT NOT NULL,[39m
+[31m+               display_name TEXT,[39m
+[31m+               currency TEXT,[39m
+[31m+               mapping_config TEXT,[39m
+[31m+               is_active BOOLEAN NOT NULL DEFAULT true,[39m
+[31m+               connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS spend_records ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               spend_source_id TEXT NOT NULL,[39m
+[31m+               date TEXT NOT NULL,[39m
+[31m+               spend DECIMAL(12, 2) NOT NULL,[39m
+[31m+               currency TEXT,[39m
+[31m+               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Revenue tables for GA4 revenue fallback (manual/CSV/Sheets + CRM/Ecommerce connectors)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS revenue_sources ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               source_type TEXT NOT NULL,[39m
+[31m+               platform_context TEXT,[39m
+[31m+               display_name TEXT,[39m
+[31m+               currency TEXT,[39m
+[31m+               mapping_config TEXT,[39m
+[31m+               is_active BOOLEAN NOT NULL DEFAULT true,[39m
+[31m+               connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration: platform-scoped revenue sources (LinkedIn vs GA4). Legacy rows may be null (treated as GA4).[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE revenue_sources[39m
+[31m+             ADD COLUMN IF NOT EXISTS platform_context TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS revenue_records ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               revenue_source_id TEXT NOT NULL,[39m
+[31m+               date TEXT NOT NULL,[39m
+[31m+               revenue DECIMAL(12, 2) NOT NULL,[39m
+[31m+               currency TEXT,[39m
+[31m+               external_id TEXT,[39m
+[31m+               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 3: Create KPI periods table[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS kpi_periods ([39m
+[31m+               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               kpi_id TEXT NOT NULL,[39m
+[31m+               period_start TIMESTAMP NOT NULL,[39m
+[31m+               period_end TIMESTAMP NOT NULL,[39m
+[31m+               period_type TEXT NOT NULL,[39m
+[31m+               period_label TEXT NOT NULL,[39m
+[31m+               final_value DECIMAL(10, 2) NOT NULL,[39m
+[31m+               target_value DECIMAL(10, 2) NOT NULL,[39m
+[31m+               unit TEXT NOT NULL,[39m
+[31m+               target_achieved BOOLEAN NOT NULL,[39m
+[31m+               performance_percentage DECIMAL(5, 2),[39m
+[31m+               performance_level TEXT,[39m
+[31m+               previous_period_value DECIMAL(10, 2),[39m
+[31m+               change_amount DECIMAL(10, 2),[39m
+[31m+               change_percentage DECIMAL(5, 2),[39m
+[31m+               trend_direction TEXT,[39m
+[31m+               notes TEXT,[39m
+[31m+               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Create indexes[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_kpi_periods_kpi_id ON kpi_periods(kpi_id);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 4: Create conversion_events table[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS conversion_events ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               conversion_id TEXT,[39m
+[31m+               value DECIMAL(10, 2) NOT NULL,[39m
+[31m+               currency TEXT NOT NULL DEFAULT 'USD',[39m
+[31m+               conversion_type TEXT,[39m
+[31m+               source TEXT NOT NULL,[39m
+[31m+               metadata JSONB,[39m
+[31m+               occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Create index for conversion_events[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_conversion_events_campaign_id ON conversion_events(campaign_id);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_conversion_events_occurred_at ON conversion_events(occurred_at);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 5: Add conversionValue to platform connection tables[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE linkedin_connections [39m
+[31m+             ADD COLUMN IF NOT EXISTS conversion_value DECIMAL(10, 2);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE meta_connections [39m
+[31m+             ADD COLUMN IF NOT EXISTS conversion_value DECIMAL(10, 2);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 6: Add isPrimary and isActive to google_sheets_connections for multiple sheets support[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_sheets_connections [39m
+[31m+             ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT false,[39m
+[31m+             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,[39m
+[31m+             ADD COLUMN IF NOT EXISTS column_mappings TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 6b: Ensure sheet_name exists (older DBs created before multi-tab support)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_sheets_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS sheet_name TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 6c: Purpose-scoped Google Sheets connections (Spend vs Revenue should not leak)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_sheets_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS purpose TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 6d: Distinguish OAuth from temporary service-account connections.[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_sheets_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'access_token';[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Set existing connections as primary and active (backward compatibility)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             UPDATE google_sheets_connections[39m
+[31m+             SET is_primary = true, is_active = true[39m
+[31m+             WHERE is_primary IS NULL OR is_active IS NULL;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 6e: Add cached data columns for daily refresh[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_sheets_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS cached_data JSONB,[39m
+[31m+             ADD COLUMN IF NOT EXISTS last_data_refresh_at TIMESTAMP;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 7: Create mapping_templates table[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS mapping_templates ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               name TEXT NOT NULL,[39m
+[31m+               description TEXT,[39m
+[31m+               platform TEXT NOT NULL,[39m
+[31m+               column_structure TEXT NOT NULL,[39m
+[31m+               mappings TEXT NOT NULL,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               last_used_at TIMESTAMP,[39m
+[31m+               usage_count INTEGER DEFAULT 0,[39m
+[31m+               created_by TEXT,[39m
+[31m+               is_shared BOOLEAN DEFAULT false[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 8: HubSpot connections (CRM revenue source)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS hubspot_connections ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               portal_id TEXT,[39m
+[31m+               portal_name TEXT,[39m
+[31m+               access_token TEXT,[39m
+[31m+               refresh_token TEXT,[39m
+[31m+               client_id TEXT,[39m
+[31m+               client_secret TEXT,[39m
+[31m+               expires_at TIMESTAMP,[39m
+[31m+               is_active BOOLEAN NOT NULL DEFAULT true,[39m
+[31m+               mapping_config TEXT,[39m
+[31m+               connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Backward-compat: ensure newer columns exist if table was created earlier[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE hubspot_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS mapping_config TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 9: Salesforce connections (CRM revenue source)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS salesforce_connections ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               org_id TEXT,[39m
+[31m+               org_name TEXT,[39m
+[31m+               instance_url TEXT,[39m
+[31m+               access_token TEXT,[39m
+[31m+               refresh_token TEXT,[39m
+[31m+               client_id TEXT,[39m
+[31m+               client_secret TEXT,[39m
+[31m+               expires_at TIMESTAMP,[39m
+[31m+               is_active BOOLEAN NOT NULL DEFAULT true,[39m
+[31m+               mapping_config TEXT,[39m
+[31m+               connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE salesforce_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS org_id TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS org_name TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS instance_url TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS mapping_config TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 10: Shopify connections (Ecommerce revenue source)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS shopify_connections ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               shop_domain TEXT NOT NULL,[39m
+[31m+               shop_name TEXT,[39m
+[31m+               access_token TEXT,[39m
+[31m+               is_active BOOLEAN NOT NULL DEFAULT true,[39m
+[31m+               mapping_config TEXT,[39m
+[31m+               connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE shopify_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS shop_domain TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS shop_name TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS access_token TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS mapping_config TEXT,[39m
+[31m+             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 11: Add platformContext to spend_sources, subCampaignUrn to spend_records[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE spend_sources[39m
+[31m+             ADD COLUMN IF NOT EXISTS platform_context TEXT;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE spend_records[39m
+[31m+             ADD COLUMN IF NOT EXISTS sub_campaign_urn TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 11b: Add sub_campaign_urn to revenue_records (missed in migration 11)[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE revenue_records[39m
+[31m+             ADD COLUMN IF NOT EXISTS sub_campaign_urn TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 12: Campaign selection for Google Ads and Meta[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_ads_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS selected_campaign_ids TEXT;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE meta_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS selected_campaign_ids TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 13: Google Ads ↔ GA4 revenue attribution[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_ads_daily_metrics[39m
+[31m+             ADD COLUMN IF NOT EXISTS ga4_revenue NUMERIC(15,2);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_ads_daily_metrics[39m
+[31m+             ADD COLUMN IF NOT EXISTS ga4_utm_name TEXT;[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE google_ads_connections[39m
+[31m+             ADD COLUMN IF NOT EXISTS campaign_utm_map TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 14: Meta + LinkedIn ↔ GA4 revenue attribution[39m
+[31m+           await db.execute(sql`ALTER TABLE meta_daily_metrics ADD COLUMN IF NOT EXISTS meta_campaign_name TEXT;`);[39m
+[31m+           await db.execute(sql`ALTER TABLE meta_daily_metrics ADD COLUMN IF NOT EXISTS ga4_revenue NUMERIC(15,2);`);[39m
+[31m+           await db.execute(sql`ALTER TABLE meta_daily_metrics ADD COLUMN IF NOT EXISTS ga4_utm_name TEXT;`);[39m
+[31m+           await db.execute(sql`ALTER TABLE meta_connections ADD COLUMN IF NOT EXISTS campaign_utm_map TEXT;`);[39m
+[31m+           await db.execute(sql`ALTER TABLE linkedin_daily_metrics ADD COLUMN IF NOT EXISTS linkedin_campaign_id TEXT;`);[39m
+[31m+           await db.execute(sql`ALTER TABLE linkedin_daily_metrics ADD COLUMN IF NOT EXISTS linkedin_campaign_name TEXT;`);[39m
+[31m+           await db.execute(sql`ALTER TABLE linkedin_daily_metrics ADD COLUMN IF NOT EXISTS ga4_revenue NUMERIC(15,2);`);[39m
+[31m+           await db.execute(sql`ALTER TABLE linkedin_daily_metrics ADD COLUMN IF NOT EXISTS ga4_utm_name TEXT;`);[39m
+[31m+           await db.execute(sql`ALTER TABLE linkedin_connections ADD COLUMN IF NOT EXISTS campaign_utm_map TEXT;`);[39m
+[31m+ [39m
+[31m+           // Migration 15: spendOnly flag for connections made from spend wizard[39m
+[31m+           await db.execute(sql`ALTER TABLE linkedin_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);[39m
+[31m+           await db.execute(sql`ALTER TABLE meta_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);[39m
+[31m+           await db.execute(sql`ALTER TABLE google_ads_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);[39m
+[31m+ [39m
+[31m+           // Migration 16: Fix seed integrations — only Google Analytics should be connected by default[39m
+[31m+           await db.execute(sql`[39m
+[31m+             UPDATE integrations SET connected = false WHERE platform IN ('facebook', 'linkedin') AND connected = true;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 17: Add lookback_days column to ga4_connections[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE ga4_connections ADD COLUMN IF NOT EXISTS lookback_days INTEGER NOT NULL DEFAULT 90;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 17b: Persist the GA4 Overview initial historical-import boundary[39m
+[31m+           await db.execute(sql`[39m
+[31m+             ALTER TABLE ga4_connections ADD COLUMN IF NOT EXISTS import_start_date TEXT;[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 18: Instagram connected platform foundation[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS instagram_connections ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               ad_account_id TEXT NOT NULL,[39m
+[31m+               ad_account_name TEXT,[39m
+[31m+               access_token TEXT,[39m
+[31m+               refresh_token TEXT,[39m
+[31m+               encrypted_tokens JSONB,[39m
+[31m+               method TEXT NOT NULL,[39m
+[31m+               selected_campaign_ids TEXT,[39m
+[31m+               campaign_utm_map TEXT,[39m
+[31m+               publisher_platform_filter TEXT NOT NULL DEFAULT 'instagram',[39m
+[31m+               source_contract_version TEXT NOT NULL DEFAULT 'instagram_publisher_platform_v1',[39m
+[31m+               last_refresh_at TIMESTAMP,[39m
+[31m+               spend_only BOOLEAN DEFAULT FALSE,[39m
+[31m+               expires_at TIMESTAMP,[39m
+[31m+               connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_instagram_connections_campaign_id[39m
+[31m+             ON instagram_connections(campaign_id);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS instagram_daily_metrics ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               instagram_campaign_id TEXT NOT NULL,[39m
+[31m+               instagram_campaign_name TEXT,[39m
+[31m+               date TEXT NOT NULL,[39m
+[31m+               publisher_platform TEXT NOT NULL DEFAULT 'instagram',[39m
+[31m+               platform_position TEXT NOT NULL DEFAULT 'unknown',[39m
+[31m+               impressions INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               clicks INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               spend DECIMAL(10, 2) NOT NULL DEFAULT 0,[39m
+[31m+               conversions DECIMAL(10, 2) NOT NULL DEFAULT 0,[39m
+[31m+               video_views INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               actions JSONB,[39m
+[31m+               ctr DECIMAL(5, 2),[39m
+[31m+               cpc DECIMAL(10, 2),[39m
+[31m+               cpm DECIMAL(10, 2),[39m
+[31m+               cost_per_conversion DECIMAL(10, 2),[39m
+[31m+               conversion_rate DECIMAL(5, 2),[39m
+[31m+               ga4_revenue DECIMAL(15, 2),[39m
+[31m+               ga4_utm_name TEXT,[39m
+[31m+               imported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS idx_instagram_daily_metrics_unique[39m
+[31m+             ON instagram_daily_metrics(campaign_id, instagram_campaign_id, date, platform_position);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_instagram_daily_metrics_campaign_date[39m
+[31m+             ON instagram_daily_metrics(campaign_id, date DESC);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           // Migration 19: TikTok connected platform foundation[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS tiktok_connections ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               advertiser_id TEXT NOT NULL,[39m
+[31m+               advertiser_name TEXT,[39m
+[31m+               access_token TEXT,[39m
+[31m+               refresh_token TEXT,[39m
+[31m+               encrypted_tokens JSONB,[39m
+[31m+               method TEXT NOT NULL,[39m
+[31m+               selected_campaign_ids TEXT,[39m
+[31m+               selected_campaign_metadata TEXT,[39m
+[31m+               reporting_dimensions TEXT,[39m
+[31m+               reporting_metrics TEXT,[39m
+[31m+               source_contract_version TEXT NOT NULL DEFAULT 'tiktok_campaign_daily_v1',[39m
+[31m+               last_refresh_at TIMESTAMP,[39m
+[31m+               last_error TEXT,[39m
+[31m+               spend_only BOOLEAN DEFAULT FALSE,[39m
+[31m+               expires_at TIMESTAMP,[39m
+[31m+               connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_tiktok_connections_campaign_id[39m
+[31m+             ON tiktok_connections(campaign_id);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS tiktok_daily_metrics ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               advertiser_id TEXT NOT NULL,[39m
+[31m+               tiktok_campaign_id TEXT NOT NULL,[39m
+[31m+               tiktok_campaign_name TEXT,[39m
+[31m+               date TEXT NOT NULL,[39m
+[31m+               impressions INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               clicks INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               spend DECIMAL(10, 2) NOT NULL DEFAULT 0,[39m
+[31m+               currency TEXT,[39m
+[31m+               conversions DECIMAL(10, 2) NOT NULL DEFAULT 0,[39m
+[31m+               video_views INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               engagements INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               ctr DECIMAL(5, 2),[39m
+[31m+               cpc DECIMAL(10, 2),[39m
+[31m+               cpm DECIMAL(10, 2),[39m
+[31m+               cost_per_conversion DECIMAL(10, 2),[39m
+[31m+               conversion_rate DECIMAL(5, 2),[39m
+[31m+               raw_metrics JSONB,[39m
+[31m+               metric_availability JSONB,[39m
+[31m+               is_estimated BOOLEAN NOT NULL DEFAULT FALSE,[39m
+[31m+               source_contract_version TEXT NOT NULL DEFAULT 'tiktok_campaign_daily_v1',[39m
+[31m+               is_simulated BOOLEAN NOT NULL DEFAULT FALSE,[39m
+[31m+               last_synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS idx_tiktok_daily_metrics_unique[39m
+[31m+             ON tiktok_daily_metrics(campaign_id, advertiser_id, tiktok_campaign_id, date, source_contract_version);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE INDEX IF NOT EXISTS idx_tiktok_daily_metrics_campaign_date[39m
+[31m+             ON tiktok_daily_metrics(campaign_id, date DESC);[39m
+[31m+           `);[39m
+[31m+ [39m
+[31m+           log('✅ Database migrations completed successfully');[39m
+[31m+         } catch (error) {[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // P5.1 storage foundation only; the scheduler does not yet claim these work records.[39m
+[31m+         try {[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS ga4_refresh_work ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               due_at TIMESTAMPTZ NOT NULL,[39m
+[31m+               reporting_date TEXT NOT NULL,[39m
+[31m+               scope_hash TEXT NOT NULL,[39m
+[31m+               scope JSONB NOT NULL,[39m
+[31m+               status TEXT NOT NULL DEFAULT 'pending',[39m
+[31m+               lease_token TEXT,[39m
+[31m+               lease_expires_at TIMESTAMPTZ,[39m
+[31m+               started_at TIMESTAMPTZ,[39m
+[31m+               completed_at TIMESTAMPTZ,[39m
+[31m+               updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               CONSTRAINT ga4_refresh_work_state CHECK ([39m
+[31m+                 (status = 'pending' AND lease_token IS NULL AND lease_expires_at IS NULL AND completed_at IS NULL)[39m
+[31m+                 OR (status = 'running' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL AND started_at IS NOT NULL AND completed_at IS NULL)[39m
+[31m+                 OR (status = 'completed' AND lease_token IS NULL AND lease_expires_at IS NULL AND completed_at IS NOT NULL)[39m
+[31m+               )[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS ga4_refresh_work_identity[39m
+[31m+             ON ga4_refresh_work (campaign_id, due_at, reporting_date, scope_hash);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS ga4_refresh_work_running_campaign[39m
+[31m+             ON ga4_refresh_work (campaign_id) WHERE status = 'running';[39m
+[31m+           `);[39m
+[31m+         } catch (error) {[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         try {[39m
+[31m+           await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0`);[39m
+[31m+           await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ`);[39m
+[31m+           await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS retryable BOOLEAN NOT NULL DEFAULT TRUE`);[39m
+[31m+           await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS last_error TEXT`);[39m
+[31m+           await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS suppress_alerts BOOLEAN NOT NULL DEFAULT FALSE`);[39m
+[31m+         } catch (error) {[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // GA4 Google Ads Spend storage is independent of the existing Connected Platform tables.[39m
+[31m+         try {[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS ga4_google_ads_spend_connections ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               customer_id TEXT NOT NULL,[39m
+[31m+               customer_name TEXT,[39m
+[31m+               manager_account_id TEXT,[39m
+[31m+               access_token TEXT,[39m
+[31m+               refresh_token TEXT,[39m
+[31m+               client_id TEXT,[39m
+[31m+               client_secret TEXT,[39m
+[31m+               developer_token TEXT,[39m
+[31m+               encrypted_tokens JSONB,[39m
+[31m+               method TEXT NOT NULL,[39m
+[31m+               spend_only BOOLEAN NOT NULL DEFAULT TRUE,[39m
+[31m+               last_refresh_at TIMESTAMP,[39m
+[31m+               expires_at TIMESTAMP,[39m
+[31m+               connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,[39m
+[31m+               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS ga4_google_ads_spend_connections_campaign_unique[39m
+[31m+             ON ga4_google_ads_spend_connections(campaign_id);[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE TABLE IF NOT EXISTS ga4_google_ads_spend_daily_metrics ([39m
+[31m+               id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),[39m
+[31m+               campaign_id TEXT NOT NULL,[39m
+[31m+               google_campaign_id TEXT NOT NULL,[39m
+[31m+               google_campaign_name TEXT,[39m
+[31m+               date TEXT NOT NULL,[39m
+[31m+               impressions INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               clicks INTEGER NOT NULL DEFAULT 0,[39m
+[31m+               spend NUMERIC(12, 2) NOT NULL DEFAULT 0,[39m
+[31m+               imported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP[39m
+[31m+             );[39m
+[31m+           `);[39m
+[31m+           await db.execute(sql`[39m
+[31m+             CREATE UNIQUE INDEX IF NOT EXISTS ga4_google_ads_spend_daily_metrics_campaign_day_unique[39m
+[31m+             ON ga4_google_ads_spend_daily_metrics(campaign_id, google_campaign_id, date);[39m
+[31m+           `);[39m
+[31m+           log('GA4 Google Ads Spend storage ready');[39m
+[31m+         } catch (error) {[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Explicit additive manifest: historical backfill and cleanup scripts are excluded.[39m
+[31m+         for (const migration of ['0022_v1_entrypoint_ownership.sql', '0023_service_account_resource_grants.sql', '0024_v1_schema_integrity.sql', '0025_ga4_fractional_conversions.sql', '0026_goal_observed_value_precision.sql']) {[39m
+[31m+           const statement = readFileSync(resolve(process.cwd(), 'migrations', migration), 'utf8')[39m
+[31m+             .replace(/^(?:BEGIN|COMMIT);[ \t]*\r?$/gm, ''); // The enclosing transaction owns commit/rollback.[39m
+[31m+           await db.execute(sql.raw(statement));[39m
+[31m+         }[39m
+[31m+         });[39m
+[31m+ [39m
+[31m+         // Start automated snapshot scheduler[39m
+[31m+         try {[39m
+[31m+           snapshotScheduler.start();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start snapshot scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         try {[39m
+[31m+           executiveSummarySnapshotScheduler.start(port);[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start Executive Summary snapshot scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start KPI scheduler[39m
+[31m+         try {[39m
+[31m+           startKPIScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start KPI scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start Report scheduler[39m
+[31m+         try {[39m
+[31m+           startReportScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start report scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start LinkedIn data refresh scheduler[39m
+[31m+         try {[39m
+[31m+           startLinkedInScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start LinkedIn scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start Meta/Facebook data refresh scheduler[39m
+[31m+         try {[39m
+[31m+           startMetaScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start Meta scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start Google Sheets token refresh scheduler[39m
+[31m+         try {[39m
+[31m+           startGoogleSheetsTokenScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start Google Sheets token refresh scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start daily auto-refresh + auto-process scheduler (LinkedIn refresh + HubSpot/Salesforce/Shopify revenue reprocess)[39m
+[31m+         try {[39m
+[31m+           startDailyAutoRefreshScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start daily auto-refresh scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start GA4 daily refresh scheduler (persisted daily facts)[39m
+[31m+         try {[39m
+[31m+           startGA4DailyScheduler(port);[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start GA4 daily scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start Google Ads data refresh scheduler[39m
+[31m+         try {[39m
+[31m+           startGoogleAdsScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start Google Ads scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start Instagram data refresh scheduler[39m
+[31m+         try {[39m
+[31m+           startInstagramScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start Instagram scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start TikTok data refresh scheduler[39m
+[31m+         try {[39m
+[31m+           startTikTokScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start TikTok scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+ [39m
+[31m+         // Start alert email reminder scheduler[39m
+[31m+         try {[39m
+[31m+           startAlertEmailScheduler();[39m
+[31m+         } catch (error) {[39m
+[31m+           console.error('Failed to start alert email scheduler:', error);[39m
+[31m+           throw error;[39m
+[31m+         }[39m
+[31m+         applicationReady = true;[39m
+[31m+         } catch (error) {[39m
+[31m+           applicationReady = false;[39m
+[31m+           console.error('Application initialization failed:', error instanceof Error ? error.message : String(error));[39m
+[31m+           process.exit(1);[39m
+[31m+         }[39m
+[31m+       }, 5000); // Readiness remains false during the delay.[39m
+[31m+     });[39m
+[31m+   } catch (error) {[39m
+[31m+     console.error('Failed to start server:', error);[39m
+[31m+     process.exit(1);[39m
+[31m+   }[39m
+[31m+ })();[39m
+[31m+[39m
+
+[36m [2m❯[22m server/financial-daily-snapshot-observation.test.ts:[2m140:19[22m[39m
+    [90m138| [39m    expect(ga4Daily).toContain("writeFinancialDailySnapshotIfReady({ c…
+    [90m139| [39m    expect(routes).toContain("observeFinancialDailySnapshotReadiness({…
+    [90m140| [39m    expect(index).toContain("financialDailySnapshot: getFinancialDaily…
+    [90m   | [39m                  [31m^[39m
+    [90m141| [39m    [34mexpect[39m(autoRefresh)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m"upsertFinancialDailySnapshot"[39m)[33m;[39m
+    [90m142| [39m    [34mexpect[39m(routes)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m".upsertFinancialDailySnapshot("[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m5 passed[39m[22m[90m (6)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m83 passed[39m[22m[90m (84)[39m
+[2m   Start at [22m 09:36:44
+[2m   Duration [22m 5.27s[2m (transform 1.78s, setup 0ms, import 4.99s, tests 692ms, environment 1ms)[22m
+
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-8/validation-2026-10-27-health/after.json

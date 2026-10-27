@@ -1,0 +1,137 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/me/Documents/MF_real_latest[39m
+
+ [31m❯[39m server/v1-batch8-scheduler-health.test.ts [2m([22m[2m23 tests[22m[2m | [22m[31m10 failed[39m[2m)[22m[32m 41[2mms[22m[39m
+[31m     [31m×[31m reproduces the deployed false-healthy result despite failed GA4 and auto-refresh runs[39m[32m 10[2mms[22m[39m
+[31m     [31m×[31m autoRefreshScheduler: a failed result does not require nonempty error text[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m autoRefreshScheduler: running does not hide retained error evidence[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m autoRefreshScheduler: skipped does not hide retained error evidence[39m[32m 1[2mms[22m[39m
+     [32m✓[39m autoRefreshScheduler: a successful run with a cleared error recovers despite its historical timestamp[32m 1[2mms[22m[39m
+[31m     [31m×[31m ga4DailyScheduler: a failed result does not require nonempty error text[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m ga4DailyScheduler: running does not hide retained error evidence[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m ga4DailyScheduler: skipped does not hide retained error evidence[39m[32m 1[2mms[22m[39m
+     [32m✓[39m ga4DailyScheduler: a successful run with a cleared error recovers despite its historical timestamp[32m 1[2mms[22m[39m
+     [32m✓[39m does not invent a failure from idle alone[32m 1[2mms[22m[39m
+     [32m✓[39m does not invent a failure from running alone[32m 1[2mms[22m[39m
+     [32m✓[39m does not invent a failure from skipped alone[32m 1[2mms[22m[39m
+     [32m✓[39m does not invent a failure from success alone[32m 1[2mms[22m[39m
+[31m     [31m×[31m retains a report error even if a different report subsequently succeeds[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m recognizes a recorded report error with empty error text[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m reports a confirmed financial snapshot write failure[39m[32m 1[2mms[22m[39m
+     [32m✓[39m does not treat snapshot readiness waiting as a confirmed write failure[32m 1[2mms[22m[39m
+     [32m✓[39m preserves every diagnostic payload, reads each getter once, and never mutates state[32m 2[2mms[22m[39m
+     [32m✓[39m preserves HTTP 500 if getSchedulerMetrics cannot provide state[32m 2[2mms[22m[39m
+     [32m✓[39m preserves HTTP 500 if getAutoRefreshSchedulerStatus cannot provide state[32m 1[2mms[22m[39m
+     [32m✓[39m preserves HTTP 500 if getGA4DailySchedulerStatus cannot provide state[32m 1[2mms[22m[39m
+     [32m✓[39m preserves HTTP 500 if getFinancialDailySnapshotObservationStatus cannot provide state[32m 1[2mms[22m[39m
+     [32m✓[39m keeps Render process liveness on its separate /health route[32m 1[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 10 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mreproduces the deployed false-healthy result despite failed GA4 and auto-refresh runs
+[31m[1mAssertionError[22m: expected 'healthy' to be 'unhealthy' // Object.is equality[39m
+
+Expected: [32m"[7mun[27mhealthy"[39m
+Received: [31m"healthy"[39m
+
+[36m [2m❯[22m server/v1-batch8-scheduler-health.test.ts:[2m49:28[22m[39m
+    [90m 47| [39m    f.state.ga4DailyScheduler.lastError = "GA4 daily refresh failed fo…
+    [90m 48| [39m    f[33m.[39mstate[33m.[39mga4DailyScheduler[33m.[39minProgress [33m=[39m [35mtrue[39m[33m;[39m
+    [90m 49| [39m    [34mexpect[39m(f[33m.[39m[34mrun[39m()[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"unhealthy"[39m)[33m;[39m
+    [90m   | [39m                           [31m^[39m
+    [90m 50| [39m    [34mexpect[39m(f[33m.[39mresponse[33m.[39mstatus)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m 51| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mautoRefreshScheduler: a failed result does not require nonempty error text
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mga4DailyScheduler: a failed result does not require nonempty error text
+[31m[1mAssertionError[22m: expected 'healthy' to be 'unhealthy' // Object.is equality[39m
+
+Expected: [32m"[7mun[27mhealthy"[39m
+Received: [31m"healthy"[39m
+
+[36m [2m❯[22m server/v1-batch8-scheduler-health.test.ts:[2m57:30[22m[39m
+    [90m 55| [39m      [35mconst[39m f [33m=[39m [34mfixture[39m()[33m;[39m
+    [90m 56| [39m      f[33m.[39mstate[key][33m.[39mlastRunStatus [33m=[39m [32m"failed"[39m[33m;[39m
+    [90m 57| [39m      [34mexpect[39m(f[33m.[39m[34mrun[39m()[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"unhealthy"[39m)[33m;[39m
+    [90m   | [39m                             [31m^[39m
+    [90m 58| [39m    })[33m;[39m
+    [90m 59| [39m    it.each(["running", "skipped"])(`${key}: %s does not hide retained…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mautoRefreshScheduler: running does not hide retained error evidence
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mautoRefreshScheduler: skipped does not hide retained error evidence
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mga4DailyScheduler: running does not hide retained error evidence
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mga4DailyScheduler: skipped does not hide retained error evidence
+[31m[1mAssertionError[22m: expected 'healthy' to be 'unhealthy' // Object.is equality[39m
+
+Expected: [32m"[7mun[27mhealthy"[39m
+Received: [31m"healthy"[39m
+
+[36m [2m❯[22m server/v1-batch8-scheduler-health.test.ts:[2m63:30[22m[39m
+    [90m 61| [39m      f[33m.[39mstate[key][33m.[39mlastRunStatus [33m=[39m status[33m;[39m
+    [90m 62| [39m      f[33m.[39mstate[key][33m.[39mlastError [33m=[39m [32m"previous run failed"[39m[33m;[39m
+    [90m 63| [39m      [34mexpect[39m(f[33m.[39m[34mrun[39m()[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"unhealthy"[39m)[33m;[39m
+    [90m   | [39m                             [31m^[39m
+    [90m 64| [39m    })[33m;[39m
+    [90m 65| [39m    it(`${key}: a successful run with a cleared error recovers despite…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mretains a report error even if a different report subsequently succeeds
+[31m[1mAssertionError[22m: expected 'healthy' to be 'unhealthy' // Object.is equality[39m
+
+Expected: [32m"[7mun[27mhealthy"[39m
+Received: [31m"healthy"[39m
+
+[36m [2m❯[22m server/v1-batch8-scheduler-health.test.ts:[2m84:28[22m[39m
+    [90m 82| [39m    f[33m.[39mstate[33m.[39mscheduler[33m.[39mlastErrorTime [33m=[39m [32m"2026-10-27T07:00:00.000Z"[39m[33m;[39m
+    [90m 83| [39m    f[33m.[39mstate[33m.[39mscheduler[33m.[39mlastSuccessTime [33m=[39m [32m"2026-10-27T08:00:00.000Z"[39m[33m;[39m
+    [90m 84| [39m    [34mexpect[39m(f[33m.[39m[34mrun[39m()[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"unhealthy"[39m)[33m;[39m
+    [90m   | [39m                           [31m^[39m
+    [90m 85| [39m  })[33m;[39m
+    [90m 86| [39m  it("recognizes a recorded report error with empty error text", () =>…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mrecognizes a recorded report error with empty error text
+[31m[1mAssertionError[22m: expected 'healthy' to be 'unhealthy' // Object.is equality[39m
+
+Expected: [32m"[7mun[27mhealthy"[39m
+Received: [31m"healthy"[39m
+
+[36m [2m❯[22m server/v1-batch8-scheduler-health.test.ts:[2m90:28[22m[39m
+    [90m 88| [39m    f[33m.[39mstate[33m.[39mscheduler[33m.[39mlastErrorTime [33m=[39m [32m"2026-10-27T07:00:00.000Z"[39m[33m;[39m
+    [90m 89| [39m    f[33m.[39mstate[33m.[39mscheduler[33m.[39mlastError [33m=[39m [32m""[39m[33m;[39m
+    [90m 90| [39m    [34mexpect[39m(f[33m.[39m[34mrun[39m()[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"unhealthy"[39m)[33m;[39m
+    [90m   | [39m                           [31m^[39m
+    [90m 91| [39m  })[33m;[39m
+    [90m 92| [39m  [34mit[39m([32m"reports a confirmed financial snapshot write failure"[39m[33m,[39m () [33m=>[39m {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m server/v1-batch8-scheduler-health.test.ts[2m > [22mV1-010 scheduler health reports existing failure evidence[2m > [22mreports a confirmed financial snapshot write failure
+[31m[1mAssertionError[22m: expected 'healthy' to be 'unhealthy' // Object.is equality[39m
+
+Expected: [32m"[7mun[27mhealthy"[39m
+Received: [31m"healthy"[39m
+
+[36m [2m❯[22m server/v1-batch8-scheduler-health.test.ts:[2m95:28[22m[39m
+    [90m 93| [39m    [35mconst[39m f [33m=[39m [34mfixture[39m()[33m;[39m
+    [90m 94| [39m    f[33m.[39mstate[33m.[39mfinancialDailySnapshot[33m.[39mwriteFailedCampaigns [33m=[39m [34m1[39m[33m;[39m
+    [90m 95| [39m    [34mexpect[39m(f[33m.[39m[34mrun[39m()[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"unhealthy"[39m)[33m;[39m
+    [90m   | [39m                           [31m^[39m
+    [90m 96| [39m    f[33m.[39mstate[33m.[39mfinancialDailySnapshot[33m.[39mwriteFailedCampaigns [33m=[39m [34m0[39m[33m;[39m
+    [90m 97| [39m    [34mexpect[39m(f[33m.[39m[34mrun[39m()[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"healthy"[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m10 failed[39m[22m[2m | [22m[1m[32m13 passed[39m[22m[90m (23)[39m
+[2m   Start at [22m 09:36:20
+[2m   Duration [22m 1.78s[2m (transform 181ms, setup 0ms, import 1.01s, tests 41ms, environment 0ms)[22m
+
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-8/validation-2026-10-27-health/before.json

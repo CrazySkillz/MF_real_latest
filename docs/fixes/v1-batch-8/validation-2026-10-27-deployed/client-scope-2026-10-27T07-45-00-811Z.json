@@ -1,0 +1,62 @@
+{
+  "at": "2026-10-27T07:45:00.811Z",
+  "readOnly": true,
+  "rows": [
+    {
+      "client_name": "Client2",
+      "client_hash": "28653e2984ab",
+      "campaign_name": "ads_test",
+      "campaign_status": "active",
+      "campaign_hash": "b0f65e7c7bfb",
+      "owner_matches": true
+    },
+    {
+      "client_name": "Client2",
+      "client_hash": "28653e2984ab",
+      "campaign_name": "Campaign3",
+      "campaign_status": "active",
+      "campaign_hash": "6caf32c94dbe",
+      "owner_matches": true
+    },
+    {
+      "client_name": "Client2",
+      "client_hash": "28653e2984ab",
+      "campaign_name": "fgh",
+      "campaign_status": "active",
+      "campaign_hash": "57141d52e81b",
+      "owner_matches": true
+    },
+    {
+      "client_name": "Client2",
+      "client_hash": "28653e2984ab",
+      "campaign_name": "GA4_campaign",
+      "campaign_status": "draft",
+      "campaign_hash": "f15d247e7a62",
+      "owner_matches": true
+    },
+    {
+      "client_name": "new_client",
+      "client_hash": "dcd835dcddad",
+      "campaign_name": "ghj",
+      "campaign_status": "active",
+      "campaign_hash": "4ba3d83a9f51",
+      "owner_matches": true
+    },
+    {
+      "client_name": "new_client",
+      "client_hash": "dcd835dcddad",
+      "campaign_name": "tfc",
+      "campaign_status": "active",
+      "campaign_hash": "518aea3dc6ff",
+      "owner_matches": true
+    },
+    {
+      "client_name": "new_client",
+      "client_hash": "dcd835dcddad",
+      "campaign_name": "tyr",
+      "campaign_status": "active",
+      "campaign_hash": "d9920c47fecf",
+      "owner_matches": true
+    }
+  ]
+}

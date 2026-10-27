@@ -1,0 +1,211 @@
+{
+  "at": "2026-10-27T07:37:37.087Z",
+  "campaignHashes": [
+    "6caf32c94dbe",
+    "57141d52e81b",
+    "b0f65e7c7bfb",
+    "4ba3d83a9f51",
+    "d9920c47fecf",
+    "518aea3dc6ff"
+  ],
+  "readOnly": true,
+  "campaigns": [
+    {
+      "campaignHash": "b0f65e7c7bfb",
+      "name": "ads_test",
+      "status": "active",
+      "client_name": "Client2",
+      "owner_hash": "1900b95d7361",
+      "client_hash": "28653e2984ab"
+    },
+    {
+      "campaignHash": "6caf32c94dbe",
+      "name": "Campaign3",
+      "status": "active",
+      "client_name": "Client2",
+      "owner_hash": "1900b95d7361",
+      "client_hash": "28653e2984ab"
+    },
+    {
+      "campaignHash": "57141d52e81b",
+      "name": "fgh",
+      "status": "active",
+      "client_name": "Client2",
+      "owner_hash": "1900b95d7361",
+      "client_hash": "28653e2984ab"
+    },
+    {
+      "campaignHash": "4ba3d83a9f51",
+      "name": "ghj",
+      "status": "active",
+      "client_name": "new_client",
+      "owner_hash": "1900b95d7361",
+      "client_hash": "dcd835dcddad"
+    },
+    {
+      "campaignHash": "518aea3dc6ff",
+      "name": "tfc",
+      "status": "active",
+      "client_name": "new_client",
+      "owner_hash": "1900b95d7361",
+      "client_hash": "dcd835dcddad"
+    },
+    {
+      "campaignHash": "d9920c47fecf",
+      "name": "tyr",
+      "status": "active",
+      "client_name": "new_client",
+      "owner_hash": "1900b95d7361",
+      "client_hash": "dcd835dcddad"
+    }
+  ],
+  "reports": {
+    "linkedin_reports": [],
+    "kpi_reports": []
+  },
+  "alerts": {
+    "kpis": [
+      {
+        "campaignHash": "6caf32c94dbe",
+        "platform_type": "google_analytics",
+        "status": "tracking",
+        "alerts_enabled": false,
+        "email_notifications": false,
+        "count": 5
+      }
+    ],
+    "benchmarks": [
+      {
+        "campaignHash": "6caf32c94dbe",
+        "platform_type": "google_analytics",
+        "status": "active",
+        "alerts_enabled": false,
+        "email_notifications": false,
+        "count": 2
+      }
+    ]
+  },
+  "work": [
+    {
+      "campaignHash": "d9920c47fecf",
+      "status": "completed",
+      "retryable": true,
+      "invalidated": false,
+      "kind": "daily",
+      "count": 7
+    },
+    {
+      "campaignHash": "d9920c47fecf",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": false,
+      "kind": "daily",
+      "count": 1
+    },
+    {
+      "campaignHash": "d9920c47fecf",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": true,
+      "kind": "daily",
+      "count": 18
+    },
+    {
+      "campaignHash": "b0f65e7c7bfb",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": false,
+      "kind": "daily",
+      "count": 1
+    },
+    {
+      "campaignHash": "b0f65e7c7bfb",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": true,
+      "kind": "daily",
+      "count": 12
+    },
+    {
+      "campaignHash": "57141d52e81b",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": false,
+      "kind": "daily",
+      "count": 1
+    },
+    {
+      "campaignHash": "57141d52e81b",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": true,
+      "kind": "daily",
+      "count": 12
+    },
+    {
+      "campaignHash": "6caf32c94dbe",
+      "status": "pending",
+      "retryable": true,
+      "invalidated": true,
+      "kind": "daily",
+      "count": 13
+    },
+    {
+      "campaignHash": "6caf32c94dbe",
+      "status": "pending",
+      "retryable": true,
+      "invalidated": true,
+      "kind": "revenue_change",
+      "count": 8309
+    },
+    {
+      "campaignHash": "6caf32c94dbe",
+      "status": "running",
+      "retryable": true,
+      "invalidated": false,
+      "kind": "revenue_change",
+      "count": 1
+    },
+    {
+      "campaignHash": "518aea3dc6ff",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": false,
+      "kind": "daily",
+      "count": 1
+    },
+    {
+      "campaignHash": "518aea3dc6ff",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": true,
+      "kind": "daily",
+      "count": 12
+    },
+    {
+      "campaignHash": "4ba3d83a9f51",
+      "status": "completed",
+      "retryable": true,
+      "invalidated": false,
+      "kind": "daily",
+      "count": 7
+    },
+    {
+      "campaignHash": "4ba3d83a9f51",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": false,
+      "kind": "daily",
+      "count": 1
+    },
+    {
+      "campaignHash": "4ba3d83a9f51",
+      "status": "pending",
+      "retryable": false,
+      "invalidated": true,
+      "kind": "daily",
+      "count": 18
+    }
+  ],
+  "openReportSendEvents": []
+}

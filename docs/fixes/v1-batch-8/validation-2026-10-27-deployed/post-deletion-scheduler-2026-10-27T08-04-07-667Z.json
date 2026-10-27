@@ -1,0 +1,188 @@
+{
+  "at": "2026-10-27T08:04:07.667Z",
+  "data": {
+    "status": "healthy",
+    "scheduler": {
+      "schedulerStartedAt": "2026-10-27T06:38:16.505Z",
+      "cronSchedule": "* * * * *",
+      "totalChecks": 86,
+      "totalSent": 1,
+      "totalFailed": 0,
+      "lastCheckTime": "2026-10-27T08:04:00.006Z",
+      "lastCheckFinishedAt": null,
+      "lastScheduledReportsFound": 0,
+      "lastDueReportsFound": 0,
+      "lastRefreshDeferredReports": 0,
+      "lastSuccessTime": "2026-10-27T08:00:33.408Z",
+      "lastErrorTime": null,
+      "lastError": null,
+      "uptime": 6413,
+      "successRate": "100.00%"
+    },
+    "autoRefreshScheduler": {
+      "started": true,
+      "timerScheduled": false,
+      "inProgress": false,
+      "config": {
+        "enabled": true,
+        "reportingTimeZone": "UTC",
+        "hour": 23,
+        "minute": 0,
+        "runOnStartup": false,
+        "googleSheetsSpendIntervalMinutes": 1,
+        "salesforcePipelineIntervalMinutes": 5
+      },
+      "startedAt": "2026-10-27T06:38:16.513Z",
+      "nextRunAt": null,
+      "lastRunStartedAt": "2026-10-27T07:59:25.123Z",
+      "lastRunFinishedAt": "2026-10-27T07:59:46.472Z",
+      "lastRunTrigger": "manual",
+      "lastRunStatus": "failed",
+      "lastSkippedAt": null,
+      "lastErrorTime": "2026-10-27T07:59:46.472Z",
+      "lastError": "GA4_REFRESH_WORK_OWNERSHIP_LOST",
+      "lastRunSummary": null,
+      "totalRuns": 41,
+      "totalStartupRuns": 0,
+      "totalScheduledRuns": 6,
+      "totalManualRuns": 35,
+      "totalSkippedRuns": 0
+    },
+    "ga4DailyScheduler": {
+      "started": true,
+      "timerScheduled": true,
+      "inProgress": true,
+      "config": {
+        "reportingTimeZone": "Europe/Amsterdam",
+        "hour": 8,
+        "hours": [
+          8,
+          14,
+          20
+        ],
+        "minute": 0,
+        "runOnStartup": false
+      },
+      "startedAt": "2026-10-27T06:38:16.513Z",
+      "stoppedAt": null,
+      "nextRunAt": "2026-10-27T13:00:00.000Z",
+      "nextDataThroughDate": "2026-10-26",
+      "lastRunStartedAt": "2026-10-27T07:01:00.005Z",
+      "lastRunFinishedAt": "2026-10-27T07:11:56.494Z",
+      "lastRunTrigger": "scheduled",
+      "lastRunStatus": "failed",
+      "lastSkippedAt": null,
+      "lastErrorTime": "2026-10-27T07:11:56.494Z",
+      "lastError": "GA4 daily refresh failed for 1 campaign(s); GA4 daily refresh failed for 1 campaign(s); GA4 daily refresh failed for 1 campaign(s); GA4 daily refresh failed for 1 campaign(s); GA4 daily refresh failed for 1 campaign(s)",
+      "totalRuns": 3,
+      "totalStartupRuns": 0,
+      "totalScheduledRuns": 1,
+      "totalManualRuns": 0,
+      "totalSnapshotBootstrapRuns": 2,
+      "totalSkippedRuns": 0,
+      "lastRecomputeRecordedAt": "2026-10-27T07:34:48.266Z",
+      "lastRecomputeEvidence": {
+        "campaignIdsProcessed": [
+          "de4775c3b435"
+        ],
+        "campaignIdsSkipped": [],
+        "campaignIdsFailed": [],
+        "kpiIdsUpdated": [],
+        "kpiIdsSkipped": [],
+        "kpiIdsFailed": [],
+        "benchmarkIdsUpdated": [],
+        "benchmarkIdsSkipped": [],
+        "benchmarkIdsFailed": []
+      },
+      "lastExecutiveSummarySnapshotRequestedAt": "2026-10-27T07:35:18.690Z",
+      "lastExecutiveSummarySnapshotRequestFailures": [],
+      "lastAlignedRefreshFailures": [
+        {
+          "campaignIdHash": "6caf32c94dbe",
+          "stage": "campaign_pipeline_failed"
+        },
+        {
+          "campaignIdHash": "57141d52e81b",
+          "stage": "campaign_pipeline_failed"
+        },
+        {
+          "campaignIdHash": "b0f65e7c7bfb",
+          "stage": "campaign_pipeline_failed"
+        },
+        {
+          "campaignIdHash": "4ba3d83a9f51",
+          "stage": "campaign_pipeline_failed"
+        },
+        {
+          "campaignIdHash": "d9920c47fecf",
+          "stage": "campaign_pipeline_failed"
+        },
+        {
+          "campaignIdHash": "518aea3dc6ff",
+          "stage": "campaign_pipeline_failed"
+        }
+      ],
+      "alignedRefreshCampaigns": [
+        {
+          "campaignIdHash": "55d083f55e0c",
+          "reportingDate": "2026-10-26",
+          "completedAt": "2026-10-27T07:08:46.381Z"
+        },
+        {
+          "campaignIdHash": "b85505d40a0a",
+          "reportingDate": "2026-10-26",
+          "completedAt": "2026-10-27T07:11:24.838Z"
+        },
+        {
+          "campaignIdHash": "de4775c3b435",
+          "reportingDate": "2026-10-26",
+          "completedAt": "2026-10-27T07:35:30.059Z"
+        }
+      ],
+      "lastSnapshotBootstrapFailures": [
+        {
+          "campaignIdHash": "57141d52e81b",
+          "reason": "discovery: This provider resource is not approved for this customer"
+        },
+        {
+          "campaignIdHash": "b0f65e7c7bfb",
+          "reason": "discovery: This provider resource is not approved for this customer"
+        },
+        {
+          "campaignIdHash": "4ba3d83a9f51",
+          "reason": "discovery: This provider resource is not approved for this customer"
+        },
+        {
+          "campaignIdHash": "d9920c47fecf",
+          "reason": "discovery: This provider resource is not approved for this customer"
+        },
+        {
+          "campaignIdHash": "518aea3dc6ff",
+          "reason": "discovery: This provider resource is not approved for this customer"
+        },
+        {
+          "campaignIdHash": "6caf32c94dbe",
+          "reason": "GA4_REFRESH_WORK_OWNERSHIP_LOST"
+        },
+        {
+          "campaignIdHash": "de4775c3b435",
+          "reason": "GA4_REFRESH_WORK_OWNERSHIP_LOST"
+        }
+      ]
+    },
+    "financialDailySnapshot": {
+      "mode": "gated_write",
+      "snapshotWritesEnabled": true,
+      "financialSourceEvidenceCampaigns": 49,
+      "ga4DailyEvidenceCampaigns": 0,
+      "observedCampaigns": 0,
+      "readyCampaigns": 0,
+      "blockedCampaigns": 0,
+      "writtenCampaigns": 0,
+      "writeFailedCampaigns": 0,
+      "blockingReasons": {},
+      "latestEvaluatedAt": null
+    },
+    "timestamp": "2026-10-27T08:04:06.419Z"
+  }
+}

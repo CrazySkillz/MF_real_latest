@@ -1,0 +1,556 @@
+{
+  "at": "2026-10-27T06:50:03.702Z",
+  "results": [
+    {
+      "kind": "health",
+      "http": 200,
+      "data": {
+        "ok": true,
+        "commit": "997f1c39ba2904ff0805ddb154715a75b4267578",
+        "nodeEnv": "production",
+        "ts": "2026-10-27T06:50:02.080Z"
+      }
+    },
+    {
+      "kind": "ci",
+      "http": 200,
+      "data": {
+        "id": 40462063667,
+        "name": "Tests",
+        "node_id": "WFR_kwLOQUJEJM8AAAAJa7oYMw",
+        "head_branch": "main",
+        "head_sha": "997f1c39ba2904ff0805ddb154715a75b4267578",
+        "path": ".github/workflows/test.yml",
+        "display_title": "fix: serialize interval refreshes with GA4 publication and configure …",
+        "run_number": 1094,
+        "event": "push",
+        "status": "completed",
+        "conclusion": "success",
+        "workflow_id": 246433035,
+        "check_suite_id": 109665094481,
+        "check_suite_node_id": "CS_kwDOQUJEJM8AAAAZiIyLUQ",
+        "url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/runs/40462063667",
+        "html_url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/40462063667",
+        "pull_requests": [],
+        "created_at": "2026-10-27T06:36:00Z",
+        "updated_at": "2026-10-27T06:44:23Z",
+        "actor": {
+          "login": "CrazySkillz",
+          "id": 52798467,
+          "node_id": "MDQ6VXNlcjUyNzk4NDY3",
+          "avatar_url": "https://avatars.githubusercontent.com/u/52798467?v=4",
+          "gravatar_id": "",
+          "url": "https://api.github.com/users/CrazySkillz",
+          "html_url": "https://github.com/CrazySkillz",
+          "followers_url": "https://api.github.com/users/CrazySkillz/followers",
+          "following_url": "https://api.github.com/users/CrazySkillz/following{/other_user}",
+          "gists_url": "https://api.github.com/users/CrazySkillz/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/CrazySkillz/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/CrazySkillz/subscriptions",
+          "organizations_url": "https://api.github.com/users/CrazySkillz/orgs",
+          "repos_url": "https://api.github.com/users/CrazySkillz/repos",
+          "events_url": "https://api.github.com/users/CrazySkillz/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/CrazySkillz/received_events",
+          "type": "User",
+          "user_view_type": "public",
+          "site_admin": false
+        },
+        "run_attempt": 1,
+        "referenced_workflows": [],
+        "run_started_at": "2026-10-27T06:36:00Z",
+        "triggering_actor": {
+          "login": "CrazySkillz",
+          "id": 52798467,
+          "node_id": "MDQ6VXNlcjUyNzk4NDY3",
+          "avatar_url": "https://avatars.githubusercontent.com/u/52798467?v=4",
+          "gravatar_id": "",
+          "url": "https://api.github.com/users/CrazySkillz",
+          "html_url": "https://github.com/CrazySkillz",
+          "followers_url": "https://api.github.com/users/CrazySkillz/followers",
+          "following_url": "https://api.github.com/users/CrazySkillz/following{/other_user}",
+          "gists_url": "https://api.github.com/users/CrazySkillz/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/CrazySkillz/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/CrazySkillz/subscriptions",
+          "organizations_url": "https://api.github.com/users/CrazySkillz/orgs",
+          "repos_url": "https://api.github.com/users/CrazySkillz/repos",
+          "events_url": "https://api.github.com/users/CrazySkillz/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/CrazySkillz/received_events",
+          "type": "User",
+          "user_view_type": "public",
+          "site_admin": false
+        },
+        "jobs_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/runs/40462063667/jobs",
+        "logs_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/runs/40462063667/logs",
+        "check_suite_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/check-suites/109665094481",
+        "artifacts_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/runs/40462063667/artifacts",
+        "cancel_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/runs/40462063667/cancel",
+        "rerun_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/runs/40462063667/rerun",
+        "previous_attempt_url": null,
+        "workflow_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/workflows/246433035",
+        "head_commit": {
+          "id": "997f1c39ba2904ff0805ddb154715a75b4267578",
+          "tree_id": "deb5e98829c403a0f9e022f46c8f1f479a888eb7",
+          "message": "fix: serialize interval refreshes with GA4 publication and configure CI fixtures",
+          "timestamp": "2026-10-27T06:35:38Z",
+          "author": {
+            "name": "CrazySkillz",
+            "email": "tohanayewoh@gmail.com"
+          },
+          "committer": {
+            "name": "CrazySkillz",
+            "email": "tohanayewoh@gmail.com"
+          }
+        },
+        "repository": {
+          "id": 1094861860,
+          "node_id": "R_kgDOQUJEJA",
+          "name": "MF_real_latest",
+          "full_name": "CrazySkillz/MF_real_latest",
+          "private": false,
+          "owner": {
+            "login": "CrazySkillz",
+            "id": 52798467,
+            "node_id": "MDQ6VXNlcjUyNzk4NDY3",
+            "avatar_url": "https://avatars.githubusercontent.com/u/52798467?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/CrazySkillz",
+            "html_url": "https://github.com/CrazySkillz",
+            "followers_url": "https://api.github.com/users/CrazySkillz/followers",
+            "following_url": "https://api.github.com/users/CrazySkillz/following{/other_user}",
+            "gists_url": "https://api.github.com/users/CrazySkillz/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/CrazySkillz/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/CrazySkillz/subscriptions",
+            "organizations_url": "https://api.github.com/users/CrazySkillz/orgs",
+            "repos_url": "https://api.github.com/users/CrazySkillz/repos",
+            "events_url": "https://api.github.com/users/CrazySkillz/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/CrazySkillz/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+          },
+          "html_url": "https://github.com/CrazySkillz/MF_real_latest",
+          "description": null,
+          "fork": false,
+          "url": "https://api.github.com/repos/CrazySkillz/MF_real_latest",
+          "forks_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/forks",
+          "keys_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/keys{/key_id}",
+          "collaborators_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/collaborators{/collaborator}",
+          "teams_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/teams",
+          "hooks_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/hooks",
+          "issue_events_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/issues/events{/number}",
+          "events_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/events",
+          "assignees_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/assignees{/user}",
+          "branches_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/branches{/branch}",
+          "tags_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/tags",
+          "blobs_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/blobs{/sha}",
+          "git_tags_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/tags{/sha}",
+          "git_refs_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/refs{/sha}",
+          "trees_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/trees{/sha}",
+          "statuses_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/statuses/{sha}",
+          "languages_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/languages",
+          "stargazers_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/stargazers",
+          "contributors_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/contributors",
+          "subscribers_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/subscribers",
+          "subscription_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/subscription",
+          "commits_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/commits{/sha}",
+          "git_commits_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/commits{/sha}",
+          "comments_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/comments{/number}",
+          "issue_comment_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/issues/comments{/number}",
+          "contents_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/contents/{+path}",
+          "compare_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/compare/{base}...{head}",
+          "merges_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/merges",
+          "archive_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/{archive_format}{/ref}",
+          "downloads_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/downloads",
+          "issues_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/issues{/number}",
+          "pulls_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/pulls{/number}",
+          "milestones_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/milestones{/number}",
+          "notifications_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/notifications{?since,all,participating}",
+          "labels_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/labels{/name}",
+          "releases_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/releases{/id}",
+          "deployments_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/deployments"
+        },
+        "head_repository": {
+          "id": 1094861860,
+          "node_id": "R_kgDOQUJEJA",
+          "name": "MF_real_latest",
+          "full_name": "CrazySkillz/MF_real_latest",
+          "private": false,
+          "owner": {
+            "login": "CrazySkillz",
+            "id": 52798467,
+            "node_id": "MDQ6VXNlcjUyNzk4NDY3",
+            "avatar_url": "https://avatars.githubusercontent.com/u/52798467?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/CrazySkillz",
+            "html_url": "https://github.com/CrazySkillz",
+            "followers_url": "https://api.github.com/users/CrazySkillz/followers",
+            "following_url": "https://api.github.com/users/CrazySkillz/following{/other_user}",
+            "gists_url": "https://api.github.com/users/CrazySkillz/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/CrazySkillz/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/CrazySkillz/subscriptions",
+            "organizations_url": "https://api.github.com/users/CrazySkillz/orgs",
+            "repos_url": "https://api.github.com/users/CrazySkillz/repos",
+            "events_url": "https://api.github.com/users/CrazySkillz/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/CrazySkillz/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+          },
+          "html_url": "https://github.com/CrazySkillz/MF_real_latest",
+          "description": null,
+          "fork": false,
+          "url": "https://api.github.com/repos/CrazySkillz/MF_real_latest",
+          "forks_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/forks",
+          "keys_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/keys{/key_id}",
+          "collaborators_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/collaborators{/collaborator}",
+          "teams_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/teams",
+          "hooks_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/hooks",
+          "issue_events_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/issues/events{/number}",
+          "events_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/events",
+          "assignees_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/assignees{/user}",
+          "branches_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/branches{/branch}",
+          "tags_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/tags",
+          "blobs_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/blobs{/sha}",
+          "git_tags_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/tags{/sha}",
+          "git_refs_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/refs{/sha}",
+          "trees_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/trees{/sha}",
+          "statuses_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/statuses/{sha}",
+          "languages_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/languages",
+          "stargazers_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/stargazers",
+          "contributors_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/contributors",
+          "subscribers_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/subscribers",
+          "subscription_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/subscription",
+          "commits_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/commits{/sha}",
+          "git_commits_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/git/commits{/sha}",
+          "comments_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/comments{/number}",
+          "issue_comment_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/issues/comments{/number}",
+          "contents_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/contents/{+path}",
+          "compare_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/compare/{base}...{head}",
+          "merges_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/merges",
+          "archive_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/{archive_format}{/ref}",
+          "downloads_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/downloads",
+          "issues_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/issues{/number}",
+          "pulls_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/pulls{/number}",
+          "milestones_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/milestones{/number}",
+          "notifications_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/notifications{?since,all,participating}",
+          "labels_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/labels{/name}",
+          "releases_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/releases{/id}",
+          "deployments_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/deployments"
+        }
+      }
+    },
+    {
+      "kind": "jobs",
+      "http": 200,
+      "data": {
+        "total_count": 1,
+        "jobs": [
+          {
+            "id": 122048741484,
+            "run_id": 40462063667,
+            "workflow_name": "Tests",
+            "head_branch": "main",
+            "run_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/runs/40462063667",
+            "run_attempt": 1,
+            "node_id": "CR_kwDOQUJEJM8AAAAcaqwAbA",
+            "head_sha": "997f1c39ba2904ff0805ddb154715a75b4267578",
+            "url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/actions/jobs/122048741484",
+            "html_url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/40462063667/job/122048741484",
+            "status": "completed",
+            "conclusion": "success",
+            "created_at": "2026-10-27T06:36:00Z",
+            "started_at": "2026-10-27T06:36:02Z",
+            "completed_at": "2026-10-27T06:44:23Z",
+            "name": "unit-tests",
+            "steps": [
+              {
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 1,
+                "started_at": "2026-10-27T06:36:03Z",
+                "completed_at": "2026-10-27T06:36:04Z"
+              },
+              {
+                "name": "Initialize containers",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 2,
+                "started_at": "2026-10-27T06:36:04Z",
+                "completed_at": "2026-10-27T06:36:17Z"
+              },
+              {
+                "name": "Run actions/checkout@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 3,
+                "started_at": "2026-10-27T06:36:17Z",
+                "completed_at": "2026-10-27T06:36:28Z"
+              },
+              {
+                "name": "Run actions/setup-node@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 4,
+                "started_at": "2026-10-27T06:36:28Z",
+                "completed_at": "2026-10-27T06:36:28Z"
+              },
+              {
+                "name": "Run npm ci --ignore-scripts",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 5,
+                "started_at": "2026-10-27T06:36:28Z",
+                "completed_at": "2026-10-27T06:38:35Z"
+              },
+              {
+                "name": "Run npx --no-install playwright install --with-deps chromium",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 6,
+                "started_at": "2026-10-27T06:38:35Z",
+                "completed_at": "2026-10-27T06:38:54Z"
+              },
+              {
+                "name": "Create isolated notification fixture database",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 7,
+                "started_at": "2026-10-27T06:38:54Z",
+                "completed_at": "2026-10-27T06:38:54Z"
+              },
+              {
+                "name": "Run npm run check:ga4-kpi-certification",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 8,
+                "started_at": "2026-10-27T06:38:54Z",
+                "completed_at": "2026-10-27T06:38:55Z"
+              },
+              {
+                "name": "Run npm run test:current-version",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 9,
+                "started_at": "2026-10-27T06:38:55Z",
+                "completed_at": "2026-10-27T06:44:16Z"
+              },
+              {
+                "name": "Retained deferred-source evidence (non-blocking)",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 10,
+                "started_at": "2026-10-27T06:44:16Z",
+                "completed_at": "2026-10-27T06:44:19Z"
+              },
+              {
+                "name": "Post Run actions/setup-node@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 18,
+                "started_at": "2026-10-27T06:44:19Z",
+                "completed_at": "2026-10-27T06:44:19Z"
+              },
+              {
+                "name": "Post Run actions/checkout@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 19,
+                "started_at": "2026-10-27T06:44:19Z",
+                "completed_at": "2026-10-27T06:44:20Z"
+              },
+              {
+                "name": "Stop containers",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 20,
+                "started_at": "2026-10-27T06:44:20Z",
+                "completed_at": "2026-10-27T06:44:20Z"
+              },
+              {
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 21,
+                "started_at": "2026-10-27T06:44:20Z",
+                "completed_at": "2026-10-27T06:44:20Z"
+              }
+            ],
+            "check_run_url": "https://api.github.com/repos/CrazySkillz/MF_real_latest/check-runs/122048741484",
+            "labels": [
+              "ubuntu-latest"
+            ],
+            "runner_id": 1000001100,
+            "runner_name": "GitHub Actions 1000001100",
+            "runner_group_id": 0,
+            "runner_group_name": "GitHub Actions"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "scheduler",
+      "http": 200,
+      "data": {
+        "status": "healthy",
+        "scheduler": {
+          "schedulerStartedAt": "2026-10-27T06:38:16.505Z",
+          "cronSchedule": "* * * * *",
+          "totalChecks": 12,
+          "totalSent": 0,
+          "totalFailed": 0,
+          "lastCheckTime": "2026-10-27T06:50:00.007Z",
+          "lastCheckFinishedAt": null,
+          "lastScheduledReportsFound": 0,
+          "lastDueReportsFound": 0,
+          "lastRefreshDeferredReports": 0,
+          "lastSuccessTime": null,
+          "lastErrorTime": null,
+          "lastError": null,
+          "uptime": 2070,
+          "successRate": "N/A"
+        },
+        "autoRefreshScheduler": {
+          "started": true,
+          "timerScheduled": false,
+          "inProgress": true,
+          "config": {
+            "enabled": true,
+            "reportingTimeZone": "UTC",
+            "hour": 23,
+            "minute": 0,
+            "runOnStartup": false,
+            "googleSheetsSpendIntervalMinutes": 1,
+            "salesforcePipelineIntervalMinutes": 5
+          },
+          "startedAt": "2026-10-27T06:38:16.513Z",
+          "nextRunAt": null,
+          "lastRunStartedAt": "2026-10-27T06:49:24.948Z",
+          "lastRunFinishedAt": null,
+          "lastRunTrigger": "manual",
+          "lastRunStatus": "running",
+          "lastSkippedAt": null,
+          "lastErrorTime": "2026-10-27T06:47:50.381Z",
+          "lastError": null,
+          "lastRunSummary": null,
+          "totalRuns": 6,
+          "totalStartupRuns": 0,
+          "totalScheduledRuns": 0,
+          "totalManualRuns": 6,
+          "totalSkippedRuns": 0
+        },
+        "ga4DailyScheduler": {
+          "started": true,
+          "timerScheduled": true,
+          "inProgress": true,
+          "config": {
+            "reportingTimeZone": "Europe/Amsterdam",
+            "hour": 8,
+            "hours": [
+              8,
+              14,
+              20
+            ],
+            "minute": 0,
+            "runOnStartup": false
+          },
+          "startedAt": "2026-10-27T06:38:16.513Z",
+          "stoppedAt": null,
+          "nextRunAt": "2026-10-27T07:00:00.000Z",
+          "nextDataThroughDate": "2026-10-26",
+          "lastRunStartedAt": "2026-10-27T06:38:42.944Z",
+          "lastRunFinishedAt": "2026-10-27T06:39:07.993Z",
+          "lastRunTrigger": "snapshot_bootstrap",
+          "lastRunStatus": "failed",
+          "lastSkippedAt": null,
+          "lastErrorTime": "2026-10-27T06:39:06.296Z",
+          "lastError": "GA4_REFRESH_WORK_OWNERSHIP_LOST",
+          "totalRuns": 2,
+          "totalStartupRuns": 0,
+          "totalScheduledRuns": 0,
+          "totalManualRuns": 0,
+          "totalSnapshotBootstrapRuns": 2,
+          "totalSkippedRuns": 0,
+          "lastRecomputeRecordedAt": "2026-10-27T06:44:45.996Z",
+          "lastRecomputeEvidence": {
+            "campaignIdsProcessed": [
+              "de4775c3b435"
+            ],
+            "campaignIdsSkipped": [],
+            "campaignIdsFailed": [],
+            "kpiIdsUpdated": [],
+            "kpiIdsSkipped": [],
+            "kpiIdsFailed": [],
+            "benchmarkIdsUpdated": [],
+            "benchmarkIdsSkipped": [],
+            "benchmarkIdsFailed": []
+          },
+          "lastExecutiveSummarySnapshotRequestedAt": "2026-10-27T06:45:16.443Z",
+          "lastExecutiveSummarySnapshotRequestFailures": [],
+          "lastAlignedRefreshFailures": [],
+          "alignedRefreshCampaigns": [
+            {
+              "campaignIdHash": "55d083f55e0c",
+              "reportingDate": "2026-10-25",
+              "completedAt": "2026-10-26T19:08:00.117Z"
+            },
+            {
+              "campaignIdHash": "b85505d40a0a",
+              "reportingDate": "2026-10-25",
+              "completedAt": "2026-10-26T19:10:12.439Z"
+            },
+            {
+              "campaignIdHash": "de4775c3b435",
+              "reportingDate": "2026-10-26",
+              "completedAt": "2026-10-27T06:45:27.879Z"
+            }
+          ],
+          "lastSnapshotBootstrapFailures": [
+            {
+              "campaignIdHash": "57141d52e81b",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "b0f65e7c7bfb",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "4ba3d83a9f51",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "d9920c47fecf",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "518aea3dc6ff",
+              "reason": "discovery: This provider resource is not approved for this customer"
+            },
+            {
+              "campaignIdHash": "6caf32c94dbe",
+              "reason": "GA4_REFRESH_WORK_OWNERSHIP_LOST"
+            },
+            {
+              "campaignIdHash": "de4775c3b435",
+              "reason": "GA4_REFRESH_WORK_OWNERSHIP_LOST"
+            }
+          ]
+        },
+        "financialDailySnapshot": {
+          "mode": "gated_write",
+          "snapshotWritesEnabled": true,
+          "financialSourceEvidenceCampaigns": 1,
+          "ga4DailyEvidenceCampaigns": 0,
+          "observedCampaigns": 0,
+          "readyCampaigns": 0,
+          "blockedCampaigns": 0,
+          "writtenCampaigns": 0,
+          "writeFailedCampaigns": 0,
+          "blockingReasons": {},
+          "latestEvaluatedAt": null
+        },
+        "timestamp": "2026-10-27T06:50:02.078Z"
+      }
+    }
+  ]
+}

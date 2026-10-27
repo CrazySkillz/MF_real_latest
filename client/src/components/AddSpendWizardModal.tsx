@@ -1683,7 +1683,7 @@ export function AddSpendWizardModal(props: {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent data-add-spend-dialog className="w-[980px] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden">
+      <DialogContent data-add-spend-dialog className={`${step === "select" ? "w-[640px]" : "w-[980px]"} max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden`}>
         <div className="flex flex-col h-full">
           {/* ── Header ── */}
           <DialogHeader className="px-6 py-4 border-b">
@@ -1702,11 +1702,11 @@ export function AddSpendWizardModal(props: {
           </DialogHeader>
 
           {/* ── Body ── */}
-          <div className="px-6 py-5 flex-1 min-h-0 flex flex-col overflow-y-auto">
+          <div className={`px-6 py-5 flex-1 min-h-0 flex flex-col overflow-y-auto ${step === "select" ? "scrollbar-hide" : ""}`}>
 
             {/* ═══════════════════ STEP: SELECT SOURCE ═══════════════════ */}
             {step === "select" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <Card
                   className={`${activeGoogleAdsSpendSources.length > 0
                     ? "cursor-default"

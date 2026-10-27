@@ -51,41 +51,36 @@ function render(overrides: Record<string, any> = {}) {
 const paragraphs = (html: string) => [...html.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((match) => match[1].replace(/<[^>]+>/g, ""));
 
 describe("Overview reporting note uses the displayed data's metadata", () => {
-  it("renders the saved import window, distinct successful timestamps and configured schedule", () => {
+  it("renders the successful GA4 timestamp and configured schedule in one line", () => {
     const lines = paragraphs(render());
-    expect(lines[0]).toContain("Data from Sep 4, 2026 through Oct 16, 2026 (Europe/Amsterdam)");
+    expect(lines).toHaveLength(1);
     expect(lines[0]).toContain("Last successful update: Oct 17, 2026, 02:10 PM");
-    expect(lines[1]).toContain("Data through Oct 16, 2026 (Europe/Amsterdam)");
-    expect(lines[1]).toContain("Last successful update: Oct 17, 2026, 02:11 PM");
-    expect(lines[2]).toContain("Imported Revenue and Spend include eligible source history through that date, which may start earlier");
-    expect(lines[3]).toContain("08:00, 14:00, 20:00 (Europe/Amsterdam)");
+    expect(lines[0]).toContain(" | Scheduled refreshes: 08:00, 14:00, 20:00 (Europe/Amsterdam)");
   });
 
   it.each(["running", "failed", "delayed"])("retains the saved date/time during a %s attempt", (refreshStatus) => {
     const lines = paragraphs(render({ ga4DailyResp: { ...daily, latestStoredDailyDate: "2026-10-15",
       lastUpdated: "2026-10-16T18:05:00.000Z", lastCompletedRefreshAt: null, refreshStatus,
       expectedRefreshAt: "2026-10-17T12:00:00.000Z", refreshAttempt: { finishedAt: "2026-10-17T12:10:00.000Z" } } }));
-    expect(lines[0]).toContain("through Oct 15, 2026");
     expect(lines[0]).toContain("Last successful update: Oct 16, 2026, 08:05 PM");
     expect(lines[0]).not.toContain("Oct 17, 2026");
   });
 
-  it("shows an earlier financial publication's own dates and timestamp", () => {
+  it("does not replace the GA4 timestamp with a separate financial publication's timestamp", () => {
     const lines = paragraphs(render({ financialDailySnapshotResp: { snapshot: { ...snapshot,
       reportingDate: "2026-10-15", recordedAt: "2026-10-16T18:06:00.000Z",
       metrics: { financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-08-01", endDate: "2026-10-15", reportingTimeZone: "UTC" } } },
     } } }));
-    expect(lines[0]).toContain("through Oct 16, 2026");
-    expect(lines[1]).toContain("Data through Oct 15, 2026 (UTC)");
-    expect(lines[1]).toContain("Last successful update: Oct 16, 2026, 06:06 PM UTC");
-    expect(lines[2]).toContain("Aug 1, 2026 through Oct 15, 2026");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("Last successful update: Oct 17, 2026, 02:10 PM");
+    expect(lines[0]).not.toContain("06:06 PM");
   });
 
   it("honors a different schedule timezone and nonzero minutes independently of reporting timezone", () => {
     const lines = paragraphs(render({ ga4DailyResp: { ...daily, refreshScheduleHours: [3], refreshScheduleMinute: 35, refreshScheduleTimeZone: "UTC" } }));
-    expect(lines[0]).toContain("Europe/Amsterdam");
-    expect(lines[3]).toContain("03:35 (UTC)");
-    expect(lines[3]).not.toContain("08:00");
+    expect(lines[0]).toContain("Last successful update: Oct 17, 2026, 02:10 PM");
+    expect(lines[0]).toContain("03:35 (UTC)");
+    expect(lines[0]).not.toContain("08:00");
   });
 
   it("renders winter timestamps in the reporting timezone without assuming a fixed UTC offset", () => {
@@ -98,8 +93,7 @@ describe("Overview reporting note uses the displayed data's metadata", () => {
     { ga4DailyResp: undefined },
   ])("does not label absent, placeholder or another property's data as a successful update: %j", (overrides) => {
     const lines = paragraphs(render({ ...overrides, financialDailySnapshotResp: undefined }));
-    expect(lines[0]).toContain("Reporting date unavailable. Last successful update: Not available yet");
-    expect(lines[1]).toContain("Reporting date unavailable. Last successful update: Not available yet");
+    expect(lines[0]).toContain("Last successful update: Not available yet");
     expect(lines.some((line) => line.includes("Schedule unavailable"))).toBe(true);
   });
 
@@ -112,16 +106,14 @@ describe("Overview reporting note uses the displayed data's metadata", () => {
     const lines = paragraphs(render({ ga4DailyResp: { ...daily, providerRefreshOutcome: "simulated" },
       financialDailySnapshotResp: { snapshot: { ...snapshot, recordedAt: "invalid-date" } } }));
     expect(lines[0]).toContain("Last successful update: Not available yet");
-    expect(lines[1]).toContain("Last successful update: Not available yet");
     expect(render({ ga4DailyResp: { ...daily, lastUpdated: "invalid-date" } })).not.toContain("invalid-date");
   });
 
-  it("explains provisional figures and preserves Pipeline Proxy's separate current-value scope", () => {
+  it("keeps only the compact update and schedule line when Pipeline Proxy is configured", () => {
     const html = render({ pipelineProxyConfigured: true });
-    expect(html).toContain("24–48 hours, sometimes longer");
-    expect(html).toContain("up to 12 days after the event");
-    expect(html).toContain("ratios that use GA4 data");
-    expect(html).toContain("Pipeline Proxy shows the latest available CRM stage values");
-    expect(html).toContain('href="https://support.google.com/analytics/answer/11198161?hl=en"');
+    expect(paragraphs(html)).toHaveLength(1);
+    expect(html).not.toContain("Recent figures are provisional");
+    expect(html).not.toContain("Pipeline Proxy shows");
+    expect(html).not.toContain("<a ");
   });
 });

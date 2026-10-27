@@ -143,7 +143,7 @@ describe("GA4 publication in the rendered page", () => {
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await browserExpect(page.getByText("€68,000.00", { exact: true }).first()).toBeVisible();
       releaseFinancial!(); waitFinancial = undefined;
-      await browserExpect(page.getByTestId("ga4-overview-reporting-dates")).toContainText("Oct 18, 2026");
+      await browserExpect(page.getByTestId("ga4-overview-reporting-dates")).toContainText("Last successful update: Oct 19, 2026");
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
 
       const beforeHidden = requests.length;

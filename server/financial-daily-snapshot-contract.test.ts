@@ -189,8 +189,8 @@ describe("compact daily financial snapshot contract", () => {
     const reportingDatesEnd = overview.indexOf("{/* Summary Cards */}", reportingDatesStart);
     expect(reportingDatesStart).toBeGreaterThan(-1);
     expect(reportingDatesEnd).toBeGreaterThan(reportingDatesStart);
-    expect(overview.slice(reportingDatesStart, reportingDatesEnd)).toContain("formatReportingDateLabel(overviewGA4ReportingDate)");
-    expect(overview.slice(reportingDatesStart, reportingDatesEnd)).toContain("formatReportingDateLabel(overviewFinancialReportingDate)");
+    expect(overview.slice(reportingDatesStart, reportingDatesEnd)).toContain("Last successful update: {overviewGA4UpdatedAt}");
+    expect(overview.slice(reportingDatesStart, reportingDatesEnd)).toContain("{overviewRefreshSchedule}");
     expect(cards).not.toContain("Latest imported day:");
     expect(cards).not.toContain("renderFinancialValue(financialRevenueLoading, financialRevenueAvailable");
     expect(cards).not.toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");

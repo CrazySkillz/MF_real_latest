@@ -6896,13 +6896,8 @@ export default function GA4Metrics() {
 
                 <TabsContent value="overview" className="fade-in">
                   <div className="space-y-8">
-                    <div className="space-y-1 text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">
-                      <p><span className="font-medium">GA4 metrics (Summary and tables):</span> {overviewGA4ReportingDate ? `${overviewGA4ReportingStartDate ? `Data from ${formatReportingDateLabel(overviewGA4ReportingStartDate)} through` : "Data through"} ${formatReportingDateLabel(overviewGA4ReportingDate)} (${overviewGA4ReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: {overviewGA4UpdatedAt}.</p>
-                      <p><span className="font-medium">Revenue, Spend, ROAS, ROI and CPA:</span> {overviewFinancialReportingDate ? `Data through ${formatReportingDateLabel(overviewFinancialReportingDate)} (${overviewFinancialReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: {overviewFinancialUpdatedAt}. Applies to available figures.</p>
-                      {overviewFinancialReportingDate && overviewFinancialWindow?.startDate && <p>Financial GA4 inputs cover {formatReportingDateLabel(overviewFinancialWindow.startDate)} through {formatReportingDateLabel(overviewFinancialReportingDate)}. Imported Revenue and Spend include eligible source history through that date, which may start earlier.</p>}
-                      <p><span className="font-medium">Scheduled refreshes:</span> {overviewRefreshSchedule}. Each refresh checks data through the previous day; today's activity is excluded.</p>
-                      <p><span className="font-medium">Recent figures are provisional:</span> GA4 processing can take 24–48 hours, sometimes longer. Conversion attribution can change for up to 12 days after the event. Later refreshes can revise earlier figures and ratios that use GA4 data. <a href="https://support.google.com/analytics/answer/11198161?hl=en" target="_blank" rel="noopener noreferrer" className="underline">Google's processing guidance</a></p>
-                      {pipelineProxyConfigured && <p>Pipeline Proxy shows the latest available CRM stage values.</p>}
+                    <div className="text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">
+                      <p>Last successful update: {overviewGA4UpdatedAt} | <span className="font-medium">Scheduled refreshes:</span> {overviewRefreshSchedule}</p>
                     </div>
                     {/* Summary Cards */}
                     <div>

@@ -1,5 +1,26 @@
 # Batches 1–5: consolidated acceptance checkpoint, October 27
 
+**October 27 demo priority:** the user postpones custom-domain/Clerk production
+setup until after the customer demo and requests core-functionality bug fixes.
+The owned domain is `mimosaas.app` and DNS access is confirmed; no live setting
+has changed. The reproduced unrelated-report-dependency defect is corrected
+locally: 259 checks, 57 browser PDF downloads and production builds pass. The user
+has requested commit and push; deployment and live confirmation remain pending in the existing report incident
+record. This does not
+complete the deferred production acceptance groups below.
+
+**Earlier October 27 follow-up:** the user reports that Ad Comparison downloads
+currently work and wants to retest later while Batches 1–5 work resumes. Reports
+remain OPEN: a local execution of the current coordinator and report preflight
+also reproduces an overly broad dependency gate. A failed Landing Pages,
+Conversion Events or report-library read rejects an otherwise-ready Ad Comparison
+report with the reported verification message; recovery of the unrelated read
+releases it. This proves a code path, not which request failed in the user's live
+session. `81440a14` addressed the banner/button transitions only. Its successful
+downloads must not be used to close the underlying report incident. The original
+Batch 1–5 implementation inventory and remaining acceptance groups below remain
+the controlling scope; no new broad audit is started.
+
 **Later October 27 recurrence:** Reports' persistent failed-refresh warning is
 reopened. The earlier green checkpoint does not certify that path. See
 [the current incident record](REPORT_PUBLICATION_CANCELLATION_2026-10-27.md#follow-up-publication-handoff-and-persistent-warning-investigation)

@@ -227,3 +227,58 @@ running the same browser case twice and does not omit any of these scenarios.
 `quiet-refresh-build-checks.json` records passing TypeScript, production client
 and server builds. `git diff --check` passes. Deployment verification follows
 the commit/push; it does not substitute for authenticated live UI acceptance.
+
+## October 27 demo preparation: unrelated report dependencies
+
+The user supplied a successful October 27 Ad Comparison PDF. Its revenue
+breakdown reconciles to EUR 8,003.96 and sessions reconcile to 604, matching the
+previous supplied artifact. A successful artifact does not close the reported
+intermittent download failure. The user postpones custom-domain and Clerk
+production changes until after the demo; no identity or deployment setting is
+changed by this correction.
+
+The confirmed client defect is an overly broad publication gate. The Reports
+page mounts Landing Pages, Conversion Events and the saved-report list alongside
+Ad Comparison's financial inputs. `isGA4PublicationQuery` included all of these
+reads in the awaited invalidation. A slow read held the entire publication
+pending, and a failed read set its shared failure flag. That flag disabled both
+download controls and made `downloadGA4Report` reject a valid Ad Comparison PDF.
+The three new real-QueryClient regressions fail on the unchanged runtime for
+exactly this reason (`report-dependencies-before.json`: 50 pass, 3 fail).
+
+The localized correction stays in `client/src/pages/ga4-metrics.tsx`. It uses the
+existing independent Insights-refresh pattern for these three additional reads.
+They still refresh on a new publication; failed reads retry on subsequent status
+checks without making the financial publication fail. Campaign/property filters,
+financial receipt verification and financial/currency/date/provenance guards
+remain in place. Overview and Custom reports that include Landing Pages or
+Conversion Events now explicitly wait for those exact inputs, including cached
+data whose latest refresh failed. The same check applies to the PDF handler and
+new/saved download controls. Schedule creation/editing still does not require an
+immediate PDF download.
+
+The traced boundary is the three existing query definitions and their scoped
+cache keys, publication invalidation/receipt, UI download controls, report
+preflight and PDF generation. No API, storage, schema, provider refresh,
+financial calculation, scheduler or persisted record changes; there is no data
+cleanup in this fix. Source lifecycle acceptance and production identity setup
+are not recertified by these tests.
+
+Validation receipts use `report-dependencies-*` in the existing incident
+validation directory. The completed packet covers **259 passing checks** across
+ten files and **57 browser-generated PDFs**, with no unresolved failures.
+`report-dependencies-summary.json` records source and receipt hashes. The initial
+browser run passed all eight existing cases; its three added cases stopped on
+ambiguous test selectors and a fixture `error`/`message` mismatch. Only those
+three cases needed rerunning after test corrections, and all three now pass.
+They exercise slow/failed independent reads, successful Ad Comparison downloads,
+Overview detail gating through new and saved controls, and automatic recovery.
+Existing cases retain financial mismatch rejection, real core-failure gating,
+publication handoff, cancellation, and quiet transitions. Final TypeScript,
+client production build, server build and whitespace checks pass. All browser
+checks use fresh isolated profiles and intercepted synthetic requests, with no
+personal browser or production credential access. The exact failed request in
+the user's earlier live session remains unknown; this is a reproduced defect
+and bounded correction, not proof that every possible hosted failure is gone.
+The user has requested commit and push of this tested correction. Deployment
+verification and the authenticated live check remain outstanding.

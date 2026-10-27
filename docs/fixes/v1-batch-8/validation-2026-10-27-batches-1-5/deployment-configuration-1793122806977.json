@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-27T17:40:06.975Z",
+  "boundary": "Read-only repository config and anonymous public GETs; no Render dashboard, account login, or changes",
+  "publicUrl": "https://marketforensics.onrender.com",
+  "health": {
+    "ok": true,
+    "commit": "81440a1485353ca12b8718c5b6bde7765254f796",
+    "nodeEnv": "production"
+  },
+  "expectedCommit": "81440a1485353ca12b8718c5b6bde7765254f796",
+  "currentCommitLive": true,
+  "htmlCacheControl": "no-cache, no-store, must-revalidate",
+  "entry": "/assets/index-Dr504nRH.js",
+  "clerkModes": [
+    "test"
+  ],
+  "clerkUsesDevelopmentDomain": true,
+  "repositoryConfiguration": {
+    "branch": "main",
+    "autoDeploy": true,
+    "buildCommand": "npm ci --include=dev && npm run build",
+    "startCommand": "npm run start",
+    "healthCheckPath": "/health",
+    "packageBuild": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "packageStart": "NODE_ENV=production node dist/index.js",
+    "customDomainsDeclared": false
+  },
+  "renderCredentialPresent": false,
+  "limits": "Repository configuration is not a live Render settings export. Custom domains attached in Render or domains owned elsewhere cannot be enumerated with available access."
+}

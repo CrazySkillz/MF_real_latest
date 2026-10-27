@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-27T18:55:27.862869+00:00",
+  "scope": "Local synthetic data and intercepted isolated browsers; no production changes or live-error attribution",
+  "passedCases": 259,
+  "unresolvedFailures": 0,
+  "browserPdfDownloads": 57,
+  "receipts": [
+    {
+      "file": "report-dependencies-final-unit.json",
+      "sha256": "b3277aa49c45cda5ef0169830b93c5501e2ce460ccf7d99b1a4689c45c0434a4",
+      "passed": 205,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "report-dependencies-neighbors.json",
+      "sha256": "d6739c38047493d21be72b701caac420fd07b148d172f75d4b87eeb9fb4f765b",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "report-dependencies-browser.json",
+      "sha256": "ac64650fde704963ec6ac06151000bb678e831f637442dfba556157d14640a3f",
+      "passed": 8,
+      "failed": 3,
+      "skipped": 0
+    },
+    {
+      "file": "report-dependencies-browser-new.json",
+      "sha256": "7d30778d7245f4116f112e6b38671e45ed5adb10067faf89724c586f17f4eced",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 7
+    }
+  ],
+  "supersededTestFailures": {
+    "reason": "Ambiguous Overview text locator and fixture error/message field mismatch; three corrected test cases rerun successfully",
+    "cases": [
+      "Ad Comparison precision through the real Reports page downloads with conversion-events refresh timing and recovers after core refresh failures",
+      "Ad Comparison precision through the real Reports page downloads with landing-pages refresh timing and recovers after core refresh failures",
+      "Ad Comparison precision through the real Reports page downloads with report-library refresh timing and recovers after core refresh failures"
+    ]
+  },
+  "buildChecks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "report-dependencies-final-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "report-dependencies-final-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "report-dependencies-final-server-build.log"
+    }
+  ],
+  "sourceSha256": {
+    "client/src/pages/ga4-metrics.tsx": "71887f72919ca7d91eb83f822c830ba9489ef8dcfacb1c644f9bd4f348d9e1ee",
+    "server/ga4-browser-publication-refresh.test.ts": "919e77c50bde68b1a86568976aaa67bc946d8338e86b290eec04ba9e182ee011",
+    "server/ga4-browser-report-publication.test.ts": "63269edef44842a0c2fb176938a7ebbb4e800466eef0d937463dcaff9513118b",
+    "server/ga4-ad-comparison-download-browser.test.ts": "64cbbb3af99829cc8cb7037f29e9b5d9ab7602cac6b440e0fa9f61bcecd47540"
+  }
+}

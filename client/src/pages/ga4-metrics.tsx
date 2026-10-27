@@ -1897,25 +1897,35 @@ export default function GA4Metrics() {
   const isGA4InsightsContextQuery = ({ queryKey: key }: { queryKey: readonly unknown[] }) =>
     key[0] === "/api/campaigns" && key[1] === campaignId && key[4] === selectedGA4PropertyId &&
     (key[2] === "ga4-insights-daily" || key[2] === "ga4-breakdown" && key[5] === true);
+  const isGA4IndependentPublicationQuery = (query: { queryKey: readonly unknown[] }) => {
+    const key = query.queryKey;
+    return isGA4InsightsContextQuery(query)
+      || key[0] === "/api/campaigns" && key[1] === campaignId && key[4] === selectedGA4PropertyId && ["ga4-landing-pages", "ga4-conversion-events"].includes(String(key[2]))
+      || key[0] === "/api/platforms/google_analytics/reports" && key[1] === campaignId;
+  };
   const ga4InsightsContextFetching = useIsFetching({ predicate: isGA4InsightsContextQuery });
-  const ga4PublicationFetching = useIsFetching({ predicate: query => query.queryKey[0] === "/api/campaigns" && isGA4PublicationQuery(query) && !isGA4InsightsContextQuery(query) });
+  const ga4PublicationFetching = useIsFetching({ predicate: query => query.queryKey[0] === "/api/campaigns" && isGA4PublicationQuery(query) && !isGA4IndependentPublicationQuery(query) });
   useEffect(() => {
     const token = ga4PublicationStatus?.publicationToken;
     if (!token || ga4PublicationStatusError || ga4PublicationStatus?.campaignId !== campaignId
       || ga4PublicationStatus?.propertyId !== selectedGA4PropertyId) return;
     const previous = ga4PublicationReceipt.current;
-    if (previous.scope === ga4PublicationScope && (previous.pending || previous.token === token)) return;
+    if (previous.scope === ga4PublicationScope && (previous.pending || previous.token === token)) {
+      // Retry failed section reads without holding the financial publication open.
+      void queryClient.invalidateQueries({ predicate: query => isGA4IndependentPublicationQuery(query) && query.state.status === "error" }, { cancelRefetch: false });
+      return;
+    }
     const receipt = { scope: ga4PublicationScope, token, pending: true };
     ga4PublicationReceipt.current = receipt;
     setGA4PublicationSync({ scope: ga4PublicationScope, pending: true, failed: false });
-    // Insights context refreshes independently; it must not block unrelated report types.
-    void queryClient.invalidateQueries({ predicate: isGA4InsightsContextQuery });
+    // Section-only inputs and report definitions must not block unrelated report types.
+    void queryClient.invalidateQueries({ predicate: isGA4IndependentPublicationQuery });
     // Inactive tabs are marked stale; only mounted, enabled queries are fetched.
     const refreshPublishedQueries = async () => {
       let cancelRefetch = true;
       while (ga4PublicationReceipt.current === receipt) {
         try {
-          await queryClient.invalidateQueries({ predicate: query => isGA4PublicationQuery(query) && !isGA4InsightsContextQuery(query) }, { throwOnError: true, cancelRefetch });
+          await queryClient.invalidateQueries({ predicate: query => isGA4PublicationQuery(query) && !isGA4IndependentPublicationQuery(query) }, { throwOnError: true, cancelRefetch });
           return;
         } catch (error) {
           if (!isCancelledError(error)) throw error;
@@ -1949,7 +1959,7 @@ export default function GA4Metrics() {
   const ga4PublicationDisplayFailed = ga4PublicationStatusError
     || ga4PublicationSync.scope === ga4PublicationScope && ga4PublicationSync.failed;
   const ga4FailedPublicationQuery = ga4PublicationDisplayFailed ? queryClient.getQueryCache().findAll({ type: "active",
-    predicate: query => isGA4PublicationQuery(query) && !isGA4InsightsContextQuery(query) && query.state.status === "error",
+    predicate: query => isGA4PublicationQuery(query) && !isGA4IndependentPublicationQuery(query) && query.state.status === "error",
   })[0]?.queryKey : undefined;
   const ga4FailedPublicationSection = ga4PublicationStatusError ? "refresh status" : ga4FailedPublicationQuery
     ? String(ga4FailedPublicationQuery[0] === "/api/campaigns" ? ga4FailedPublicationQuery[2] : ga4FailedPublicationQuery[0])
@@ -2235,7 +2245,7 @@ export default function GA4Metrics() {
     },
   });
 
-  const { data: ga4LandingPages, isLoading: landingPagesLoading, isError: landingPagesError } = useQuery<any>({
+  const { data: ga4LandingPages, isLoading: landingPagesLoading, isFetching: landingPagesFetching, isError: landingPagesError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => {
@@ -2268,7 +2278,7 @@ export default function GA4Metrics() {
     },
   });
 
-  const { data: ga4ConversionEvents, isLoading: conversionEventsLoading, isError: conversionEventsError } = useQuery<any>({
+  const { data: ga4ConversionEvents, isLoading: conversionEventsLoading, isFetching: conversionEventsFetching, isError: conversionEventsError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => {
@@ -3462,6 +3472,18 @@ export default function GA4Metrics() {
     };
   };
 
+  const isGA4OverviewReportDetailBlocked = (reportType: string, configuration?: any) => {
+    if (reportType !== "overview" && reportType !== "custom") return false;
+    let cfg = configuration || ga4ReportForm.configuration || {};
+    if (typeof cfg === "string") {
+      try { cfg = JSON.parse(cfg); } catch { cfg = { sections: { overview: true } }; }
+    }
+    const normalized = normalizeCustomReportConfig(cfg || {});
+    if (reportType === "custom" && !normalized.sections.overview) return false;
+    const detail = normalized.subsections?.overview || {};
+    return (reportType === "overview" || detail.landingPages === true) && (!ga4LandingPages || landingPagesFetching || landingPagesError)
+      || (reportType === "overview" || detail.conversionEvents === true) && (!ga4ConversionEvents || conversionEventsFetching || conversionEventsError);
+  };
   const downloadGA4Report = async (opts: { reportType: string; configuration?: any; reportName?: string }) => {
     if (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) {
       throw new Error("The latest displayed figures are still being checked. Please try the report again once the update finishes.");
@@ -3471,6 +3493,9 @@ export default function GA4Metrics() {
       throw new Error(`Cannot generate this report because "${reportType}" is not a supported GA4 report type.`);
     }
     const cfg = opts.configuration || ga4ReportForm.configuration || {};
+    if (isGA4OverviewReportDetailBlocked(reportType, cfg)) {
+      throw new Error("The selected Overview details are not ready. Please try again after they refresh.");
+    }
     const reportAdComparisonMetric = ["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(cfg?.adComparisonMetric || ""))
       ? String(cfg.adComparisonMetric)
       : "sessions";
@@ -6495,7 +6520,7 @@ export default function GA4Metrics() {
   const isGA4ReportEditUnchanged = Boolean(editingGA4ReportId) && (!ga4ReportEditInitialSignature || ga4ReportFormSignature === ga4ReportEditInitialSignature);
   const isGA4ReportSubmitDisabled = !ga4ReportForm.name
     || !ga4ReportForm.reportType
-    || (!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed))
+    || (!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed || isGA4OverviewReportDetailBlocked(ga4ReportForm.reportType, ga4ReportForm.configuration)))
     || createGA4ReportMutation.isPending
     || updateGA4ReportMutation.isPending
     || isGA4ReportEditUnchanged;
@@ -9259,9 +9284,9 @@ export default function GA4Metrics() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    disabled={ga4PublicationDisplayPending || ga4PublicationDisplayFailed}
+                                    disabled={ga4PublicationDisplayPending || ga4PublicationDisplayFailed || isGA4OverviewReportDetailBlocked(String(r.reportType || "overview"), r.configuration)}
                                     aria-busy={ga4PublicationDisplayPending}
-                                    title={ga4PublicationDisplayPending || ga4PublicationDisplayFailed ? "Download becomes available automatically after the data checks succeed." : undefined}
+                                    title={ga4PublicationDisplayPending || ga4PublicationDisplayFailed || isGA4OverviewReportDetailBlocked(String(r.reportType || "overview"), r.configuration) ? "Download becomes available automatically after the data checks succeed." : undefined}
                                     onClick={async () => {
                                       let cfg: any = { sections: { overview: true } };
                                       try {
@@ -11381,7 +11406,7 @@ export default function GA4Metrics() {
                 <Button
                   disabled={isGA4ReportSubmitDisabled}
                   aria-busy={!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && ga4PublicationDisplayPending}
-                  title={!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) ? "Download becomes available automatically after the data checks succeed." : undefined}
+                  title={!ga4ReportForm.scheduleEnabled && !editingGA4ReportId && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed || isGA4OverviewReportDetailBlocked(ga4ReportForm.reportType, ga4ReportForm.configuration)) ? "Download becomes available automatically after the data checks succeed." : undefined}
                   onClick={async () => {
                     if (ga4ReportForm.scheduleEnabled) {
                       // Scheduled report: validate, save to library

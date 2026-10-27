@@ -273,6 +273,7 @@ describe("GA4 browser publication coordination", () => {
     expect(compile("return " + expression, {
       ga4ReportForm: { name: "Report", reportType: "ads", scheduleEnabled: scheduled },
       ga4PublicationDisplayPending: pending, ga4PublicationDisplayFailed: failed, editingGA4ReportId: editing,
+      isGA4OverviewReportDetailBlocked: () => false,
       createGA4ReportMutation: { isPending: false }, updateGA4ReportMutation: { isPending: false }, isGA4ReportEditUnchanged: false,
     })).toBe(expected);
   });
@@ -340,6 +341,30 @@ describe("GA4 browser publication coordination", () => {
     vi.stubGlobal("fetch", fetchStatus);
     await expect(view.render().queryOptions.queryFn({ signal })).rejects.toThrow("Could not check");
     expect(fetchStatus).toHaveBeenCalledWith(expect.stringContaining("statusOnly=1"), { signal, cache: "no-store" }); view.client.clear();
+  });
+  it.each([
+    ["/api/campaigns", "a", "ga4-landing-pages", "import-to-date", "123"],
+    ["/api/campaigns", "a", "ga4-conversion-events", "import-to-date", "123"],
+    ["/api/platforms/google_analytics/reports", "a"],
+  ])("does not block financial publication on %j and retries its failure independently", async (...key) => {
+    const view = browser(), response = deferred();
+    view.client.setQueryData(key, { retained: true });
+    const fetchData = vi.fn().mockReturnValueOnce(response.promise).mockResolvedValue({ recovered: true });
+    const observer = new QueryObserver(view.client, { queryKey: key, queryFn: fetchData });
+    const stop = observer.subscribe(() => {});
+    try {
+      view.render().effect();
+      await vi.waitFor(() => expect(view.state.pending).toBe(false));
+      expect(view.render().ga4PublicationDisplayPending).toBe(false);
+      response.reject(new Error("Unrelated detail unavailable"));
+      await vi.waitFor(() => expect(view.client.getQueryState(key)?.status).toBe("error"));
+      expect(view.render().ga4PublicationDisplayFailed).toBe(false);
+      expect(view.client.getQueryData(key)).toEqual({ retained: true });
+      view.render().effect();
+      await vi.waitFor(() => expect(view.client.getQueryData(key)).toEqual({ recovered: true }));
+      expect(fetchData).toHaveBeenCalledTimes(2);
+      expect(view.render().ga4PublicationDisplayFailed).toBe(false);
+    } finally { response.resolve({ recovered: true }); stop(); view.client.clear(); }
   });
   it("retains only the same campaign's financial placeholder on reporting-date change", () => {
     const start = page.indexOf("placeholderData:", page.indexOf("data: financialDailySnapshotResp"));

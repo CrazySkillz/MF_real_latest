@@ -9,7 +9,7 @@ import * as insightMath from "../shared/ga4-insights";
 import * as comparisonMath from "../shared/ga4-ad-comparison-cards";
 
 const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
-const start = page.indexOf("const downloadGA4Report = async");
+const start = page.indexOf("const isGA4OverviewReportDetailBlocked =");
 const end = page.indexOf('const { jsPDF } = await import("jspdf");', start);
 if (start < 0 || end < start) throw new Error("Browser report preflight not found");
 // Run the actual preflight before the PDF dependency is loaded or a file saved.
@@ -32,6 +32,8 @@ function run(overrides: Record<string, any> = {}, configuration?: any, reportTyp
     spendSourcesError: false, spendToDateError: false, spendBreakdownError: false,
     spendSourceDefinitionsKnownEmpty: false, hasSpendSources: true,
     campaignBreakdownUnavailable: false, landingPagesUnavailable: false, conversionEventsUnavailable: false,
+    ga4LandingPages: { rows: [] }, ga4ConversionEvents: { rows: [] },
+    landingPagesFetching: false, landingPagesError: false, conversionEventsFetching: false, conversionEventsError: false,
     kpiAnalyticsQueries: [], benchmarkAnalyticsQueries: [], reportInsightsBreakdownLoading: false,
     ga4InsightsDailyResp: { reportingTimeZone: "Europe/Amsterdam" }, ga4InsightsDailyError: false, trendsDataThroughDate: "2026-10-16",
     ...overrides,
@@ -45,6 +47,27 @@ describe("Browser GA4 report publication gate", () => {
     await expect(run({ [state]: true })).rejects.toThrow("latest displayed figures are still being checked");
   });
   it("accepts aligned figures", async () => { await expect(run()).resolves.toBe("ready"); });
+  it("checks saved report configuration with the same detail requirements and retains its malformed-config fallback", () => {
+    const body = page.slice(start, page.indexOf("const downloadGA4Report = async", start))
+      + "return (opts) => isGA4OverviewReportDetailBlocked(opts.reportType, opts.configuration);";
+    const config = JSON.stringify({ sections: { overview: true }, subsections: { overview: { landingPages: true } } });
+    expect(run({ landingPagesError: true }, config, "custom", body)).toBe(true);
+    expect(run({}, config, "custom", body)).toBe(false);
+    expect(run({ landingPagesError: true }, "{invalid", "custom", body)).toBe(false);
+    expect(run({ landingPagesError: true }, "{invalid", "overview", body)).toBe(true);
+  });
+  it.each([
+    ["landingPages", { ga4LandingPages: undefined }], ["landingPages", { landingPagesFetching: true }], ["landingPages", { landingPagesError: true }],
+    ["conversionEvents", { ga4ConversionEvents: undefined }], ["conversionEvents", { conversionEventsFetching: true }], ["conversionEvents", { conversionEventsError: true }],
+  ])("requires %s only when the report includes it: %j", async (section, changes) => {
+    const readyAds = { adComparisonBreakdownLoading: false, adComparisonBreakdownUnavailable: false, adComparisonBreakdownError: false, breakdownError: false, adComparisonRevenueState: "ready" };
+    await expect(run({ ...readyAds, ...changes }, undefined, "ads")).resolves.toBe("ready");
+    await expect(run(changes, undefined, "overview")).rejects.toThrow("selected Overview details are not ready");
+    const config = { sections: { overview: true }, subsections: { overview: { [String(section)]: true } } };
+    await expect(run(changes, config)).rejects.toThrow("selected Overview details are not ready");
+    await expect(run(changes, { sections: { overview: true }, subsections: { overview: { summary: true } } })).resolves.toBe("ready");
+    await expect(run(changes, { sections: { kpis: true }, subsections: {}, selectedKpiIds: [], selectedBenchmarkIds: [] })).resolves.toBe("ready");
+  });
   it.each(["ads", "overview", "kpis", "benchmarks"])("does not block %s on pending or failed Insights-only inputs", async reportType => {
     const changes = { ga4InsightsContextFetching: 1, ga4InsightsDailyError: true, reportInsightsBreakdownError: true,
       adComparisonBreakdownLoading: false, adComparisonBreakdownUnavailable: false, adComparisonBreakdownError: false,

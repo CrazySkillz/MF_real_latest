@@ -1865,7 +1865,7 @@ export function AddRevenueWizardModal(props: {
           </DialogHeader>
 
           <div
-            className={`px-6 py-5 flex-1 min-h-0 flex flex-col ${
+            className={`px-6 py-5 flex-1 min-h-0 flex flex-col ${step === "select" ? "scrollbar-hide" : ""} ${
               // Embedded wizards manage their own internal scroll, but we still allow
               // parent scrolling as a safety net to avoid clipped footers on smaller viewports.
               isEmbeddedWizardStep ? "overflow-y-auto" : "overflow-y-auto"

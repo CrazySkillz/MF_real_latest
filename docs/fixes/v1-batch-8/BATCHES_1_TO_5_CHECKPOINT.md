@@ -26,7 +26,7 @@ The test now verifies that capture and response field. The actual health-handler
 - After: **111/111** focused checks pass across the related scheduler/publication tests.
 - Full `npm run test:current-version`: **6,548/6,548**, no blocking or deferred failures.
 - Isolated PostgreSQL fixtures are empty afterward, the local instance stops successfully, and tracked-file hashes are unchanged throughout the run.
-- [Compact receipt](validation-2026-10-27-batches-1-5/validation-summary.json) binds the full execution/log hashes and tested source manifest. Hosted CI for the new test-only correction remains pending until submission and a completed run; the failed hosted base run is retained in [its receipt](validation-2026-10-27-batches-1-5/hosted-ci.json).
+- [Compact receipt](validation-2026-10-27-batches-1-5/validation-summary.json) binds the full execution/log hashes and tested source manifest. The correction is committed/pushed as **`b2426806`**. [Hosted CI](https://github.com/CrazySkillz/MF_real_latest/actions/runs/40526939221) completed successfully on that exact SHA: **6,548/6,548**, zero blocking or visible deferred failures; [completed receipt](validation-2026-10-27-batches-1-5/hosted-ci-b2426806-1793113961927.json). All 712 recorded source/config hashes still match. The failed hosted base run remains in [its earlier receipt](validation-2026-10-27-batches-1-5/hosted-ci.json). The commit uses `[skip render]` because no application deployment is required.
 
 ## Current deployed and persisted checks
 
@@ -34,7 +34,7 @@ The test now verifies that capture and response field. The actual health-handler
 
 - Render serves `49202eaf`; the Batch 1–5 implementation ancestry is present.
 - All five inspected anonymous protected GETs return 401.
-- The compiled public Clerk publishable-key mode is **test**. This was previously recorded as Development mode on October 21; it is still an outstanding production-identity configuration gate, not a newly introduced regression. No key or secret is included in the receipt. Switching identity instances requires an owner/account migration decision, not an unreviewed key replacement.
+- The compiled public Clerk publishable-key mode is **test**. This was previously recorded as Development mode on October 21; it is still an outstanding production-identity configuration gate, not a newly introduced regression. The user now confirms **only the test instance exists**. No key or secret is included in the receipt. Switching identity instances requires an owner/account migration decision, not an unreviewed key replacement. See the [prepared setup boundary](CLERK_PRODUCTION_SETUP.md); the owned domain/DNS information is requested and pending.
 
 [Production metadata receipt](validation-2026-10-27-batches-1-5/persisted-boundaries-final.json), October 27 at 14:46 UTC, was obtained through verified TLS and an explicitly checked `REPEATABLE READ READ ONLY` transaction, followed by rollback. It imports no application module and performs no provider call, credential decryption or cleanup.
 
@@ -46,6 +46,8 @@ The test now verifies that capture and response field. The actual health-handler
 - Earlier user evidence already accepted the ABN native + HubSpot + Salesforce total of **EUR 8,003.96** and separate **EUR 3,200** proxy. That bounded acceptance is not being repeated or expanded to every source/account.
 
 ## Existing records: bounded disposition, no silent cleanup
+
+The subsequent [complete credential-presence inventory](validation-2026-10-27-batches-1-5/credential-presence-scoped.json) extends the earlier active-connection sample to all 355 rows in eleven connection tables. It finds **223 rows with plaintext credential fields and no encrypted container**: GA4 4, Sheets 190, HubSpot 3, Salesforce 13 and Shopify 13. All are inactive or reference missing campaigns; none is active under a surviving campaign. The 132 other connection rows have encrypted containers; the five generic integrations have no credential values. No credential value was returned or decrypted. This closes the presence/count inventory, **not** remediation, decryptability or historical-exposure acceptance. The [bounded remediation plan](LEGACY_CREDENTIAL_REMEDIATION.md) is prepared; no migration has run.
 
 The inventory also finds 3,642,664 spend rows without a matching source (within 3,642,697 total); 2,383,107 lack a campaign. These counts overlap. They are not new writes from this read-only check. Of these, 3,267,568 carry the retired LinkedIn-daily backfill source fingerprint, matching the October 21 inventory. Four unowned demo-fingerprint metrics also match that earlier inventory. Fingerprints do not establish every row's historical origin.
 
@@ -64,3 +66,5 @@ These are existing acceptance requirements, not evidence of 74 unfixed code defe
 Batch 6's postponed real Google Ads acceptance, Batch 7's remaining report/email acceptance and Batch 8's operational gates retain their existing ownership. They are dependencies where applicable, not duplicated new Batch 1–5 implementation tasks. Deferred LinkedIn/Meta/TikTok/Instagram metric functionality is not added to V1 scope.
 
 **Decision:** Batch 1–5 implementation and current local regression verification are complete within the recorded scope. Full production acceptance remains OPEN for the specific missing evidence above. No whole-app production-ready claim is made. The only new code change is the test assertion; there is no new runtime fix requiring a customer re-test.
+
+The subsequent receipt/setup-plan submission changes documentation and the executed read-only credential diagnostic only. Runtime, tests and CI configuration are identical to the green `b2426806` candidate. Its commit skips a redundant CI run and Render deployment; hosted success is attributed to `b2426806`, not invented for the documentation commit. No acceptance status is waived.

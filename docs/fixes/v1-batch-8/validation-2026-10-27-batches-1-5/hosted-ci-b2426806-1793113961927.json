@@ -1,0 +1,105 @@
+{
+  "at": "2026-10-27T15:12:39.835Z",
+  "head": "b24268060b54d3b5e159e54143b58dc41125b0f1",
+  "boundary": "Existing GitHub read-only access; no production credentials or mutations",
+  "runs": [
+    {
+      "id": 40526939221,
+      "sha": "b24268060b54d3b5e159e54143b58dc41125b0f1",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/40526939221",
+      "jobs": [
+        {
+          "id": 122268953026,
+          "name": "unit-tests",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm ci --ignore-scripts",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npx --no-install playwright install --with-deps chromium",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Create isolated notification fixture database",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run check:ga4-kpi-certification",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run test:current-version",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Retained deferred-source evidence (non-blocking)",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ],
+          "log": "hosted-b2426806-122268953026.log",
+          "testSummary": [
+            "2026-10-27T15:10:28.6588581Z \u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m385 passed\u001b[39m\u001b[22m\u001b[90m (385)\u001b[39m",
+            "2026-10-27T15:10:28.7801969Z [current-version] Full test execution completed.",
+            "2026-10-27T15:10:28.7803152Z [current-version] Total 6548; passed 6548; failed 0.",
+            "2026-10-27T15:10:28.7803976Z [current-version] Blocking current-version failures: 0",
+            "2026-10-27T15:10:28.7804954Z [current-version] Visible non-blocking deferred failures: 0",
+            "2026-10-27T15:10:32.2640311Z \u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m18 passed\u001b[39m\u001b[22m\u001b[90m (18)\u001b[39m",
+            "2026-10-27T15:10:32.3218883Z [deferred:all] Executed 52/52 retained tests.",
+            "2026-10-27T15:10:32.3220929Z [deferred:all] Failures remain unverified: 0"
+          ]
+        }
+      ]
+    }
+  ]
+}

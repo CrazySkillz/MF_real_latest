@@ -1,0 +1,95 @@
+{
+  "at": "2026-10-27T16:11:42.966Z",
+  "checks": [
+    {
+      "route": "ga4-daily",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "ga4-daily?status",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "ga4-to-date",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "ga4-landing-pages",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "ga4-conversion-events",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "ga4-breakdown",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "financial-daily-snapshot",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "revenue-sources",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "revenue-to-date",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "revenue-breakdown",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "revenue-daily",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "spend-to-date",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "spend-sources",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "spend-breakdown",
+      "status": 200,
+      "error": null
+    },
+    {
+      "route": "spend-daily",
+      "status": 200,
+      "error": null
+    },
+    {
+      "method": "getPlatformKPIs",
+      "rows": 0
+    },
+    {
+      "method": "getPlatformBenchmarks",
+      "rows": 0
+    },
+    {
+      "method": "getPlatformReports",
+      "rows": 1
+    }
+  ],
+  "readOnly": true,
+  "connectionMethod": "access_token",
+  "omittedReadLocks": 1
+}

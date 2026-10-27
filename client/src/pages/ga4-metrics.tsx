@@ -1926,10 +1926,16 @@ export default function GA4Metrics() {
     };
     void refreshPublishedQueries().then(async () => {
       if (ga4PublicationReceipt.current !== receipt) return;
-      const checked = await refetchGA4PublicationStatus();
-      if (checked.isError || checked.data?.publicationToken !== token) throw new Error("GA4 publication changed while the page was refreshing");
-      if (ga4PublicationReceipt.current !== receipt) return;
+      // Let a newer status receipt start its own reads; a normal publication
+      // handoff is pending verification, not a failed request.
       receipt.pending = false;
+      const checked = await refetchGA4PublicationStatus();
+      if (ga4PublicationReceipt.current !== receipt) return;
+      if (checked.isError) throw new Error("Could not verify the GA4 publication after refreshing");
+      if (checked.data?.publicationToken !== token) {
+        receipt.token = "";
+        return;
+      }
       setGA4PublicationSync({ scope: receipt.scope, pending: false, failed: false });
     }).catch(() => {
       if (ga4PublicationReceipt.current !== receipt) return;
@@ -1942,6 +1948,13 @@ export default function GA4Metrics() {
     && (ga4PublicationSync.pending || ga4PublicationFetching > 0);
   const ga4PublicationDisplayFailed = ga4PublicationStatusError
     || ga4PublicationSync.scope === ga4PublicationScope && ga4PublicationSync.failed;
+  const ga4FailedPublicationQuery = ga4PublicationDisplayFailed ? queryClient.getQueryCache().findAll({ type: "active",
+    predicate: query => isGA4PublicationQuery(query) && !isGA4InsightsContextQuery(query) && query.state.status === "error",
+  })[0]?.queryKey : undefined;
+  const ga4FailedPublicationSection = ga4PublicationStatusError ? "refresh status" : ga4FailedPublicationQuery
+    ? String(ga4FailedPublicationQuery[0] === "/api/campaigns" ? ga4FailedPublicationQuery[2] : ga4FailedPublicationQuery[0])
+      .split("/").pop()!.split("?")[0].replace(/^ga4-/, "").replace(/-/g, " ")
+    : "refresh verification";
   const ga4PublicationRefreshStale = ["running", "failed", "delayed"].includes(ga4PublicationStatus?.refreshStatus);
 
   const deriveBenchmarkCategoryFromMetric = (metric: string): string => {
@@ -6837,7 +6850,7 @@ export default function GA4Metrics() {
                 {ga4DailyResp !== undefined && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) && (
                   <p className="text-sm text-muted-foreground" role="status" data-testid="ga4-publication-display-status">
                     {ga4PublicationDisplayFailed
-                      ? "Some figures could not refresh. Previously loaded values remain visible; the page will check again automatically."
+                      ? `Some figures could not refresh (${ga4FailedPublicationSection}). Previously loaded values remain visible; the page will check again automatically.`
                       : "Updating displayed figures. Some sections may still show the previous update."}
                   </p>
                 )}

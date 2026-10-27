@@ -20,6 +20,16 @@ let client;
   assert.ok(connection); result.connectionMethod = connection.method;
   const readonlyDb = drizzle(client);
   readonlyDb.transaction = async callback => callback(readonlyDb);
+  if (process.argv.includes('--refresh-routes')) {
+    // READ ONLY PostgreSQL cannot take row locks. Omit only FOR SHARE for this
+    // diagnostic; keep the same select/where/data transformations and snapshot.
+    const select = readonlyDb.select.bind(readonlyDb);
+    readonlyDb.select = (...args) => {
+      const builder = select(...args), from = builder.from.bind(builder);
+      builder.from = (...tables) => { const query = from(...tables); query.for = strength => { assert.equal(strength, 'share'); result.omittedReadLocks = (result.omittedReadLocks || 0) + 1; return query; }; return query; };
+      return builder;
+    };
+  }
   const bundle = await build({ entryPoints: ['server/storage.ts'], bundle: true, write: false, platform: 'node', format: 'cjs', packages: 'external',
     plugins: [{ name: 'read-only-database', setup(builder) {
       builder.onResolve({ filter: /(?:^|\/)db$/ }, () => ({ path: 'readonly-db', namespace: 'fixture' }));
@@ -31,6 +41,70 @@ let client;
   vm.runInNewContext(bundle.outputFiles[0].text, { module: exported, exports: exported.exports, require: createRequire(path.resolve('package.json')),
     readonlyDb, process: { env: { NODE_ENV: 'production' } }, console: { log() {}, warn() {}, error() {} }, Buffer, URL, Date, setTimeout, clearTimeout, fetch: blockedFetch });
   const storage = exported.exports.storage;
+  if (process.argv.includes('--refresh-routes')) {
+    const ts = require('typescript');
+    const source = ts.createSourceFile('routes-oauth.ts', fs.readFileSync('server/routes-oauth.ts', 'utf8'), ts.ScriptTarget.Latest, true);
+    const definitions = {}, handlers = {};
+    const visit = node => {
+      if (ts.isFunctionDeclaration(node) && node.name) definitions[node.name.text] = node.getText(source).replace(/^export /, '');
+      if (ts.isVariableDeclaration(node) && node.initializer && ts.isIdentifier(node.name)
+        && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer) || ['zPlatformContext', 'zRevenueReadPlatformContext'].includes(node.name.text))) definitions[node.name.text] = node.initializer.getText(source);
+      if (ts.isCallExpression(node) && node.expression.getText(source) === 'app.get' && ts.isStringLiteral(node.arguments[0])) handlers[node.arguments[0].text] = node.arguments.at(-1).getText(source);
+      ts.forEachChild(node, visit);
+    }; visit(source);
+    const campaign = await storage.getCampaign(campaignId);
+    assert.equal(hash(String(campaign.ownerId)).slice(0, 12), 'd57d01592772');
+    assert.equal(hash(String(campaign.clientId)).slice(0, 12), '6be34241134f');
+    const bindings = { storage, z: require('zod').z, process: { env: {} }, dailyRefreshAttempts: new Map(), ensureCampaignAccess: async () => campaign, console: { log() {}, warn() {}, error() {} },
+      ga4Service: new Proxy({}, { get: () => blockedFetch }) };
+    for (const file of ['server/utils/ga4-service-account.ts', 'server/ga4-daily-scheduler.ts']) {
+      const tree = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+      for (const statement of tree.statements) if (ts.isVariableStatement(statement)) for (const node of statement.declarationList.declarations)
+        if (ts.isIdentifier(node.name) && node.initializer && ['isSupportedGA4ConnectionMethod', 'GA4_SERVICE_ACCOUNT_METHOD', 'GA4_ALIGNED_REFRESH_MARKER_PREFIX', 'getGA4RefreshAttemptScope', 'parseBoundedInt'].includes(node.name.text)) definitions[node.name.text] = node.initializer.getText(tree);
+      for (const node of tree.statements) if (ts.isFunctionDeclaration(node) && node.name
+        && ['isSupportedGA4ConnectionMethod', 'getGA4DailyRefreshAttempt', 'parseGA4AlignedRefreshMarker', 'getGA4DailySchedulerConfig'].includes(node.name.text))
+        definitions[node.name.text] = node.getText(tree).replace(/^export /, '');
+    }
+    for (const file of ['server/utils/reporting-timezone.ts', 'shared/ga4-insights.ts', 'shared/ga4-financial-source.ts', 'shared/ga4-traffic-window.ts']) {
+      const compiled = await build({ entryPoints: [file], bundle: true, write: false, platform: 'node', format: 'cjs', packages: 'external' });
+      const module = { exports: {} };
+      vm.runInNewContext(compiled.outputFiles[0].text, { module, exports: module.exports, require: createRequire(path.resolve('package.json')), Date, URL });
+      Object.assign(bindings, module.exports);
+    }
+    let scope;
+    const compile = text => new Function('scope', `with(scope) { return (${ts.transpileModule('const handler = ' + text, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText.replace(/^const handler = /, '').replace(/;\s*$/, '')}); }`)(scope);
+    scope = new Proxy(bindings, { has: (target, key) => key in target || key in definitions,
+      get(target, key) { if (!(key in target) && key in definitions) target[key] = compile(definitions[key]); return target[key]; } });
+    for (const suffix of ['ga4-daily', 'ga4-daily?status', 'ga4-to-date', 'ga4-landing-pages', 'ga4-conversion-events', 'ga4-breakdown', 'financial-daily-snapshot', 'revenue-sources', 'revenue-to-date', 'revenue-breakdown', 'revenue-daily', 'spend-to-date', 'spend-sources', 'spend-breakdown', 'spend-daily']) {
+      await client.query('SAVEPOINT route_read');
+      const response = { code: 200, body: null, setHeader() {}, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } };
+      try {
+        await compile(handlers['/api/campaigns/:id/' + suffix.split('?')[0]])({ params: { id: campaignId }, _campaign: campaign,
+          query: { readOnly: '1', statusOnly: suffix.includes('?') ? '1' : undefined, propertyId: connection.property_id, insightsScope: '1', window: 'import-to-date', snapshotEndDate: day, throughDate: day,
+            overviewCampaignBreakdown: '1', platformContext: 'ga4', date: day } }, response);
+        result.checks.push({ route: suffix, status: response.code, error: response.body?.error || response.body?.message || null });
+      } catch (error) { result.checks.push({ route: suffix, error: String(error.message).slice(0, 180) }); }
+      await client.query('ROLLBACK TO SAVEPOINT route_read'); await client.query('RELEASE SAVEPOINT route_read');
+    }
+    for (const kind of ['getPlatformKPIs', 'getPlatformBenchmarks', 'getPlatformReports']) {
+      const rows = await storage[kind]('google_analytics', campaignId);
+      result.checks.push({ method: kind, rows: rows.length });
+    }
+    await client.query('ROLLBACK'); return;
+  }
+  if (process.argv.includes('--refresh-inputs')) {
+    const snapshot = await storage.getGA4OverviewSnapshot(campaignId, connection.property_id);
+    const latest = await storage.getLatestGA4DailyMetric(campaignId, connection.property_id);
+    const summary = await storage.getExecutiveSummaryDailyComparisonData(campaignId, day, day);
+    const [scope] = (await client.query('SELECT currency, reporting_time_zone, ga4_campaign_filter FROM campaigns WHERE id=$1', [campaignId])).rows;
+    const [configured] = (await client.query('SELECT import_start_date FROM ga4_connections WHERE campaign_id=$1 AND property_id=$2 AND is_active=true', [campaignId, connection.property_id])).rows;
+    result.checks.push({ method: 'refresh-inputs', scope, configured, latestDay: latest?.date,
+      snapshot: snapshot && { windowStart: snapshot.windowStart, windowEnd: snapshot.windowEnd, updatedAt: snapshot.updatedAt,
+        breakdown: snapshot.campaignBreakdown, landingPresent: !!snapshot.landingPages, eventsPresent: !!snapshot.conversionEvents },
+      summary: summary.current && { reportingDate: summary.current.reportingDate, notes: summary.current.notes },
+      version: await storage.getGA4PublicationVersion(campaignId) });
+    await client.query('ROLLBACK'); return;
+  }
   if (process.argv.includes('--publication-inputs')) {
     // Inspect only the inputs to the publication-status reader; its FOR SHARE
     // lock cannot be taken in this deliberately READ ONLY diagnostic transaction.

@@ -20,7 +20,7 @@ function compileRoute(name: string, bindings: Record<string, any>) {
 
 // A fresh, isolated browser: all requests are intercepted, no user profile or live services.
 describe("Ad Comparison precision through the real Reports page", () => {
-  it.each(["channel", "history", "published-sources"])("downloads with %s refresh timing and recovers after core refresh failures", async contextKind => {
+  it.each(["channel", "history", "published-sources", "initial-reports", "publication-handoff", "publication-gap"])("downloads with %s refresh timing and recovers after core refresh failures", async contextKind => {
     const bundle = await build({
       stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
         import {QueryClientProvider} from '@tanstack/react-query';
@@ -29,6 +29,9 @@ describe("Ad Comparison precision through the real Reports page", () => {
         import {createAppQueryClient} from './client/src/lib/queryClient';
         import Page from './client/src/pages/ga4-metrics';
         const client = createAppQueryClient();
+        window.fixtureQueries = () => client.getQueryCache().getAll().filter(q => q.state.error).map(q => ({key:q.queryKey,error:String(q.state.error)}));
+        window.fixtureWarnings = [];
+        new MutationObserver(() => {const warning=document.querySelector('[data-testid="ga4-publication-display-status"]')?.textContent; if(warning?.includes('could not refresh')) window.fixtureWarnings.push(warning);}).observe(document.getElementById('root'), {childList:true,subtree:true,characterData:true});
         window.fixtureRefreshErrors = [];
         const invalidate = client.invalidateQueries.bind(client);
         client.invalidateQueries = (...args) => invalidate(...args).catch(error => {
@@ -53,7 +56,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
     const errors: string[] = [], requests: string[] = [], downloads: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     page.on("download", download => downloads.push(download.suggestedFilename()));
-    let generation = 1, failed = "", financialMismatch = false, financialRequests = 0;
+    let generation = 1, failed = "", financialMismatch = false, financialRequests = 0, statusRequests = 0, publicationGap = false;
     let releaseInsights!: () => void;
     const pendingInsights = new Promise<void>(resolve => { releaseInsights = resolve; });
     let holdInsights = true;
@@ -108,7 +111,10 @@ describe("Ad Comparison precision through the real Reports page", () => {
       if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Precision regression", currency: "EUR", status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify(rows.map(row => row.campaign)), createdAt: `${start}T00:00:00Z` };
       else if (url.pathname.includes("/ga4/check-connection/") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
       else if (url.searchParams.has("statusOnly")) {
-        data = { success: true, campaignId: "a", propertyId: "123", publicationToken: `p${generation}`, refreshStatus: "current" };
+        statusRequests++;
+        if (contextKind === "publication-handoff" && statusRequests === 2) generation++;
+        if (contextKind === "publication-gap" && statusRequests === 2) publicationGap = true;
+        data = { success: true, campaignId: "a", propertyId: "123", publicationToken: publicationGap ? null : `p${generation}`, refreshStatus: publicationGap ? "running" : "current" };
         if (failed === "status") { status = 503; data = { success: false, error: "fixture status failure" }; }
       } else if (url.pathname.endsWith("/ga4-daily")) {
         data = { success: true, propertyId: "123", startDate: start, overviewStartDate: start, endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
@@ -152,13 +158,30 @@ describe("Ad Comparison precision through the real Reports page", () => {
       await browserExpect(page.getByRole("dialog")).toHaveCount(0);
     };
     try {
-      await page.goto("http://ga4-fixture.test/campaigns/a/ga4-metrics");
+      await page.goto("http://ga4-fixture.test/campaigns/a/ga4-metrics" + (["initial-reports", "publication-handoff", "publication-gap"].includes(contextKind) ? "?tab=reports" : ""));
+      if (["initial-reports", "publication-handoff", "publication-gap"].includes(contextKind)) {
+        await browserExpect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
+        if (contextKind.startsWith("publication-")) await browserExpect.poll(() => statusRequests).toBeGreaterThanOrEqual(2);
+        if (contextKind === "publication-gap") {
+          await page.clock.runFor(180_000);
+          await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("Updating displayed figures");
+          expect(await page.evaluate(() => (window as any).fixtureWarnings)).toEqual([]);
+          await openReport();
+          await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeDisabled();
+          await page.getByRole("button", { name: "Cancel", exact: true }).click();
+          publicationGap = false; generation++;
+          await page.clock.runFor(30_000);
+        }
+        await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+        await page.getByRole("tab", { name: "Overview", exact: true }).click();
+      }
       await browserExpect(page.getByText("Total Revenue", { exact: true }).locator("../..")).toContainText("€8,003.96");
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await page.getByRole("tab", { name: "Ad Comparison", exact: true }).click();
       await browserExpect(page.getByRole("row").filter({ hasText: "TOTAL" }).last()).toContainText("€8,003.96");
       await page.getByRole("tab", { name: "Reports", exact: true }).click();
       await openReport();
+      if (contextKind === "publication-handoff") expect(await page.evaluate(() => (window as any).fixtureWarnings)).toEqual([]);
       if (contextKind === "published-sources") {
         await browserExpect.poll(() => financialRequests).toBeGreaterThanOrEqual(3);
         await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeDisabled();
@@ -182,6 +205,11 @@ describe("Ad Comparison precision through the real Reports page", () => {
         failed = failure; generation++;
         await page.evaluate(() => (window as any).fixtureStatus());
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("could not refresh");
+        await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText(failure === "status" ? "refresh status" : "daily");
+        if (contextKind === "initial-reports" && failure === "daily") {
+          await page.clock.runFor(180_000);
+          await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("could not refresh (daily)");
+        }
         await openReport();
         const previousDownloads = downloads.length;
         await page.getByRole("button", { name: "Generate & Download Report" }).click();

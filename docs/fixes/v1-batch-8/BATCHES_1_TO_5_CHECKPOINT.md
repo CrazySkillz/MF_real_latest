@@ -1,5 +1,12 @@
 # Batches 1–5: consolidated acceptance checkpoint, October 27
 
+**Later October 27 recurrence:** Reports' persistent failed-refresh warning is
+reopened. The earlier green checkpoint does not certify that path. See
+[the current incident record](REPORT_PUBLICATION_CANCELLATION_2026-10-27.md#follow-up-publication-handoff-and-persistent-warning-investigation)
+for the reproduced publication-handoff defect, scoped fix and still-unverified
+authenticated production symptom. The historical checkpoint below is not a new
+claim that the recurrence is resolved.
+
 All **74 original findings have recorded forward fixes**. The current complete local regression command passes **6,548/6,548 tests**. This closes the current automated regression failure; it does **not** complete all five batches' production acceptance. The original finding records retain their exact root causes, changed files, negative cases and limitations. No finding is silently certified by this checkpoint.
 
 This is a consolidation of the existing queue, not a new audit or a new set of 74 defects. Read this checkpoint before repeating older pending-test or deployment instructions. Historical failure counts, uncommitted statements and pending deployments in earlier dated packets are not current status.

@@ -1,0 +1,101 @@
+{
+  "at": "2026-10-27T16:05:35.652Z",
+  "checks": [
+    {
+      "method": "refresh-inputs",
+      "scope": {
+        "currency": "EUR",
+        "reporting_time_zone": "Europe/Amsterdam",
+        "ga4_campaign_filter": "[\"yesop_prospecting\",\"yesop_paid_social\"]"
+      },
+      "configured": {
+        "import_start_date": "2026-09-23"
+      },
+      "latestDay": "2026-10-26",
+      "snapshot": {
+        "windowStart": "2026-09-23",
+        "windowEnd": "2026-10-26",
+        "updatedAt": "2026-10-27T13:07:35.031Z",
+        "breakdown": {
+          "meta": {
+            "rowCount": 2,
+            "dimensions": [
+              "campaignName"
+            ],
+            "propertyId": "542352127",
+            "currencyCode": "EUR",
+            "revenueMetric": "totalRevenue",
+            "dailyHistoryRefresh": {
+              "scope": "9d646d914c8c9e561688dfcb017ae5db72515fe416dd34c37f040fe5481a393a",
+              "version": 1,
+              "reportingDate": "2026-10-26"
+            },
+            "sessionsDerivedFromUsers": false,
+            "overviewCampaignAttribution": {
+              "selected": true,
+              "attempted": true,
+              "rebuiltRevenue": 7653.96,
+              "rebuiltSessions": 604,
+              "standardRevenue": 8885.09,
+              "standardSessions": 44,
+              "rebuiltConversions": 40,
+              "standardConversions": 47
+            }
+          },
+          "rows": [
+            {
+              "date": "",
+              "users": 346,
+              "device": "",
+              "medium": "",
+              "source": "",
+              "channel": "",
+              "country": "",
+              "revenue": 3400.434193,
+              "campaign": "yesop_prospecting",
+              "sessions": 346,
+              "conversions": 19,
+              "sessionsRaw": 346,
+              "engagedSessions": 202,
+              "sessionKeyEventRate": 0.046242774566473986
+            },
+            {
+              "date": "",
+              "users": 256,
+              "device": "",
+              "medium": "",
+              "source": "",
+              "channel": "",
+              "country": "",
+              "revenue": 4253.52214,
+              "campaign": "yesop_paid_social",
+              "sessions": 258,
+              "conversions": 21,
+              "sessionsRaw": 258,
+              "engagedSessions": 155,
+              "sessionKeyEventRate": 0.08139534883720931
+            }
+          ],
+          "totals": {
+            "users": 602,
+            "revenue": 7653.96,
+            "sessions": 604,
+            "conversions": 40,
+            "sessionsRaw": 604,
+            "engagementRate": 0.5910596026490066,
+            "engagedSessions": 357
+          }
+        },
+        "landingPresent": true,
+        "eventsPresent": true
+      },
+      "summary": {
+        "reportingDate": "2026-10-26",
+        "notes": "ga4_aligned_refresh_v1:2026-10-26:2026-10-27T15:55:11.754Z"
+      },
+      "version": "8f6f5b9f2b3fe2ddd664fefa3a301105"
+    }
+  ],
+  "readOnly": true,
+  "connectionMethod": "access_token"
+}

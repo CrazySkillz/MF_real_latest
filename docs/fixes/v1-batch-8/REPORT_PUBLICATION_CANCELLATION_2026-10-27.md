@@ -2,6 +2,13 @@
 
 ## Scope and controlling status
 
+**Reopened October 27, after `49202eaf`:** the user reports the warning remains
+for several minutes after loading Reports. The earlier cancellation fix is not
+proof that this recurrence is resolved. Current read-only storage/handler checks
+succeed, and a separate normal-publication-handoff defect is reproduced below.
+The persistent authenticated production failure remains unverified until the
+updated deployed page is checked. Do not certify this path from the local fix.
+
 The user still saw the failed-refresh banner after `692118a5` deployed. A public
 `/api/health` read confirmed that exact revision. The earlier saved-breakdown fix
 removed an unnecessary provider dependency but did not resolve this browser race.
@@ -105,3 +112,57 @@ same fix workflow is carried forward for this correction.
 
 Deployment verification follows the push. Deployed authenticated UI acceptance is
 not implied by local tests or a public deployment-version check.
+
+## Follow-up: publication handoff and persistent-warning investigation
+
+The completion callback also treated a successful status response containing a
+new or temporarily absent publication token as a failed request. The browser
+fixture now opens Reports directly and records DOM warning transitions. With
+all HTTP requests successful, the old code renders the exact failure warning
+when the second status read reports a newer token. The regression in
+`recurrence-handoff-warning-before.json` fails; `recurrence-handoff-after.json`
+passes after the localized correction. This proves a false-warning path; it does
+not establish that this is the only cause of the user's several-minute warning.
+
+The callback now releases the previous receipt before checking the status again.
+A newer receipt starts its own scoped reads; a temporarily absent receipt remains
+pending. Downloads remain blocked until that receipt and its reads are verified.
+Actual request failures still set the failed state and retry on the existing
+30-second status interval. The warning names the failed query section using only
+known query-key labels, never raw response errors, identifiers or credentials.
+
+Runtime changes are confined to `client/src/pages/ga4-metrics.tsx`. The two tests
+changed are `server/ga4-browser-publication-refresh.test.ts` and
+`server/ga4-ad-comparison-download-browser.test.ts`. No calculation, rounding,
+PDF layout, API, database, provider, scheduler or source-write code changes.
+
+Read-only investigation receipts in the same validation directory:
+
+- `storage-2026-10-27T16-05-35-652Z.json`: current campaign EUR scope, selected
+  property campaigns, import start September 23, latest completed day October 26,
+  saved native revenue 7,653.96 and a completed publication marker.
+- `storage-2026-10-27T16-11-42-966Z.json`: all 15 stored-data/status handler
+  invocations return HTTP 200 against the exact campaign's database snapshot;
+  KPI and Benchmark lists are empty, and one saved report exists. These are
+  local handler executions, not authenticated hosted HTTP requests. The diagnostic
+  omits one FOR SHARE lock because PostgreSQL READ ONLY prohibits it; locking,
+  pool contention and hosted middleware are therefore not certified by this read.
+- All diagnostic transactions use verified database identity, verified owner/client
+  boundaries for route execution, TLS verification and enforced READ ONLY, then
+  roll back. Provider access is blocked. No production state was changed.
+
+The existing diagnostic script gained explicit read-only modes, not application
+runtime behavior. Earlier intermediate diagnostic failures were missing isolated
+helper bindings or the intentionally prohibited lock, not observed production errors.
+
+Final local validation: `recurrence-final.json` records **192/192 passing tests
+in eight files**, including six real-page browser cases and 30 generated PDFs.
+It covers direct Reports loading, overlapping published-source reads, successful
+token handoff, a three-minute missing receipt, a three-minute genuine failure,
+automatic recovery, status/read failures, financial mismatch rejection and
+campaign/property isolation. `recurrence-final-build-checks.json` records passing
+TypeScript, production client and server builds. `git diff --check` passes.
+
+The public deployment read during investigation still reported `49202eaf`.
+Publication of this correction and authenticated live acceptance are recorded
+separately; the user's several-minute symptom is not declared resolved here.

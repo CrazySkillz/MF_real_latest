@@ -254,8 +254,9 @@ describe("GA4 browser publication coordination", () => {
       await vi.waitFor(() => expect(fetchData).toHaveBeenCalledTimes(2));
       if (kind === "changed token") { view.completionResult = { data: { publicationToken: "p2" }, isError: false }; replacement.resolve({ revenue: 8003.96 }); }
       else replacement.reject(new Error("real database failure"));
-      await vi.waitFor(() => expect(view.state.failed).toBe(true));
-      expect(view.render().ga4PublicationDisplayFailed).toBe(true); expect(view.receipt.current.token).toBe("");
+      await vi.waitFor(() => expect(view.receipt.current.token).toBe(""));
+      expect(view.state.failed).toBe(kind === "failed replacement");
+      expect(view.state.pending).toBe(kind === "changed token");
     } finally { first.resolve({ revenue: 1 }); stop(); view.client.clear(); }
   });
   it.each([
@@ -282,8 +283,18 @@ describe("GA4 browser publication coordination", () => {
   });
   it.each([null, "p2"])("keeps the display unverified when the receipt changes during reads to %j", async token => {
     const view = browser(); view.completionResult = { data: { publicationToken: token }, isError: false };
-    view.render().effect(); await vi.waitFor(() => expect(view.state.failed).toBe(true));
-    expect(view.receipt.current.token).toBe(""); view.client.clear();
+    view.render().effect(); await vi.waitFor(() => expect(view.receipt.current.token).toBe(""));
+    expect(view.state).toMatchObject({ pending: true, failed: false });
+    // Missing/new receipts stay unverified until the next complete publication is read.
+    if (token === null) {
+      view.render({ campaignId: "a", propertyId: "123", publicationToken: null }).effect();
+      expect(view.state).toMatchObject({ pending: true, failed: false });
+    }
+    const next = { campaignId: "a", propertyId: "123", publicationToken: token || "p1" };
+    view.completionResult = { data: next, isError: false };
+    view.render(next).effect();
+    await vi.waitFor(() => expect(view.state.pending).toBe(false));
+    expect(view.state.failed).toBe(false); view.client.clear();
   });
   it("does not let an old campaign's late completion replace the new campaign's receipt", async () => {
     const view = browser(); const pending = deferred();

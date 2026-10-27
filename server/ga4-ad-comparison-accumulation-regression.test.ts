@@ -103,7 +103,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(page).toContain('chartCampaignRows={adComparisonChartRows}');
     expect(page).toContain('campaignBreakdownMatchedExternalRevenue.get(row.name)');
     expect(page).toContain('const campaignBreakdownAgg = useMemo');
-    expect(page).toContain('{campaignBreakdownAgg.map((c, idx) => {');
+    expect(page).toContain('{adComparisonChartRows.map((c, idx) => {');
     expect(component).toContain('Campaign Breakdown Revenue');
     expect(component).not.toContain('GA4 Revenue (30 Completed Days)');
     const breakdownRoute = route.slice(
@@ -138,7 +138,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(page).toMatch(/activeTab === .campaigns. \|\| activeTab === .reports./);
     expect(reportPreflight).toContain('adComparisonBreakdownLoading || adComparisonBreakdownUnavailable || adComparisonBreakdownError');
     expect(reportSection).toContain('const rows = Array.isArray(adComparisonBreakdownAgg) ? adComparisonBreakdownAgg : [];');
-    expect(reportSection).toContain('for (const row of campaignBreakdownAgg)');
+    expect(reportSection).toContain('for (const row of adComparisonChartRows)');
     expect(reportSection).toContain('GA4 Revenue (Imported to Date)');
     expect(reportSection).not.toContain('GA4 Revenue (30 completed days)');
   });

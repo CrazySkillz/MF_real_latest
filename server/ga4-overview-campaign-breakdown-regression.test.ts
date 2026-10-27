@@ -232,7 +232,7 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(table).toMatch(/Campaign[\s\S]*Sessions[\s\S]*Users[\s\S]*Conversions[\s\S]*Conv\. Rate[\s\S]*Revenue/);
     expect(client).toContain("conversionRate: sessions > 0 ? (c.sessionKeyEventRateWeighted / sessions) * 100 : 0");
     expect(client).toContain(".sort((a, b) => b.sessions - a.sessions)");
-    expect(table).toContain("campaignBreakdownAgg.map");
+    expect(table).toContain("adComparisonChartRows.map");
   });
 
   it("keeps Campaign Breakdown validation isolated from protected GA4 Revenue totals", () => {
@@ -263,7 +263,9 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(scheduledPdf).toContain("resolveExactGA4CampaignBreakdownRevenue(");
     expect(browserPdf).not.toContain("slice(0, 15)");
     expect(serverPdf).not.toContain("slice(0, 15)");
-    expect(browserPdf).toContain("campaignBreakdownMatchedExternalRevenue.get");
-    expect(serverPdf).toContain("campaignBreakdownMatchedExternalRevenue.get");
+    expect(browserPdf).toContain("adComparisonChartRows");
+    expect(serverPdf).toContain("payload.adComparisonChartRows");
+    expect(client).toContain("row.unroundedRevenue + (campaignBreakdownMatchedExternalRevenue.get(row.name) || 0)");
+    expect(scheduledPdf).toContain("+ (campaignBreakdownMatchedExternalRevenue.get(row.name) || 0)");
   });
 });

@@ -60,6 +60,39 @@ beforeEach(() => {
 
 afterEach(() => vi.useRealTimers());
 
+it.each(["ads", "overview", "custom"])("keeps Promo's display cents and unmapped CSV separate in the scheduled %s PDF", async reportType => {
+  const campaign = await storageMock.getCampaign();
+  storageMock.getCampaign.mockResolvedValue({ ...campaign, currency: "EUR", ga4CampaignFilter: JSON.stringify(["campaign-a", "campaign-b"]) });
+  const snapshot = await storageMock.getGA4OverviewSnapshot();
+  snapshot.campaignBreakdown.meta.currencyCode = "EUR";
+  snapshot.campaignBreakdown.totals.revenue = 80433.85;
+  snapshot.campaignBreakdown.rows = [
+    { campaign: "campaign-a", sessions: 6, users: 6, conversions: 0.6, sessionKeyEventRate: 0.1, revenue: 66625.346347 },
+    { campaign: "campaign-b", sessions: 4, users: 4, conversions: 0.4, sessionKeyEventRate: 0.1, revenue: 13808.508329999999 },
+  ];
+  storageMock.getGA4OverviewSnapshot.mockResolvedValue(snapshot);
+  storageMock.getRevenueSources.mockResolvedValue([{ id: "source-1", campaignId: campaign.id, sourceType: "csv",
+    displayName: "CSV", currency: "EUR", isActive: true, mappingConfig: JSON.stringify({ campaignColumn: "Campaign" }) }]);
+  storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "source-1", sourceType: "csv", currency: "EUR", revenue: 250 }]);
+  const financial = await storageMock.getLatestFinancialDailySnapshot();
+  financial.metrics.financialDaily.currency = "EUR";
+  financial.metrics.financialDaily.inputs.revenue.value = "80683.85";
+  storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+  await buildGA4ScheduledPdfAttachment({ report: { id: "promo-report", campaignId: campaign.id, reportType,
+    configuration: JSON.stringify({ adComparisonMetric: "revenue", sections: { overview: true, ads: true },
+      subsections: { overview: { campaignBreakdown: true }, ads: { topCampaigns: true, revenueBreakdown: true } } }) }, reportName: "Promo comparison",
+    windowStart: "2026-09-01", windowEnd: "2026-09-15", campaignName: "Promo" });
+  const summary = pdfText.findIndex(text => text.toUpperCase() === "CAMPAIGN BREAKDOWN REVENUE");
+  if (reportType !== "overview") {
+    expect(summary).toBeGreaterThan(-1);
+    expect(pdfText[summary + 1]).toBe("EUR 80,433.85");
+  }
+  expect(pdfText).toContain("EUR 80,683.85");
+  expect(pdfText).not.toContain("EUR 80,433.86");
+  expect(pdfText).toContain("EUR 66,625.34");
+  expect(pdfText).toContain("EUR 13,808.51");
+});
+
 it.each([1, -1, 0].flatMap(sign => [false, true].map(mapped => ({ sign, mapped }))))("preserves chart subtotal precision in scheduled PDFs (sign $sign, mapped $mapped)", async ({ sign, mapped }) => {
   const native = Number((7653.956333 * sign).toFixed(2));
   const campaign = await storageMock.getCampaign();

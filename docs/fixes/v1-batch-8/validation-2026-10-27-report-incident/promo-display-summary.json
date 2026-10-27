@@ -1,0 +1,187 @@
+{
+    "at":  "2026-10-27T22:24:31.0958733Z",
+    "baseCommit":  "8cecf3d0",
+    "status":  "locally_validated_not_committed_or_deployed",
+    "scope":  "Display-only selected campaign revenue cent reconciliation; earlier rename fix preserved separately",
+    "exactNativeAmounts":  [
+                               66625.346347,
+                               13808.508329999999
+                           ],
+    "displayedAmounts":  [
+                             66625.34,
+                             13808.51
+                         ],
+    "nativeTotal":  80433.85,
+    "unmappedCsv":  250,
+    "overallTotal":  80683.85,
+    "before":  {
+                   "receipt":  "promo-display-before.json",
+                   "passed":  24,
+                   "failed":  2,
+                   "note":  "New Promo frontend and scheduled PDF row checks reproduce the original independent rounding mismatch"
+               },
+    "validation":  {
+                       "passed":  283,
+                       "failed":  0,
+                       "skipped":  0,
+                       "files":  [
+                                     {
+                                         "file":  "server/ga4-ad-comparison-accumulation-regression.test.ts",
+                                         "passed":  8,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-final.json"
+                                     },
+                                     {
+                                         "file":  "server/ga4-ad-comparison-card-logic.test.ts",
+                                         "passed":  9,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-final.json"
+                                     },
+                                     {
+                                         "file":  "server/ga4-ad-comparison-revenue-breakdown-pdf.test.ts",
+                                         "passed":  12,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-final.json"
+                                     },
+                                     {
+                                         "file":  "server/ga4-ad-comparison-revenue-breakdown-render.test.ts",
+                                         "passed":  16,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-final.json"
+                                     },
+                                     {
+                                         "file":  "server/ga4-campaign-display-rounding.test.ts",
+                                         "passed":  9,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-final.json"
+                                     },
+                                     {
+                                         "file":  "server/ga4-overview-campaign-breakdown-regression.test.ts",
+                                         "passed":  12,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-final.json"
+                                     },
+                                     {
+                                         "file":  "server/ga4-ui-regression.test.ts",
+                                         "passed":  49,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-final.json"
+                                     },
+                                     {
+                                         "file":  "server/report-email-regression.test.ts",
+                                         "passed":  28,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-artifacts-complete.json"
+                                     },
+                                     {
+                                         "file":  "server/v1-batch7-report-artifacts.test.ts",
+                                         "passed":  22,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-artifacts-complete.json"
+                                     },
+                                     {
+                                         "file":  "server/ga4-browser-report-publication.test.ts",
+                                         "passed":  106,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-browser-pdf-final.json"
+                                     },
+                                     {
+                                         "file":  "server/ga4-ad-comparison-download-browser.test.ts",
+                                         "passed":  12,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "receipt":  "promo-display-reports.json"
+                                     }
+                                 ],
+                       "isolatedBrowserScenarios":  12,
+                       "successfulBrowserDownloads":  67,
+                       "promoFinalRouteRerun":  {
+                                                    "receipt":  "promo-display-browser-final.json",
+                                                    "passed":  1,
+                                                    "failed":  0,
+                                                    "intentionalFilterExclusions":  11,
+                                                    "note":  "The Promo case executes actual saved-snapshot route for both Overview and Comparison. Its five downloads repeat an already counted scenario."
+                                                },
+                       "supersededArtifactFailures":  "Old rounding expectations and incomplete new handler-fixture bindings were corrected; final per-file receipts above are authoritative."
+                   },
+    "builds":  [
+                   "promo-display-build-checks.json",
+                   "promo-display-final-build-checks.json"
+               ],
+    "diffCheck":  "passed",
+    "sourceHashes":  [
+                         {
+                             "file":  "shared/ga4-campaign-breakdown.ts",
+                             "sha256":  "00cd9c42e4993c4e8d7e29a6ce69ec88f53691b80264b0bba271591a4f81f2f6"
+                         },
+                         {
+                             "file":  "client/src/pages/ga4-metrics.tsx",
+                             "sha256":  "d859281504737aa6a9caaeb2c96fd6ee22c8a4f818a1082a6cd2cdcd95d53e04"
+                         },
+                         {
+                             "file":  "server/ga4-scheduled-report-pdf.ts",
+                             "sha256":  "2ad94e5db85f65a399a7b98355df90e2bfb1250eaa974763837fc426996712c9"
+                         },
+                         {
+                             "file":  "server/ga4-ad-comparison-accumulation-regression.test.ts",
+                             "sha256":  "57d88741b85871500dab325cbfd1c84bb7e726b4fd789bd3e9179f679db478d5"
+                         },
+                         {
+                             "file":  "server/ga4-ad-comparison-card-logic.test.ts",
+                             "sha256":  "6f00a39baee056d4bc4665eb1684c7b44c8f25b227beb5ec0d6752c891027f0d"
+                         },
+                         {
+                             "file":  "server/ga4-ad-comparison-revenue-breakdown-pdf.test.ts",
+                             "sha256":  "c53357bf09e9b1e653f05ec8c7f50833d775273f1441f83db85431d8705dc443"
+                         },
+                         {
+                             "file":  "server/ga4-ad-comparison-revenue-breakdown-render.test.ts",
+                             "sha256":  "71752033a5cfcbe6b7409cb621afdba44cfa71413930fbcc2ef1dc15e6b99af2"
+                         },
+                         {
+                             "file":  "server/ga4-campaign-display-rounding.test.ts",
+                             "sha256":  "b9c71af95a768d14c45fd3f4331e3d4e9c14d2f72fae41c5dfb26365d9ed7eef"
+                         },
+                         {
+                             "file":  "server/ga4-overview-campaign-breakdown-regression.test.ts",
+                             "sha256":  "3a6142dc77484c86c39497bcb46b2be728c6c71bb1d63f752b420ae8aae7314b"
+                         },
+                         {
+                             "file":  "server/ga4-ui-regression.test.ts",
+                             "sha256":  "1ebe892c909d2db0ac850d8dfabe700cf60cfc28d8dd9f3dbbb8cf5d072df3be"
+                         },
+                         {
+                             "file":  "server/report-email-regression.test.ts",
+                             "sha256":  "b6eb35aea8e730e85f42291938a0518887bc5457dbe3eb7509d25bdc4737dd17"
+                         },
+                         {
+                             "file":  "server/v1-batch7-report-artifacts.test.ts",
+                             "sha256":  "e9f98fa7864c3280f16076538ba53e821aca55b2495b5822db1d80927fc9f7e7"
+                         },
+                         {
+                             "file":  "server/ga4-browser-report-publication.test.ts",
+                             "sha256":  "a139ce980c41323b29edf434142f76217b22d5efd48fbeeca4274a4ae86659b9"
+                         },
+                         {
+                             "file":  "server/ga4-ad-comparison-download-browser.test.ts",
+                             "sha256":  "6b999a7d1c2d90dfff2077ea4eddd30e09b1a6e9b4615bef99c1759ffa2c10f0"
+                         }
+                     ],
+    "limits":  [
+                   "No live browser or production mutations",
+                   "Not committed, pushed or deployed",
+                   "Live page and newly generated production PDFs still require deployment validation",
+                   "Provider refresh, source lifecycle, scheduler execution and email delivery not re-certified",
+                   "Previous rename warning still requires normal scoped recovery; this display fix does not alter readiness markers"
+               ]
+}

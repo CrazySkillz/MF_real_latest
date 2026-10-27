@@ -20,7 +20,7 @@ function compileRoute(name: string, bindings: Record<string, any>) {
 
 // A fresh, isolated browser: all requests are intercepted, no user profile or live services.
 describe("Ad Comparison precision through the real Reports page", () => {
-  it.each(["channel", "history", "published-sources", "initial-reports", "publication-handoff", "publication-gap", "background-read", "landing-pages", "conversion-events", "report-library", "revenue-pipeline-no-spend"])("downloads with %s refresh timing and recovers after core refresh failures", async contextKind => {
+  it.each(["channel", "history", "published-sources", "initial-reports", "publication-handoff", "publication-gap", "background-read", "landing-pages", "conversion-events", "report-library", "revenue-pipeline-no-spend", "promo-rounding"])("downloads with %s refresh timing and recovers after core refresh failures", async contextKind => {
     const bundle = await build({
       stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
         import {QueryClientProvider} from '@tanstack/react-query';
@@ -67,11 +67,19 @@ describe("Ad Comparison precision through the real Reports page", () => {
     let holdIndependent = false, independentRequests = 0, releaseIndependent!: () => void;
     const pendingIndependent = new Promise<void>(resolve => { releaseIndependent = resolve; });
     const day = "2026-10-25", start = "2026-09-23", updatedAt = "2026-10-26T18:00:00Z";
-    const rows = [
+    const promo = contextKind === "promo-rounding";
+    const rows = promo ? [
+      { campaign: "yesop_brand_search", sessions: 2394, users: 2395, conversions: 250, revenue: 66625.346347, sessionKeyEventRate: 0.102 },
+      { campaign: "yesop_retargeting", sessions: 1039, users: 1039, conversions: 66, revenue: 13808.508329999999, sessionKeyEventRate: 0.059 },
+    ] : [
       { campaign: "yesop_prospecting", sessions: 346, users: 344, conversions: 19, revenue: 3400.434193, sessionKeyEventRate: 0.046242774566473986 },
       { campaign: "yesop_paid_social", sessions: 258, users: 258, conversions: 21, revenue: 4253.52214, sessionKeyEventRate: 0.08139534883720931 },
     ];
-    const totals = { sessions: 604, users: 602, conversions: 40, revenue: 7653.96, pageviews: 1000, engagedSessions: 300, engagementRate: 300 / 604 };
+    const totals = promo
+      ? { sessions: 3433, users: 3434, conversions: 316, revenue: 80433.85, pageviews: 5000, engagedSessions: 2482, engagementRate: 2482 / 3433 }
+      : { sessions: 604, users: 602, conversions: 40, revenue: 7653.96, pageviews: 1000, engagedSessions: 300, engagementRate: 300 / 604 };
+    const financialTotal = promo ? 80683.85 : 8003.96;
+    const totalLabel = promo ? "80,683.85" : "8,003.96", nativeLabel = promo ? "80,433.85" : "7,653.96";
     let providerRequests = 0;
     const storage = {
       getGA4Connection: async () => ({ propertyId: "123", importStartDate: start, accessToken: "expired" }),
@@ -87,7 +95,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       ga4Service: { getAcquisitionBreakdown: async () => { providerRequests++; throw new Error("TOKEN_EXPIRED"); } },
       console: { error: () => {} },
     });
-    const sources = [
+    const sources = promo ? [{ id: "csv", sourceId: "csv", sourceType: "csv", displayName: "CSV", revenue: 250 }] : [
       { id: "hubspot", sourceId: "hubspot", sourceType: "hubspot", displayName: "HubSpot", revenue: 250 },
       { id: "salesforce", sourceId: "salesforce", sourceType: "salesforce", displayName: "Salesforce", revenue: 100 },
     ];
@@ -108,7 +116,8 @@ describe("Ad Comparison precision through the real Reports page", () => {
         : url.pathname.endsWith("/ga4-daily") && url.searchParams.get("days") === "60";
       if (holdInsights && insightsContext) await pendingInsights;
       let data: any = { success: true }, status = 200;
-      if (url.pathname.endsWith("/ga4-breakdown") && url.searchParams.get("adComparisonCampaignBreakdown") === "1") {
+      if (url.pathname.endsWith("/ga4-breakdown") && (url.searchParams.get("adComparisonCampaignBreakdown") === "1"
+        || (promo && url.searchParams.get("overviewCampaignBreakdown") === "1"))) {
         await breakdownHandler({ params: { id: "a" }, query: Object.fromEntries(url.searchParams) }, {
           status(code: number) { status = code; return this; }, json(body: any) { data = body; return this; },
         });
@@ -126,7 +135,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       } else if (url.pathname.endsWith("/ga4-daily")) {
         data = { success: true, propertyId: "123", startDate: start, overviewStartDate: start, endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
         if (failed === "daily") { status = 503; data = { success: false, error: "fixture daily failure" }; }
-      } else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: { financialDaily: { currency: "EUR", currentValueWindow: { startDate: start, endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: financialMismatch ? 8004.96 : 8003.96 }, spend: { available: false }, conversions: { available: true, value: 40 } } } } } };
+      } else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: { financialDaily: { currency: "EUR", currentValueWindow: { startDate: start, endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: financialTotal + (financialMismatch ? 1 : 0) }, spend: { available: false }, conversions: { available: true, value: totals.conversions } } } } } };
       else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, totals, rows, revenueWindow: { source: "ga4", startDate: start, endDate: day }, meta: { currencyCode: "EUR" } };
       else if (url.pathname.endsWith("/ga4-to-date")) data = { success: true, propertyId: "123", startDate: start, endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals };
       else if (url.pathname.endsWith("/ga4-landing-pages") || url.pathname.endsWith("/ga4-conversion-events")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, rows: [] };
@@ -139,7 +148,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
         ...(contextKind === "published-sources" ? { publicationStatus: "published", publicationHash: source.id + "-saved" } : {}),
       })) };
       else if (url.pathname.endsWith("/revenue-breakdown")) data = { success: true, sources, endDate: day };
-      else if (url.pathname.endsWith("/revenue-to-date")) data = { success: true, totalRevenue: 350, sourceIds: sources.map(source => source.id), endDate: day };
+      else if (url.pathname.endsWith("/revenue-to-date")) data = { success: true, totalRevenue: promo ? 250 : 350, sourceIds: sources.map(source => source.id), endDate: day };
       else if (url.pathname.includes("revenue") || url.pathname.includes("spend")) data = { success: true, sources: [], sourceIds: [], totalRevenue: 0, totalSpend: 0, spendToDate: 0, rows: [], endDate: day };
       if (failed === "insights" && insightsContext) { status = 503; data = { success: false, error: "fixture Insights context failure" }; }
       const independentRequest = independentKind && (contextKind === "report-library"
@@ -170,10 +179,15 @@ describe("Ad Comparison precision through the real Reports page", () => {
       const download = await pending;
       expect(download.suggestedFilename()).toBe(saved ? "Saved_Ad_Comparison_2026-10-26.pdf" : "GA4_Ad_Comparison_Report_2026-10-26.pdf");
       const bytes = readFileSync((await download.path())!);
-      expect(bytes.toString("latin1")).toContain("EUR 7,653.96");
-      expect(bytes.toString("latin1")).toContain("EUR 8,003.96");
+      expect(bytes.toString("latin1")).toContain(`EUR ${nativeLabel}`);
+      expect(bytes.toString("latin1")).toContain(`EUR ${totalLabel}`);
       expect(bytes.toString("latin1")).toContain("EUR 250.00");
-      expect(bytes.toString("latin1")).toContain("EUR 100.00");
+      if (!promo) expect(bytes.toString("latin1")).toContain("EUR 100.00");
+      if (promo) {
+        expect(bytes.toString("latin1")).toContain("EUR 66,625.34");
+        expect(bytes.toString("latin1")).toContain("EUR 13,808.51");
+        expect(bytes.toString("latin1")).not.toContain("EUR 80,433.86");
+      }
       if (pipelineJourney) {
         expect(bytes.toString("latin1")).toContain("CAMPAIGN BREAKDOWN REVENUE");
         expect(bytes.toString("latin1")).not.toContain("EUR 7,653.95");
@@ -200,8 +214,14 @@ describe("Ad Comparison precision through the real Reports page", () => {
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
         await page.getByRole("tab", { name: "Overview", exact: true }).click();
       }
-      await browserExpect(page.getByText("Total Revenue", { exact: true }).locator("../..")).toContainText("€8,003.96");
+      await browserExpect(page.getByText("Total Revenue", { exact: true }).locator("../..")).toContainText(`€${totalLabel}`);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      if (promo) {
+        await browserExpect(page.getByRole("row").filter({ hasText: "yesop_brand_search" })).toContainText("€66,625.34");
+        await browserExpect(page.getByRole("row").filter({ hasText: "yesop_retargeting" })).toContainText("€13,808.51");
+        await browserExpect(page.getByText("Total Spend", { exact: true }).locator("../..")).toContainText("Unavailable");
+        await browserExpect(page.getByText("Expected Revenue", { exact: true }).locator("../..")).toContainText("Not configured");
+      }
       if (pipelineJourney) {
         const revenueCard = page.getByText("Total Revenue", { exact: true }).locator("../..");
         const pipelineCard = page.getByText("Expected Revenue", { exact: true }).locator("../..");
@@ -240,7 +260,13 @@ describe("Ad Comparison precision through the real Reports page", () => {
       }
       await page.getByRole("tab", { name: "Campaign Comparison", exact: true }).click();
       await browserExpect(page.getByRole("heading", { name: "Campaign Comparison", exact: true })).toBeVisible();
-      await browserExpect(page.getByRole("row").filter({ hasText: "TOTAL" }).last()).toContainText("€8,003.96");
+      await browserExpect(page.getByRole("row").filter({ hasText: "TOTAL" }).last()).toContainText(`€${totalLabel}`);
+      if (promo) {
+        await page.getByRole("combobox").click();
+        await page.getByRole("option", { name: "Revenue (High to Low)", exact: true }).click();
+        await browserExpect(page.getByText("Campaign Breakdown Revenue", { exact: true }).locator("..")).toContainText("€80,433.85");
+        await browserExpect(page.getByText("€66,625.34", { exact: false }).first()).toBeVisible();
+      }
       if (pipelineJourney) {
         await page.getByRole("combobox").click();
         await page.getByRole("option", { name: "Revenue (High to Low)", exact: true }).click();

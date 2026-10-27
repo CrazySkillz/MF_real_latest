@@ -175,7 +175,7 @@ describe("V1-086 real scheduled PDF text bounds", () => {
 });
 
 describe("V1-015 saved source amounts in the scheduled artifact", () => {
-  it.each(["ads", "custom"])("rounds the native sum once in the %s scheduled PDF without allocating a rounding cent to a campaign", async type => {
+  it.each(["ads", "custom"])("reconciles displayed cents in the %s scheduled PDF without changing source amounts", async type => {
     const day = (date: string) => row(date, date === "2026-10-18" ? 604 : 0, date === "2026-10-18" ? 40 : 0, date === "2026-10-18" ? 7653.96 : 0);
     setFixture(rowsFor(14, day, day));
     fixture.campaign.ga4CampaignFilter = JSON.stringify(["yesop_prospecting", "yesop_paid_social"]);
@@ -191,7 +191,8 @@ describe("V1-015 saved source amounts in the scheduled artifact", () => {
     const before = JSON.stringify(fixture);
     const report = { campaignId: fixture.campaign.id, reportType: type, configuration: JSON.stringify({ sections: { ads: true }, subsections: { ads: { bestWorst: true, topCampaigns: true, allCampaigns: true, revenueBreakdown: true } } }) };
     const payload = await pdf.buildGA4ReportPayload(report);
-    expect(payload.adComparisonBreakdownAgg.map((row: any) => row.revenue)).toEqual([3400.43, 4253.52]);
+    expect(payload.adComparisonBreakdownAgg.map((row: any) => row.revenue)).toEqual([3400.44, 4253.52]);
+    expect(payload.adComparisonChartRows.map((row: any) => row.revenue)).toEqual([3400.44, 4253.52]);
     expect(payload.campaignBreakdownAgg.map((row: any) => row.revenue)).toEqual([3400.43, 4253.52]);
     expect(payload.campaignBreakdownMatchedExternalRevenue.size).toBe(0);
     boxes = [];
@@ -202,7 +203,7 @@ describe("V1-015 saved source amounts in the scheduled artifact", () => {
     expect(text[text.indexOf("hubspot") + 1]).toBe("EUR 250.00");
     expect(text[text.indexOf("salesforce") + 1]).toBe("EUR 100.00");
     expect(text.join(" ")).toContain("EUR 4,253.52 revenue");
-    if (type === "custom") { expect(text).toContain("EUR 3,400.43"); expect(text).toContain("EUR 4,253.52"); }
+    if (type === "custom") { expect(text).toContain("EUR 3,400.44"); expect(text).toContain("EUR 4,253.52"); }
     expect(JSON.stringify(fixture)).toBe(before);
     const artifact = `${directory}/precision2-scheduled-${type}.pdf`;
     if (!process.env.V1_BATCH7_PRESERVE_ARTIFACTS || !existsSync(artifact)) writeFileSync(artifact, bytes);

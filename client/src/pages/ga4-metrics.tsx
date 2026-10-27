@@ -37,7 +37,7 @@ import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct, formatConversionCredit } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, resolveGA4OverviewFinancialRefreshWarning, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
-import { resolveExactGA4CampaignBreakdownRevenue } from "@shared/ga4-campaign-breakdown";
+import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "@shared/ga4-campaign-breakdown";
 import { resolveGA4InsightsExecutiveFinancials } from "@/lib/ga4-insights-executive-financials";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
@@ -3940,13 +3940,13 @@ export default function GA4Metrics() {
         addSimpleTable(
           "Campaign Breakdown",
           ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"],
-          (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).map((c: any) => [
+          (Array.isArray(adComparisonChartRows) ? adComparisonChartRows : []).map((c: any) => [
             String(c?.name || "(not set)"),
             fN(Number(c?.sessions || 0)),
             fN(Number(c?.users || 0)),
             formatConversionCredit(Number(c?.conversions || 0)),
             fP(Number(c?.conversionRate || 0)),
-            fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
+            fC(Number(c?.revenue || 0)),
           ]),
           [52, 22, 20, 28, 26, 36],
           "Traffic metrics are cumulative from the initial GA4 import; Revenue combines native GA4 revenue from the imported data window with exact campaign-mapped imported revenue.",
@@ -4016,13 +4016,13 @@ export default function GA4Metrics() {
         return { ...row, revenue: nativeRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? nativeRevenue / Number(row.sessions || 0) : 0 };
       });
       const chartSummaryByCampaign = new Map<string, any>();
-      for (const row of campaignBreakdownAgg) {
+      for (const row of adComparisonChartRows) {
         const key = String(row?.name || "").toLocaleLowerCase("en-US");
         const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
         current.sessions += Number(row?.sessions || 0);
         current.users += Number(row?.users || 0);
         current.conversions += Number(row?.conversions || 0);
-        current.revenue += Number((Number(row?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2));
+        current.revenue += Number(row?.revenue || 0);
         current.conversionRate = Number(current.conversionRate || 0) + Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
         chartSummaryByCampaign.set(key, current);
       }
@@ -6174,6 +6174,7 @@ export default function GA4Metrics() {
           sessions,
           conversions,
           revenue,
+          unroundedRevenue: c.revenue,
           users,
           conversionRate: sessions > 0 ? (c.sessionKeyEventRateWeighted / sessions) * 100 : 0,
           revenuePerSession: sessions > 0 ? revenue / sessions : 0,
@@ -6195,8 +6196,8 @@ export default function GA4Metrics() {
       byName.set(name, existing);
     }
 
-    return Array.from(byName.values())
-      .filter((row) => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(row.name)))
+    return roundGA4CampaignRevenueForDisplay(Array.from(byName.values())
+      .filter((row) => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(row.name))))
       .map((row) => ({
         ...row,
         revenue: Number(Number(row.revenue || 0).toFixed(2)),
@@ -6228,10 +6229,10 @@ export default function GA4Metrics() {
     + Array.from(campaignBreakdownMatchedExternalRevenue.values()).reduce((sum, amount) => sum + amount, 0)
   ).toFixed(2)), [ga4Breakdown, importedGA4CampaignNames, campaignBreakdownMatchedExternalRevenue]);
 
-  const adComparisonChartRows = useMemo(() => campaignBreakdownAgg.map((row) => ({
+  const adComparisonChartRows = useMemo(() => roundGA4CampaignRevenueForDisplay(campaignBreakdownAgg.map((row) => ({
     ...row,
-    revenue: Number((row.revenue + (campaignBreakdownMatchedExternalRevenue.get(row.name) || 0)).toFixed(2)),
-  })), [campaignBreakdownAgg, campaignBreakdownMatchedExternalRevenue]);
+    revenue: row.unroundedRevenue + (campaignBreakdownMatchedExternalRevenue.get(row.name) || 0),
+  }))), [campaignBreakdownAgg, campaignBreakdownMatchedExternalRevenue]);
 
   const sourceRevenueBreakdowns = useMemo(() => {
     return new Map<string, any[]>(
@@ -7192,8 +7193,8 @@ export default function GA4Metrics() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {campaignBreakdownAgg.map((c, idx) => {
-                                      const revenue = Number((c.revenue + (campaignBreakdownMatchedExternalRevenue.get(c.name) || 0)).toFixed(2));
+                                    {adComparisonChartRows.map((c, idx) => {
+                                      const revenue = c.revenue;
                                       return (
                                         <tr key={c.name || idx} className="border-b last:border-b-0">
                                           <td className="px-2 py-2 truncate" title={c.name}>{c.name}</td>

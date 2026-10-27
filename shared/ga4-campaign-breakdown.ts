@@ -1,5 +1,23 @@
 import { normalizeGA4CampaignAllocationKey } from "./ga4-financial-source";
 
+// Display-only cent reconciliation within the already selected campaign rows.
+// Keep the rounded sum of their exact amounts; never use an unrelated card total.
+export function roundGA4CampaignRevenueForDisplay<T extends { name: string; revenue: number }>(rows: T[]): T[] {
+  const cents = rows.map(row => Math.round(Number(row.revenue.toFixed(2)) * 100));
+  const total = Math.round(Number(rows.reduce((sum, row) => sum + row.revenue, 0).toFixed(2)) * 100);
+  const delta = total - cents.reduce((sum, value) => sum + value, 0);
+  const direction = Math.sign(delta);
+  const candidates = rows.map((row, index) => ({ index, name: row.name,
+    error: direction * (row.revenue * 100 - cents[index]),
+  })).filter(row => row.error > 0).sort((a, b) => b.error - a.error
+    || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  if (cents.every(Number.isSafeInteger) && Number.isSafeInteger(total)
+    && Number.isSafeInteger(delta) && Math.abs(delta) <= candidates.length) {
+    for (let i = 0; i < Math.abs(delta); i++) cents[candidates[i].index] += direction;
+  }
+  return rows.map((row, index) => ({ ...row, revenue: cents[index] === 0 ? 0 : cents[index] / 100 }));
+}
+
 const parseMappingConfig = (value: any) => {
   if (typeof value === "string") {
     try { return JSON.parse(value); } catch { return {}; }

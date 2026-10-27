@@ -7,7 +7,7 @@ import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as for
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
-import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
+import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
 import { computeAttainmentPct, computeEffectiveDeltaPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiDataSufficiency, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
@@ -1008,6 +1008,15 @@ async function buildGA4ReportPayload(report: any) {
     revenueDisplaySources,
     campaignCurrency,
   ).revenueByCampaign;
+  const unroundedNativeRevenue = new Map<string, number>();
+  for (const row of Array.isArray((nativeCampaignRevenueBreakdown as any)?.rows) ? (nativeCampaignRevenueBreakdown as any).rows : []) {
+    const key = String(row?.campaign || "").trim().toLowerCase() || "(not set)";
+    unroundedNativeRevenue.set(key, (unroundedNativeRevenue.get(key) || 0) + Number(row?.revenue || 0));
+  }
+  const adComparisonChartRows = roundGA4CampaignRevenueForDisplay(campaignBreakdownAgg.map(row => ({
+    ...row, revenue: (unroundedNativeRevenue.get(row.name.toLowerCase()) ?? row.revenue)
+      + (campaignBreakdownMatchedExternalRevenue.get(row.name) || 0),
+  })));
   const adComparisonChartRevenue = Number((
     (Array.isArray((nativeCampaignRevenueBreakdown as any)?.rows) ? (nativeCampaignRevenueBreakdown as any).rows : [])
       .filter((row: any) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(String(row?.campaign || "(not set)").trim())))
@@ -1025,8 +1034,8 @@ async function buildGA4ReportPayload(report: any) {
     current.revenue += Number((row as any)?.revenue || 0);
     adComparisonByCampaign.set(name, current);
   }
-  const adComparisonBreakdownAgg = Array.from(adComparisonByCampaign.values())
-    .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name)))
+  const adComparisonBreakdownAgg = roundGA4CampaignRevenueForDisplay(Array.from(adComparisonByCampaign.values())
+    .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name))))
     .map((row) => {
       const revenue = Number(Number(row.revenue || 0).toFixed(2));
       const sessions = Number(row.sessions || 0);
@@ -1157,6 +1166,7 @@ async function buildGA4ReportPayload(report: any) {
     adComparisonBreakdownAgg,
     adComparisonNativeRevenue,
     adComparisonChartRevenue,
+    adComparisonChartRows,
     adComparisonWindow,
     campaignBreakdownMatchedExternalRevenue,
     sourceRevenueBreakdowns,
@@ -1465,13 +1475,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       addSimpleTable(
         "Campaign Breakdown",
         ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"],
-        payload.campaignBreakdownAgg.map((row: any) => [
+        payload.adComparisonChartRows.map((row: any) => [
           String(row?.name || "(not set)"),
           formatNumber(row?.sessions || 0),
           formatNumber(row?.users || 0),
           formatConversionCredit(row?.conversions || 0),
           formatPct(Number(row?.conversionRate || 0)),
-          formatMoney(Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2))),
+          formatMoney(Number(row?.revenue || 0)),
         ]),
         [52, 22, 20, 28, 26, 36],
         COLORS.overview,
@@ -1561,13 +1571,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const metricLabels: Record<string, string> = { sessions: "Sessions", users: "Users", conversions: "Conversions", revenue: "Revenue", conversionRate: "Conversion Rate" };
     const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? formatConversionCredit(Number(value || 0)) : formatNumber(value);
     const chartSummaryByCampaign = new Map<string, any>();
-    for (const row of payload.campaignBreakdownAgg) {
+    for (const row of payload.adComparisonChartRows) {
       const key = String(row?.name || "").toLocaleLowerCase("en-US");
       const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
       current.sessions += Number(row?.sessions || 0);
       current.users += Number(row?.users || 0);
       current.conversions += Number(row?.conversions || 0);
-      current.revenue += Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2));
+      current.revenue += Number(row?.revenue || 0);
       current.conversionRate += Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
       chartSummaryByCampaign.set(key, current);
     }

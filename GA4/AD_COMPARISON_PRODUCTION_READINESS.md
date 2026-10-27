@@ -12,6 +12,16 @@ October 26 replacement precision packet: after the user confirmed rollback downl
 
 ### October 27 revenue / pipeline / no-spend journey review
 
+**Follow-up: campaign row display cents.** The user subsequently requested that
+displayed rows also reconcile. The display-only correction uses the same scoped
+exact amounts before rounding and distributes only their rounding difference,
+at most one cent per row, by fractional-cent error. This supersedes the earlier
+statement below that row display amounts are unchanged. The subtotal fix itself,
+overall financial values, exact source mappings and publication/report guards
+remain intact. Overview and both PDF renderers share the display rule.
+See [the bounded checkpoint](../docs/fixes/v1-batch-8/promo-display-cents-2026-10-27.md)
+for evidence and remaining deployed verification; this does not certify the tab.
+
 The visible GA4 tab, heading, and tab-specific empty/error copy are now
 `Campaign Comparison`. Internal tab values, APIs, report types, report names,
 and calculations are unchanged by this label edit.

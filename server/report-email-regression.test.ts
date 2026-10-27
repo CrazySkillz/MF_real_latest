@@ -125,7 +125,7 @@ describe("scheduled report email regression guard", () => {
     const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
     const campaignBreakdownBlock = source.slice(
       source.indexOf('"Campaign Breakdown"'),
-      source.indexOf("payload.campaignBreakdownAgg", source.indexOf('"Campaign Breakdown"'))
+      source.indexOf("payload.adComparisonChartRows", source.indexOf('"Campaign Breakdown"'))
     );
 
     expect(campaignBreakdownBlock).toContain('["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"]');

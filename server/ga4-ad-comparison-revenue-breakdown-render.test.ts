@@ -4,7 +4,7 @@ import ts from "typescript";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GA4AdComparison from "../client/src/pages/ga4-ad-comparison";
-import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
+import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
 
 vi.mock("@/components/ui/card", async () => {
   const React = await import("react");
@@ -60,6 +60,33 @@ function renderRevenueBreakdown(
 }
 
 describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
+  it("reconciles Promo's displayed campaign rows to its precise total with an unmapped CSV", () => {
+    const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
+    const start = page.indexOf("const campaignBreakdownAgg = useMemo(() => {");
+    const end = page.indexOf("const sourceRevenueBreakdowns = useMemo(() => {", start);
+    const rows = [
+      { campaign: "yesop_brand_search", sessions: 2394, users: 2395, conversions: 250, revenue: 66625.346347 },
+      { campaign: "yesop_retargeting", sessions: 1039, users: 1039, conversions: 66, revenue: 13808.508329999999 },
+    ];
+    const sources = [{ sourceId: "csv", displayName: "CSV", sourceType: "csv", currency: "EUR", revenue: 250,
+      mappingConfig: { campaignColumn: "Campaign" } }];
+    const before = JSON.stringify({ rows, sources });
+    const bindings = { useMemo: (fn: () => unknown) => fn(), ga4Breakdown: { rows }, breakdownPlaceholder: false,
+      adComparisonBreakdown: { rows }, adComparisonBreakdownPlaceholder: false,
+      importedGA4CampaignNames: new Set(rows.map(row => row.campaign)), normalizeCampaignKey: (name: string) => name.trim().toLowerCase(),
+      campaignCurrency: "EUR", revenueDisplaySources: sources, resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay };
+    const aggregate = new Function(...Object.keys(bindings), ts.transpileModule(page.slice(start, end) +
+      "return { rows: adComparisonChartRows, subtotal: adComparisonChartRevenue, native: adComparisonNativeRevenue };",
+      { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
+    expect(aggregate).toMatchObject({ subtotal: 80433.85, native: 80433.85 });
+    expect(aggregate.rows.map((row: any) => row.revenue)).toEqual([66625.34, 13808.51]);
+    expect(Number(aggregate.rows.reduce((sum: number, row: any) => sum + row.revenue, 0).toFixed(2))).toBe(80433.85);
+    const html = renderRevenueBreakdown("ready", sources, aggregate.rows, aggregate.rows, aggregate.native,
+      { selectedMetric: "revenue", chartRevenue: aggregate.subtotal });
+    expect(html).toMatch(/Campaign Breakdown Revenue<\/div><div[^>]*>\$80433\.85<\/div>/);
+    expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>\$80683\.85<\/td>/);
+    expect(JSON.stringify({ rows, sources })).toBe(before);
+  });
   it.each([1, -1, 0].flatMap(sign => [false, true].map(mapped => ({ sign, mapped }))))("totals chart revenue before rounding, with signed native amounts and mapped=$mapped (sign $sign)", ({ sign, mapped }) => {
     const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
     const start = page.indexOf("const campaignBreakdownAgg = useMemo(() => {");
@@ -80,7 +107,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     const bindings = { useMemo: (fn: () => unknown) => fn(), ga4Breakdown: { rows }, breakdownPlaceholder: false,
       adComparisonBreakdown: { rows: [{ campaign: "campaign-a", revenue: 999 }] }, adComparisonBreakdownPlaceholder: false,
       importedGA4CampaignNames: new Set(["campaign-a", "campaign-b"]), normalizeCampaignKey: (name: string) => name.trim().toLowerCase(),
-      campaignCurrency: "EUR", revenueDisplaySources: sources, resolveExactGA4CampaignBreakdownRevenue };
+      campaignCurrency: "EUR", revenueDisplaySources: sources, resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay };
     const aggregate = new Function(...Object.keys(bindings), ts.transpileModule(page.slice(start, end) + `return {
       rows: adComparisonChartRows, subtotal: typeof adComparisonChartRevenue === "undefined" ? adComparisonChartRows.reduce((s, r) => s + r.revenue, 0) : adComparisonChartRevenue,
     };`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
@@ -88,7 +115,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     expect(Number(aggregate.subtotal.toFixed(2))).toBe(expected);
     const html = renderRevenueBreakdown("ready", sources, aggregate.rows, nativeRows, 999, { selectedMetric: "revenue", chartRevenue: aggregate.subtotal });
     expect(html).toMatch(new RegExp(`Campaign Breakdown Revenue</div><div[^>]*>\\$${expected.toFixed(2).replace(".", "\\.")}</div>`));
-    expect(aggregate.rows.map((row: any) => row.revenue)).toEqual([Number((3400.434193 * sign).toFixed(2)) + (mapped ? 250 : 0), Number((4253.52214 * sign).toFixed(2))]);
+    expect(aggregate.rows.map((row: any) => row.revenue)).toEqual([3400.44 * sign + (mapped ? 250 : 0), 4253.52 * sign]);
     expect(JSON.stringify({ rows, sources })).toBe(before);
   });
 
@@ -107,7 +134,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     ];
     const before = JSON.stringify(rows);
     const bindings = { useMemo: (fn: () => unknown) => fn(), adComparisonBreakdown: { rows }, adComparisonBreakdownPlaceholder: false,
-      importedGA4CampaignNames: new Set(["yesop_prospecting", "yesop_paid_social"]), normalizeCampaignKey: (name: string) => name.trim().toLowerCase() };
+      importedGA4CampaignNames: new Set(["yesop_prospecting", "yesop_paid_social"]), normalizeCampaignKey: (name: string) => name.trim().toLowerCase(), roundGA4CampaignRevenueForDisplay };
     const aggregate = new Function(...Object.keys(bindings), ts.transpileModule(page.slice(start, end) + 'return { rows: adComparisonBreakdownAgg, native: typeof adComparisonNativeRevenue === "undefined" ? undefined : adComparisonNativeRevenue };', {
       compilerOptions: { target: ts.ScriptTarget.ES2022 },
     }).outputText)(...Object.values(bindings));
@@ -119,7 +146,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     expect(html).toMatch(new RegExp(`TOTAL</td>\\s*<td[^>]*>\\$${String(total).replace(".", "\\.")}</td>`));
     expect(aggregate.rows.map((row: any) => row.name)).toEqual(["yesop_prospecting", "yesop_paid_social"]);
     expect(aggregate.rows[0]).toMatchObject({ sessions: 346, users: 344, conversions: 19 });
-    expect(aggregate.rows.map((row: any) => row.revenue)).toEqual([Number((3400.434193 * Number(sign)).toFixed(2)), Number((4253.52214 * Number(sign)).toFixed(2))]);
+    expect(aggregate.rows.map((row: any) => row.revenue)).toEqual([3400.44 * Number(sign), 4253.52 * Number(sign)]);
     expect(JSON.stringify(rows)).toBe(before);
     expect(html).not.toContain("unselected_campaign");
   });

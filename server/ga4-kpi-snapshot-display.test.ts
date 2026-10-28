@@ -71,6 +71,20 @@ describe.each(["Kpi", "Benchmark"])("GA4 %s saved financial display", (kind) => 
   const state = (p: any, metric: string) => p[`get${kind}ConsumerState`]({ metric });
   const value = (p: any, metric: string) => Number(kind === "Kpi" ? p.getLiveKpiValue({ metric }) : p.getLiveBenchmarkCurrentValue(metric));
 
+  it("retains synchronized financial values without scoring an ongoing update", () => {
+    const input = fixture();
+    input.financialDailySnapshotResp.snapshot.recordedAt = input.ga4DailyResp.lastUpdated;
+    input.kpiTrafficInputState = input.trafficKpiInputState = input.schedulerSynchronizedTrafficState = "updating";
+    const p = page(input);
+    for (const [metric, expected] of [["revenue", 1000], ["roas", 5], ["roi", 400], ["cpa", 20]] as const) {
+      expect(value(p, metric)).toBe(expected);
+      expect(state(p, metric)).toMatchObject({ code: "updating", eligible: false });
+      expect(p[`getFinding${kind}ConsumerState`]({ metric }).eligible).toBe(false);
+    }
+    input.financialDailySnapshotError = true;
+    expect(state(page(input), "revenue")).toMatchObject({ code: "stale", eligible: false });
+  });
+
   it("retains Overview's financial inputs after a failed publication, without mixing newer CPA conversions", () => {
     const input = fixture();
     input.financialCPA = 600 / 60;

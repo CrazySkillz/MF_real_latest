@@ -3182,6 +3182,7 @@ export default function GA4Metrics() {
     if (states.includes("unavailable")) return "unavailable";
     if (states.includes("stale")) return "stale";
     if (states.includes("loading")) return "loading";
+    if (states.includes("updating")) return "updating";
     return "ready";
   };
   const kpiListState: GA4KpiListState = kpisLoading && platformKPIData === undefined
@@ -3200,9 +3201,10 @@ export default function GA4Metrics() {
     if (!ga4ConnectionUsable) return "unavailable";
     if (ga4DailyPlaceholder) return "loading";
     if (ga4Error) return ga4DailyResp === undefined ? "unavailable" : "stale";
+    if (ga4PublicationDisplayFailed) return "stale";
+    if (ga4DailyResp !== undefined && (ga4PublicationDisplayPending || ga4PublicationStatus?.refreshStatus === "running")) return "updating";
     if ((ga4DailyResp as any)?.refreshIsStale === true || ga4PublicationRefreshStale) return "stale";
     if (ga4Loading || ga4DailyResp === undefined) return "loading";
-    if (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) return "stale";
     return "ready";
   })();
   const kpiTrafficInputState: GA4KpiInputState = (() => {
@@ -3211,9 +3213,10 @@ export default function GA4Metrics() {
     if (!ga4ConnectionUsable) return "unavailable";
     if (ga4DailyPlaceholder) return "loading";
     if (ga4Error) return ga4DailyResp === undefined ? "unavailable" : "stale";
+    if (ga4PublicationDisplayFailed) return "stale";
+    if (ga4DailyResp !== undefined && (ga4PublicationDisplayPending || ga4PublicationStatus?.refreshStatus === "running")) return "updating";
     if ((ga4DailyResp as any)?.refreshIsStale === true || ga4PublicationRefreshStale) return "stale";
     if (ga4Loading || ga4DailyResp === undefined) return "loading";
-    if (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) return "stale";
     return "ready";
   })();
   // Financial cards and their consumers use the same saved inputs as Overview.
@@ -3225,6 +3228,7 @@ export default function GA4Metrics() {
       || overviewFinancialRefreshWarning === "unverified") return "unavailable";
     if (financialDailySnapshotError || kpiTrafficInputState === "stale"
       || overviewFinancialRefreshWarning === "earlier_update") return "stale";
+    if (kpiTrafficInputState === "updating") return "updating";
     return "ready";
   };
   const snapshotRevenueKpiInputState = getFinancialSnapshotKpiInputState(overviewFinancialRevenueAvailable);
@@ -5049,7 +5053,7 @@ export default function GA4Metrics() {
       if (consumerState.code === "blocked") blocked += 1;
       else if (consumerState.code === "insufficient_data") insufficient += 1;
       else if (consumerState.code === "stale") stale += 1;
-      else if (consumerState.code === "loading") pending += 1;
+      else if (consumerState.code === "loading" || consumerState.code === "updating") pending += 1;
       else if (consumerState.code === "unavailable" || consumerState.code === "failed") unavailable += 1;
       if (!consumerState.eligible) continue;
       const target = parseFloat(String((kpi as any)?.targetValue || "0"));
@@ -5095,7 +5099,7 @@ export default function GA4Metrics() {
       if (consumerState.code === "blocked") blocked += 1;
       else if (consumerState.code === "insufficient_data") insufficient += 1;
       else if (consumerState.code === "stale") stale += 1;
-      else if (consumerState.code === "loading") pending += 1;
+      else if (consumerState.code === "loading" || consumerState.code === "updating") pending += 1;
       else if (consumerState.code === "unavailable" || consumerState.code === "failed") unavailable += 1;
       if (!consumerState.eligible) continue;
       const bench = parseFloat(stripNumberFormatting(String((b as any)?.benchmarkValue || "0")));
@@ -5342,7 +5346,7 @@ export default function GA4Metrics() {
     [findingsDailyRows, trendsDataThroughDate],
   );
   const schedulerSynchronizedTrafficState: GA4KpiInputState =
-    ga4DailyResp !== undefined && !ga4Error && !ga4ConnectionError && (ga4DailyResp as any)?.refreshIsStale === true
+    ga4DailyResp !== undefined && !ga4Error && !ga4ConnectionError && kpiTrafficInputState !== "updating" && (ga4DailyResp as any)?.refreshIsStale === true
       ? "ready"
       : kpiTrafficInputState;
   const schedulerSynchronizedConversionsState: GA4KpiInputState =
@@ -8135,7 +8139,7 @@ export default function GA4Metrics() {
                               </div>
                             ) : null}
 
-                            {kpiTracker.pending > 0 ? (
+                            {kpiTracker.pending > 0 && !platformKPIs.some(kpi => getKpiConsumerState(kpi).code === "updating") ? (
                               <div className="rounded-lg border border-border bg-muted/40 p-4" role="status">
                                 <div className="font-semibold text-foreground">KPI source inputs are loading</div>
                                 <div className="text-sm text-muted-foreground mt-1">Pending KPI values are not scored until their required inputs finish loading.</div>
@@ -8164,7 +8168,7 @@ export default function GA4Metrics() {
                                   const consumerState = getKpiConsumerState(kpi);
                                   const isBlocked = consumerState.code === "blocked";
                                   const isInsufficient = consumerState.code === "insufficient_data";
-                                  const showRetainedValue = consumerState.code === "stale";
+                                  const showRetainedValue = consumerState.code === "stale" || consumerState.code === "updating";
                                   const showCurrentValue = consumerState.eligible || isInsufficient || showRetainedValue;
                                   const p = consumerState.eligible ? computeKpiProgress(kpi) : null;
                                   const t = getKpiEffectiveTarget(kpi);
@@ -8363,7 +8367,7 @@ export default function GA4Metrics() {
                                             Insufficient data: <span className="font-medium">{sufficiency.reason}</span>
                                           </div>
                                         ) : null}
-                                        {!consumerState.eligible && !isBlocked && !isInsufficient ? (
+                                        {!consumerState.eligible && consumerState.code !== "updating" && !isBlocked && !isInsufficient ? (
                                           <div className="mt-4 text-sm text-muted-foreground/70">
                                             {consumerState.detail} This KPI is not treated as a current breach or included in performance scoring.
                                           </div>
@@ -8949,7 +8953,7 @@ export default function GA4Metrics() {
                                   <div>
                                     <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
                                     <p className="text-2xl font-bold text-foreground">
-                                      {benchmarkTracker.avgPct.toFixed(1)}%
+                                      {benchmarkTracker.scored > 0 ? `${benchmarkTracker.avgPct.toFixed(1)}%` : "—"}
                                     </p>
                                   </div>
                                   <TrendingUp className="w-8 h-8 text-violet-600" />
@@ -8982,11 +8986,11 @@ export default function GA4Metrics() {
                             </div>
                           ) : null}
 
-                          {benchmarkTracker.unavailable + benchmarkTracker.stale + benchmarkTracker.pending > 0 ? (
+                          {benchmarkTracker.unavailable + benchmarkTracker.stale > 0 ? (
                             <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
                               <div className="font-semibold text-foreground">Some Benchmarks Are Not Freshly Verified</div>
                               <div className="text-sm text-foreground/80/60 mt-1">
-                                {benchmarkTracker.unavailable + benchmarkTracker.stale + benchmarkTracker.pending} benchmark{benchmarkTracker.unavailable + benchmarkTracker.stale + benchmarkTracker.pending === 1 ? "" : "s"} are unavailable, loading, or retained last-good values and are excluded from scoring and breach conclusions.
+                                {benchmarkTracker.unavailable + benchmarkTracker.stale} benchmark{benchmarkTracker.unavailable + benchmarkTracker.stale === 1 ? " is" : "s are"} unavailable or showing a previously loaded value and excluded from scoring.
                               </div>
                             </div>
                           ) : null}
@@ -8999,7 +9003,7 @@ export default function GA4Metrics() {
                                 const consumerState = getBenchmarkConsumerState(benchmark);
                                 const isBlocked = consumerState.code === "blocked";
                                 const isInsufficient = consumerState.code === "insufficient_data";
-                                const showCurrentValue = consumerState.eligible || isInsufficient || consumerState.code === "stale";
+                                const showCurrentValue = consumerState.eligible || isInsufficient || consumerState.code === "stale" || consumerState.code === "updating";
                                 const isHighlightedBenchmark = String(highlightedItemId || "") === String(benchmark.id || "");
                                 return (
                                 <Card
@@ -9141,6 +9145,7 @@ export default function GA4Metrics() {
 
                                     {/* Progress + Performance */}
                                     {(() => {
+                                      if (consumerState.code === "updating") return <div className="h-20" aria-hidden="true" />;
                                       if (isBlocked) {
                                         return (
                                           <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">

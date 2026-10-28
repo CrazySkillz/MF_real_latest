@@ -106,6 +106,14 @@ describe("GA4 publication in the rendered page", () => {
       await browserExpect(page.getByTestId("ga4-refresh-status")).toHaveText("GA4 refresh in progress");
       await browserExpect(page.getByText("2,977", { exact: true }).first()).toBeVisible();
       expect(dailyRequests()).toBe(initialDailyRequests);
+      await page.getByRole("tab", { name: "Benchmarks", exact: true }).click();
+      const benchmark = page.locator("#ga4-benchmark-b-a");
+      await browserExpect(benchmark).toContainText("2,977");
+      await browserExpect(benchmark).not.toContainText("failed to refresh");
+      await browserExpect(benchmark).toContainText("Updating");
+      await browserExpect(page.getByText("Some Benchmarks Are Not Freshly Verified", { exact: true })).toHaveCount(0);
+      await browserExpect(benchmark.getByText("Performance", { exact: true })).toHaveCount(0);
+      await page.getByRole("tab", { name: "Overview", exact: true }).click();
 
       incomplete = false; waitFinancial = new Promise(resolve => { releaseFinancial = resolve; });
       const beforePublicationRead = financialRequests;
@@ -113,7 +121,14 @@ describe("GA4 publication in the rendered page", () => {
       await browserExpect.poll(() => financialRequests).toBeGreaterThan(beforePublicationRead);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await browserExpect(page.getByText("€65,659.50", { exact: true }).first()).toBeVisible();
+      await page.getByRole("tab", { name: "Benchmarks", exact: true }).click();
+      await browserExpect(benchmark).toContainText("Updating");
+      await browserExpect(benchmark).not.toContainText("failed to refresh");
+      await browserExpect(page.getByText("Some Benchmarks Are Not Freshly Verified", { exact: true })).toHaveCount(0);
       releaseFinancial!(); waitFinancial = undefined;
+      await browserExpect(benchmark).not.toContainText("Updating");
+      await browserExpect(benchmark.getByText("Performance", { exact: true })).toBeVisible();
+      await page.getByRole("tab", { name: "Overview", exact: true }).click();
       await browserExpect(page.getByText("3,100", { exact: true }).first()).toBeVisible();
       await browserExpect(page.getByText("€68,000.00", { exact: true }).first()).toBeVisible();
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
@@ -123,9 +138,15 @@ describe("GA4 publication in the rendered page", () => {
       await page.clock.runFor(30_000);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("could not refresh");
       await browserExpect(page.getByText("3,100", { exact: true }).first()).toBeVisible();
+      await page.getByRole("tab", { name: "Benchmarks", exact: true }).click();
+      await browserExpect(benchmark).toContainText("Last-good");
+      await browserExpect(benchmark).not.toContainText("Updating");
+      await browserExpect(page.getByText("Some Benchmarks Are Not Freshly Verified", { exact: true })).toBeVisible();
+      await browserExpect(benchmark.getByText("Performance", { exact: true })).toHaveCount(0);
       failDaily = false;
       await page.clock.runFor(30_000);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      await browserExpect(benchmark.getByText("Performance", { exact: true })).toBeVisible();
 
       await page.getByRole("tab", { name: "KPIs", exact: true }).click();
       await browserExpect(page.locator("#ga4-kpi-k-a")).toContainText("3,100");

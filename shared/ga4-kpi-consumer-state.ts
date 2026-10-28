@@ -1,10 +1,11 @@
 import { resolveGA4KpiMetricIdentity } from "./ga4-kpi-metric-identity";
 
-export type GA4KpiInputState = "ready" | "loading" | "unavailable" | "stale";
+export type GA4KpiInputState = "ready" | "loading" | "updating" | "unavailable" | "stale";
 export type GA4KpiListState = "ready" | "loading" | "failed" | "stale";
 export type GA4KpiConsumerStateCode =
   | "verified"
   | "loading"
+  | "updating"
   | "failed"
   | "unavailable"
   | "stale"
@@ -103,10 +104,13 @@ export function resolveGA4KpiConsumerState(input: {
     return state("unavailable", "Unavailable", "A required source input could not be verified.");
   }
   if (requiredStates.includes("stale")) {
-    return state("stale", "Last-good — not verified", "A required source failed to refresh; the visible value is retained last-good data.");
+    return state("stale", "Last-good — not verified", "The latest source update could not be verified. Showing the previously loaded value.");
   }
   if (requiredStates.includes("loading")) {
     return state("loading", "Loading", "Required source inputs are still loading.");
+  }
+  if (requiredStates.includes("updating")) {
+    return state("updating", "Updating", "Checking the latest update. Scoring resumes automatically when verification finishes.");
   }
   const missing = input.missingDependencies || [];
   if (missing.length > 0) {

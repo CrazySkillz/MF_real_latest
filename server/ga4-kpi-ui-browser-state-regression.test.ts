@@ -43,6 +43,17 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(resolveGA4KpiConsumerState({ ...readyInputs, metric: "__custom__", trafficState: "unavailable", revenueState: "unavailable", spendState: "unavailable" }).eligible).toBe(true);
   });
 
+  it.each(["KPI", "Benchmark"] as const)("keeps a normal %s update unscored without claiming a failure", entityLabel => {
+    const updating = resolveGA4KpiConsumerState({ ...readyInputs, entityLabel, metric: "conversions", trafficState: "updating" });
+    expect(updating).toMatchObject({ code: "updating", eligible: false, label: "Updating" });
+    expect(updating.detail).not.toMatch(/failed|unavailable/);
+    expect(resolveGA4KpiConsumerState({ ...readyInputs, entityLabel, metric: "conversions" }).eligible).toBe(true);
+    expect(resolveGA4KpiConsumerState({ ...readyInputs, entityLabel, metric: "ROAS", revenueState: "updating", spendState: "stale" })).toMatchObject({ code: "stale", eligible: false });
+    expect(resolveGA4KpiConsumerState({ ...readyInputs, entityLabel, metric: "ROAS", revenueState: "updating", spendState: "unavailable" })).toMatchObject({ code: "unavailable", eligible: false });
+    expect(resolveGA4KpiConsumerState({ ...readyInputs, entityLabel, metric: "conversions", listState: "stale", trafficState: "updating" })).toMatchObject({ code: "stale", eligible: false });
+    expect(resolveGA4KpiConsumerState({ ...readyInputs, entityLabel, metric: "conversions", revenueState: "updating" }).eligible).toBe(true);
+  });
+
   it("states the exact standard reporting windows, including legacy aliases", () => {
     expect(getGA4KpiReportingWindowLabel("totalSessions")).toBe("Initial import through latest completed reporting day");
     expect(getGA4KpiReportingWindowLabel("Engagement Rate")).toBe("Initial import through latest completed reporting day");

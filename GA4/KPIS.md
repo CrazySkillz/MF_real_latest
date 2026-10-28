@@ -4,6 +4,8 @@
 
 This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, gating, alerts, and refresh behavior.
 
+Normal background verification retains the current card value with a quiet `Updating` badge. It is distinct from a failed or overdue refresh and remains excluded from scoring until verified. This shares the October 28 Benchmark correction documented in `../docs/fixes/v1-batch-8/benchmark-refresh-state-2026-10-28.md`; it does not recertify whole-tab readiness.
+
 ## Production Readiness Status
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->

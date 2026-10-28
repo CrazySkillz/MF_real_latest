@@ -124,6 +124,8 @@ Executive snapshot meaning:
 - `Avg. Progress`
   Average bounded progress across scorable benchmarks only.
 
+Normal background verification uses a quiet `Updating` state with the current value retained, rather than a source-failure warning. Updating values remain excluded from scoring until verification succeeds; actual failed or overdue checks remain unverified. When no Benchmark is scorable, the web tracker shows `—` for average progress. The October 28 correction and its validation limits are recorded in `../docs/fixes/v1-batch-8/benchmark-refresh-state-2026-10-28.md`.
+
 Metric-specific examples:
 
 - count benchmark: `Conversions` benchmark `10`, current `9` is `On Track`; benchmark `1`, current `0` is `Behind`

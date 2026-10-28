@@ -1,0 +1,64 @@
+﻿{
+    "at":  "2026-10-28T19:08:13.116Z",
+    "readOnly":  true,
+    "campaign":  "Promo",
+    "scope":  {
+                  "name":  "Promo",
+                  "reporting_time_zone":  "Europe/Amsterdam",
+                  "ga4_campaign_filter":  "[\"yesop_brand_search\",\"yesop_retargeting\"]",
+                  "property_id":  "542352127",
+                  "import_start_date":  "2026-09-04",
+                  "completed_day":  "2026-10-27"
+              },
+    "daily":  [
+                  {
+                      "rows":  54,
+                      "first_date":  "2026-09-04",
+                      "last_date":  "2026-10-27",
+                      "oldest_update":  "2026-10-27T23:15:03.988Z",
+                      "latest_update":  "2026-10-28T19:05:46.370Z",
+                      "conversions":  329,
+                      "sessions":  "3554"
+                  }
+              ],
+    "dailyWork":  [
+                      {
+                          "status":  "completed",
+                          "due_at":  "2026-10-28T19:00:00.000Z",
+                          "started_at":  "2026-10-28T19:04:27.688Z",
+                          "completed_at":  "2026-10-28T19:06:57.268Z",
+                          "attempt_count":  1,
+                          "last_error":  null,
+                          "invalidated":  false
+                      },
+                      {
+                          "status":  "completed",
+                          "due_at":  "2026-10-28T13:00:00.000Z",
+                          "started_at":  "2026-10-28T13:04:29.384Z",
+                          "completed_at":  "2026-10-28T13:06:58.766Z",
+                          "attempt_count":  1,
+                          "last_error":  null,
+                          "invalidated":  true
+                      },
+                      {
+                          "status":  "completed",
+                          "due_at":  "2026-10-28T07:00:00.000Z",
+                          "started_at":  "2026-10-28T07:05:19.615Z",
+                          "completed_at":  "2026-10-28T07:08:03.041Z",
+                          "attempt_count":  1,
+                          "last_error":  null,
+                          "invalidated":  true
+                      }
+                  ],
+    "benchmarks":  [
+                       {
+                           "name":  "Total Conversions",
+                           "metric":  "conversions",
+                           "current_value":  "329",
+                           "benchmark_value":  "500.00",
+                           "status":  "active",
+                           "last_updated":  "2026-10-27T22:59:11.009Z",
+                           "updated_at":  "2026-10-28T19:06:04.245Z"
+                       }
+                   ]
+}

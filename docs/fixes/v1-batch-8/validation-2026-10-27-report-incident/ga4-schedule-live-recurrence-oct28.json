@@ -1,0 +1,74 @@
+{
+  "startedAt": "2026-10-28T20:28:07.292Z",
+  "campaign": "Promo",
+  "baselineCommit": "07ff822c790a51a50b90290b4ea205e5383a2ca6",
+  "applicationRequests": "GET only",
+  "database": "Owner-checked reads in read-only transactions",
+  "diagnosticSessionRevoked": true,
+  "observations": [
+    {
+      "at": "2026-10-28T20:28:13.778Z",
+      "http": 200,
+      "refreshStatus": "current",
+      "publication": [
+        "2026-10-27",
+        "2026-10-28T20:14:10.533Z",
+        "0960d5c266d5a7b11eadaa7b96e6b4f7"
+      ],
+      "work": []
+    },
+    {
+      "at": "2026-10-28T20:32:41.988Z",
+      "http": 200,
+      "refreshStatus": "current",
+      "publication": [
+        "2026-10-27",
+        "2026-10-28T20:14:10.533Z",
+        "03cde2d83b690059cfc9f1416d3a5497"
+      ],
+      "work": []
+    },
+    {
+      "at": "2026-10-28T20:37:45.135Z",
+      "http": 200,
+      "refreshStatus": "current",
+      "publication": [
+        "2026-10-27",
+        "2026-10-28T20:14:10.533Z",
+        "a8bd75c0a2432d76fc87824f80e9e41b"
+      ],
+      "work": []
+    },
+    {
+      "at": "2026-10-28T20:42:32.517Z",
+      "http": 200,
+      "refreshStatus": "delayed",
+      "publication": null,
+      "work": []
+    },
+    {
+      "at": "2026-10-28T20:44:34.188Z",
+      "http": 200,
+      "refreshStatus": "current",
+      "publication": [
+        "2026-10-27",
+        "2026-10-28T20:44:16.811Z",
+        "2a661d93ae037130c735467c5ace3d90"
+      ],
+      "work": [
+        {
+          "status": "completed",
+          "reporting_date": "2026-10-27",
+          "due_at": "2026-10-28T20:42:33.364Z",
+          "started_at": "2026-10-28T20:43:01.233Z",
+          "completed_at": "2026-10-28T20:44:16.811Z",
+          "lease_expires_at": null,
+          "attempt_count": 1,
+          "retryable": true,
+          "last_error": null,
+          "kind": "revenue_change"
+        }
+      ]
+    }
+  ]
+}

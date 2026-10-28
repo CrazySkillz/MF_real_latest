@@ -892,6 +892,7 @@ export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
           const mappingConfig = safeJsonParse(source?.mappingConfig);
           if (!mappingConfig?.connectionId || !mappingConfig?.spendColumn) continue;
           mappingConfig.platformContext = String(mappingConfig?.platformContext || source?.platformContext || "ga4").trim().toLowerCase();
+          if (mappingConfig.platformContext === "ga4" && String(process.env.GA4_DAILY_PIPELINE_OWNS_REFRESH || "true").toLowerCase() === "true") continue;
           await reprocessGoogleSheetsSpend(campaignId, source, mappingConfig);
         }
       } catch (e: any) {
@@ -904,6 +905,7 @@ export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
 }
 
 export async function runGoogleSheetsRevenueAutoRefreshOnce(): Promise<void> {
+  if (String(process.env.GA4_DAILY_PIPELINE_OWNS_REFRESH || "true").toLowerCase() === "true") return;
   if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress || (global as any).__ga4DailyRefreshInProgress) {
     console.log("[Google Sheets Revenue Refresh] Skipping run (refresh already in progress)");
     return;
@@ -939,6 +941,7 @@ export async function runGoogleSheetsRevenueAutoRefreshOnce(): Promise<void> {
 }
 
 export async function runHubSpotPipelineAutoRefreshOnce(): Promise<void> {
+  if (String(process.env.GA4_DAILY_PIPELINE_OWNS_REFRESH || "true").toLowerCase() === "true") return;
   if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress || (global as any).__ga4DailyRefreshInProgress) {
     console.log("[HubSpot Pipeline Refresh] Skipping run (refresh already in progress)");
     return;
@@ -979,6 +982,7 @@ export async function runHubSpotPipelineAutoRefreshOnce(): Promise<void> {
 }
 
 export async function runSalesforcePipelineAutoRefreshOnce(): Promise<void> {
+  if (String(process.env.GA4_DAILY_PIPELINE_OWNS_REFRESH || "true").toLowerCase() === "true") return;
   if ((global as any).__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress || (global as any).__ga4DailyRefreshInProgress) {
     console.log("[Salesforce Pipeline Refresh] Skipping run (refresh already in progress)");
     return;
@@ -1534,8 +1538,8 @@ export async function runDailyAutoRefreshOnce(
  * Defaults:
  * - Enabled by default (AUTO_REFRESH_ENABLED=true unless explicitly set to "false")
  * - Runs daily at 3:00 AM in AUTO_REFRESH_TIME_ZONE or GA4_DAILY_REFRESH_TIME_ZONE, default UTC
- * - Polls active Google Sheets spend and GA4 revenue sources every minute by default
- * - Polls active GA4 Salesforce and HubSpot Pipeline sources every 5 minutes by default
+ * - Keeps the non-GA4 Google Sheets spend interval
+ * - GA4 financial intervals run only when the ordered GA4 pipeline does not own refreshes
  * - Optional: run once on startup if AUTO_REFRESH_RUN_ON_STARTUP=true
  */
 export function startDailyAutoRefreshScheduler(): void {
@@ -1555,8 +1559,8 @@ export function startDailyAutoRefreshScheduler(): void {
   console.log("\n🔁 Daily Auto-Refresh + Auto-Process Scheduler Started");
   console.log(`   Enabled: ${config.enabled}`);
   console.log(`   Scheduled time: ${config.hour.toString().padStart(2, "0")}:${config.minute.toString().padStart(2, "0")} (${config.reportingTimeZone})`);
-  console.log(`   Google Sheets financial interval: ${config.googleSheetsSpendIntervalMinutes} minute(s)`);
-  console.log(`   Salesforce + HubSpot Pipeline interval: ${config.salesforcePipelineIntervalMinutes} minute(s)`);
+  console.log(`   ${ga4DailyPipelineOwnsRefresh ? "Non-GA4 Google Sheets spend" : "Google Sheets financial"} interval: ${config.googleSheetsSpendIntervalMinutes} minute(s)`);
+  console.log(ga4DailyPipelineOwnsRefresh ? "   GA4 financial sources follow the ordered GA4 schedule" : `   Salesforce + HubSpot Pipeline interval: ${config.salesforcePipelineIntervalMinutes} minute(s)`);
 
   autoRefreshSchedulerStatus.startedAt = new Date();
   const googleSheetsSpendIntervalMs = config.googleSheetsSpendIntervalMinutes * 60 * 1000;
@@ -1576,7 +1580,7 @@ export function startDailyAutoRefreshScheduler(): void {
       .then(() => runHubSpotPipelineAutoRefreshOnce())
       .catch((e: any) => console.error("[HubSpot Pipeline Refresh] Interval run failed:", e?.message || e));
   };
-  (global as any).__salesforcePipelineRefreshSchedulerInterval = setInterval(runSalesforcePipelineRefresh, salesforcePipelineIntervalMs);
+  if (!ga4DailyPipelineOwnsRefresh) (global as any).__salesforcePipelineRefreshSchedulerInterval = setInterval(runSalesforcePipelineRefresh, salesforcePipelineIntervalMs);
 
   const scheduleNextRun = () => {
     const nextRun = getNextAutoRefreshRunAt(new Date(), config);

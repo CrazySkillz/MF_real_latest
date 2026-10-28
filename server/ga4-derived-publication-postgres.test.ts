@@ -347,9 +347,10 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
   });
   it.each(writers)("rejects ordinary %s across repeated edits after work invalidation", async kind => {
     await claim();
-    await storage.updateCampaign("a", { name: "first edit" });
+    // Name-only edits intentionally preserve valid work; exercise an analytics input.
+    await storage.updateCampaign("a", { ga4CampaignFilter: "other" });
     const version = await storage.getGA4PublicationVersion("a");
-    await storage.updateCampaign("a", { name: "second edit" });
+    await storage.updateCampaign("a", { ga4CampaignFilter: "sale" });
     const before = await saved();
     await expect(ordinaryWrite(kind, version)).rejects.toThrow("GA4_REFRESH_PUBLICATION_CHANGED");
     expect(await saved()).toEqual(before);

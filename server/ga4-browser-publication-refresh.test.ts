@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getExpectedScheduledRefreshAt, getReportingDateWindow, resolveGA4RefreshStatus } from "./utils/reporting-timezone";
+import { getExpectedScheduledRefreshAt, getReportingDateWindow, resolveGA4RefreshStatus, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 
 // Exercise the installed query observer's browser timers, with no DOM/provider/server.
 vi.hoisted(() => { (globalThis as any).window = {}; });
@@ -33,6 +33,7 @@ async function statusRoute(overrides: Record<string, any> = {}, query: any = {})
     ensureCampaignAccess: vi.fn(async () => ({ id: "a", ownerId: "owner-a", reportingTimeZone: "Europe/Amsterdam" })),
     storage, getReportingDateWindow, getExpectedScheduledRefreshAt, resolveGA4RefreshStatus,
     getGA4DailySchedulerConfig: () => ({ reportingTimeZone: "Europe/Amsterdam", hour: 8, hours: [8, 14, 20], minute: 0 }),
+    getNextGA4DailyRunAt: compile(scheduler.slice(scheduler.indexOf("const getZonedParts ="), scheduler.indexOf("const formatSchedulerLocalTime =")).replaceAll("export ", "") + "return getNextGA4DailyRunAt;", { normalizeReportingTimeZone }),
     getGA4DailyRefreshAttempt: () => null,
     parseGA4AlignedRefreshMarker: compile(scheduler.slice(scheduler.indexOf("export function parseGA4AlignedRefreshMarker"), scheduler.indexOf("export async function getGA4AlignedRefreshState")).replace("export ", "") + "return parseGA4AlignedRefreshMarker;", { GA4_ALIGNED_REFRESH_MARKER_PREFIX: "ga4_aligned_refresh_v1:" }),
     isYesopMockProperty: (id: string) => id === "yesop",
@@ -76,6 +77,7 @@ describe("GA4 lightweight publication status", () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toMatchObject({ success: true, campaignId: "a", propertyId: "123" });
     expect(JSON.parse(response.body.publicationToken)).toEqual(["2026-10-17", "2026-10-18T12:10:00.000Z", "v1"]);
+    expect(response.body.nextCheckAt).toBe("2026-10-18T18:00:00.000Z");
     expect(bindings.storage.getGA4PublicationVersion).toHaveBeenCalledTimes(2);
     expect(bindings.storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("a", "2026-10-17", "2026-10-17");
     expect(response.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
@@ -85,6 +87,17 @@ describe("GA4 lightweight publication status", () => {
     const { bindings, response } = await statusRoute({ ensureCampaignAccess: async () => null });
     expect(bindings.storage.getGA4Connection).not.toHaveBeenCalled();
     expect(response.body).toBeUndefined();
+  });
+  it.each([
+    ["2026-10-28T06:59:55Z", "2026-10-28T07:00:00.000Z"],
+    ["2026-10-28T07:00:01Z", "2026-10-28T13:00:00.000Z"],
+    ["2026-10-28T13:00:01Z", "2026-10-28T19:00:00.000Z"],
+    ["2026-10-24T18:00:01Z", "2026-10-25T07:00:00.000Z"],
+    ["2026-03-28T19:00:01Z", "2026-03-29T06:00:00.000Z"],
+  ])("uses the configured local schedule across midnight/DST: %s", async (now, expected) => {
+    vi.setSystemTime(new Date(now));
+    const { response } = await statusRoute({ parseGA4AlignedRefreshMarker: () => ({ reportingDate: "fixture", completedAt: now }) });
+    expect(response.body.nextCheckAt).toBe(expected);
   });
   it.each([null, { campaignId: "other", method: "access_token" }, { campaignId: "a", isActive: false, method: "access_token" }, { campaignId: "a", method: "unknown" }])("rejects missing/ineligible property connections: %j", async connection => {
     const { response } = await statusRoute({ storage: { getGA4Connection: async () => connection } });
@@ -113,11 +126,28 @@ describe("GA4 lightweight publication status", () => {
     } });
     expect(response.body).toMatchObject({ publicationToken: null, refreshStatus: "delayed" });
   });
+  it.each([true, false])("uses durable publication activity when no native fetch attempt exists: %s", async publicationInProgress => {
+    const { response } = await statusRoute({ storage: {
+      getGA4Connection: async () => ({ campaignId: "a", method: "access_token" }),
+      getGA4PublicationVersion: async () => { throw Object.assign(new Error("GA4_REFRESH_PUBLICATION_BUSY"), { publicationInProgress }); },
+    } });
+    expect(response.body).toMatchObject({ publicationToken: null, refreshStatus: publicationInProgress ? "running" : "delayed" });
+    expect(response.body.nextCheckAt).toBe("2026-10-18T12:21:00.000Z");
+  });
   it("returns a failed read instead of treating database failure as no new publication", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { response } = await statusRoute({ parseGA4AlignedRefreshMarker: () => { throw new Error("database unavailable"); } });
     expect(response.statusCode).toBe(500);
     expect(response.body.success).toBe(false);
+  });
+  it.each([true, false])("follows retryable saved work before the first scheduled run: %s", async publicationRetryable => {
+    vi.setSystemTime(new Date("2026-10-18T05:00:00Z"));
+    const { response } = await statusRoute({ storage: {
+      getGA4Connection: async () => ({ campaignId: "a", method: "access_token" }),
+      getGA4PublicationVersion: async () => { throw Object.assign(new Error("GA4_REFRESH_PUBLICATION_BUSY"), { publicationRetryable }); },
+    } });
+    expect(response.body.publicationToken).toBeNull();
+    expect(response.body.nextCheckAt).toBe(publicationRetryable ? "2026-10-18T05:01:00.000Z" : "2026-10-18T06:00:00.000Z");
   });
   it.each(["", "ga4_aligned_refresh_v1:2026-10-16:2026-10-18T12:10:00Z", "ga4_aligned_refresh_v1:2026-10-17:invalid"])("rejects absent/wrong-day/malformed markers: %s", async notes => {
     const { response } = await statusRoute({ storage: {
@@ -147,7 +177,8 @@ describe("GA4 browser publication coordination", () => {
     const view = browser(); const { isGA4PublicationQuery: selected } = view.render();
     const yes = [
       ["/api/campaigns", "a", "ga4-daily", 30, "123"], ["/api/campaigns", "a", "ga4-insights-daily", 60, "123"],
-      ...["ga4-breakdown", "ga4-ad-comparison-breakdown", "ga4-landing-pages", "ga4-conversion-events"].map(name => ["/api/campaigns", "a", name, "import-to-date", "123"]),
+      ...["ga4-breakdown", "ga4-ad-comparison-breakdown", "ga4-landing-pages", "ga4-conversion-events", "ga4-geographic"].map(name => ["/api/campaigns", "a", name, "import-to-date", "123"]),
+      ["/api/hubspot", "a", "pipeline-proxy"], ["/api/salesforce", "a", "pipeline-proxy"],
       ["/api/campaigns", "a", "financial-daily-snapshot", "2026-10-17"], ["/api/campaigns/a/ga4-to-date", "123"],
       ...["kpis", "benchmarks", "reports"].map(name => [`/api/platforms/google_analytics/${name}`, "a"]),
       ["/api/kpis", "k-a", "analytics", "30d", "123"], ["/api/benchmarks", "b-a", "analytics", "123"],
@@ -159,6 +190,7 @@ describe("GA4 browser publication coordination", () => {
       ["/api/platforms/google_analytics/kpis", "other"], ["/api/platforms/linkedin/kpis", "a"],
       ["/api/kpis", "other", "analytics", "30d", "123"], ["/api/benchmarks", "b-a", "analytics", "999"],
       ["/api/campaigns/ab/revenue-sources"], ["/api/campaigns/a/spend-breakdown?platformContext=linkedin"], ["/api/notifications"],
+      ["/api/hubspot", "other", "pipeline-proxy"], ["/api/salesforce", "a", "connection"],
     ];
     yes.forEach(queryKey => expect(selected({ queryKey }), JSON.stringify(queryKey)).toBe(true));
     no.forEach(queryKey => expect(selected({ queryKey }), JSON.stringify(queryKey)).toBe(false));
@@ -345,6 +377,8 @@ describe("GA4 browser publication coordination", () => {
   it.each([
     ["/api/campaigns", "a", "ga4-landing-pages", "import-to-date", "123"],
     ["/api/campaigns", "a", "ga4-conversion-events", "import-to-date", "123"],
+    ["/api/campaigns", "a", "ga4-geographic", "import-to-date", "123"],
+    ["/api/hubspot", "a", "pipeline-proxy"], ["/api/salesforce", "a", "pipeline-proxy"],
     ["/api/platforms/google_analytics/reports", "a"],
   ])("does not block financial publication on %j and retries its failure independently", async (...key) => {
     const view = browser(), response = deferred();
@@ -376,39 +410,95 @@ describe("GA4 browser publication coordination", () => {
     expect(placeholder({ snapshot: { campaignId: "other" } }, { queryKey: ["/api/campaigns", "a"] })).toBeUndefined();
     expect(placeholder({ snapshot: { ...previous.snapshot, metrics: { financialDaily: { currency: "USD" } } } }, { queryKey: ["/api/campaigns", "a"] })).toBeUndefined();
   });
-  it("disables independent saved-data timers when status checks work, retaining fallback intervals on failure", () => {
+  it("keeps idle metric queries off timers, with only scheduled status and pending-import follow-up", () => {
     const tree = ts.createSourceFile("page.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     let checked = 0;
     const visit = (node: ts.Node) => {
-      if (ts.isPropertyAssignment(node) && node.name.getText(tree) === "refetchInterval" && node.initializer.getText(tree).includes("ga4PublicationStatus")) {
+      if (ts.isPropertyAssignment(node) && node.name.getText(tree) === "refetchInterval") {
         const expression = node.initializer.getText(tree);
-        const interval = (status: any, error: boolean, activeTab = "overview") => compile("return " + expression, { ga4PublicationStatus: status, ga4PublicationStatusError: error, activeTab });
-        expect(interval({ publicationToken: "p1" }, false)).toBe(false);
-        expect([300_000, 600_000]).toContain(interval(undefined, false));
-        expect([300_000, 600_000]).toContain(interval({ publicationToken: "p1" }, true));
-        if (expression.includes("activeTab")) expect(interval({ publicationToken: "p1" }, false, "insights")).toBe(600_000);
+        if (expression !== "false") expect(expression.includes("nextCheckAt") || expression.includes("getImportedRevenueRefetchInterval")).toBe(true);
         checked++;
       }
       if (ts.isPropertyAssignment(node) && node.name.getText(tree) === "refetchIntervalInBackground") expect(node.initializer.getText(tree)).toBe("false");
       ts.forEachChild(node, visit);
     };
-    visit(tree); expect(checked).toBe(6);
+    visit(tree); expect(checked).toBe(20);
     const financialQuery = page.slice(page.indexOf("data: financialDailySnapshotResp"), page.indexOf("const ga4Metrics = useMemo"));
-    expect(financialQuery).toContain("refetchInterval: 10 * 60 * 1000");
-    expect(financialQuery).toContain("refetchOnWindowFocus: true");
+    expect(financialQuery).toContain("refetchInterval: false");
+    expect(financialQuery).toContain("refetchOnWindowFocus: false");
     const toDateQuery = page.slice(page.indexOf("data: ga4ToDateResp"), page.indexOf("const dailySummedTotals"));
-    expect(toDateQuery).toContain("refetchInterval: 10 * 60 * 1000");
-    expect(toDateQuery).toContain("refetchOnWindowFocus: true");
+    expect(toDateQuery).toContain("refetchInterval: false");
+    expect(toDateQuery).toContain("refetchOnWindowFocus: false");
   });
-  it("polls once per 30 seconds in the foreground and pauses hidden polling", async () => {
+  it("follows pending saved imports only until publication, not idle/failed/future-dated sources", () => {
+    const start = page.indexOf("  const getImportedRevenueRefetchInterval =");
+    const end = page.indexOf("  const { data: importedRevenueToDateResp", start);
+    const interval = compile(page.slice(start, end) + "return getImportedRevenueRefetchInterval;", {
+      queryClient: { getQueryData: () => undefined }, campaignId: "a",
+    });
+    expect(interval({ sources: [{ publicationStatus: "pending" }] })).toBe(60_000);
+    for (const source of [undefined, { publicationStatus: "published" }, { publicationStatus: "failed" }, { publicationStatus: "pending", pendingCompletedDay: true }]) {
+      expect(interval({ sources: source ? [source] : [] })).toBe(false);
+    }
+  });
+  it.each([
+    ["spend save", "AddSpendWizardModal", "onProcessed"],
+    ["revenue save", "AddRevenueWizardModal", "onSuccess"],
+    ["spend removal", "Failed to remove spend source", "onClick"],
+    ["revenue removal", "Failed to remove revenue source", "onClick"],
+    ["proxy removal", "Failed to remove Pipeline Proxy", "onClick"],
+    ["HubSpot item removal", "removeHubSpotRevenueItem", "variable"],
+    ["Salesforce item removal", "removeSalesforceRevenueItem", "variable"],
+  ])("checks publication after an explicit %s without an idle polling timer", async (_label, marker, attribute) => {
+    const tree = ts.createSourceFile("page.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    let callback = "";
+    const visit = (node: ts.Node) => {
+      if (attribute === "variable" && ts.isVariableDeclaration(node) && node.name.getText(tree) === marker) callback = node.initializer!.getText(tree);
+      if (ts.isJsxAttribute(node) && node.name.getText(tree) === attribute && node.initializer && ts.isJsxExpression(node.initializer)) {
+        const expression = node.initializer.expression?.getText(tree) || "";
+        if (attribute === "onClick" ? expression.includes(marker) : node.parent.parent.getText(tree).startsWith(`<${marker}`)) callback = expression;
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(tree); expect(callback).not.toBe("");
+    for (const ok of attribute === "onClick" || attribute === "variable" ? [true, false] : [true]) {
+      const refresh = vi.fn(async () => ({}));
+      const request = vi.fn(async (_url: string, _options: any) => ({ ok, status: ok ? 200 : 503, json: async () => ({ success: ok }) }));
+      const item = { source: { id: "source-a", mappingConfig: JSON.stringify({ selectedValues: ["Deal"] }) }, campaignValue: "Deal" };
+      const noop = vi.fn();
+      const toast = vi.fn();
+      const callbackFn = compile(`return (${callback});`, {
+        campaignId: "a", queryClient: { invalidateQueries: vi.fn(async () => {}), refetchQueries: vi.fn(async () => {}) },
+        refetchGA4PublicationStatus: refresh, refreshNotificationQueries: noop, fetch: request, toast, console: { error: noop },
+        deletingSpendSourceId: "spend-a", deletingRevenueSourceId: "source-a", deletingHubSpotRevenueItem: item, deletingSalesforceRevenueItem: item,
+        deletingPipelineProxySource: { sourceId: "source-a", sourceType: "hubspot", providerLabel: "HubSpot" },
+        setDeletingSpendSourceId: noop, setDeletingRevenueSourceId: noop, setDeletingPipelineProxySource: noop, setDeletingPipelineProxySourcePending: noop,
+        setDeletingHubSpotRevenueItemPending: noop, setDeletingHubSpotRevenueItem: noop, setDeletingSalesforceRevenueItemPending: noop, setDeletingSalesforceRevenueItem: noop,
+      });
+      await callbackFn({ preventDefault: noop });
+      if (ok) await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+      else { await vi.waitFor(() => expect(toast).toHaveBeenCalled()); expect(refresh).not.toHaveBeenCalled(); }
+      if (request.mock.calls.length) expect(request.mock.calls[0][0]).toContain("/api/campaigns/a/");
+    }
+  });
+  it("waits until the scheduler's next check, follows active work once per minute, and pauses while hidden", async () => {
     vi.useFakeTimers(); focusManager.setFocused(true);
     const view = browser(); const options = view.render().queryOptions;
-    const fetchData = vi.fn(async () => ({ publicationToken: "p1" }));
+    view.client.mount();
+    let running = false;
+    const fetchData = vi.fn(async () => ({ publicationToken: running ? null : "p1", nextCheckAt: new Date(Date.now() + (running ? 60_000 : 6 * 60 * 60 * 1000)).toISOString() }));
     const observer = new QueryObserver(view.client, { ...options, queryFn: fetchData }); const stop = observer.subscribe(() => {});
     try {
-      await vi.advanceTimersByTimeAsync(90_000); expect(fetchData).toHaveBeenCalledTimes(4);
-      focusManager.setFocused(false); await vi.advanceTimersByTimeAsync(300_000); expect(fetchData).toHaveBeenCalledTimes(4);
-      focusManager.setFocused(true); await vi.advanceTimersByTimeAsync(30_000); expect(fetchData).toHaveBeenCalledTimes(5);
-    } finally { stop(); view.client.clear(); }
+      await vi.advanceTimersByTimeAsync(15 * 60_000); expect(fetchData).toHaveBeenCalledTimes(1);
+      running = true;
+      await vi.advanceTimersByTimeAsync((6 * 60 - 15) * 60_000); expect(fetchData).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(30_000); expect(fetchData).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(30_000); expect(fetchData).toHaveBeenCalledTimes(3);
+      running = false;
+      await vi.advanceTimersByTimeAsync(60_000); expect(fetchData).toHaveBeenCalledTimes(4);
+      await vi.advanceTimersByTimeAsync(15 * 60_000); expect(fetchData).toHaveBeenCalledTimes(4);
+      focusManager.setFocused(false); await vi.advanceTimersByTimeAsync(6 * 60 * 60_000); expect(fetchData).toHaveBeenCalledTimes(4);
+      focusManager.setFocused(true); await vi.advanceTimersByTimeAsync(1); expect(fetchData).toHaveBeenCalledTimes(5);
+    } finally { stop(); view.client.unmount(); view.client.clear(); }
   });
 });

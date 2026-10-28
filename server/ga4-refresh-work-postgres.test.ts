@@ -101,6 +101,26 @@ describe.skipIf(!testUrl)("durable GA4 work with real PostgreSQL", () => {
     const columns = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name='ga4_refresh_work'", [schemaName]);
     expect(columns.rows.map(r => r.column_name).sort()).toEqual(Object.values(getTableColumns(schema.ga4RefreshWork)).map(c => c.name).sort());
   });
+  it("reports only a live campaign lease as publication activity, without allowing reads of unfinished output", async () => {
+    const work = (await ensure())!;
+    const busy = (publicationInProgress: boolean) => expect(storage.getGA4PublicationVersion("a")).rejects.toMatchObject({
+      message: "GA4_REFRESH_PUBLICATION_BUSY", publicationInProgress,
+    });
+    await busy(false); // Queued work has no active worker yet.
+    const running = (await claim(work.id))!;
+    await busy(true);
+    await expect(new DatabaseStorage().getGA4PublicationVersion("a")).rejects.toMatchObject({ publicationInProgress: true });
+    await expect(storage.getGA4PublicationVersion("b")).resolves.toBeNull();
+    await expire(work.id); await busy(false);
+    const reclaimed = (await claim(work.id))!;
+    await busy(true);
+    await change(reclaimed, "release"); await busy(false);
+    await pool.query("UPDATE ga4_refresh_work SET status='completed',completed_at=clock_timestamp() WHERE id=$1", [work.id]);
+    await expect(storage.getGA4PublicationVersion("a")).resolves.toEqual(expect.any(String));
+    await pool.query("UPDATE ga4_refresh_work SET status='running',completed_at=NULL,lease_token='fixture',scope_hash='invalidated:'||id,lease_expires_at=clock_timestamp()+interval '1 minute' WHERE id=$1", [work.id]);
+    await expect(storage.getGA4PublicationVersion("a")).resolves.toEqual(expect.any(String));
+    expect(running.leaseToken).not.toBe(reclaimed.leaseToken);
+  });
   it.each(["same slot", "different slots"])("allows only one concurrent owner across %s", async kind => {
     const first = (await ensure())!;
     const second = kind === "same slot" ? first : (await ensure("a", new Date(dueAt.getTime() + 1000)))!;

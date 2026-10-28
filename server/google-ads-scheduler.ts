@@ -444,6 +444,7 @@ export function stopGoogleAdsScheduler(): void {
 export async function refreshAllGoogleAdsMetrics(
   opts?: { advanceDay?: boolean }
 ): Promise<{ attempted: number; succeeded: number; failedCampaignIds: string[] }> {
+  const ga4DailyPipelineOwnsRefresh = String(process.env.GA4_DAILY_PIPELINE_OWNS_REFRESH || "true").toLowerCase() === "true";
   let connections: any[] = [];
   let spendConnections: Array<{ campaignId: string }> = [];
   try {
@@ -453,7 +454,7 @@ export async function refreshAllGoogleAdsMetrics(
   }
   let spendInventoryError: any = null;
   try {
-    spendConnections = await db.select({ campaignId: ga4GoogleAdsSpendConnections.campaignId }).from(ga4GoogleAdsSpendConnections);
+    if (!ga4DailyPipelineOwnsRefresh) spendConnections = await db.select({ campaignId: ga4GoogleAdsSpendConnections.campaignId }).from(ga4GoogleAdsSpendConnections);
   } catch (error: any) {
     spendInventoryError = error;
   }
@@ -461,7 +462,7 @@ export async function refreshAllGoogleAdsMetrics(
   let succeeded = 0;
   const failedCampaignIds: string[] = [];
   const dedicatedCampaignIds = new Set(spendConnections.map((connection) => connection.campaignId));
-  const mainConnections = connections.filter((connection) => !connection.spendOnly || !dedicatedCampaignIds.has(connection.campaignId));
+  const mainConnections = connections.filter((connection) => !connection.spendOnly || (!ga4DailyPipelineOwnsRefresh && !dedicatedCampaignIds.has(connection.campaignId)));
   for (const conn of mainConnections) {
     try {
       // Reload through storage so encrypted provider credentials are hydrated before refresh.

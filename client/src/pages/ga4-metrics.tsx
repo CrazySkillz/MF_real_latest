@@ -1666,7 +1666,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(`/api/ga4/check-connection/${campaignId}${insightsValidationReadOnly ? "?readOnly=1" : ""}`);
@@ -1683,7 +1683,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-connections${insightsValidationReadOnly ? "?readOnly=1" : ""}`);
@@ -1864,10 +1864,18 @@ export default function GA4Metrics() {
   const benchmarkAnalyticsFailed = benchmarkAnalyticsQueries.some((query: any) => query?.isError);
 
   const ga4PublicationScope = JSON.stringify([campaignId, selectedGA4PropertyId]);
+  const ga4PublicationReceipt = useRef({ scope: "", token: "", pending: false });
+  const [ga4PublicationSync, setGA4PublicationSync] = useState({ scope: "", pending: false, failed: false });
   const { data: ga4PublicationStatus, dataUpdatedAt: ga4PublicationCheckedAt, isError: ga4PublicationStatusError, refetch: refetchGA4PublicationStatus } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-publication-status", selectedGA4PropertyId],
     enabled: !!campaignId && ga4ConnectionUsable && /^\d+$/.test(selectedGA4PropertyId),
-    staleTime: 0, refetchInterval: 30_000, refetchIntervalInBackground: false,
+    staleTime: 0,
+    refetchInterval: query => {
+      if (query.state.status === "error" || ga4PublicationSync.scope === ga4PublicationScope && ga4PublicationSync.failed) return 60_000;
+      const nextCheckAt = Date.parse(query.state.data?.nextCheckAt || "");
+      return Number.isFinite(nextCheckAt) ? (nextCheckAt > Date.now() ? nextCheckAt - Date.now() : 60_000) : false;
+    },
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true, refetchOnReconnect: true,
     queryFn: async ({ signal }) => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-daily?statusOnly=1&propertyId=${encodeURIComponent(selectedGA4PropertyId)}`, { signal, cache: "no-store" });
@@ -1881,26 +1889,26 @@ export default function GA4Metrics() {
   const isGA4PublicationQuery = ({ queryKey: key }: { queryKey: readonly unknown[] }) => {
     if (key[0] === "/api/campaigns" && key[1] === campaignId) {
       if (key[2] === "financial-daily-snapshot") return true;
-      return ["ga4-daily", "ga4-insights-daily", "ga4-breakdown", "ga4-ad-comparison-breakdown", "ga4-landing-pages", "ga4-conversion-events"].includes(String(key[2]))
+      return ["ga4-daily", "ga4-insights-daily", "ga4-breakdown", "ga4-ad-comparison-breakdown", "ga4-landing-pages", "ga4-conversion-events", "ga4-geographic"].includes(String(key[2]))
         && key[4] === selectedGA4PropertyId;
     }
     if (["/api/platforms/google_analytics/kpis", "/api/platforms/google_analytics/benchmarks", "/api/platforms/google_analytics/reports"].includes(String(key[0]))) return key[1] === campaignId;
     if (key[0] === "/api/kpis") return key[2] === "analytics" && key[4] === selectedGA4PropertyId && platformKPIs.some((k: any) => k.id === key[1]);
     if (key[0] === "/api/benchmarks") return key[2] === "analytics" && key[3] === selectedGA4PropertyId && benchmarks.some((b: any) => b.id === key[1]);
     if (key[0] === `/api/campaigns/${campaignId}/ga4-to-date`) return key[1] === selectedGA4PropertyId;
+    if (["/api/hubspot", "/api/salesforce"].includes(String(key[0]))) return key[1] === campaignId && key[2] === "pipeline-proxy";
     return ["revenue-to-date", "revenue-sources", "revenue-breakdown", "revenue-daily",
       "spend-to-date?platformContext=ga4", "spend-sources?platformContext=ga4", "spend-breakdown?platformContext=ga4", "spend-daily?platformContext=ga4"]
       .some(path => key[0] === `/api/campaigns/${campaignId}/${path}`);
   };
-  const ga4PublicationReceipt = useRef({ scope: "", token: "", pending: false });
-  const [ga4PublicationSync, setGA4PublicationSync] = useState({ scope: "", pending: false, failed: false });
   const isGA4InsightsContextQuery = ({ queryKey: key }: { queryKey: readonly unknown[] }) =>
     key[0] === "/api/campaigns" && key[1] === campaignId && key[4] === selectedGA4PropertyId &&
     (key[2] === "ga4-insights-daily" || key[2] === "ga4-breakdown" && key[5] === true);
   const isGA4IndependentPublicationQuery = (query: { queryKey: readonly unknown[] }) => {
     const key = query.queryKey;
     return isGA4InsightsContextQuery(query)
-      || key[0] === "/api/campaigns" && key[1] === campaignId && key[4] === selectedGA4PropertyId && ["ga4-landing-pages", "ga4-conversion-events"].includes(String(key[2]))
+      || key[0] === "/api/campaigns" && key[1] === campaignId && key[4] === selectedGA4PropertyId && ["ga4-landing-pages", "ga4-conversion-events", "ga4-geographic"].includes(String(key[2]))
+      || ["/api/hubspot", "/api/salesforce"].includes(String(key[0])) && key[1] === campaignId && key[2] === "pipeline-proxy"
       || key[0] === "/api/platforms/google_analytics/reports" && key[1] === campaignId;
   };
   const ga4InsightsContextFetching = useIsFetching({ predicate: isGA4InsightsContextQuery });
@@ -1988,7 +1996,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
-    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 5 * 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(
@@ -2017,7 +2025,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
-    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 5 * 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(
@@ -2082,10 +2090,10 @@ export default function GA4Metrics() {
       && previousData?.snapshot?.campaignId === campaignId
       && previousData?.snapshot?.metrics?.financialDaily?.currency === campaignCurrency ? previousData : undefined,
     staleTime: 0,
-    // Financial-only source refreshes can publish without a new GA4 receipt.
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
+    // Scheduled publication and explicit source edits invalidate this snapshot.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/financial-daily-snapshot?throughDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}`);
@@ -2192,7 +2200,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: activeTab === "insights" || !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: activeTab === "insights" || !ga4PublicationStatus || ga4PublicationStatusError,
-    refetchInterval: (activeTab !== "insights" && ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(
@@ -2234,7 +2242,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
-    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(
@@ -2262,7 +2270,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
-    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -2295,7 +2303,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
-    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -2321,9 +2329,9 @@ export default function GA4Metrics() {
     queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`],
     enabled: !!campaignId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 15 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`);
@@ -2339,9 +2347,9 @@ export default function GA4Metrics() {
     queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly, campaignCurrency],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(
@@ -2448,25 +2456,19 @@ export default function GA4Metrics() {
     return Math.max(0, rate > 1 ? rate / 100 : rate);
   })();
 
-  const hasActiveGa4GoogleSheetsRevenueSource = (data: any) => Array.isArray(data?.sources) && data.sources.some((source: any) =>
-    source?.isActive !== false
-    && String(source?.sourceType || "").trim().toLowerCase() === "google_sheets"
-    && String(source?.platformContext || "ga4").trim().toLowerCase() === "ga4"
-  );
   const getImportedRevenueRefetchInterval = (data?: any) => {
     const sources = data || queryClient.getQueryData<any>([`/api/campaigns/${campaignId}/revenue-sources`]);
-    if (sources?.sources?.some((source: any) => source.publicationStatus === "pending" && !source.pendingCompletedDay)) return 5000;
-    if (sources?.sources?.some((source: any) => source.publicationStatus === "failed")) return 30_000;
-    return hasActiveGa4GoogleSheetsRevenueSource(sources) ? 15_000 : 10 * 60 * 1000;
+    // Follow a saved import until publication; idle sources wait for the scheduled run.
+    return sources?.sources?.some((source: any) => source.publicationStatus === "pending" && !source.pendingCompletedDay) ? 60_000 : false;
   };
 
   const { data: importedRevenueToDateResp, isLoading: importedRevenueLoading, isError: importedRevenueError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`],
     enabled: !!campaignId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: () => getImportedRevenueRefetchInterval(),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-to-date`);
@@ -2482,8 +2484,8 @@ export default function GA4Metrics() {
     queryKey: [`/api/campaigns/${campaignId}/revenue-sources`],
     enabled: !!campaignId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     refetchInterval: (query) => getImportedRevenueRefetchInterval(query.state.data),
     refetchIntervalInBackground: false,
     queryFn: async () => {
@@ -2499,7 +2501,8 @@ export default function GA4Metrics() {
   const revenuePublicationToken = JSON.stringify((revenueSourcesResp?.sources || []).map((source: any) =>
     [source.id, source.publicationStatus, source.publicationHash]));
   useEffect(() => {
-    if (!campaignId || !(revenueSourcesResp?.sources || []).some((source: any) => source.publicationStatus === "published")) return;
+    if (!campaignId || !(revenueSourcesResp?.sources || []).some((source: any) => ["published", "pending"].includes(source.publicationStatus))) return;
+    void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-publication-status"] });
     void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot"] });
     for (const kind of ["kpis", "benchmarks", "reports"]) {
       void queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/${kind}`, campaignId] });
@@ -2525,7 +2528,7 @@ export default function GA4Metrics() {
     enabled: !insightsValidationReadOnly && !!campaignId && configuredPipelineSourceTypes.has("hubspot"),
     staleTime: 0,
     retry: false,
-    refetchInterval: 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=ga4`);
@@ -2542,7 +2545,7 @@ export default function GA4Metrics() {
     enabled: !insightsValidationReadOnly && !!campaignId && configuredPipelineSourceTypes.has("salesforce"),
     staleTime: 0,
     retry: false,
-    refetchInterval: 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=ga4`);
@@ -2569,9 +2572,9 @@ export default function GA4Metrics() {
     queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`],
     enabled: !!campaignId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 15 * 1000, // 15 seconds
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`);
@@ -2588,9 +2591,9 @@ export default function GA4Metrics() {
     queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`],
     enabled: !!campaignId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: () => getImportedRevenueRefetchInterval(),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-breakdown`);
@@ -2606,9 +2609,9 @@ export default function GA4Metrics() {
     queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`],
     enabled: !!campaignId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 15 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`);
@@ -5001,9 +5004,9 @@ export default function GA4Metrics() {
     queryKey: ["/api/campaigns", campaignId, "ga4-geographic", dateRange, selectedGA4PropertyId],
     enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(
@@ -6355,6 +6358,7 @@ export default function GA4Metrics() {
         throw new Error(json?.error || "Failed to remove HubSpot deal");
       }
 
+      void refetchGA4PublicationStatus();
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
@@ -6437,6 +6441,7 @@ export default function GA4Metrics() {
         throw new Error(json?.error || "Failed to remove Salesforce opportunity");
       }
 
+      void refetchGA4PublicationStatus();
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
@@ -7417,6 +7422,7 @@ export default function GA4Metrics() {
                     platformContext="ga4"
                     initialSource={editingSpendSource || undefined}
                     onProcessed={() => {
+                      void refetchGA4PublicationStatus();
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`], exact: false });
@@ -7439,6 +7445,7 @@ export default function GA4Metrics() {
                     initialSource={editingRevenueSource || undefined}
                     platformContext="ga4"
                     onSuccess={() => {
+                      void refetchGA4PublicationStatus();
                       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot"] });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
@@ -7822,6 +7829,7 @@ export default function GA4Metrics() {
                                 if (!resp.ok || json?.success === false) {
                                   throw new Error(json?.error || "Failed to remove Pipeline Proxy");
                                 }
+                                void refetchGA4PublicationStatus();
                                 await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
                                 queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
                                 queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "ga4"], exact: false });
@@ -7860,6 +7868,7 @@ export default function GA4Metrics() {
                               if (!resp.ok || json?.success === false) {
                                 throw new Error(json?.error || "Failed to remove spend source");
                               }
+                              void refetchGA4PublicationStatus();
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`], exact: false });
@@ -7968,6 +7977,7 @@ export default function GA4Metrics() {
                               if (!resp.ok || json?.success === false) {
                                 throw new Error(json?.error || "Failed to remove revenue source");
                               }
+                              void refetchGA4PublicationStatus();
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });

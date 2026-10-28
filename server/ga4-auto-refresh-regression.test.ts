@@ -1,4 +1,8 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// These interval tests cover the retained non-coordinated/rollback mode.
+beforeEach(() => vi.stubEnv("GA4_DAILY_PIPELINE_OWNS_REFRESH", "false"));
+afterEach(() => vi.unstubAllEnvs());
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
@@ -227,11 +231,11 @@ describe("GA4 external value auto-refresh regression guard", () => {
       const queryStart = metrics.indexOf(`const { data: ${queryName},`);
       const queryEnd = metrics.indexOf("  });", queryStart);
       expect(queryStart).toBeGreaterThan(-1);
-      expect(metrics.slice(queryStart, queryEnd)).toContain("refetchInterval: 15 * 1000");
+      expect(metrics.slice(queryStart, queryEnd)).toContain("refetchInterval: false");
     }
   });
 
-  it("polls only active GA4 Google Sheets revenue sources and accelerates only their open Overview reads", () => {
+  it("retains the scoped legacy Sheets interval while idle Overview reads use the scheduled publication", () => {
     const scheduler = schedulerFile();
     const metrics = ga4MetricsFile();
     const refreshStart = scheduler.indexOf("export async function runGoogleSheetsRevenueAutoRefreshOnce");
@@ -254,14 +258,13 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(refreshFunction).not.toContain("reprocessShopify");
     expect(scheduler.indexOf("await runGoogleSheetsSpendAutoRefreshOnce()")).toBeLessThan(scheduler.indexOf("await runGoogleSheetsRevenueAutoRefreshOnce()"));
     expect(metrics).toContain("const getImportedRevenueRefetchInterval");
-    expect(metrics).toContain('toLowerCase() === "google_sheets"');
-    expect(metrics).toContain("? 15_000 : 10 * 60 * 1000");
+    expect(metrics).toContain('source.publicationStatus === "pending" && !source.pendingCompletedDay) ? 60_000 : false');
 
     for (const queryName of ["importedRevenueToDateResp", "revenueSourcesResp", "revenueBreakdownResp"]) {
       const queryStart = metrics.indexOf(`const { data: ${queryName},`);
       const queryEnd = metrics.indexOf("  });", queryStart);
       expect(queryStart).toBeGreaterThan(-1);
-      expect(metrics.slice(queryStart, queryEnd)).toContain("getImportedRevenueRefetchInterval");
+      expect(metrics.slice(queryStart, queryEnd)).toContain(queryName === "revenueSourcesResp" ? "getImportedRevenueRefetchInterval" : "refetchInterval: false");
     }
   });
 

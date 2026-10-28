@@ -49,7 +49,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
-import { parseGA4AlignedRefreshMarker, getGA4DailyRefreshAttempt, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow, recoverInterruptedGA4Refreshes } from "./ga4-daily-scheduler";
+import { parseGA4AlignedRefreshMarker, getGA4DailyRefreshAttempt, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow, recoverInterruptedGA4Refreshes } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest, getInternalGA4RefreshWriteInput } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -9411,6 +9411,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const attempt = getGA4DailyRefreshAttempt(campaign, connection);
         let publication: { reportingDate: string; completedAt: string } | null = null;
         let version: string | null = null;
+        let publicationInProgress = false;
+        let publicationRetryable = false;
         try {
           version = await storage.getGA4PublicationVersion(campaignId);
           const snapshots = await storage.getExecutiveSummaryDailyComparisonData(campaignId, dataThroughDate, dataThroughDate);
@@ -9420,16 +9422,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error: any) {
           if (error?.message !== "GA4_REFRESH_PUBLICATION_BUSY") throw error;
           publication = null;
+          publicationInProgress = error.publicationInProgress === true;
+          publicationRetryable = error.publicationRetryable === true;
         }
+        const refreshStatus = publicationInProgress ? "running" : resolveGA4RefreshStatus({
+          dataThroughDate, expectedRefreshAt, lastCompletedRefreshAt: publication?.completedAt || null,
+          refreshIsStale: !!expectedRefreshAt && expectedRefreshAt <= now
+            && (!publication || Date.parse(publication.completedAt) < expectedRefreshAt.getTime()),
+          attempt, now,
+        });
         return res.json({
           success: true, campaignId, propertyId: requestedPropertyId, dataThroughDate,
           publicationToken: publication ? JSON.stringify([publication.reportingDate, publication.completedAt, version]) : null,
-          refreshStatus: resolveGA4RefreshStatus({
-            dataThroughDate, expectedRefreshAt, lastCompletedRefreshAt: publication?.completedAt || null,
-            refreshIsStale: !!expectedRefreshAt && expectedRefreshAt <= now
-              && (!publication || Date.parse(publication.completedAt) < expectedRefreshAt.getTime()),
-            attempt, now,
-          }),
+          refreshStatus,
+          // Idle pages wait for the actual scheduler slot. Follow only unfinished work.
+          nextCheckAt: (publicationRetryable || refreshStatus === "running" || refreshStatus === "delayed"
+            ? new Date(now.getTime() + 60_000) : getNextGA4DailyRunAt(now, schedulerConfig)).toISOString(),
         });
       }
       const addDateOnlyDays = (value: string, daysToAdd: number): string | null => {

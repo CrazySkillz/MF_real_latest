@@ -13,6 +13,7 @@ describe("GA4 publication in the rendered page", () => {
         window.testFocus = value => focusManager.setFocused(value);
         window.testCurrency = currency => queryClient.setQueryData(['/api/campaigns', 'a'], current => ({...current, currency}));
         window.testRefreshPublication = () => queryClient.invalidateQueries({queryKey: ['/api/campaigns', 'a']});
+        window.testRefreshStatus = () => queryClient.invalidateQueries({queryKey: ['/api/campaigns', 'a', 'ga4-publication-status']});
         window.testRefreshGoals = () => Promise.all(['kpis','benchmarks'].map(kind => queryClient.invalidateQueries({queryKey: ['/api/platforms/google_analytics/'+kind, 'a']})));
         createRoot(document.getElementById('root')).render(<QueryClientProvider client={queryClient}><TooltipProvider><Page /></TooltipProvider></QueryClientProvider>);`,
         loader: "tsx", resolveDir: process.cwd() },
@@ -23,6 +24,8 @@ describe("GA4 publication in the rendered page", () => {
         builder.onLoad({ filter: /.*/, namespace: "fixture" }, args => ({ contents: args.path.endsWith("clientContext")
           ? "export const useClient = () => ({clients: []});"
           : args.path.includes("layout/") ? "export default function Stub(){return null}"
+          : args.path.endsWith("AddSpendWizardModal") ? "export function AddSpendWizardModal(props){window.testSpendSaved=props.onProcessed;return null}"
+          : args.path.endsWith("AddRevenueWizardModal") ? "export function AddRevenueWizardModal(props){window.testRevenueSaved=props.onSuccess;return null}"
           : `export function ${args.path.split("/").at(-1)}(){return null}`, loader: "js" }));
       } }],
     });
@@ -32,6 +35,7 @@ describe("GA4 publication in the rendered page", () => {
     const errors: string[] = []; const requests: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     let generation = 1; let failDaily = false; let failStatus = false; let incomplete = false;
+    let nextScheduledCheck = "2026-10-18T18:00:00.000Z";
     let day = "2026-10-17";
     let campaignCurrency = "EUR"; let financialCurrency = "EUR"; let financialRevenue: number | undefined; let failNative = false;
     let conversionCredit: number | undefined;
@@ -54,7 +58,8 @@ describe("GA4 publication in the rendered page", () => {
       if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Local GA4", currency: campaignCurrency, status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: '["search"]', createdAt: "2026-09-04T00:00:00Z" };
       else if (url.pathname.startsWith("/api/ga4/check-connection/") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
       else if (url.searchParams.has("statusOnly")) {
-        data = { success: !failStatus, campaignId: "a", propertyId: "123", publicationToken: incomplete ? null : `p${generation}`, refreshStatus: incomplete ? "running" : "current" };
+        data = { success: !failStatus, campaignId: "a", propertyId: "123", publicationToken: incomplete ? null : `p${generation}`, refreshStatus: incomplete ? "running" : "current",
+          nextCheckAt: incomplete ? new Date(await page.evaluate(() => Date.now()) + 60_000).toISOString() : nextScheduledCheck };
         if (failStatus) status = 503;
       } else if (url.pathname.endsWith("/ga4-daily")) {
         data = { success: !failDaily, propertyId: "123", startDate: "2026-09-18", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt(), lastCompletedRefreshAt: updatedAt(), refreshStatus: "current", refreshIsStale: false, overviewTotals: totals(), data: [{ date: day, ...totals() }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
@@ -97,12 +102,14 @@ describe("GA4 publication in the rendered page", () => {
       await browserExpect(initialRevenueCard).toContainText("€65,659.50");
       const dailyRequests = () => requests.filter(value => value.includes("/ga4-daily?") && !value.includes("statusOnly")).length;
       const initialDailyRequests = dailyRequests();
-      await page.clock.runFor(60_000);
+      const initialRequests = requests.length;
+      await page.clock.runFor(15 * 60_000);
+      expect(requests.length).toBe(initialRequests);
       expect(dailyRequests()).toBe(initialDailyRequests);
 
       // Partial work is observed without loading its candidate metrics.
       incomplete = true; generation = 2;
-      await page.clock.runFor(30_000);
+      await page.clock.fastForward(Date.parse(nextScheduledCheck) - await page.evaluate(() => Date.now()));
       await browserExpect(page.getByTestId("ga4-refresh-status")).toHaveText("GA4 refresh in progress");
       await browserExpect(page.getByText("2,977", { exact: true }).first()).toBeVisible();
       expect(dailyRequests()).toBe(initialDailyRequests);
@@ -116,8 +123,9 @@ describe("GA4 publication in the rendered page", () => {
       await page.getByRole("tab", { name: "Overview", exact: true }).click();
 
       incomplete = false; waitFinancial = new Promise(resolve => { releaseFinancial = resolve; });
+      nextScheduledCheck = "2026-10-19T06:00:00.000Z";
       const beforePublicationRead = financialRequests;
-      await page.clock.runFor(30_000);
+      await page.clock.runFor(60_000);
       await browserExpect.poll(() => financialRequests).toBeGreaterThan(beforePublicationRead);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await browserExpect(page.getByText("€65,659.50", { exact: true }).first()).toBeVisible();
@@ -135,7 +143,7 @@ describe("GA4 publication in the rendered page", () => {
 
       // Failed metric reads retain data and remain visibly unverified until retry.
       generation = 3; failDaily = true;
-      await page.clock.runFor(30_000);
+      await page.evaluate(() => (window as any).testSpendSaved());
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("could not refresh");
       await browserExpect(page.getByText("3,100", { exact: true }).first()).toBeVisible();
       await page.getByRole("tab", { name: "Benchmarks", exact: true }).click();
@@ -144,7 +152,7 @@ describe("GA4 publication in the rendered page", () => {
       await browserExpect(page.getByText("Some Benchmarks Are Not Freshly Verified", { exact: true })).toBeVisible();
       await browserExpect(benchmark.getByText("Performance", { exact: true })).toHaveCount(0);
       failDaily = false;
-      await page.clock.runFor(30_000);
+      await page.clock.runFor(60_000);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await browserExpect(benchmark.getByText("Performance", { exact: true })).toBeVisible();
 
@@ -159,7 +167,7 @@ describe("GA4 publication in the rendered page", () => {
       generation = 4; day = "2026-10-18";
       waitFinancial = new Promise(resolve => { releaseFinancial = resolve; });
       const beforeNextDayRead = financialRequests;
-      await page.clock.runFor(30_000);
+      await page.evaluate(() => (window as any).testRevenueSaved());
       await browserExpect.poll(() => financialRequests).toBeGreaterThan(beforeNextDayRead);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await browserExpect(page.getByText("€68,000.00", { exact: true }).first()).toBeVisible();

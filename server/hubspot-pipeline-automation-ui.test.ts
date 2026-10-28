@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+beforeEach(() => vi.stubEnv("GA4_DAILY_PIPELINE_OWNS_REFRESH", "false"));
+afterEach(() => vi.unstubAllEnvs());
 import { storage } from "./storage";
 import { getAutoRefreshSchedulerConfig, runHubSpotPipelineAutoRefreshOnce } from "./auto-refresh-scheduler";
 
@@ -212,7 +215,7 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
       '<Dialog open={showSpendSourcesDialog}',
     );
 
-    expect(pipelineQuery).toContain("refetchInterval: 60 * 1000");
+    expect(pipelineQuery).toContain("refetchInterval: false");
     expect(pipelineQuery).toContain("hubspotPipelineProxyData?.lastUpdatedAt");
     expect(pipelineQuery).toContain("salesforcePipelineProxyData?.lastUpdatedAt");
     expect(pipelineQuery).toContain("/revenue-to-date");

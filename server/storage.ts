@@ -1589,9 +1589,16 @@ export class DatabaseStorage implements IStorage {
     const table = await tx.execute(sql`SELECT to_regclass('ga4_refresh_work') AS name`);
     if (!table.rows[0]?.name) return null;
     const result = await tx.execute(sql`SELECT md5(string_agg(id || ':' || xmin::text, ',' ORDER BY id)) AS version,
-      bool_or(status <> 'completed' AND scope_hash NOT LIKE 'invalidated:%') AS busy FROM ga4_refresh_work WHERE campaign_id = ${campaignId}`);
+      bool_or(status <> 'completed' AND scope_hash NOT LIKE 'invalidated:%') AS busy,
+      bool_and(status = 'running' AND lease_expires_at > clock_timestamp())
+        FILTER (WHERE status <> 'completed' AND scope_hash NOT LIKE 'invalidated:%') AS running,
+      bool_or(retryable AND attempt_count < 3 AND due_at <= clock_timestamp())
+        FILTER (WHERE status <> 'completed' AND scope_hash NOT LIKE 'invalidated:%') AS retryable
+      FROM ga4_refresh_work WHERE campaign_id = ${campaignId}`);
     const row = result.rows[0];
-    if (row?.busy) throw new Error("GA4_REFRESH_PUBLICATION_BUSY");
+    if (row?.busy) throw Object.assign(new Error("GA4_REFRESH_PUBLICATION_BUSY"), {
+      publicationInProgress: row.running === true, publicationRetryable: row.retryable === true,
+    });
     return row?.version ?? null;
   }
 

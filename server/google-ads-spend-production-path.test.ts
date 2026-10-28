@@ -79,6 +79,7 @@ describe("Google Ads GA4 Overview spend production path", () => {
   });
 
   beforeEach(() => {
+    vi.stubEnv("GA4_DAILY_PIPELINE_OWNS_REFRESH", "false");
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-06T12:00:00.000Z"));
     vi.clearAllMocks();
@@ -116,7 +117,7 @@ describe("Google Ads GA4 Overview spend production path", () => {
     ]);
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
   it("refreshes a production spend-only OAuth connection with mocked provider daily metrics", async () => {
     await refreshGoogleAdsForCampaign("campaign-1", {
@@ -355,7 +356,25 @@ describe("Google Ads GA4 Overview spend production path", () => {
     expect(mocks.runGA4DailyKPIAndBenchmarkJobs).not.toHaveBeenCalled();
   });
 
-  it("schedules the main platform and dedicated Spend connection separately for one campaign", async () => {
+  it("leaves GA4 Spend to its scheduled pipeline while still refreshing the separate Google Ads platform", async () => {
+    vi.stubEnv("GA4_DAILY_PIPELINE_OWNS_REFRESH", "true");
+    const inventories: unknown[] = [];
+    mocks.db.select.mockImplementation(() => ({ from: vi.fn(async (table: unknown) => {
+      inventories.push(table);
+      return table === googleAdsConnections ? [{ campaignId: "campaign-1", spendOnly: false }, { campaignId: "legacy-spend", spendOnly: true }] : [{ campaignId: "campaign-1" }];
+    }) }));
+    mocks.storage.getGoogleAdsConnection.mockResolvedValue({ method: "oauth", spendOnly: false, accessToken: "fixture", customerId: "123-456-7890", selectedCampaignIds: '["main-campaign"]' });
+    expect(await refreshAllGoogleAdsMetrics()).toEqual({ attempted: 1, succeeded: 1, failedCampaignIds: [] });
+    expect(inventories).toEqual([googleAdsConnections]);
+    expect(mocks.storage.getGoogleAdsConnection).toHaveBeenCalledTimes(1);
+    expect(mocks.storage.getGoogleAdsConnection).toHaveBeenCalledWith("campaign-1");
+    expect(mocks.storage.getGA4GoogleAdsSpendConnection).not.toHaveBeenCalled();
+    expect(mocks.storage.replaceGoogleAdsDailyMetricsForWindow).toHaveBeenCalledOnce();
+    expect(mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow).not.toHaveBeenCalled();
+    expect(mocks.storage.replaceSpendRecordsForSource).not.toHaveBeenCalled();
+  });
+
+  it("schedules the main platform and dedicated Spend connection separately when GA4 pipeline ownership is disabled", async () => {
     mocks.db.select.mockImplementation(() => ({ from: vi.fn(async (table: unknown) =>
       table === googleAdsConnections ? [{ campaignId: "campaign-1", spendOnly: false }] :
       table === ga4GoogleAdsSpendConnections ? [{ campaignId: "campaign-1" }] : [],

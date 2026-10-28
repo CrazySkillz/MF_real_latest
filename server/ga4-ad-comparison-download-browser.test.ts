@@ -130,7 +130,8 @@ describe("Ad Comparison precision through the real Reports page", () => {
         statusRequests++;
         if (contextKind === "publication-handoff" && statusRequests === 2) generation++;
         if (contextKind === "publication-gap" && statusRequests === 2) publicationGap = true;
-        data = { success: true, campaignId: "a", propertyId: "123", publicationToken: publicationGap ? null : `p${generation}`, refreshStatus: publicationGap ? "running" : "current" };
+        data = { success: true, campaignId: "a", propertyId: "123", publicationToken: publicationGap ? null : `p${generation}`, refreshStatus: publicationGap ? "running" : "current",
+          nextCheckAt: new Date(Date.now() + (publicationGap ? 60_000 : 6 * 60 * 60_000)).toISOString() };
         if (failed === "status") { status = 503; data = { success: false, error: "fixture status failure" }; }
       } else if (url.pathname.endsWith("/ga4-daily")) {
         data = { success: true, propertyId: "123", startDate: start, overviewStartDate: start, endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
@@ -209,7 +210,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
           await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeDisabled();
           await page.getByRole("button", { name: "Cancel", exact: true }).click();
           publicationGap = false; generation++;
-          await page.clock.runFor(30_000);
+          await page.evaluate(() => (window as any).fixtureStatus());
         }
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
         await page.getByRole("tab", { name: "Overview", exact: true }).click();
@@ -300,7 +301,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       holdInsights = false; releaseInsights();
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       failed = "insights"; generation++;
-      await page.clock.runFor(30_000);
+      await page.evaluate(() => (window as any).fixtureStatus());
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await openReport(); await downloadReport();
       failed = "";
@@ -329,7 +330,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
         }
         await downloadReport();
         failed = "";
-        await page.clock.runFor(30_000);
+        await page.evaluate(() => (window as any).fixtureStatus());
         await browserExpect.poll(async () => (await page.evaluate(() => (window as any).fixtureQueries())).some((query: any) => String(query.error).includes("fixture independent detail failure"))).toBe(false);
         if (contextKind !== "report-library") {
           await browserExpect(page.getByRole("button", { name: "Download", exact: true })).toBeEnabled();
@@ -355,7 +356,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
         await browserExpect(page.getByText("The latest displayed figures are still being checked. Please try the report again once the update finishes.")).toHaveCount(0);
         expect(downloads.length).toBe(previousDownloads);
         failed = "";
-        await page.clock.runFor(30_000);
+        await page.evaluate(() => (window as any).fixtureStatus());
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
         await downloadReport();
       }

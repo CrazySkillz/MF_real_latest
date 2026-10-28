@@ -1,0 +1,164 @@
+{
+  "recordedAt": "2026-10-28T21:10:47.602Z",
+  "baselineCommit": "07ff822c790a51a50b90290b4ea205e5383a2ca6",
+  "isolation": "Tests remove application credentials and block non-loopback network; PostgreSQL uses only 127.0.0.1:55444/ga4_alignment_test with disposable schemas; browser uses synthetic GET fixtures and headless Chromium.",
+  "distinctPassingTests": 857,
+  "tests": [
+    {
+      "command": "node docs/fixes/v1-batch-8/validation-2026-10-27-report-incident/run-tests.cjs ga4-schedule-verified-oct28 server/ga4-auto-refresh-regression.test.ts server/ga4-browser-publication-refresh.test.ts server/ga4-derived-publication-postgres.test.ts server/ga4-refresh-pipeline-source-failure.test.ts server/ga4-refresh-work-postgres.test.ts server/google-ads-spend-production-path.test.ts server/hubspot-pipeline-automation-ui.test.ts server/hubspot-revenue-ga4-overview-regression.test.ts server/salesforce-pipeline-automation-ui.test.ts server/v1-batch2-scheduler-startup.test.ts server/v1-batch8-interval-publication.test.ts --local-pg --preserve-artifacts",
+      "rawReceipt": "ga4-schedule-verified-oct28.json",
+      "sha256": "0af72ca75781bfe67297f01e0c0ad9345c73b07f504968f8711a196b3e18524c",
+      "total": 670,
+      "passed": 670,
+      "failed": 0,
+      "files": [
+        {
+          "file": "server/ga4-auto-refresh-regression.test.ts",
+          "status": "passed",
+          "passed": 27
+        },
+        {
+          "file": "server/ga4-browser-publication-refresh.test.ts",
+          "status": "passed",
+          "passed": 64
+        },
+        {
+          "file": "server/ga4-derived-publication-postgres.test.ts",
+          "status": "passed",
+          "passed": 186
+        },
+        {
+          "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+          "status": "passed",
+          "passed": 221
+        },
+        {
+          "file": "server/ga4-refresh-work-postgres.test.ts",
+          "status": "passed",
+          "passed": 46
+        },
+        {
+          "file": "server/google-ads-spend-production-path.test.ts",
+          "status": "passed",
+          "passed": 24
+        },
+        {
+          "file": "server/hubspot-pipeline-automation-ui.test.ts",
+          "status": "passed",
+          "passed": 8
+        },
+        {
+          "file": "server/hubspot-revenue-ga4-overview-regression.test.ts",
+          "status": "passed",
+          "passed": 32
+        },
+        {
+          "file": "server/salesforce-pipeline-automation-ui.test.ts",
+          "status": "passed",
+          "passed": 12
+        },
+        {
+          "file": "server/v1-batch2-scheduler-startup.test.ts",
+          "status": "passed",
+          "passed": 26
+        },
+        {
+          "file": "server/v1-batch8-interval-publication.test.ts",
+          "status": "passed",
+          "passed": 24
+        }
+      ]
+    },
+    {
+      "command": "node docs/fixes/v1-batch-8/validation-2026-10-27-report-incident/run-tests.cjs ga4-schedule-callbacks-oct28 server/ga4-auto-refresh-regression.test.ts server/ga4-browser-publication-refresh.test.ts server/v1-batch8-interval-publication.test.ts --preserve-artifacts",
+      "rawReceipt": "ga4-schedule-callbacks-oct28.json",
+      "sha256": "9cc71734a30aa143279cc69ad78b8d71f0f5e7b5cf5911e022a1181e7410d142",
+      "total": 124,
+      "passed": 124,
+      "failed": 0,
+      "files": [
+        {
+          "file": "server/ga4-auto-refresh-regression.test.ts",
+          "status": "passed",
+          "passed": 27
+        },
+        {
+          "file": "server/ga4-browser-publication-refresh.test.ts",
+          "status": "passed",
+          "passed": 73
+        },
+        {
+          "file": "server/v1-batch8-interval-publication.test.ts",
+          "status": "passed",
+          "passed": 24
+        }
+      ]
+    },
+    {
+      "command": "node docs/fixes/v1-batch-8/validation-2026-10-27-report-incident/run-tests.cjs ga4-schedule-browser-verified-oct28 server/ga4-ad-comparison-download-browser.test.ts server/ga4-browser-publication-refresh.test.ts server/ga4-browser-report-publication.test.ts server/ga4-kpi-snapshot-display.test.ts server/ga4-kpi-ui-browser-state-regression.test.ts server/ga4-publication-browser.test.ts --preserve-artifacts",
+      "rawReceipt": "ga4-schedule-browser-verified-oct28.json",
+      "sha256": "16052ef99b0e1e8ec5bc86b86ce932aa6f58088e2a69ae579d4e3559b5678eab",
+      "total": 244,
+      "passed": 244,
+      "failed": 0,
+      "files": [
+        {
+          "file": "server/ga4-ad-comparison-download-browser.test.ts",
+          "status": "passed",
+          "passed": 12
+        },
+        {
+          "file": "server/ga4-browser-publication-refresh.test.ts",
+          "status": "passed",
+          "passed": 64
+        },
+        {
+          "file": "server/ga4-browser-report-publication.test.ts",
+          "status": "passed",
+          "passed": 118
+        },
+        {
+          "file": "server/ga4-kpi-snapshot-display.test.ts",
+          "status": "passed",
+          "passed": 41
+        },
+        {
+          "file": "server/ga4-kpi-ui-browser-state-regression.test.ts",
+          "status": "passed",
+          "passed": 8
+        },
+        {
+          "file": "server/ga4-publication-browser.test.ts",
+          "status": "passed",
+          "passed": 1
+        }
+      ]
+    }
+  ],
+  "build": {
+    "at": "2026-10-28T21:05:59.354Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "ga4-schedule-final-oct28-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "ga4-schedule-final-oct28-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "ga4-schedule-final-oct28-server-build.log"
+      }
+    ]
+  },
+  "productionEvidence": "ga4-schedule-live-recurrence-oct28.json",
+  "limits": "Natural future scheduled slot, live provider mutation lifecycles and email delivery not certified. Deployment observation recorded separately."
+}

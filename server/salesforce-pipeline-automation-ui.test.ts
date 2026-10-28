@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+beforeEach(() => vi.stubEnv("GA4_DAILY_PIPELINE_OWNS_REFRESH", "false"));
+afterEach(() => vi.unstubAllEnvs());
 import { storage } from "./storage";
 import { getAutoRefreshSchedulerConfig, runSalesforcePipelineAutoRefreshOnce } from "./auto-refresh-scheduler";
 
@@ -113,7 +116,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(pipelineRoute).toContain("cached >= 0");
     expect(pipelineRoute).toContain("Math.abs(cachedValueTotals.reduce((sum: number, item: any) => sum + item.revenue, 0) - cached) < 0.01");
     expect(pipelineRoute).toContain("Number.isFinite(Date.parse(cfg.pipelineLastUpdatedAt)) && !cfg.pipelineWarning");
-    expect(pipelineQuery).toContain("refetchInterval: 60 * 1000");
+    expect(pipelineQuery).toContain("refetchInterval: false");
     expect(pipelineQuery).toContain("salesforcePipelineProxyData?.lastUpdatedAt");
     expect(pipelineQuery).toContain(`/revenue-to-date`);
     expect(pipelineQuery).toContain(`/revenue-sources`);

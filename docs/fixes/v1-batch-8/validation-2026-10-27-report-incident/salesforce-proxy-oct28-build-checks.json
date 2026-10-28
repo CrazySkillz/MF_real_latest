@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-28T18:33:04.872Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "salesforce-proxy-oct28-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "salesforce-proxy-oct28-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "salesforce-proxy-oct28-server-build.log"
+    }
+  ]
+}

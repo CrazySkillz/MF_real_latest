@@ -349,7 +349,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineMemo).toContain("item?.linkedinCampaignUrn, item?.linkedinCampaignName");
     expect(pipelineMemo).toContain("return sorted.find(sourceMatchesGa4Scope) || null;");
     expect(pipelineMemo).toContain('String(source?.id || "") === String(endpointData?.sourceId || "")');
-    expect(pipelineMemo).toContain('sourceMatchesGa4Scope(source) || sourceType === "hubspot"');
+    expect(pipelineMemo).toContain('sourceMatchesGa4Scope(source) || sourceDefs.filter');
+    expect(pipelineMemo).toContain('String(s?.sourceType || "").toLowerCase() === sourceType && hasPipelineConfig(s)');
     expect(pipelineMemo).toContain('parseMappingConfig(source)?.platformContext === "ga4"');
     expect(pipelineMemo).toContain('const available = !requestFailed && !!endpointSource');
     expect(pipelineMemo).toContain("const crmSource = endpointSource || selectPipelineSource(eligible);");

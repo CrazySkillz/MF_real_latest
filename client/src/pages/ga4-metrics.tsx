@@ -2840,8 +2840,8 @@ export default function GA4Metrics() {
       const eligible = [...sourceDefs, ...(Array.isArray(revenueDisplaySources) ? revenueDisplaySources : [])].filter((s: any) =>
         s?.isActive !== false && String(s?.sourceType || "").toLowerCase() === sourceType && hasPipelineConfig(s));
       const endpointSource = eligible.find((source: any) => String(source?.id || "") === String(endpointData?.sourceId || "")
-        && (sourceMatchesGa4Scope(source) || sourceType === "hubspot" && sourceDefs.filter((s: any) =>
-          s?.isActive !== false && String(s?.sourceType || "").toLowerCase() === "hubspot" && hasPipelineConfig(s)).length === 1
+        && (sourceMatchesGa4Scope(source) || sourceDefs.filter((s: any) =>
+          s?.isActive !== false && String(s?.sourceType || "").toLowerCase() === sourceType && hasPipelineConfig(s)).length === 1
           && String(source?.platformContext || "").toLowerCase() === "ga4" && parseMappingConfig(source)?.platformContext === "ga4"));
       const crmSource = endpointSource || selectPipelineSource(eligible);
       if (!crmSource) return null;
@@ -2867,7 +2867,10 @@ export default function GA4Metrics() {
       getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot", hubspotPipelineProxyError),
     ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
     if (entries.length === 0) return null;
-    if (entries.some(entry => !entry?.success)) return { success: false, totalToDate: null, providerEntries: entries };
+    const missingConfiguredProvider = ["salesforce", "hubspot"].some(sourceType =>
+      sourceDefs.some((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === sourceType && hasPipelineConfig(source))
+      && !entries.some(entry => entry.sourceType === sourceType));
+    if (missingConfiguredProvider || entries.some(entry => !entry?.success)) return { success: false, totalToDate: null, providerEntries: entries };
     const totalsByCampaign = new Map<string, number>();
     for (const entry of entries) {
       for (const item of Array.isArray(entry.pipelineValueRevenueTotals) ? entry.pipelineValueRevenueTotals : []) {

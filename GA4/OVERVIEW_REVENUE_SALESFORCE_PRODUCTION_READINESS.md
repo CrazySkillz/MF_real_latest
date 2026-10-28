@@ -2,6 +2,8 @@
 
 ## Mandatory status
 
+**October 28 Pipeline Proxy display incident: the unmapped-source display path is UNPROVEN on the deployed revision.** An isolated browser reproduction confirmed that a Salesforce opportunity whose name differs from the GA4 campaign names is omitted despite a valid API response; when HubSpot is also configured, only HubSpot's amount is displayed. The localized frontend correction and validation boundary are recorded in [the Salesforce display checkpoint](../docs/fixes/v1-batch-8/salesforce-pipeline-selection-2026-10-28.md). Historical certificates do not cover this configuration.
+
 **October 24 incident: current Salesforce credential-renewal stability is UNPROVEN.** The `V1 Batch 5 Test` connection reports `expired access/refresh token`. A confirmed encrypted-credential persistence regression has been corrected and tested locally, but deployment and live renewal recovery remain outstanding. See the [incident, exact path, validation and remaining boundaries](../docs/fixes/v1-batch-5/README.md#encrypted-credential-renewal-correction-october-24). The earlier exact-source certification below is historical evidence and must not be used to certify this connection or current renewal behavior.
 
 **Historical status: CLEAN-CERTIFIED for the one exact active GA4 Salesforce

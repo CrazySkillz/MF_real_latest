@@ -25,7 +25,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
   }, 60_000);
   afterAll(async () => { await browser?.close(); });
 
-  async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number; unmappedHubspot?: boolean; publication?: string; emptyBreakdown?: boolean; deletion?: "success" | "failed"; multipleItems?: boolean } = {}) {
+  async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number; unmappedHubspot?: boolean; unmappedSalesforce?: boolean; publication?: string; emptyBreakdown?: boolean; deletion?: "success" | "failed"; multipleItems?: boolean } = {}) {
     let state = options.state ?? "positive"; let providers = options.providers ?? ["hubspot", "salesforce", "shopify"];
     let publication = options.publication;
     const context = await browser.newContext({ viewport: { width: 1400, height: 1000 }, serviceWorkers: "block", timezoneId: "Europe/Amsterdam", locale: "en-US" });
@@ -44,7 +44,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       ...(publication ? { publicationStatus: publication === "waiting-card" ? "published" : publication, publicationHash: `${provider}:new`, completedDayEndDate: day } : {}),
       displayName: provider === "hubspot" ? "HubSpot" : provider === "salesforce" ? "Salesforce" : "Shopify", currency: "EUR", lastTotalRevenue: confirmed[provider], completedDayRevenue: confirmed[provider], materializedRevenueStatus: "available",
       mappingConfig: JSON.stringify({ platformContext: "ga4", selectedValues: selections, campaignProperty: "campaign", campaignField: "Campaign__c", pipelineEnabled: provider !== "shopify", pipelineStageId: "open", pipelineStageName: "Open", pipelineStageLabel: "Open",
-        campaignMappings: options.unmappedHubspot ? [] : selections.map(crmValue => ({ crmValue, linkedinCampaignUrn: crmValue, linkedinCampaignName: crmValue })), dateField: provider === "salesforce" ? "CloseDate" : "closedate",
+        campaignMappings: options.unmappedHubspot || options.unmappedSalesforce ? [] : selections.map(crmValue => ({ crmValue, linkedinCampaignUrn: crmValue, linkedinCampaignName: crmValue })), dateField: provider === "salesforce" ? "CloseDate" : "closedate",
         pipelineTotalToDate: 999, pipelineCurrency: "EUR", pipelineValueRevenueTotals: [{ campaignValue: "old-cache", revenue: 999 }], campaignValueRevenueTotals: selections.map(campaignValue => ({ campaignValue, revenue: confirmed[provider] / selections.length })) }) }));
     await context.route("**/*", async route => {
       const request = route.request(), url = new URL(request.url());
@@ -67,7 +67,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       const property = { propertyId: "123", propertyName: "Synthetic fixture", isPrimary: true, lookbackDays: 30 };
       const imported = providers.reduce((sum, provider) => sum + confirmed[provider], 0);
       let data: any; let status = 200;
-      if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Isolated Batch 5 fixture", currency: "EUR", status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify(options.unmappedHubspot ? ["yesop_brand_search", "yesop_retargeting"] : options.multipleItems ? [selected, "keep-selected"] : [selected]), createdAt: "2026-09-04T00:00:00Z" };
+      if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Isolated Batch 5 fixture", currency: "EUR", status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify(options.unmappedHubspot || options.unmappedSalesforce ? ["yesop_brand_search", "yesop_retargeting"] : options.multipleItems ? [selected, "keep-selected"] : [selected]), createdAt: "2026-09-04T00:00:00Z" };
       else if (url.pathname.startsWith("/api/ga4/check-connection/") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
       else if (url.searchParams.has("statusOnly")) data = { success: true, campaignId: "a", propertyId: "123", publicationToken: receipt, refreshStatus: "current" };
       else if (url.pathname.endsWith("/ga4-daily")) data = { success: true, propertyId: "123", startDate: "2026-09-04", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8,14,20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
@@ -226,6 +226,27 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       await browserExpect(f.pipeline).toContainText("Unavailable"); await browserExpect(f.revenue).toContainText("\u20ac125.00");
       f.setState("positive"); await f.page.evaluate(() => (window as any).fixtureRefetch());
       await browserExpect(f.pipeline).toContainText("\u20ac3,200.00");
+      f.setProviders(["shopify"]); await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(f.pipeline).toContainText("Not configured");
+    } finally { await f.close(); }
+  }, 30_000);
+  it.each([false, true])("shows unmapped Salesforce opportunities with combined HubSpot=%s and withholds incomplete totals", async combined => {
+    const f = await fixture({ providers: combined ? ["hubspot", "salesforce"] : ["salesforce"], unmappedSalesforce: true });
+    const amount = combined ? "\u20ac20.00" : "\u20ac7.25", revenue = combined ? "\u20ac155.00" : "\u20ac130.00";
+    try {
+      await browserExpect(f.pipeline).toContainText(amount); await browserExpect(f.revenue).toContainText(revenue);
+      await f.pipeline.getByRole("button", { name: combined ? "Sources (2)" : "Sources (1)", exact: true }).click();
+      await browserExpect(f.page.getByRole("dialog")).toContainText("Salesforce");
+      await browserExpect(f.page.getByRole("dialog")).toContainText("\u20ac7.25");
+      await f.page.keyboard.press("Escape");
+      for (const state of ["wrong-source", "wrong-currency", "missing-time", "incomplete-items", "failed"]) {
+        f.setState(state); await f.page.evaluate(() => (window as any).fixtureRefetch());
+        await browserExpect(f.pipeline).toContainText("Unavailable"); await browserExpect(f.revenue).toContainText(revenue);
+      }
+      f.setState("zero"); await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(f.pipeline).toContainText("\u20ac0.00");
+      f.setState("positive"); await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(f.pipeline).toContainText(amount);
       f.setProviders(["shopify"]); await f.page.evaluate(() => (window as any).fixtureRefetch());
       await browserExpect(f.pipeline).toContainText("Not configured");
     } finally { await f.close(); }

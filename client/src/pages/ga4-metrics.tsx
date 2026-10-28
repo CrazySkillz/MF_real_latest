@@ -2012,7 +2012,7 @@ export default function GA4Metrics() {
     isLoading: ga4InsightsDailyLoading,
     error: ga4InsightsDailyError,
   } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency, "monthly"],
     enabled: (activeTab === "insights" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
@@ -2021,7 +2021,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(
-        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&readOnly=1`
+        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&readOnly=1&includeMonthly=1`
       );
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || data?.success === false) {
@@ -2163,6 +2163,11 @@ export default function GA4Metrics() {
     return ga4InsightsTimeSeries.filter((row: any) =>
       String(row.date) >= trendsCampaignStartDate && String(row.date) <= trendsDataThroughDate);
   }, [ga4InsightsTimeSeries, trendsDataThroughDate, trendsCampaignStartDate]);
+  const trendsMonthlyRows = useMemo(() => {
+    if (!trendsCampaignStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate) || trendsCampaignStartDate > trendsDataThroughDate) return [];
+    return normalizeGA4InsightsDailyRows(ga4InsightsDailyResp?.monthlyData ?? ga4InsightsDailyResp?.data, trendsDataThroughDate)
+      .filter((row) => row.date >= trendsCampaignStartDate);
+  }, [ga4InsightsDailyResp, trendsDataThroughDate, trendsCampaignStartDate]);
   const trendsImportedRows = ga4InsightsTimeSeries
     .filter((row: any) => trendsCampaignStartDate && String(row?.date || "") >= trendsCampaignStartDate && String(row?.date || "") <= trendsDataThroughDate);
   const trendsLatestImportedDate = String(trendsImportedRows[trendsImportedRows.length - 1]?.date || "").trim();
@@ -4268,8 +4273,12 @@ export default function GA4Metrics() {
         if (trendIsRate) return formatPct(n);
         return formatNumber(n);
       };
-      const trendDeltaPct = (curVal: number, prevVal: number) => prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : curVal > 0 ? 100 : 0;
-      const trendSorted = [...trendsDailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+      const trendFmtDelta = (curVal: number, prevVal: number) => {
+        if (prevVal === 0) return "No % baseline";
+        const delta = calculateGA4InsightsDeltaPct(curVal, prevVal);
+        return `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
+      };
+      const trendSorted = [...(insightsTrendMode === "monthly" ? trendsMonthlyRows : trendsDailyRows)].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
       const renderInsightsFreshness = () => {
         checkPage(14);
         doc.setFontSize(7);
@@ -4326,21 +4335,22 @@ export default function GA4Metrics() {
         y += 3;
       }
 
-      if (includeInsightsTrends && trendSorted.length >= 2) {
+      if (includeInsightsTrends && trendSorted.length >= 1) {
         const trendChartData: { date: string; value: number; recordedDate?: string; month?: string; partial?: boolean }[] = [];
         if (insightsTrendMode === "daily") {
-          trendSorted.slice(-30).forEach((r: any) => trendChartData.push({
+          const firstChartDate = addGA4InsightsDateDays(String(trendSorted.at(-1)?.date), -29) || "";
+          trendSorted.filter((r: any) => String(r.date) >= firstChartDate).forEach((r: any) => trendChartData.push({
             date: String(r.date || "").slice(5), recordedDate: String(r.date),
             value: trendIsRate ? Number((Number(r[trendMetric] || 0) * 100).toFixed(2)) : Number(r[trendMetric] || 0),
           }));
         } else if (insightsTrendMode === "monthly") {
           buildGA4InsightsMonthlySeries(trendSorted, trendsDataThroughDate, trendMetric).forEach(row => {
             const [yr, mo] = row.month.split("-");
-            trendChartData.push({ date: `${new Date(Number(yr), Number(mo) - 1).toLocaleString("en-US", { month: "short" })} '${yr.slice(2)}`, value: Number(row.value.toFixed(2)), month: row.month, partial: row.partial });
+            trendChartData.push({ date: `${new Date(Number(yr), Number(mo) - 1).toLocaleString("en-US", { month: "short" })} '${yr.slice(2)}`, value: row.value, month: row.month, partial: row.partial });
           });
         } else {
           const windowDays = insightsTrendMode === "7d" ? 7 : 30;
-          for (const row of trendSorted.slice(-windowDays * 2)) {
+          for (const row of trendSorted) {
             const rollup = buildGA4InsightsCalendarRollup(trendSorted, String(row.date), windowDays);
             if (!rollup.complete) continue;
             const value = trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
@@ -4348,7 +4358,7 @@ export default function GA4Metrics() {
           }
         }
 
-        if (trendChartData.length > 1) {
+        if (trendChartData.length > 0) {
           doc.setFontSize(7); doc.setFont("helvetica", "normal");
           const trendNoteLines = wrapPdfText("Daily shows recorded values; missing dates are unavailable. 7d/30d require consecutive recorded days. Monthly comparisons require adjacent complete months.", CW - 8);
           sectionTitle("Trends", C.insights, trendNoteLines.length * 4.5 + 77);
@@ -4368,7 +4378,9 @@ export default function GA4Metrics() {
           const yTickStep = roughTick >= 10 ? Math.ceil(roughTick / 10) * 10 : roughTick >= 1 ? Math.ceil(roughTick) : Math.max(0.1, Math.ceil(roughTick * 10) / 10);
           const yAxisMax = yTickStep * 4;
           const yFor = (value: number) => chartY + chartH - (Number(value || 0) / yAxisMax) * chartH;
-          const xFor = (idx: number) => chartX + (idx * chartW) / Math.max(trendChartData.length - 1, 1);
+          const firstChartTime = Date.parse(String(trendChartData[0].recordedDate || ""));
+          const chartTimeSpan = Math.max(Date.parse(String(trendChartData.at(-1)?.recordedDate || "")) - firstChartTime, 86400000);
+          const xFor = (idx: number) => chartX + ((Date.parse(String(trendChartData[idx].recordedDate)) - firstChartTime) * chartW) / chartTimeSpan;
           doc.setLineWidth(0.2);
           for (let tick = 0; tick <= 4; tick++) {
             const tickValue = tick * yTickStep;
@@ -4386,11 +4398,12 @@ export default function GA4Metrics() {
             trendChartData.forEach((p, idx) => {
               const px = chartX + idx * (chartW / Math.max(trendChartData.length, 1)) + 2;
               const barH = Math.max(1, (Number(p.value || 0) / yAxisMax) * chartH);
-              doc.setFillColor(59, 130, 246);
+              doc.setFillColor(...(p.partial ? [147, 197, 253] : [59, 130, 246]) as [number, number, number]);
               doc.rect(px, chartY + chartH - barH, barW, barH, "F");
             });
           } else {
             doc.setDrawColor(59, 130, 246); doc.setLineWidth(0.8);
+            doc.setFillColor(59, 130, 246);
             trendChartData.forEach((p, idx) => {
               const px = xFor(idx);
               const py = yFor(Number(p.value || 0));
@@ -4398,11 +4411,12 @@ export default function GA4Metrics() {
                 const prev = trendChartData[idx - 1];
                 doc.line(xFor(idx - 1), yFor(Number(prev.value || 0)), px, py);
               }
+              doc.circle(px, py, 0.6, "F");
             });
           }
           doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
           doc.text(trendChartData[0]?.date || "", chartX, chartY + chartH + 5);
-          doc.text(trendChartData[trendChartData.length - 1]?.date || "", chartX + chartW, chartY + chartH + 5, { align: "right" });
+          if (trendChartData.length > 1) doc.text(trendChartData[trendChartData.length - 1]?.date || "", chartX + chartW, chartY + chartH + 5, { align: "right" });
           y += 50;
 
           const trendRows: string[][] = insightsTrendMode === "daily"
@@ -4412,24 +4426,21 @@ export default function GA4Metrics() {
                 const previous = sortedIdx > 0 ? trendSorted[sortedIdx - 1] : null;
                 const prevRow = previous && addGA4InsightsDateDays(String(previous.date), 1) === String(r.date) ? previous : null;
                 const prevVal = prevRow ? (trendIsRate ? Number(prevRow[trendMetric] || 0) * 100 : Number(prevRow[trendMetric] || 0)) : 0;
-                const delta = prevRow ? trendDeltaPct(curVal, prevVal) : NaN;
-                return [String(r.date || ""), trendFmtValue(curVal), prevRow ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
+                return [String(r.date || ""), trendFmtValue(curVal), prevRow ? trendFmtDelta(curVal, prevVal) : "—"];
               })
             : insightsTrendMode === "monthly"
               ? trendChartData.slice().reverse().slice(0, 12).map((row, idx, arr) => {
                   const prev = idx < arr.length - 1 ? arr[idx + 1] : null;
                   const comparable = prev && !row.partial && !prev.partial && areGA4InsightsMonthsAdjacent(String(row.month), String(prev.month));
-                  const delta = comparable ? trendDeltaPct(row.value, prev!.value) : NaN;
-                  return [row.date, trendFmtValue(row.value), comparable ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
+                  return [`${row.date}${row.partial ? " (partial)" : ""}`, trendFmtValue(row.value), comparable ? trendFmtDelta(row.value, prev!.value) : "Not comparable"];
                 })
               : (() => {
                   const cur = insightsTrendMode === "7d" ? trendsRollups.last7 : trendsRollups.last30;
                   const prior = insightsTrendMode === "7d" ? trendsRollups.prior7 : trendsRollups.prior30;
                   const getVal = (rollup: any) => trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
                   const curVal = getVal(cur), priorVal = getVal(prior);
-                  const delta = cur.complete && prior.complete ? trendDeltaPct(curVal, priorVal) : null;
                   return [
-                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, cur.complete ? trendFmtValue(curVal) : "Unavailable", delta === null ? "Not comparable" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`],
+                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, cur.complete ? trendFmtValue(curVal) : "Unavailable", cur.complete && prior.complete ? trendFmtDelta(curVal, priorVal) : "Not comparable"],
                     [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, prior.complete ? trendFmtValue(priorVal) : "Unavailable", prior.complete ? "baseline" : "Not comparable"],
                   ];
                 })();
@@ -9609,7 +9620,7 @@ export default function GA4Metrics() {
                         )}
                         {/* Trends line chart */}
                         {(!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
-                          const dailyRows = trendsDailyRows.filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || "")));
+                          const dailyRows = (insightsTrendMode === "monthly" ? trendsMonthlyRows : trendsDailyRows).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || "")));
                           const sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
                           const complete7DayRows = insightsTrendMode === "7d"
                             ? sorted.filter((row: any) => buildGA4InsightsCalendarRollup(sorted, String(row.date || ""), 7).complete)

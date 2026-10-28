@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-27T23:55:22.368Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "trends-fixes-final-oct28-typecheck.log"
+    }
+  ]
+}

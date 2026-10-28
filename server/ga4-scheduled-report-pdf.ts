@@ -1,4 +1,4 @@
-import { buildGA4InsightsRollups, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, selectUniqueLowestGA4InsightsConversionRateChannel } from "../shared/ga4-insights";
+import { buildGA4InsightsRollups, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, selectUniqueLowestGA4InsightsConversionRateChannel, addGA4InsightsDateDays } from "../shared/ga4-insights";
 import { conversionCreditsMatch, computeProgress } from "../shared/metric-math";
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
@@ -1333,8 +1333,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     });
     y += 4;
   };
-  const drawTrendChart = (title: string, rows: Array<{ label: string; value: number }>) => {
-    if (rows.length < 2) return;
+  const drawTrendChart = (title: string, rows: Array<{ label: string; date: string; value: number }>) => {
+    if (rows.length < 1) return;
     sectionTitle(title, COLORS.insights, 50);
     checkPage(58);
     const chartY = y;
@@ -1353,7 +1353,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const innerW = width - 22;
     const innerH = height - 14;
     const yFor = (value: number) => innerY + innerH - (Number(value || 0) / yAxisMax) * innerH;
-    const xFor = (idx: number) => innerX + (idx * innerW) / Math.max(rows.length - 1, 1);
+    const firstTime = Date.parse(rows[0].date);
+    const timeSpan = Math.max(Date.parse(rows.at(-1)!.date) - firstTime, 86400000);
+    const xFor = (idx: number) => innerX + ((Date.parse(rows[idx].date) - firstTime) * innerW) / timeSpan;
     doc.setLineWidth(0.2);
     for (let tick = 0; tick <= 4; tick++) {
       const tickValue = tick * yTickStep;
@@ -1369,18 +1371,20 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     doc.line(innerX, innerY, innerX, innerY + innerH);
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.8);
+    doc.setFillColor(59, 130, 246);
     rows.forEach((row, idx) => {
       const px = xFor(idx);
       const py = yFor(Number(row.value || 0));
-      if (idx > 0) {
+      if (idx > 0 && addGA4InsightsDateDays(rows[idx - 1].date, 1) === row.date) {
         const prev = rows[idx - 1];
         doc.line(xFor(idx - 1), yFor(Number(prev.value || 0)), px, py);
       }
+      doc.circle(px, py, 0.6, "F");
     });
     doc.setFontSize(6.5);
     doc.setTextColor(...COLORS.textTert);
     doc.text(rows[0].label, innerX, chartY + height - 2);
-    doc.text(rows[rows.length - 1].label, innerX + innerW, chartY + height - 2, { align: "right" });
+    if (rows.length > 1) doc.text(rows[rows.length - 1].label, innerX + innerW, chartY + height - 2, { align: "right" });
     y += height + 6;
   };
   const formatMoney = payload.formatMoney;
@@ -1751,7 +1755,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         y += 4.5;
       }
       y += 3;
-      const trendRows = payload.insightsRollups.rows.slice(-14).map((row: any) => ({ label: String(row?.date || "").slice(5), value: Number(row?.sessions || 0) }));
+      const trendRows = payload.insightsRollups.rows.slice(-14).map((row: any) => ({ label: String(row?.date || "").slice(5), date: String(row.date), value: Number(row?.sessions || 0) }));
       drawTrendChart("Trends", trendRows);
       addSimpleTable(
         "Trend Table",

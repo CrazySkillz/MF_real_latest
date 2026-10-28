@@ -154,6 +154,18 @@ describe("Browser Overview reports without a Spend source", () => {
   async function render(changes: Record<string, any>, reportType = "overview", configuration?: any) {
     const doc = new jsPDF();
     const drawn: { text: string; x: number; y: number; width: number; page: number }[] = [];
+    const trendLines: number[][] = [];
+    let trendColor = false;
+    const originalDrawColor = doc.setDrawColor.bind(doc);
+    vi.spyOn(doc, "setDrawColor").mockImplementation(((...args: any[]) => {
+      trendColor = args.join(",") === "59,130,246";
+      return (originalDrawColor as any)(...args);
+    }) as any);
+    const originalLine = doc.line.bind(doc);
+    vi.spyOn(doc, "line").mockImplementation(((...args: any[]) => {
+      if (trendColor) trendLines.push(args.slice(0, 4));
+      return (originalLine as any)(...args);
+    }) as any);
     const originalText = doc.text.bind(doc);
     const text = vi.spyOn(doc, "text").mockImplementation(((value: string, x: number, y: number, ...args: any[]) => {
       if (typeof value === "string") {
@@ -180,6 +192,7 @@ describe("Browser Overview reports without a Spend source", () => {
       ga4RefreshStatusText: "Imported GA4 data, updated daily", overviewVisibleDataUsingLastGoodData: false,
       pipelineProxyConfigured: false, pipelineProxyLoading: false, pipelineProxyUnavailable: false, hasPipelineProxy: false,
       pipelineProxyData: { success: false, totalToDate: 0 },
+      insightsTrendMode: "daily", trendsMonthlyRows: [],
       adComparisonNativeRevenue: Number((changes.adComparisonBreakdownAgg || []).reduce((sum: number, row: any) => sum + row.revenue, 0).toFixed(2)),
       adComparisonChartRows: changes.campaignBreakdownAgg || [],
       ...changes,
@@ -187,8 +200,64 @@ describe("Browser Overview reports without a Spend source", () => {
     expect(save).toHaveBeenCalledOnce();
     expect(doc.output()).toMatch(/^%PDF-/);
     const words = text.mock.calls.map(call => call[0]);
-    return Object.assign((label: string) => words[words.indexOf(label.toUpperCase()) + 1], { doc, drawn, words, content: words.flat().join(" ") });
+    return Object.assign((label: string) => words[words.indexOf(label.toUpperCase()) + 1], { doc, drawn, words, trendLines, content: words.flat().join(" ") });
   }
+  async function renderTrends(rows: any[], mode = "daily", metric = "sessions") {
+    const cutoff = rows.at(-1)?.date || "2026-10-27";
+    const rollups = insightMath.buildGA4InsightsRollups(rows, cutoff);
+    return render({ ...insightMath, insights: [], insightsRollups: rollups, trendsRollups: rollups,
+      trendsDailyRows: rows, trendsMonthlyRows: rows, insightsTrendMetric: metric, insightsTrendMode: mode,
+      trendsDataThroughDate: cutoff, trendsDataThroughLabel: cutoff, trendsReportingTimeZoneLabel: "Europe/Amsterdam", trendsLastRefreshedLabel: "Oct 28, 2026",
+      formatMoney: (value: number) => `EUR ${value.toFixed(2)}`, formatNumber: (value: number) => value.toLocaleString("en-US"),
+    }, "custom", { sections: { insights: true }, subsections: { insights: { trends: true, actions: false, summaryCards: false, dataSummary: false } } });
+  }
+  it.each(["daily", "7d", "30d", "monthly"])("withholds a zero-baseline percentage in the %s Trends PDF", async mode => {
+    const count = mode === "monthly" ? 61 : mode === "30d" ? 60 : mode === "7d" ? 14 : 2;
+    const start = mode === "monthly" ? "2026-09-01" : "2026-10-01";
+    const rows = Array.from({ length: count }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays(start, i), sessions: i === count - 1 ? 119 : 0 }));
+    const result = await renderTrends(rows, mode);
+    expect(result.content).toContain("No % baseline");
+    expect(result.content).not.toContain("+100.0%");
+    expect(result.content).not.toMatch(/NaN|Infinity/);
+  });
+  it("uses the signed revenue delta in the Trends PDF", async () => {
+    const result = await renderTrends([{ date: "2026-10-20", revenue: -20 }, { date: "2026-10-21", revenue: -10 }], "daily", "revenue");
+    expect(result.content).toContain("+50.0%");
+  });
+  it("does not round a small nonzero monthly baseline into zero", async () => {
+    const rows = Array.from({ length: 61 }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays("2026-09-01", i), conversions: i === 0 ? 0.004 : i === 60 ? 0.008 : 0 }));
+    const result = await renderTrends(rows, "monthly", "conversions");
+    expect(result.content).toContain("+100.0%");
+    expect(result.content).not.toContain("No % baseline");
+  });
+  it.each(["daily", "7d", "monthly"])("renders a single available %s point instead of omitting Trends", async mode => {
+    const count = mode === "7d" ? 7 : 1;
+    const rows = Array.from({ length: count }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays("2026-10-04", i), sessions: 3, engagedSessions: 2 }));
+    const result = await renderTrends(rows, mode);
+    expect(result.words).toContain("Trends");
+    expect(result.content).toContain(mode === "monthly" ? "partial" : mode === "7d" ? "21" : "3");
+    if (mode === "monthly") expect(result.content).toContain("Not comparable");
+    if (!process.env.V1_BATCH7_BASELINE) writeFileSync(`audit-temp/trends-fixed-${mode}-oct28.pdf`, Buffer.from(result.doc.output("arraybuffer")));
+    for (const box of result.drawn) { expect(box.x).toBeGreaterThanOrEqual(10); expect(box.x + box.width).toBeLessThanOrEqual(198); expect(box.y).toBeLessThanOrEqual(287); }
+  });
+  it("keeps missing dates as proportional gaps in the PDF chart", async () => {
+    const result = await renderTrends([1, 2, 10, 11].map(day => ({ date: `2026-10-${String(day).padStart(2, "0")}`, sessions: day })));
+    expect(result.trendLines).toHaveLength(2);
+    const firstWidth = result.trendLines[0][2] - result.trendLines[0][0];
+    const gapWidth = result.trendLines[1][0] - result.trendLines[0][2];
+    expect(gapWidth / firstWidth).toBeCloseTo(8);
+  });
+  it("keeps the PDF Daily chart within 30 calendar days and the 7d chart's older complete windows", async () => {
+    const sparse = Array.from({ length: 20 }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays("2026-09-01", i * 2), sessions: 1 }));
+    const daily = await renderTrends(sparse);
+    expect(daily.words).not.toContain("09-01");
+    const rows = [...Array.from({ length: 7 }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays("2026-08-01", i), sessions: 2 })),
+      ...Array.from({ length: 15 }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays("2026-08-10", i * 2), sessions: 2 }))];
+    const rolling = await renderTrends(rows, "7d");
+    expect(rolling.words).toContain("Trends");
+    expect(rolling.words).toContain("08-07");
+    expect(rolling.content).toContain("Not comparable");
+  });
   it("retains full long finding titles in an actual browser Insights PDF", async () => {
     const title = "International expansion campaign sessions from qualified prospects across northern and southern European markets Below Saved Target";
     const result = await render({

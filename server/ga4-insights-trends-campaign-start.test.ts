@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ScriptTarget, transpileModule } from "typescript";
-import { addGA4InsightsDateDays, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups } from "../shared/ga4-insights";
+import { addGA4InsightsDateDays, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
 
 const page = readFileSync(join(process.cwd(), "client/src/pages/ga4-metrics.tsx"), "utf8").replace(/\r\n/g, "\n");
 const extract = (startMarker: string, endMarker: string) => {
@@ -26,6 +26,11 @@ const importedRows = new Function(js(`
     return trendsImportedRows;
   };
 `))() as (rows: any[], startDate: string, cutoff: string) => any[];
+const monthlyRows = new Function("normalizeGA4InsightsDailyRows", js(`
+  return (ga4InsightsDailyResp, trendsCampaignStartDate, trendsDataThroughDate) => {
+    ${extract("  const trendsMonthlyRows = useMemo(() => {", "\n  const trendsImportedRows =").replace("  const trendsMonthlyRows = useMemo(() => {", "").split("\n  }, [ga4InsightsDailyResp,")[0]}
+  };
+`))(normalizeGA4InsightsDailyRows);
 const dailyChart = new Function("addGA4InsightsDateDays", js(`
   return (sorted: any[], trendsCampaignStartDate: string) => {
     const metric = "sessions";
@@ -39,6 +44,15 @@ const dailyChart = new Function("addGA4InsightsDateDays", js(`
 const row = (date: string, sessions: number) => ({ date, sessions, users: sessions, conversions: 0, revenue: 0, pageviews: sessions, engagedSessions: 0, engagementRate: 0 });
 
 describe("GA4 Insights Trends campaign creation boundary", () => {
+  it("isolates extra monthly history from daily windows and still enforces creation and cutoff", () => {
+    const extra = [row("2026-08-01", 2), row("2026-08-02", 3), row("2026-09-30", 5), row("2026-10-01", 7)];
+    const response = { data: extra.slice(2), monthlyData: extra };
+    expect(monthlyRows(response, "2026-08-02", "2026-09-30")).toEqual(extra.slice(1, 3));
+    expect(buildRows(response.data, "2026-09-30", "2026-08-02")).toEqual([extra[2]]);
+    expect(monthlyRows({ data: extra.slice(2) }, "2026-08-02", "2026-09-30")).toEqual([extra[2]]);
+    expect(monthlyRows(response, "", "2026-09-30")).toEqual([]);
+    expect(monthlyRows(response, "2026-10-01", "2026-09-30")).toEqual([]);
+  });
   it("uses the campaign reporting date when creation crosses a UTC midnight", () => {
     expect(getStartDate("2026-09-03T22:30:00.000Z", "Europe/Amsterdam")).toBe("2026-09-04");
     expect(getStartDate("2026-09-03T22:30:00.000Z", "America/New_York")).toBe("2026-09-03");

@@ -79,6 +79,45 @@ describe("Insights Trends zero-day coverage route", () => {
 
   const request = (days?: number) => fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-insights-trends-coverage?propertyId=${connection.propertyId}${days ? `&days=${days}` : ""}`);
 
+  it.each(["2026-10-31", "2026-08-31", "2028-03-15"])("includes complete calendar-month history without changing the 60-day response at %s", async cutoff => {
+    const { addGA4InsightsDateDays } = await import("../shared/ga4-insights");
+    vi.setSystemTime(new Date(`${addGA4InsightsDateDays(cutoff, 1)}T12:00:00Z`));
+    const monthStart = new Date(Date.UTC(Number(cutoff.slice(0, 4)), Number(cutoff.slice(5, 7)) - 3, 1)).toISOString().slice(0, 10);
+    const from = addGA4InsightsDateDays(monthStart, -5)!;
+    const rows: any[] = [];
+    for (let date = from; date <= cutoff; date = addGA4InsightsDateDays(date, 1)!) {
+      rows.push({ ...dailyRows[0], date, sessions: 1, engagedSessions: 1, updatedAt: new Date(`${cutoff}T22:00:00Z`) });
+    }
+    storageMock.getGA4Connection.mockResolvedValue({ ...connection, importStartDate: from });
+    storageMock.getGA4DailyMetrics.mockImplementation(async (id, property, start, end) => {
+      expect([id, property]).toEqual([campaign.id, connection.propertyId]);
+      return rows.filter(row => row.date >= start && row.date <= end);
+    });
+    const url = `${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?propertyId=${connection.propertyId}&days=60&readOnly=1`;
+    const baseline = await (await fetch(url)).json();
+    storageMock.getGA4DailyMetrics.mockClear();
+    const response = await fetch(`${url}&includeMonthly=1`);
+    expect(response.status).toBe(200);
+    const { monthlyData, ...unchanged } = await response.json();
+    expect(unchanged).toEqual(baseline);
+    expect(unchanged.data).toHaveLength(60);
+    expect(monthlyData?.[0]?.date).toBe(monthStart);
+    expect(monthlyData?.at(-1)?.date).toBe(cutoff);
+    const months = buildGA4InsightsMonthlySeries(monthlyData, cutoff, "sessions");
+    expect(months).toHaveLength(3);
+    expect(months.slice(0, 2).every(month => !month.partial && month.value === month.calendarDays)).toBe(true);
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(2); // Reuses the existing Overview read.
+    expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+    expect(ga4ServiceMock.getTrendsDailyPresenceWithToken).not.toHaveBeenCalled();
+  });
+
+  it("does not expose monthly history to a different owner", async () => {
+    vi.mocked(getAuth).mockReturnValue({ userId: "other-owner" } as any);
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?propertyId=${connection.propertyId}&days=60&readOnly=1&includeMonthly=1`);
+    expect(response.status).toBe(404);
+    expect(storageMock.getGA4DailyMetrics).not.toHaveBeenCalled();
+  });
+
   it("returns confirmed zero dates from stored-row parity without writing shared data", async () => {
     const response = await request();
     const body = await response.json();

@@ -106,6 +106,7 @@ Current meaning:
 
 - Trends uses persisted GA4 daily facts for the selected campaign/property/scope and shows only reporting dates on or after the campaign creation calendar date in the campaign reporting timezone; this display filter does not delete pre-creation stored rows or change other sections
 - Insights requests an isolated 60-calendar-day stored-history window so two exact 30-day windows can be evaluated without changing Overview or KPI windows; sparse or unrequested dates remain unavailable
+- Monthly additionally uses the two preceding calendar months plus the current month from the same scoped daily-history response (`includeMonthly=1`). The server reuses its existing initial-import history read; the 60-day rows, refresh metadata, Daily/7d/30d views, and findings retain their existing boundaries. Campaign creation and completed-day limits still apply; unavailable dates remain gaps.
 - all normal browser daily-history requests are read-only; Insights Trends renders scheduler-produced stored facts and does not run a live GA4 coverage request when the page loads
 - today's intraday data is excluded until it becomes a completed reporting day
 - `Latest imported day` remains visible and is the latest persisted row eligible for Trends after the creation-date filter; the scheduler-derived completed-history boundary limits the series but is not shown as `Chart through`

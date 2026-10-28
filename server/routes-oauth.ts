@@ -9591,6 +9591,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate,
       );
       const overviewTotals = summarizeGA4TrafficRows(overviewRows);
+      // Monthly Trends needs the two preceding calendar months plus the current month.
+      // Reuse the scoped Overview read; keep daily coverage and refresh metadata unchanged.
+      const monthlyStartDate = new Date(Date.UTC(Number(dataThroughDate.slice(0, 4)), Number(dataThroughDate.slice(5, 7)) - 3, 1)).toISOString().slice(0, 10);
 
       const lastUpdated =
         stored.length > 0
@@ -9627,6 +9630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportingTimeZone,
         historyDataThroughDate,
         data: stored.map(addDerivedEngagedSessions),
+        ...(req.query.includeMonthly === "1" ? { monthlyData: overviewRows.filter((row: any) => String(row.date) >= monthlyStartDate && String(row.date) <= endDate).map(addDerivedEngagedSessions) } : {}),
         validationReadOnly: readOnly,
         overviewStartDate,
         overviewTotals,

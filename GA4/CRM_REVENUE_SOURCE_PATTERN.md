@@ -23,6 +23,7 @@ Read this with:
 - `campaignMappings` map each selected CRM value to a selected GA4 campaign value. They do not change the CRM record's stage or amount.
 - Confirmed revenue and Pipeline Proxy are different measures. Confirmed Closed Won records feed Total Revenue. Records in the chosen open stage feed Pipeline Proxy only.
 - Pipeline Proxy never feeds Total Revenue, Profit, ROI, ROAS, CPA, revenue-dependent KPIs or Benchmarks, Ad Comparison, Insights, Reports, or Campaign Diagnostics confirmed financial totals.
+- October 28 HubSpot selection correction: a single active, Pipeline-enabled HubSpot source whose source and mapping both explicitly belong to the requested GA4 context can supply the campaign's proxy without a CRM-to-GA4 name mapping. Existing explicit GA4 matches retain priority; multiple unmapped candidates remain ambiguous and unavailable. The frontend must match the response's exact source ID and preserve currency, timestamp, mode and item-total validation. See [Promo's bounded correction](../docs/fixes/v1-batch-8/promo-hubspot-pipeline-selection-2026-10-28.md).
 
 ## Canonical Wizard Flow
 

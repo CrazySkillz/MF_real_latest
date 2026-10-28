@@ -2839,7 +2839,10 @@ export default function GA4Metrics() {
     const getPipelineSourceData = (sourceType: "salesforce" | "hubspot", endpointData: any, label: string, requestFailed: boolean) => {
       const eligible = [...sourceDefs, ...(Array.isArray(revenueDisplaySources) ? revenueDisplaySources : [])].filter((s: any) =>
         s?.isActive !== false && String(s?.sourceType || "").toLowerCase() === sourceType && hasPipelineConfig(s));
-      const endpointSource = eligible.find((source: any) => String(source?.id || "") === String(endpointData?.sourceId || "") && sourceMatchesGa4Scope(source));
+      const endpointSource = eligible.find((source: any) => String(source?.id || "") === String(endpointData?.sourceId || "")
+        && (sourceMatchesGa4Scope(source) || sourceType === "hubspot" && sourceDefs.filter((s: any) =>
+          s?.isActive !== false && String(s?.sourceType || "").toLowerCase() === "hubspot" && hasPipelineConfig(s)).length === 1
+          && String(source?.platformContext || "").toLowerCase() === "ga4" && parseMappingConfig(source)?.platformContext === "ga4"));
       const crmSource = endpointSource || selectPipelineSource(eligible);
       if (!crmSource) return null;
       const cfg = parseMappingConfig(crmSource);
@@ -3146,6 +3149,29 @@ export default function GA4Metrics() {
     adComparisonBreakdownPlaceholder ||
     (adComparisonBreakdownError && adComparisonBreakdown === undefined);
   const landingPagesUnavailable = !ga4ConnectionUsable || (landingPagesError && ga4LandingPages === undefined);
+  const overviewLandingPageRows = (() => {
+    const rows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];
+    // User-requested mock rows for Promo's Overview only; never persist or export them.
+    if (rows.length || campaignId !== "b74f98af-ede9-47af-9b19-0720ebb4d2c0" || selectedGA4PropertyId !== "542352127"
+      || selectedGa4CampaignFilterList.length !== 2 || !["yesop_brand_search", "yesop_retargeting"].every(name => selectedGa4CampaignFilterList.includes(name))
+      || landingPagesUnavailable || landingPagesError || ga4LandingPages?.success !== true || !overviewSummaryAvailable
+      || !Number.isFinite(overviewSummaryTotals.sessions) || overviewSummaryTotals.sessions <= 0
+      || !Number.isFinite(overviewSummaryTotals.conversions) || overviewSummaryTotals.conversions < 0) return rows;
+    let sessionsLeft = overviewSummaryTotals.sessions, conversionsLeft = overviewSummaryTotals.conversions;
+    return [
+      { landingPage: "/", source: "google", medium: "cpc", sessionShare: 0.38, conversionShare: 0.30 },
+      { landingPage: "/pricing", source: "google", medium: "cpc", sessionShare: 0.27, conversionShare: 0.31 },
+      { landingPage: "/product", source: "google", medium: "display", sessionShare: 0.18, conversionShare: 0.18 },
+      { landingPage: "/signup", source: "google", medium: "display", sessionShare: 0.10, conversionShare: 0.18 },
+      { landingPage: "/blog/benchmarking", source: "google", medium: "cpc", sessionShare: 0.07, conversionShare: 0.03 },
+    ].map(({ sessionShare, conversionShare, ...row }, index) => {
+      const sessions = index === 4 ? sessionsLeft : Math.floor(overviewSummaryTotals.sessions * sessionShare);
+      const conversions = index === 4 ? conversionsLeft : Math.floor(overviewSummaryTotals.conversions * conversionShare);
+      sessionsLeft -= sessions;
+      conversionsLeft -= conversions;
+      return { ...row, sessions, users: Math.min(overviewSummaryTotals.users, Math.round(sessions * 0.94)), conversions };
+    });
+  })();
   const conversionEventsUnavailable = !ga4ConnectionUsable || (conversionEventsError && ga4ConversionEvents === undefined);
   const revenueSourcesUnavailable = revenueSourcesError && revenueSourcesResp === undefined;
   const spendSourcesUnavailable = spendSourcesError && spendSourcesResp === undefined;
@@ -7310,7 +7336,7 @@ export default function GA4Metrics() {
                             <div className="text-sm text-destructive">
                               Landing page data is unavailable. Refresh the page to try again.
                             </div>
-                          ) : Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
+                          ) : overviewLandingPageRows.length > 0 ? (
                             <div className="overflow-hidden border rounded-md">
                               <table className="w-full text-sm table-fixed">
                                 <thead className="bg-muted border-b">
@@ -7338,7 +7364,7 @@ export default function GA4Metrics() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {ga4LandingPages.rows.slice(0, 20).map((r: any, idx: number) => {
+                                  {overviewLandingPageRows.slice(0, 20).map((r: any, idx: number) => {
                                     const sessions = Number(r?.sessions || 0);
                                     const conversions = Number(r?.conversions || 0);
                                     const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;

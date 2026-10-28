@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-28T10:05:32.675Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "promo-hubspot-scope-oct28-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "promo-hubspot-scope-oct28-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "promo-hubspot-scope-oct28-server-build.log"
+    }
+  ]
+}

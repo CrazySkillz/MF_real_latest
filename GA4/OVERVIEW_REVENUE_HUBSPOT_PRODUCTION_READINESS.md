@@ -2,6 +2,8 @@
 
 ## Mandatory status
 
+October 28 correction: Pipeline Proxy selection for an unmapped, campaign-owned GA4 HubSpot source is **unproven on the deployed revision** after Promo reproduced a source-selection failure. The provider had saved EUR 3,200 successfully; API and frontend GA4-name matching rejected the source. The local correction and exact validation limits are recorded in [the Promo selection checkpoint](../docs/fixes/v1-batch-8/promo-hubspot-pipeline-selection-2026-10-28.md). The certificate below remains historical evidence for its listed sources and configurations, not evidence for this newly exercised path.
+
 **Current status: CLEAN-CERTIFIED for the five exact active GA4 HubSpot revenue
 sources and exercised configurations recorded below at deployed runtime
 `490c8ae685821389d1f433a5943f856478f52e5c`.** This is not whole-provider or

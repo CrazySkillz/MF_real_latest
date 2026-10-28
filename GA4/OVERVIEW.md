@@ -352,6 +352,8 @@ Historical deployed candidate evidence captured on `2026-08-13`:
 
 `Landing Pages` is a cumulative view from the fixed initial-import boundary through the latest completed day for the GA4 property and campaign selection configured for this app campaign.
 
+October 28 user-authorized presentation exception: Promo (`b74f98af-ede9-47af-9b19-0720ebb4d2c0`), property `542352127`, with exactly `yesop_brand_search` and `yesop_retargeting`, displays five mock landing-page rows when its successful saved response is empty and Summary is available. The user explicitly requested no demo label. These are synthetic page allocations of Summary Sessions/Conversions, not measured landing-page performance; they must not be used as analytics-certification evidence. The override is confined to the Overview table: real rows take precedence, request failures retain the existing error handling, and API responses, stored snapshots, calculations, browser PDFs and scheduled PDFs remain source-backed.
+
 Columns:
 
 - `Landing page`

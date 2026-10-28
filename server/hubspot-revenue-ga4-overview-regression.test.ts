@@ -322,7 +322,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
     expect(pipelineRoute).toContain("requestedPlatformContext");
     expect(pipelineRoute).toContain("storage.getRevenueSources(campaignId, context)");
-    expect(pipelineRoute).toContain("const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;");
+    expect(pipelineRoute).toContain("const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || unambiguousContextCandidate;");
+    expect(pipelineRoute).toContain('const unambiguousContextCandidate = requestedPlatformContext === "ga4" && candidates.length === 1');
     expect(pipelineRoute).toContain('return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested GA4 campaign scope." });');
     expect(pipelineRoute).not.toContain("|| candidates[0] || null");
     expect(pipelineRoute).toContain("const mappedGa4Values = Array.isArray(sourceCfg?.campaignMappings)");
@@ -347,7 +348,9 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(pipelineMemo).toContain('String(source?.sourceType || "").trim().toLowerCase() === "hubspot" && Array.isArray(cfg.campaignMappings)');
     expect(pipelineMemo).toContain("item?.linkedinCampaignUrn, item?.linkedinCampaignName");
     expect(pipelineMemo).toContain("return sorted.find(sourceMatchesGa4Scope) || null;");
-    expect(pipelineMemo).toContain('String(source?.id || "") === String(endpointData?.sourceId || "") && sourceMatchesGa4Scope(source)');
+    expect(pipelineMemo).toContain('String(source?.id || "") === String(endpointData?.sourceId || "")');
+    expect(pipelineMemo).toContain('sourceMatchesGa4Scope(source) || sourceType === "hubspot"');
+    expect(pipelineMemo).toContain('parseMappingConfig(source)?.platformContext === "ga4"');
     expect(pipelineMemo).toContain('const available = !requestFailed && !!endpointSource');
     expect(pipelineMemo).toContain("const crmSource = endpointSource || selectPipelineSource(eligible);");
     expect(pipelineMemo).not.toContain("return sorted[0]");
@@ -778,7 +781,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(campaignBreakdown).toContain("mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn");
     expect(overviewReportBlock).toContain("[\"Total Revenue\", formatMoney(payload.financialRevenue)]");
     expect(overviewReportBlock).toContain("payload.revenueDisplaySources.map");
-    expect(overviewReportBlock).toContain("payload.campaignBreakdownMatchedExternalRevenue.get");
+    expect(payloadBlock).toContain("+ (campaignBreakdownMatchedExternalRevenue.get(row.name) || 0)");
+    expect(overviewReportBlock).toContain("payload.adComparisonChartRows");
     expect(overviewReportBlock).not.toContain("Pipeline Proxy");
     expect(overviewReportBlock).not.toContain("pipelineEntries");
     expect(overviewReportBlock).not.toContain("pipelineTotal + payload.financialRevenue");

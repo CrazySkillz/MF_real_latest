@@ -19499,7 +19499,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       candidates.sort((a, b) => new Date((b.source as any)?.connectedAt || (b.source as any)?.createdAt || 0).getTime() - new Date((a.source as any)?.connectedAt || (a.source as any)?.createdAt || 0).getTime());
-      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || null;
+      // A uniquely configured campaign source does not require a CRM-to-GA4 name mapping.
+      const unambiguousContextCandidate = requestedPlatformContext === "ga4" && candidates.length === 1
+        && String(candidates[0].source?.platformContext || "").trim().toLowerCase() === requestedPlatformContext
+        && String(candidates[0].cfg?.platformContext || candidates[0].cfg?.platform || "").trim().toLowerCase() === requestedPlatformContext
+        ? candidates[0] : null;
+      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || unambiguousContextCandidate;
       if (!selectedPipelineSource) {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for the requested GA4 campaign scope." });
       }

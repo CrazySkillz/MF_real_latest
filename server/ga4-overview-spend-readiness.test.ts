@@ -142,7 +142,7 @@ describe("GA4 Overview Spend readiness contract", () => {
     expect(overview).toContain('queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`]');
     expect(overview).toContain('queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`]');
     expect(overview).toContain("const spendSourcesCount = spendDisplaySources.length;");
-    expect(storage).toContain("lte(spendSources.createdAt, sourceCreatedThrough)");
+    expect(storage).not.toContain("lte(spendSources.createdAt, sourceCreatedThrough)");
     expect(routes).toContain("latestTotalSpend:");
     expect(routes).toContain("completedDaySpend:");
     expect(overview).toContain("Latest imported source values. Total Spend uses completed data through");

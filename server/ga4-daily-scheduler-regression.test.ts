@@ -46,6 +46,16 @@ describe("GA4 startup recovery after a missed scheduled slot", () => {
   });
   afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); });
 
+  it("recovers an invalidated publication after a Spend source is added today", async () => {
+    marker = null;
+    vi.mocked(storage.getSpendSources).mockResolvedValue([{ id: "spend-new", isActive: true, createdAt: "2026-10-17T18:10:00Z" }] as any);
+    const runPipeline = vi.fn(async () => undefined);
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["ptomo"]);
+    expect(runPipeline).toHaveBeenCalledExactlyOnceWith("snapshot_bootstrap", {
+      campaignId: "ptomo", suppressAlerts: false, refreshFinancialSources: true,
+    });
+  });
+
   it.each([
     ["missed 20:00 refresh", "ga4_aligned_refresh_v1:2026-10-16:2026-10-17T12:12:40Z"],
     ["interrupted publication", null],

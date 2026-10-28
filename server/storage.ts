@@ -15,7 +15,7 @@ import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccount
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, getGoogleAdsServiceAccountLoginCustomerId, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -2604,9 +2604,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }> {
-    // spend_records.date is stored as YYYY-MM-DD; lexicographic compare works.
-    const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
-    const sourceCreatedThrough = campaign ? getReportingDateEndAt(endDate, (campaign as any)?.reportingTimeZone) : null;
+    // Eligibility follows the spend date, not when the source was connected.
+    // spend_records.date is YYYY-MM-DD; callers supply the reporting-day bounds.
     const rows = await db
       .select({
         spend: spendRecords.spend,
@@ -2622,7 +2621,6 @@ export class DatabaseStorage implements IStorage {
         eq(spendSources.campaignId, campaignId),
         eq(spendSources.isActive, true),
         spendPlatformContextPredicate(platformContext),
-        sourceCreatedThrough ? lte(spendSources.createdAt, sourceCreatedThrough) : undefined,
         sql`${spendRecords.date} >= ${startDate}`,
         sql`${spendRecords.date} <= ${endDate}`
       ));
@@ -2646,8 +2644,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>> {
-    const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
-    const sourceCreatedThrough = campaign ? getReportingDateEndAt(endDate, (campaign as any)?.reportingTimeZone) : null;
     const rows = await db
       .select({
         spendSourceId: spendRecords.spendSourceId,
@@ -2664,7 +2660,6 @@ export class DatabaseStorage implements IStorage {
         eq(spendSources.campaignId, campaignId),
         eq(spendSources.isActive, true),
         spendPlatformContextPredicate(platformContext),
-        sourceCreatedThrough ? lte(spendSources.createdAt, sourceCreatedThrough) : undefined,
         sql`${spendRecords.date} >= ${startDate}`,
         sql`${spendRecords.date} <= ${endDate}`
       ));

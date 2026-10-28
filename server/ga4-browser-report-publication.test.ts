@@ -477,6 +477,19 @@ describe("Browser Overview reports without a Spend source", () => {
     expect(metric("CPA")).toBe(spend ? "EUR 3.82" : "—");
   });
 
+  it("downloads a ready publication containing past spend imported today", async () => {
+    const metric = await render({ financialSpendAvailable: true, overviewFinancialSpendAvailable: true,
+      financialSpend: 1100, overviewFinancialSpend: 1100, hasSpendSources: true, spendSourceDefinitionsKnownEmpty: false,
+      spendSourceTypeLabel: () => "CSV",
+      spendDisplaySources: [{ id: "csv-new", sourceType: "csv", spend: 1100, displayName: "Test_spend.csv", createdAt: "2026-10-17", completedDaySpend: 1100, latestTotalSpend: 1100, pendingCompletedDay: false }],
+      financialROAS: 65659.5 / 1100 });
+    expect(metric("Total Spend")).toBe("EUR 1,100.00");
+    expect(metric("Total Revenue")).toBe("EUR 65,659.50");
+    expect(metric("Profit")).toBe("EUR 64,559.50");
+    expect(metric("ROAS")).toBe("59.69x");
+    expect(metric("CPA")).toBe("EUR 4.20");
+  });
+
   // Derive Revenue availability from the page expressions, rather than forcing a ready flag for zero.
   const revenueNames = ["ga4RevenueMetricName", "ga4FinancialNativeAvailable", "ga4RevenueForFinancials", "ga4HasRevenueMetric",
     "revenueMetricAvailable", "importedRevenueForFinancials", "revenueSourceDefinitionsKnownEmpty", "importedRevenueAvailable",

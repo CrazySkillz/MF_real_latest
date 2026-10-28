@@ -59,6 +59,20 @@ describe("GA4 report saved publication", () => {
   });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
+  it("renders past-dated spend from a source connected today without changing the report boundary", async () => {
+    const saved = snapshot(); saved.metrics.financialDaily.inputs.spend.value = "1100.00";
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storageMock.getSpendSources.mockResolvedValue([{ id: "s", isActive: true, currency: "EUR", sourceType: "csv", createdAt: "2026-10-17", displayName: "Test_spend.csv" }]);
+    storageMock.getSpendBreakdownBySource.mockResolvedValue([{ sourceId: "s", spend: 1100, currency: "EUR" }]);
+    expect((await build())?.length).toBeGreaterThan(100);
+    const metric = (label: string) => printed[printed.indexOf(label.toUpperCase()) + 1];
+    expect(metric("Total Spend")).toBe("EUR 1,100.00");
+    expect(metric("Total Revenue")).toBe("EUR 130.01");
+    expect(metric("CPA")).toBe("EUR 220.00");
+    expect(storageMock.getSpendBreakdownBySource).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-16", "ga4");
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
+
   it.each([0.75, 0.000075, 2])("prints credit %s consistently in scheduled Summary, details, goals and CPA", async credit => {
     const saved = overview();
     saved.campaignBreakdown.totals.conversions = credit;

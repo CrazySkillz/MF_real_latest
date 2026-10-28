@@ -65,7 +65,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate, buildGoogleSheetsMetricSummary, googleSheetsMetricTotal, getGoogleSheetsSummaryDisplayValue, parseGoogleSheetsMetricNumber } from "./utils/google-sheets-aggregate-source";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4RefreshStatus, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4RefreshStatus, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -1627,8 +1627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedDayEndDate,
         sources: sources.map((source: any) => {
           const sourceId = String(source?.id || "");
-          const pendingCompletedDay = !isCreatedThroughReportingDate(source?.createdAt, completedDayEndDate, (campaign as any)?.reportingTimeZone)
-            || (!completedBySource.has(sourceId) && latestBySource.has(sourceId));
+          const pendingCompletedDay = !completedBySource.has(sourceId) && latestBySource.has(sourceId);
           return {
             ...source,
             latestTotalSpend: latestBySource.has(sourceId) ? Number((latestBySource.get(sourceId) || 0).toFixed(2)) : null,

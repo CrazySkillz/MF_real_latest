@@ -109,3 +109,14 @@ export const generalApiRateLimiter = rateLimit({
   legacyHeaders: false
 });
 
+export const earlyAccessRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    error: 'Too many early access requests. Please try again later.',
+    retryAfter: 15 * 60
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+

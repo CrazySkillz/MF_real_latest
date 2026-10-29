@@ -954,13 +954,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Rate limiters (must be initialized before any route handlers reference them)
+  const rateLimiters = await import("./middleware/rateLimiter");
   const {
     oauthRateLimiter,
     linkedInApiRateLimiter,
     googleSheetsRateLimiter,
     ga4RateLimiter,
     importRateLimiter,
-  } = await import("./middleware/rateLimiter");
+  } = rateLimiters;
+  const earlyAccessRateLimiter = Object.prototype.hasOwnProperty.call(rateLimiters, "earlyAccessRateLimiter")
+    ? rateLimiters.earlyAccessRateLimiter
+    : oauthRateLimiter;
+
+  const allowEarlyAccessOrigin = (req: any, res: any, next: any) => {
+    const origin = String(req.headers.origin || "");
+    const allowed = origin === "https://mimosaas.app" || origin === "https://www.mimosaas.app"
+      || (!isProd && /^http:\/\/localhost(?::\d+)?$/.test(origin));
+    if (origin && !allowed) return res.status(403).json({ message: "Origin not allowed" });
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+    }
+    if (req.method === "OPTIONS") {
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+      return res.status(204).end();
+    }
+    next();
+  };
+
+  app.options("/api/early-access", allowEarlyAccessOrigin);
+  app.post("/api/early-access", allowEarlyAccessOrigin, earlyAccessRateLimiter, async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      if (String(req.body?.website || "").trim()) return res.json({ success: true });
+
+      const email = String(req.body?.email || "").trim().toLowerCase();
+      if (!z.string().email().max(254).safeParse(email).success) {
+        return res.status(400).json({ success: false, message: "Enter a valid email address." });
+      }
+
+      const submittedAt = new Date();
+      const safeEmail = escapeOAuthPopupHtml(email);
+      const { emailService } = await import("./services/email-service.js");
+      const sent = await emailService.sendEmail({
+        to: "launch@mimosaas.app",
+        subject: "New mimosaas early access request",
+        html: `<p>A visitor requested launch notifications.</p><p><strong>Email:</strong> ${safeEmail}</p><p><strong>Submitted:</strong> ${submittedAt.toISOString()}</p>`,
+        text: `A visitor requested launch notifications.\n\nEmail: ${email}\nSubmitted: ${submittedAt.toISOString()}`,
+        auditContext: { kind: "generic", entityType: "early_access", entityId: "mimosaas-landing-page" },
+      });
+      if (!sent) return res.status(502).json({ success: false, message: "We could not submit your request. Please try again." });
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[Early Access] Email notification failed", error);
+      return res.status(500).json({ success: false, message: "We could not submit your request. Please try again." });
+    }
+  });
 
   // ============================================================================
   // Deterministic GA4 simulation (for demo/testing properties like "yesop")

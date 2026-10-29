@@ -57,7 +57,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(section).toContain("campaignFilter");
   });
 
-  it("uses publication updates and fallback polling without cross-scope placeholder data", () => {
+  it("uses publication updates without independent polling or cross-scope placeholder data", () => {
     const client = read("client/src/pages/ga4-metrics.tsx");
     const section = between(
       client,
@@ -68,7 +68,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(section).toContain("staleTime: 0");
     expect(section).toContain("refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError");
     expect(section).toContain("refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError");
-    expect(section).toContain("refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000");
+    expect(section).toContain("refetchInterval: false");
     expect(section).toContain("refetchIntervalInBackground: false");
     expect(section).toContain("previousKey?.[1] === campaignId");
     expect(section).toContain("previousKey?.[4] === selectedGA4PropertyId");
@@ -81,7 +81,8 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(ui).toContain("landingPagesLoading && ga4LandingPages === undefined");
     expect(ui).toContain("landingPagesUnavailable");
     expect(ui).toContain("Landing page data is unavailable. Refresh the page to try again.");
-    expect(ui).toContain("Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0");
+    expect(ui).toContain("overviewLandingPageRows.length > 0");
+    expect(client).toContain("const rows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];");
     expect(ui).toContain("Data coming soon");
     expect(client).toContain("landingPagesError && ga4LandingPages !== undefined");
     expect(client).toContain("Last successful values remain visible where available; unavailable values are marked.");

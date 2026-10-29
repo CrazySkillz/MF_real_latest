@@ -10,7 +10,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
         import {QueryClientProvider} from '@tanstack/react-query'; import {TooltipProvider} from './client/src/components/ui/tooltip';
         import {createAppQueryClient} from './client/src/lib/queryClient'; import Page from './client/src/pages/ga4-metrics';
-        const client=createAppQueryClient(); window.fixtureRefetch=()=>client.invalidateQueries();
+        const client=createAppQueryClient(); window.fixtureRefetch=()=>client.invalidateQueries(); window.fixtureFetching=()=>client.isFetching();
         createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><TooltipProvider><Page/></TooltipProvider></QueryClientProvider>);`, loader: "tsx", resolveDir: process.cwd() },
       bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic",
       define: { "process.env.NODE_ENV": '"test"', "import.meta.env": "{}" },
@@ -28,6 +28,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
   async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number; unmappedHubspot?: boolean; unmappedSalesforce?: boolean; publication?: string; emptyBreakdown?: boolean; deletion?: "success" | "failed"; multipleItems?: boolean } = {}) {
     let state = options.state ?? "positive"; let providers = options.providers ?? ["hubspot", "salesforce", "shopify"];
     let publication = options.publication;
+    let deletionPending = false, pendingStatusChecks = 0;
     const context = await browser.newContext({ viewport: { width: 1400, height: 1000 }, serviceWorkers: "block", timezoneId: "Europe/Amsterdam", locale: "en-US" });
     const page = await context.newPage(); const errors: string[] = [], requests: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
@@ -57,6 +58,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
           if (options.deletion === "failed") { await route.fulfill({ status: 409, json: { success: false, error: "Source changed; refresh and try again." } }); return; }
           if (deletion) providers = providers.filter(provider => provider !== deletion[1]);
           if (edit) { selections = body.selectedValues; confirmed[edit[1]] /= 2; }
+          deletionPending = true;
           await route.fulfill({ json: { success: true } }); return;
         }
       }
@@ -69,7 +71,12 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       let data: any; let status = 200;
       if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Isolated Batch 5 fixture", currency: "EUR", status: "active", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify(options.unmappedHubspot || options.unmappedSalesforce ? ["yesop_brand_search", "yesop_retargeting"] : options.multipleItems ? [selected, "keep-selected"] : [selected]), createdAt: "2026-09-04T00:00:00Z" };
       else if (url.pathname.startsWith("/api/ga4/check-connection/") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
-      else if (url.searchParams.has("statusOnly")) data = { success: true, campaignId: "a", propertyId: "123", publicationToken: receipt, refreshStatus: "current" };
+      else if (url.searchParams.has("statusOnly")) {
+        const pending = deletionPending || publication === "pending";
+        if (pending) pendingStatusChecks++;
+        data = { success: true, campaignId: "a", propertyId: "123", publicationToken: receipt, refreshStatus: pending ? "running" : "current",
+          nextCheckAt: pending ? new Date(await page.evaluate(() => Date.now()) + 60_000).toISOString() : "2026-10-24T06:00:00Z" };
+      }
       else if (url.pathname.endsWith("/ga4-daily")) data = { success: true, propertyId: "123", startDate: "2026-09-04", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8,14,20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
       else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: {
         ...(publication ? { revenuePublication: { version: 1, reportingDate: day, sources: Object.fromEntries(providers.map(provider => [ `${provider}-source`, `${provider}:${publication === "published" ? "new" : "old"}` ])) } } : {}),
@@ -95,9 +102,12 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     await page.goto("http://batch5-ga4-fixture.test/campaigns/a/ga4-metrics");
     const revenue = page.getByText("Total Revenue", { exact: true }).locator("../..");
     const pipeline = page.getByText("Expected Revenue", { exact: true }).locator("../..");
+    await browserExpect(revenue).toContainText("\u20ac");
+    await browserExpect.poll(() => page.evaluate(() => (window as any).fixtureFetching())).toBe(0);
     return { page, revenue, pipeline, requests, errors, mutations,
-      completeDeletion: () => { publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0); receipt = "after-deletion"; },
-      setPublication: (value: string) => { publication = value; }, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; }, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
+      pendingStatusChecks: () => pendingStatusChecks,
+      completeDeletion: () => { deletionPending = false; publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0); receipt = "after-deletion"; },
+      setPublication: (value: string) => { publication = value; if (value === "published") receipt = "source-published"; }, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; }, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
   }
 
   it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"])("the %s delete button removes only its source and updates the card after publication", async provider => {
@@ -118,7 +128,11 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       await browserExpect.poll(() => f.mutations.length).toBe(1);
       expect(f.mutations[0]).toEqual({ method: "DELETE", path: `/api/campaigns/a/revenue-sources/${provider}-source?platformContext=ga4`, body: null });
       await browserExpect(f.revenue).toContainText(`\u20ac${before}`);
-      f.completeDeletion(); await f.page.clock.runFor(31_000);
+      await browserExpect.poll(f.pendingStatusChecks).toBeGreaterThan(0);
+      await browserExpect.poll(() => f.page.evaluate(() => (window as any).fixtureFetching())).toBe(0);
+      f.completeDeletion(); await f.page.clock.runFor(30_000);
+      await browserExpect(f.revenue).toContainText(`\u20ac${before}`);
+      await f.page.clock.runFor(31_000);
       await browserExpect(f.revenue).toContainText("\u20ac100.00");
       await f.page.keyboard.press("Escape");
       await browserExpect(f.revenue.getByRole("button", { name: "Sources (1)", exact: true })).toHaveCount(1);
@@ -139,7 +153,9 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
         dateField: provider === "salesforce" ? "CloseDate" : "closedate",
         ...(provider === "salesforce" ? { pipelineStageName: "Open" } : { pipelineStageId: "open" }),
       } });
-      f.completeDeletion(); await f.page.clock.runFor(31_000);
+      await browserExpect.poll(f.pendingStatusChecks).toBeGreaterThan(0);
+      await browserExpect.poll(() => f.page.evaluate(() => (window as any).fixtureFetching())).toBe(0);
+      f.completeDeletion(); await f.page.clock.runFor(61_000);
       await browserExpect(f.revenue).toContainText(provider === "salesforce" ? "\u20ac115.00" : "\u20ac112.50");
       await browserExpect(f.page.getByRole("button", { name: "Remove fixture-selected", exact: true })).toHaveCount(0);
       await browserExpect(f.page.getByRole("button", { name: "Remove keep-selected", exact: true })).toHaveCount(1);
@@ -169,7 +185,10 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
       const pending = f.page.getByText("Saved — waiting for Total Revenue to update.", { exact: true });
       await browserExpect(pending).toBeVisible(); await browserExpect(pending).toHaveClass(/text-red-600/);
-      f.setPublication("published"); await f.page.clock.runFor(6000);
+      f.setPublication("published"); await f.page.clock.runFor(30_000);
+      await browserExpect(pending).toBeVisible();
+      await browserExpect(f.revenue).toContainText("\u20ac100.00");
+      await f.page.clock.runFor(31_000);
       await browserExpect(pending).toHaveCount(0);
       await f.page.keyboard.press("Escape");
       await browserExpect(f.revenue).toContainText(provider === "salesforce" ? "\u20ac130.00" : provider === "shopify" ? "\u20ac145.00" : "\u20ac125.00");

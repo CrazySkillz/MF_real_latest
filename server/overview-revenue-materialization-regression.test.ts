@@ -54,7 +54,8 @@ describe("GA4 Overview revenue materialization integrity", () => {
     expect(storage).toContain("const allMaterializedSources = await this.getRevenueBreakdownBySource(campaignId, '1900-01-01', '2999-12-31', platformContext)");
     expect(storage).toContain("assertGa4RevenueMaterializationComplete(activeSources as any[], allMaterializedSources as any[])");
     expect(storage).not.toContain("lte(revenueSources.createdAt, sourceCreatedThrough)");
-    expect(storage).toContain("lte(spendSources.createdAt, sourceCreatedThrough)");
+    expect(storage).not.toContain("lte(spendSources.createdAt, sourceCreatedThrough)");
+    expect(storage).toContain("sql`${spendRecords.date} <= ${endDate}`");
     expect(storage).toContain("sql`${revenueRecords.date} <= ${endDate}`");
     expect(routes).toContain('const isGa4RevenueSource = platformContext === "ga4"');
     expect(routes).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');

@@ -302,9 +302,11 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     expect(await storage.getGA4RevenuePublication("a", day)).toEqual(before);
     expect((await storage.getRecoverableGA4RefreshWork()).map(item => item.id)).toEqual(work.map(item => item.id));
   });
-  it("retains pending revenue work after another campaign input changes", async () => {
+  it("preserves pending work on rename and replaces it only after an analytics input changes", async () => {
     await save("csv"); const previous = (await storage.getRecoverableGA4RefreshWork())[0];
     await storage.updateCampaign("a", { name: "Updated campaign" });
+    expect((await storage.getRecoverableGA4RefreshWork()).map(work => work.id)).toEqual([previous.id]);
+    await storage.updateCampaign("a", { ga4CampaignFilter: JSON.stringify(["updated-filter"]) });
     const pending = await storage.getRecoverableGA4RefreshWork();
     expect(pending).toHaveLength(1); expect(pending[0].id).not.toBe(previous.id);
     expect(pending[0].scope).toMatchObject({ kind: "revenue_change" });
@@ -449,9 +451,13 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     expect((await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue).toBe(0);
     expect((await storage.getGA4RevenuePublicationStatus("a", day))[source.id].status).toBe("pending");
   });
-  it("does not change Spend connection-date eligibility", async () => {
+  it("includes past-dated Spend from a new source but excludes today and future records", async () => {
     await database.current.insert(schema.spendSources).values({ id: "spend", campaignId: "a", sourceType: "csv", platformContext: "ga4", currency: "EUR" });
-    await database.current.insert(schema.spendRecords).values({ campaignId: "a", spendSourceId: "spend", date: "2026-09-30", spend: "99.00", currency: "EUR" });
-    expect((await storage.getSpendTotalForRange("a", "1900-01-01", day, "ga4")).totalSpend).toBe(0);
+    await database.current.insert(schema.spendRecords).values([
+      { campaignId: "a", spendSourceId: "spend", date: "2026-09-30", spend: "99.00", currency: "EUR" },
+      { campaignId: "a", spendSourceId: "spend", date: nextDay, spend: "200.00", currency: "EUR" },
+      { campaignId: "a", spendSourceId: "spend", date: "2999-12-31", spend: "300.00", currency: "EUR" },
+    ]);
+    expect(await storage.getSpendTotalForRange("a", "1900-01-01", day, "ga4")).toEqual({ totalSpend: 99, currency: "EUR", sourceIds: ["spend"] });
   });
 });

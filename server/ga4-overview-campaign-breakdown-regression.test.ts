@@ -245,12 +245,12 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(scheduledValidation).not.toContain("cardRevenue");
   });
 
-  it("retains last-good rows with publication updates and fallback focus, reconnect, and interval refresh", () => {
+  it("retains last-good rows with publication updates and fallback focus/reconnect without independent polling", () => {
     const query = between(client, "data: ga4Breakdown", "data: adComparisonBreakdown");
     expect(query).toContain("staleTime: 0");
     expect(query).toContain('refetchOnWindowFocus: activeTab === "insights" || !ga4PublicationStatus || ga4PublicationStatusError');
     expect(query).toContain('refetchOnReconnect: activeTab === "insights" || !ga4PublicationStatus || ga4PublicationStatusError');
-    expect(query).toContain('refetchInterval: (activeTab !== "insights" && ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000');
+    expect(query).toContain("refetchInterval: false");
     expect(query).toContain("refetchIntervalInBackground: false");
     expect(client).toContain("(breakdownError && ga4Breakdown === undefined)");
     expect(client).toContain("revenueSourcesResp === undefined ||");

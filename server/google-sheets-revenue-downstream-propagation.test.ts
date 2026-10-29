@@ -124,15 +124,17 @@ describe("GA4 Google Sheets revenue downstream propagation", () => {
     expect(cards).toContain("formatMoney(overviewFinancialCPA)");
   });
 
-  it("invalidates foreground queries and bounds open-page reads only for active Sheets revenue", () => {
+  it("invalidates foreground queries and follows pending imports without idle Sheets polling", () => {
     const invalidation = sliceBetween(revenueModal, "const invalidateAfterRevenueChange", "const resetAll = () =>");
-    const polling = sliceBetween(ga4Page, "const hasActiveGa4GoogleSheetsRevenueSource", "const configuredPipelineSourceTypes");
+    const polling = sliceBetween(ga4Page, "const getImportedRevenueRefetchInterval", "const configuredPipelineSourceTypes");
 
     for (const endpoint of ["/revenue-to-date", "/revenue-sources", "/revenue-breakdown", "/revenue-daily", "/outcome-totals"]) {
       expect(invalidation).toContain(endpoint);
     }
-    expect(polling).toContain('toLowerCase() === "google_sheets"');
-    expect(polling).toContain('toLowerCase() === "ga4"');
-    expect(polling).toContain("? 15_000 : 10 * 60 * 1000");
+    expect(polling).toContain('source.publicationStatus === "pending" && !source.pendingCompletedDay');
+    expect(polling).toContain("? 60_000 : false");
+    expect(polling).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-publication-status"]');
+    expect(polling).toContain('queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot"]');
+    expect(ga4Page).not.toContain("hasActiveGa4GoogleSheetsRevenueSource");
   });
 });

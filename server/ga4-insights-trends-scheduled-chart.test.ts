@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { transpileModule, ScriptTarget } from "typescript";
 import { jsPDF } from "jspdf";
@@ -35,7 +35,10 @@ describe("Scheduled Insights Trends chart", () => {
     expect(result.lines).toHaveLength(2);
     const dayWidth = result.lines[0][2] - result.lines[0][0];
     expect((result.lines[1][0] - result.lines[0][2]) / dayWidth).toBeCloseTo(8);
-    if (!process.env.V1_BATCH7_BASELINE) writeFileSync("audit-temp/trends-fixed-scheduled-gap-oct28.pdf", Buffer.from(result.doc.output("arraybuffer")));
+    if (!process.env.V1_BATCH7_BASELINE) {
+      mkdirSync("audit-temp", { recursive: true });
+      writeFileSync("audit-temp/trends-fixed-scheduled-gap-oct28.pdf", Buffer.from(result.doc.output("arraybuffer")));
+    }
   });
   it("shows a single recorded zero as a visible point and leaves empty history empty", () => {
     const result = render([{ date: "2026-10-27", value: 0 }]);

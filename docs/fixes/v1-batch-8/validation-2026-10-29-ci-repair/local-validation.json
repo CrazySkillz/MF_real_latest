@@ -1,0 +1,282 @@
+{
+  "recordedAt": "2026-10-29T12:05:26.465Z",
+  "base": "d2fba5300e68763ce5391133db967ef4c59dc465",
+  "runtimeChanged": false,
+  "isolation": "Application credentials removed; loopback-only test network; owned temporary PostgreSQL schemas; synthetic browser APIs. No production data mutations.",
+  "failedHostedRun": {
+    "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/40860623087",
+    "total": 6703,
+    "passed": 6676,
+    "failed": 27,
+    "logSha256": "1b86254932c8be68374733f71fa6c4bbaacdcb106ba121f9f38abfb7c46189f8"
+  },
+  "baseline": {
+    "total": 347,
+    "passed": 324,
+    "failed": 23,
+    "note": "Four hosted artifact failures do not reproduce when audit-temp already exists."
+  },
+  "targeted": {
+    "total": 357,
+    "passed": 357,
+    "failed": 0,
+    "skipped": 0,
+    "files": 12
+  },
+  "full": {
+    "summary": [
+      "[current-version] Full test execution completed.",
+      "[current-version] Total 6703; passed 6703; failed 0.",
+      "[current-version] Blocking current-version failures: 0",
+      "[current-version] Visible non-blocking deferred failures: 0"
+    ],
+    "stopped": true,
+    "databaseCleanup": [
+      {
+        "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch8-20261026-pg",
+        "listen": "127.0.0.1",
+        "database": "ga4_alignment_test",
+        "other_sessions": 0,
+        "schemas": [],
+        "publicTables": []
+      },
+      {
+        "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch8-20261026-pg",
+        "listen": "127.0.0.1",
+        "database": "notifications_test",
+        "other_sessions": 0,
+        "schemas": [],
+        "publicTables": []
+      }
+    ],
+    "changedTrackedFilesDuringRun": []
+  },
+  "typecheck": {
+    "at": "2026-10-29T11:43:33.014Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "ci-repair-oct29-typecheck.log"
+      }
+    ]
+  },
+  "certification": {
+    "exitCode": 0,
+    "logSha256": "c59957f9c837000793652921b1ece501a80edc80c4c3bdc793ce4bee57846e77"
+  },
+  "correctedFailures": [
+    {
+      "file": "server/ga4-browser-report-publication.test.ts",
+      "suite": "Browser Overview reports without a Spend source",
+      "before": "renders a single available daily point instead of omitting Trends",
+      "after": "renders a single available daily point instead of omitting Trends",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-browser-report-publication.test.ts",
+      "suite": "Browser Overview reports without a Spend source",
+      "before": "renders a single available 7d point instead of omitting Trends",
+      "after": "renders a single available 7d point instead of omitting Trends",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-browser-report-publication.test.ts",
+      "suite": "Browser Overview reports without a Spend source",
+      "before": "renders a single available monthly point instead of omitting Trends",
+      "after": "renders a single available monthly point instead of omitting Trends",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-insights-trends-scheduled-chart.test.ts",
+      "suite": "Scheduled Insights Trends chart",
+      "before": "does not join unrecorded dates or compress the missing calendar interval",
+      "after": "does not join unrecorded dates or compress the missing calendar interval",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-kpi-real-path-parity-regression.test.ts",
+      "suite": "GA4 KPI real-path cross-consumer parity",
+      "before": "includes freshly recomputed Benchmark conclusions in the actual scheduled Insights PDF",
+      "after": "includes freshly recomputed Benchmark conclusions in the actual scheduled Insights PDF",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-overview-campaign-breakdown-regression.test.ts",
+      "suite": "GA4 Overview Campaign Breakdown",
+      "before": "retains last-good rows with publication updates and fallback focus, reconnect, and interval refresh",
+      "after": "retains last-good rows with publication updates and fallback focus/reconnect without independent polling",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-overview-conversion-events-regression.test.ts",
+      "suite": "GA4 Overview Conversion Events certification boundary",
+      "before": "uses publication updates and fallback polling without cross-scope placeholder data",
+      "after": "uses publication updates without independent polling or cross-scope placeholder data",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-overview-landing-pages-regression.test.ts",
+      "suite": "GA4 Overview Landing Pages certification boundary",
+      "before": "uses publication updates and fallback polling without cross-scope placeholder data",
+      "after": "uses publication updates without independent polling or cross-scope placeholder data",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-overview-landing-pages-regression.test.ts",
+      "suite": "GA4 Overview Landing Pages certification boundary",
+      "before": "distinguishes loading, empty, unavailable, and cached last-good states",
+      "after": "distinguishes loading, empty, unavailable, and cached last-good states",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "suite": "sale-date eligibility and durable revenue publication with real PostgreSQL",
+      "before": "retains pending revenue work after another campaign input changes",
+      "after": "preserves pending work on rename and replaces it only after an analytics input changes",
+      "status": "passed"
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "suite": "sale-date eligibility and durable revenue publication with real PostgreSQL",
+      "before": "does not change Spend connection-date eligibility",
+      "after": "includes past-dated Spend from a new source but excludes today and future records",
+      "status": "passed"
+    },
+    {
+      "file": "server/google-sheets-revenue-downstream-propagation.test.ts",
+      "suite": "GA4 Google Sheets revenue downstream propagation",
+      "before": "invalidates foreground queries and bounds open-page reads only for active Sheets revenue",
+      "after": "invalidates foreground queries and follows pending imports without idle Sheets polling",
+      "status": "passed"
+    },
+    {
+      "file": "server/overview-revenue-materialization-regression.test.ts",
+      "suite": "GA4 Overview revenue materialization integrity",
+      "before": "guards the to-date total and renders missing provenance as unavailable for every GA4 source type",
+      "after": "guards the to-date total and renders missing provenance as unavailable for every GA4 source type",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "the hubspot delete button removes only its source and updates the card after publication",
+      "after": "the hubspot delete button removes only its source and updates the card after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "the google_sheets delete button removes only its source and updates the card after publication",
+      "after": "the google_sheets delete button removes only its source and updates the card after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "the csv delete button removes only its source and updates the card after publication",
+      "after": "the csv delete button removes only its source and updates the card after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "the manual delete button removes only its source and updates the card after publication",
+      "after": "the manual delete button removes only its source and updates the card after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "the custom delete button removes only its source and updates the card after publication",
+      "after": "the custom delete button removes only its source and updates the card after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "the salesforce delete button removes only its source and updates the card after publication",
+      "after": "the salesforce delete button removes only its source and updates the card after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "the shopify delete button removes only its source and updates the card after publication",
+      "after": "the shopify delete button removes only its source and updates the card after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "automatically updates hubspot totals and clears its red pending status only after publication",
+      "after": "automatically updates hubspot totals and clears its red pending status only after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "automatically updates salesforce totals and clears its red pending status only after publication",
+      "after": "automatically updates salesforce totals and clears its red pending status only after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "automatically updates shopify totals and clears its red pending status only after publication",
+      "after": "automatically updates shopify totals and clears its red pending status only after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "automatically updates google_sheets totals and clears its red pending status only after publication",
+      "after": "automatically updates google_sheets totals and clears its red pending status only after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "automatically updates csv totals and clears its red pending status only after publication",
+      "after": "automatically updates csv totals and clears its red pending status only after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "automatically updates manual totals and clears its red pending status only after publication",
+      "after": "automatically updates manual totals and clears its red pending status only after publication",
+      "status": "passed"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "suite": "Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance",
+      "before": "automatically updates custom totals and clears its red pending status only after publication",
+      "after": "automatically updates custom totals and clears its red pending status only after publication",
+      "status": "passed"
+    }
+  ],
+  "testedFileHashes": {
+    "server/ga4-browser-report-publication.test.ts": "8c432a173090e57e94dc81fb902c8929d1836c0f85000260cdca9d0dd466a34b",
+    "server/ga4-insights-trends-scheduled-chart.test.ts": "c6249796a0a3911c0bc1ef83bcdb8cd30ef8e1a3799dbe98c85434fe85e74909",
+    "server/ga4-kpi-real-path-parity-regression.test.ts": "a1f97bc3d382b24ab28f9163587fd8e1405a6c9fecf07219233ee9957168ff73",
+    "server/ga4-overview-campaign-breakdown-regression.test.ts": "005964753c65eb7bd88402a3b67ca7dd2d96c2e2f32875fbaa5682e7ec82d386",
+    "server/ga4-overview-conversion-events-regression.test.ts": "7c991d8a5dfd0d5f5d70bd67eb0faf3038c2ddbec5535be8f0a5f6af79b79ece",
+    "server/ga4-overview-landing-pages-regression.test.ts": "ad66d8708f80127c94cc4788d87f644577b89b6ed7431e008a507d7c0841d4c1",
+    "server/ga4-revenue-publication-postgres.test.ts": "66d7cad438faa559c3dfd3f64f8c416dfa54bf719eb1cf9f7b5041eea4053e1c",
+    "server/google-sheets-revenue-downstream-propagation.test.ts": "24c16704282e390b326d3939d8789104b8c2b00b6d23d4ea6f75b7ec499f5f51",
+    "server/overview-revenue-materialization-regression.test.ts": "6e05dacbfac8b488b81d4e1b28e6c63b467c9467e5524074ca49020ad109f081",
+    "server/v1-batch5-ga4-browser.test.ts": "21607504335786fffe2c5a47b0a9d24958279ec79a91736c91056fa74d9ebce5"
+  },
+  "rawReceipts": {
+    "docs/fixes/v1-batch-8/validation-2026-10-26/ci-repair-baseline-oct29.json": "67ce02f213837b03a8b15e2a397b162d37a1f833b170d2be17f5683a5795ccea",
+    "docs/fixes/v1-batch-8/validation-2026-10-26/ci-repair-baseline-oct29-execution.json": "a42a5cf36a31e4fc63ede4ddc9bb0af9ad6b653b14a5d5584cddd2cd42a1da52",
+    "docs/fixes/v1-batch-8/validation-2026-10-26/ci-repair-targeted-oct29.json": "918e12519d5d9e824909d5e8ede4732cf0f167dd7a53026b9bca1537f9521398",
+    "docs/fixes/v1-batch-8/validation-2026-10-26/ci-repair-targeted-oct29-execution.json": "b98eb2ad4e637cfc6d3b7db1b56bbb3fc9d5f391539e73459e6a447ab77f7aed",
+    "docs/fixes/v1-batch-8/validation-2026-10-27-ci-scheduler/ci-repair-full-oct29-tests.log": "c63dd7fe20db60cba50cc143ce1772888077f677a324625f451a55ff7dface33",
+    "docs/fixes/v1-batch-8/validation-2026-10-27-ci-scheduler/ci-repair-full-oct29-execution.json": "ed73c11119eda2f25198ff7c43c253bae23ea1acd106d8439e2a6bdd782eb7d4"
+  },
+  "limitations": "Hosted clean-checkout validation recorded separately after push. Passing regression checks do not certify real-provider lifecycle acceptance, natural scheduler/email delivery, Clerk production identity, credential cleanup, dependency exposure, restore/rollback or full production readiness."
+}

@@ -81,6 +81,7 @@ vi.mock("jspdf", () => ({
     setDrawColor() {}
     setLineWidth() {}
     line() {}
+    circle() {}
     addPage() {}
     splitTextToSize(value: any) { return [String(value)]; }
     text(value: any) {

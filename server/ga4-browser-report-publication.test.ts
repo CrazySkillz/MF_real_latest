@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { jsPDF } from "jspdf";
@@ -237,7 +237,10 @@ describe("Browser Overview reports without a Spend source", () => {
     expect(result.words).toContain("Trends");
     expect(result.content).toContain(mode === "monthly" ? "partial" : mode === "7d" ? "21" : "3");
     if (mode === "monthly") expect(result.content).toContain("Not comparable");
-    if (!process.env.V1_BATCH7_BASELINE) writeFileSync(`audit-temp/trends-fixed-${mode}-oct28.pdf`, Buffer.from(result.doc.output("arraybuffer")));
+    if (!process.env.V1_BATCH7_BASELINE) {
+      mkdirSync("audit-temp", { recursive: true });
+      writeFileSync(`audit-temp/trends-fixed-${mode}-oct28.pdf`, Buffer.from(result.doc.output("arraybuffer")));
+    }
     for (const box of result.drawn) { expect(box.x).toBeGreaterThanOrEqual(10); expect(box.x + box.width).toBeLessThanOrEqual(198); expect(box.y).toBeLessThanOrEqual(287); }
   });
   it("keeps missing dates as proportional gaps in the PDF chart", async () => {

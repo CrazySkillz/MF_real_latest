@@ -1,0 +1,57 @@
+{
+  "scope": "GA4 Benchmark page-entry loading transition",
+  "tests": [
+    {
+      "label": "benchmark-entry-before-oct29",
+      "passed": 0,
+      "failed": 1,
+      "sha256": "31d9010495f688b4eec1a3648223d903b800776d5d93dca42823c4b7d74b8d83"
+    },
+    {
+      "label": "benchmark-entry-final-oct29",
+      "passed": 290,
+      "failed": 0,
+      "sha256": "369c0096bbd33e3df8f9aadbb69f138ba31192f839cba829d3ee2dffe8a9929a"
+    },
+    {
+      "label": "benchmark-entry-order-verified-oct29",
+      "passed": 75,
+      "failed": 0,
+      "sha256": "9a4e6720b52a23331fc84538407f41889e44ffcc275604c5139fa88e5392fe6d"
+    }
+  ],
+  "distinctPassingTests": 291,
+  "builds": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "benchmark-entry-oct29-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "benchmark-entry-oct29-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "benchmark-entry-oct29-server-build.log"
+    }
+  ],
+  "liveReadOnlyBeforePatch": {
+    "at": "2026-10-29T09:34:49.511Z",
+    "requestCount": 17,
+    "allHttp200": true,
+    "warningFrames": 0,
+    "idleAdditionalRequests": 0,
+    "diagnosticSessionRevoked": true
+  },
+  "files": {
+    "client\\src\\pages\\ga4-metrics.tsx": "d3e74e85a0c0fc3fa99a993104c0d690ad22dd31205fd04e113db2e6c569cfb0",
+    "server\\ga4-publication-browser.test.ts": "fce253049558068b2a9856f1145589f79159d866399db80ea12925bc9afe3a54",
+    "server\\ga4-browser-publication-refresh.test.ts": "683a68756b38a9bbe51e37b748f12302e1399b2c421e51c0b3e1d8c5c8e0e70d"
+  }
+}

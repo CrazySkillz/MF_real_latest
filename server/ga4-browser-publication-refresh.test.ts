@@ -52,11 +52,11 @@ function browser(client = new QueryClient({ defaultOptions: { queries: { retry: 
   let queryOptions: any; let effect: any;
   let completionResult: any;
   const block = page.slice(page.indexOf("  const ga4PublicationScope ="), page.indexOf("  const deriveBenchmarkCategoryFromMetric"));
-  const render = (status: any = { campaignId: "a", propertyId: "123", publicationToken: "p1" }, error = false, campaignId = "a", property = "123") => {
+  const render = (status: any = { campaignId: "a", propertyId: "123", publicationToken: "p1" }, error = false, campaignId = "a", property = "123", checked = true) => {
     const values = compile(block + "return { isGA4PublicationQuery, isGA4InsightsContextQuery, ga4InsightsContextFetching, ga4PublicationDisplayPending, ga4PublicationDisplayFailed };", {
       campaignId, selectedGA4PropertyId: property, ga4ConnectionUsable: true, queryClient: client, isCancelledError,
       platformKPIs: [{ id: "k-a" }], benchmarks: [{ id: "b-a" }],
-      useQuery: (options: any) => { queryOptions = options; return { data: status, dataUpdatedAt: Date.now(), isError: error, refetch: async () => completionResult || ({ data: status, isError: error }) }; },
+      useQuery: (options: any) => { queryOptions = options; return { data: status, dataUpdatedAt: Date.now(), isError: error, isFetchedAfterMount: checked, refetch: async () => completionResult || ({ data: status, isError: error }) }; },
       useRef: () => receipt,
       useState: () => [state, (value: typeof state) => { state = value; }],
       useEffect: (callback: any) => { effect = callback; },
@@ -194,6 +194,15 @@ describe("GA4 browser publication coordination", () => {
     ];
     yes.forEach(queryKey => expect(selected({ queryKey }), JSON.stringify(queryKey)).toBe(true));
     no.forEach(queryKey => expect(selected({ queryKey }), JSON.stringify(queryKey)).toBe(false));
+    view.client.clear();
+  });
+  it("waits for this mount's status check but does not hide a failed first verification", () => {
+    const view = browser();
+    const cached = { campaignId: "a", propertyId: "123", publicationToken: "old", refreshStatus: "failed" };
+    expect(view.render(cached, false, "a", "123", false).ga4PublicationDisplayPending).toBe(true);
+    const failed = view.render(cached, true, "a", "123", true);
+    expect(failed.ga4PublicationDisplayPending).toBe(false);
+    expect(failed.ga4PublicationDisplayFailed).toBe(true);
     view.client.clear();
   });
   it("refreshes active queries once per receipt, retains old values while pending and marks inactive data stale", async () => {

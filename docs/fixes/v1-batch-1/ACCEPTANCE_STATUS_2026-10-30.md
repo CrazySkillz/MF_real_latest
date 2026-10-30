@@ -51,6 +51,14 @@ unchanged. [Correction receipt](validation-2026-10-30/toast-fixture-correction.j
 records the failing full run, clean local database shutdown, focused result and
 hashes. A new full hosted run must pass before claiming the full gate is green.
 
+That follow-up is now complete: test-only commit `55fe07dd` passed the full
+[GitHub run 41125380587](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41125380587),
+including certification, current-version tests and retained deferred-source tests.
+[Publication receipt](validation-2026-10-30/toast-publication.json) at 20:50 UTC
+confirms healthy Render runtime `9a8853fc` and matching compiled browser entry.
+No application redeployment or production data write was caused by the test fix.
+This closes the test-run failure, not the remaining live Batch 1 acceptances.
+
 ## Remaining acceptance, every finding
 
 The user subsequently confirmed **both accounts said PASS** for the consolidated
@@ -124,10 +132,19 @@ consistent campaign/client ownership. Inventory script:
    file/conversion sender, and grant revocation on a disposable source. The agent
    has no authorized signed-in provider/test-browser session; synthetic responses
    cannot close these requirements.
-   The user confirmed separate Google (GA4/Sheets), HubSpot, Salesforce and Shopify
-   test accounts are available. They are now on Clients under the second app login;
-   creation of a disposable `Batch 1 Validation` client is the current manual step.
-   Availability and sign-in are not provider consent/import acceptance.
+   The user identified Google (GA4/Sheets), HubSpot, Salesforce and Shopify accounts
+   as available. They created/opened the `Batch 1 Validation` client
+   and reached platform choices for `Batch 1 Provider Check`. The
+   [read-only scope receipt](validation-2026-10-30/disposable-scope-2026-10-30T20-50-08-444Z.json)
+   verifies one EUR/Europe-Amsterdam draft, consistent campaign/client ownership
+   distinct from Promo's owner, and no GA4 connection at that observation. Google
+   consent is the current manual step; availability/draft creation do not prove it.
+   The user clarified there is only one test Google account/property. Reusing it
+   for the new campaign's read-only GA4 connection is allowed; do not revoke that
+   shared Google's permission or alter its property for acceptance testing. The
+   current callback stages credentials only for the signed, owned draft campaign;
+   property confirmation commits within that campaign. Shared-account connection
+   acceptance cannot close the separate revocation/worker-denial requirement.
 3. **Operations:** Render process configuration/log disposition, incompatible old
    ciphertext disposition and recovery using the saved key on an independent
    machine. Existing backup/key-custody checks are not being repeated. Production

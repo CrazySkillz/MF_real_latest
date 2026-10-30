@@ -1,0 +1,101 @@
+{
+  "at": "2026-10-30T20:50:08.234Z",
+  "commit": "55fe07dd7bec34c81aac82cb19f4c48041dc450a",
+  "runtimeCommit": "9a8853fc664629c02b15b899e689d613ebf9b1ac",
+  "hosted": {
+    "id": 41125380587,
+    "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41125380587",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "runtime": {
+    "commit": "9a8853fc664629c02b15b899e689d613ebf9b1ac",
+    "healthy": true,
+    "expectedCommit": true
+  },
+  "jobs": [
+    {
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci --ignore-scripts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npx --no-install playwright install --with-deps chromium",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Create isolated notification fixture database",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run check:ga4-kpi-certification",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:current-version",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained deferred-source evidence (non-blocking)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "toastAsset": {
+    "asset": "/assets/index-B4kZlok-.js",
+    "normalizedBuildMatches": true,
+    "normalizedSha256": "c416a6d494ea162cfd3f9f4a67156dabb43a97f864b539fefa75ab4617055d96",
+    "normalization": "Only quoted hashed JS/CSS filenames and the public Clerk publishable key; all other entry-bundle bytes must match."
+  },
+  "result": "PASS",
+  "boundary": "Exact-commit public CI metadata, runtime health and built toast-module publication only; no signed-in live user/provider acceptance."
+}

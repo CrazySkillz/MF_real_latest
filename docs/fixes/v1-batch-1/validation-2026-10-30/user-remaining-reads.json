@@ -1,0 +1,31 @@
+{
+  "recordedAt": "2026-10-30T20:13:36.606Z",
+  "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+  "userConfirmation": "Both accounts said PASS",
+  "origin": "https://marketforensics.onrender.com",
+  "accounts": [
+    "Promo owner",
+    "Second account"
+  ],
+  "checksPerAccount": 12,
+  "totalChecks": 24,
+  "result": "EXPECTED_RESULTS_REPORTED",
+  "routes": [
+    "/api/metrics",
+    "/api/performance",
+    "/api/integrations",
+    "/api/attribution/models",
+    "/api/attribution/journeys",
+    "/api/campaigns/:promoId/linkedin-campaigns",
+    "/api/campaigns/:promoId/linkedin-campaign-revenue",
+    "/api/campaigns/:promoId/attribution",
+    "/api/platforms/google_analytics/fields?campaignId=:promoId",
+    "/api/attribution/channel-performance",
+    "/api/attribution/journeys/:nonexistentId",
+    "/api/attribution/touchpoints?journeyId=:nonexistentId"
+  ],
+  "dataMutationsRequested": false,
+  "rawResponseContentsCollected": false,
+  "independentlyObservedSession": false,
+  "scope": "Both scripted PASS results reported by user. Collection ownership/redaction checks can be vacuous for empty lists. No valid write, provider, restart, full rendered Reports or notification transition is inferred."
+}

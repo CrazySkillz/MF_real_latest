@@ -1,5 +1,9 @@
 # Reports cache access: October 30 follow-up
 
+The [complete Batch 1 acceptance status](ACCEPTANCE_STATUS_2026-10-30.md) records
+the later module-global notification finding, its focused correction and all
+remaining live requirements. This report-cache evidence retains its own scope.
+
 **Deployed as `7e413779`; full local checks pass. The hosted test-timing defect is
 corrected in test-only commit `05542b6e`, whose complete hosted workflow passes.**
 Batch 1 and V1-052 remain OPEN. No production occurrence is claimed. The separately completed

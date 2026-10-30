@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import type {
   ToastActionElement,
@@ -10,6 +11,7 @@ const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {
   id: string
+  scope?: object
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
@@ -129,6 +131,15 @@ export const reducer = (state: State, action: Action): State => {
 const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
+// App mounts a new QueryClient for every account transition, including returning to an account.
+let activeToastScope: object | undefined
+
+export function setToastScope(scope: object | undefined) {
+  activeToastScope = scope
+  toastTimeouts.forEach(clearTimeout)
+  toastTimeouts.clear()
+  dispatch({ type: "REMOVE_TOAST" })
+}
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
@@ -137,9 +148,9 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
+type Toast = Omit<ToasterToast, "id" | "scope">
 
-function toast({ ...props }: Toast) {
+function toast({ ...props }: Toast, scope = activeToastScope) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -149,11 +160,12 @@ function toast({ ...props }: Toast) {
     })
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
-  dispatch({
+  if (scope && scope === activeToastScope) dispatch({
     type: "ADD_TOAST",
     toast: {
       ...props,
       id,
+      scope,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
@@ -169,22 +181,28 @@ function toast({ ...props }: Toast) {
 }
 
 function useToast() {
+  const scope = useQueryClient()
   const [state, setState] = React.useState<State>(memoryState)
+  const scopedToast = React.useCallback((props: Toast) => toast(props, scope), [scope])
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     listeners.push(setState)
+    setState(memoryState)
     return () => {
       const index = listeners.indexOf(setState)
       if (index > -1) {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
   return {
     ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    toasts: state.toasts.filter(toast => toast.scope === scope).map(({ scope: _scope, ...toast }) => toast),
+    toast: scopedToast,
+    dismiss: (toastId?: string) => {
+      if (scope === activeToastScope) dispatch({ type: "DISMISS_TOAST", toastId })
+    },
   }
 }
 

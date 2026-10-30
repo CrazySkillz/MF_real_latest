@@ -1,0 +1,92 @@
+{
+  "at": "2026-10-30T20:02:56.770Z",
+  "databaseWritesAttempted": false,
+  "credentialValuesReturned": false,
+  "applicationImports": false,
+  "checks": {
+    "thisConnectionTls": [
+      {
+        "ssl": true,
+        "version": "TLSv1.3",
+        "bits": 256
+      }
+    ],
+    "otherDatabaseConnections": [
+      {
+        "ssl": true,
+        "version": "TLSv1.3",
+        "connections": 1
+      }
+    ],
+    "globalTables": [
+      {
+        "table": "metrics",
+        "total": 4,
+        "unowned": 4
+      },
+      {
+        "table": "performance_data",
+        "total": 7,
+        "unowned": 7
+      },
+      {
+        "table": "integrations",
+        "total": 5,
+        "unowned": 5
+      },
+      {
+        "table": "attribution_models",
+        "total": 0,
+        "unowned": 0
+      },
+      {
+        "table": "customer_journeys",
+        "total": 0,
+        "unowned": 0
+      }
+    ],
+    "genericCredentialPresence": {
+      "populated": 0
+    },
+    "conversionHistory": {
+      "total": 1,
+      "missing_campaign": 1,
+      "currency_mismatch": 0
+    },
+    "connectorSpendSources": [],
+    "attributionCounts": [
+      {
+        "table": "touchpoints",
+        "total": 0
+      },
+      {
+        "table": "attribution_results",
+        "total": 0
+      },
+      {
+        "table": "attribution_insights",
+        "total": 0
+      }
+    ],
+    "protectedCampaigns": [
+      {
+        "name": "Promo",
+        "status": "active",
+        "consistent_owner": true,
+        "linkedin_connections": 0,
+        "conversion_events": 0
+      },
+      {
+        "name": "V1 Batch 5 Test",
+        "status": "active",
+        "consistent_owner": true,
+        "linkedin_connections": 0,
+        "conversion_events": 0
+      }
+    ]
+  },
+  "databaseReadOnly": true,
+  "rolledBack": true,
+  "result": "PASS",
+  "limits": "Presence and current metadata only. Other-session TLS does not prove certificate verification or identify the Render application. Empty current tables do not prove what historical requests occurred. No live authenticated mutation, provider acceptance, historical log inspection or cleanup."
+}

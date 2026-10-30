@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-30T20:07:17.260Z",
+  "checks": [
+    {
+      "name": "Current account toast renders",
+      "passed": true
+    },
+    {
+      "name": "Previous account toast absent after switch",
+      "passed": true
+    },
+    {
+      "name": "Late previous-account callback neither displays nor replaces current toast",
+      "passed": true
+    },
+    {
+      "name": "Sign-out clears visible toast and rejects late callback",
+      "passed": true
+    },
+    {
+      "name": "Returning account accepts fresh callback but rejects old-session callback",
+      "passed": true
+    },
+    {
+      "name": "Current account update and dismissal preserved",
+      "passed": true
+    }
+  ],
+  "fixtureIdentities": true,
+  "personalBrowserAccess": false,
+  "externalRequestsBlocked": true,
+  "result": "PASS"
+}

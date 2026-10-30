@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-30T20:05:58.274Z",
+  "checks": [
+    {
+      "name": "Current account toast renders",
+      "passed": true
+    },
+    {
+      "name": "Previous account toast absent after switch",
+      "passed": false
+    }
+  ],
+  "fixtureIdentities": true,
+  "personalBrowserAccess": false,
+  "externalRequestsBlocked": true,
+  "result": "FAIL",
+  "error": "Previous account toast remained visible\n\ntrue !== false\n"
+}

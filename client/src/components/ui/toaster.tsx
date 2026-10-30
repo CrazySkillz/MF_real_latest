@@ -1,4 +1,6 @@
-import { useToast } from "@/hooks/use-toast"
+import { useLayoutEffect } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { setToastScope, useToast } from "@/hooks/use-toast"
 import {
   Toast,
   ToastClose,
@@ -9,7 +11,12 @@ import {
 } from "@/components/ui/toast"
 
 export function Toaster() {
+  const scope = useQueryClient()
   const { toasts } = useToast()
+  useLayoutEffect(() => {
+    setToastScope(scope)
+    return () => setToastScope(undefined)
+  }, [scope])
 
   return (
     <ToastProvider>

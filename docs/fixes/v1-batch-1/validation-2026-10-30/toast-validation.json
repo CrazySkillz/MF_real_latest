@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-30T20:12:07.672Z",
+  "result": "PASS",
+  "focused": {
+    "files": 5,
+    "tests": 93,
+    "passed": 93,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheckExit": 0,
+  "buildExit": 0,
+  "browserChecks": 6,
+  "applicationFiles": 2,
+  "productionDataWrites": false,
+  "manifest": {
+    "client/src/hooks/use-toast.ts": "426b388cc71c3c08b7cc6788f8521d6512782af0be34768cf8cad8c931606626",
+    "client/src/components/ui/toaster.tsx": "3d129cfc68a5ae57690389b67576466cd8b520c9591bd7f3314136538e0c7797",
+    "server/v1-toast-account-browser.cjs": "2c5fbe2ee167a95fb0c5a479159b58cb02caf287000b7858bdc9fe58df11c08f",
+    "server/v1-toast-account-browser.test.ts": "97694a4cfde07f8af6cc3bd82e2d1300685d9d40896b54377fd318afaee0148e"
+  },
+  "scope": "Local synthetic account boundary only; no live signed-in provider acceptance inferred"
+}

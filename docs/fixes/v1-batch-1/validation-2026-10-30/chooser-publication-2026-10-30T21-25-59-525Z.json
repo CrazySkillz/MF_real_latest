@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-30T21:25:59.525Z",
+  "commit": "62a38e0e33f1a45c136b53caaa651c24fa1fbaf9",
+  "runtime": {
+    "commit": "62a38e0e33f1a45c136b53caaa651c24fa1fbaf9",
+    "healthy": true,
+    "expectedCommit": true
+  },
+  "hosted": {
+    "id": 41130209461,
+    "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41130209461",
+    "status": "in_progress",
+    "conclusion": null
+  },
+  "asset": {
+    "path": "/assets/AddRevenueWizardModal-B40wh5ja.js",
+    "normalizedBuildMatches": true,
+    "sha256": "eaa78eed9a6ca3bca51517bd0e193a5c8864dc8f9f26977f8cec56cd403aed24"
+  },
+  "published": true,
+  "result": "PENDING_OR_FAILED",
+  "boundary": "Chooser build publication and hosted regression metadata only; signed-in provider transition acceptance remains manual."
+}

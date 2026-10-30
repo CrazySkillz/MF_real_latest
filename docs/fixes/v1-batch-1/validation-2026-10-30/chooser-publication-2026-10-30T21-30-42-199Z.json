@@ -1,0 +1,100 @@
+{
+  "at": "2026-10-30T21:30:42.199Z",
+  "commit": "62a38e0e33f1a45c136b53caaa651c24fa1fbaf9",
+  "runtime": {
+    "commit": "62a38e0e33f1a45c136b53caaa651c24fa1fbaf9",
+    "healthy": true,
+    "expectedCommit": true
+  },
+  "hosted": {
+    "id": 41130209461,
+    "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41130209461",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "jobs": [
+    {
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci --ignore-scripts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npx --no-install playwright install --with-deps chromium",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Create isolated notification fixture database",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run check:ga4-kpi-certification",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:current-version",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained deferred-source evidence (non-blocking)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "asset": {
+    "path": "/assets/AddRevenueWizardModal-B40wh5ja.js",
+    "normalizedBuildMatches": true,
+    "sha256": "eaa78eed9a6ca3bca51517bd0e193a5c8864dc8f9f26977f8cec56cd403aed24"
+  },
+  "published": true,
+  "result": "PASS",
+  "boundary": "Chooser build publication and hosted regression metadata only; signed-in provider transition acceptance remains manual."
+}

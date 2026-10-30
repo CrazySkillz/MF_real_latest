@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-30T21:26:53.497Z",
+  "commit": "62a38e0e33f1a45c136b53caaa651c24fa1fbaf9",
+  "result": "PASS",
+  "changedRuntimeFiles": [
+    "client/src/components/AddRevenueWizardModal.tsx"
+  ],
+  "suites": [
+    {
+      "file": "server/revenue-source-chooser-loading-browser.test.ts",
+      "passed": 10
+    },
+    {
+      "file": "server/hubspot-review-currency-browser.test.ts",
+      "passed": 22
+    },
+    {
+      "file": "server/shopify-sale-date-window-browser.test.ts",
+      "passed": 3
+    },
+    {
+      "file": "server/hubspot-revenue-ga4-overview-regression.test.ts",
+      "passed": 32
+    },
+    {
+      "file": "server/salesforce-pipeline-automation-ui.test.ts",
+      "passed": 12
+    }
+  ],
+  "totalPassed": 79,
+  "typecheck": "npm run check: exit 0",
+  "productionBuild": "npm run build: exit 0; repeated with public VITE_ENABLE_SALESFORCE_REVENUE_SOURCE=true for exact deployment comparison",
+  "baseline": "chooser-baseline.json reproduces both false early-click errors with the prior component",
+  "sourceHashes": {
+    "client/src/components/AddRevenueWizardModal.tsx": "52dd67fbba883f0bb4f039f23d07276ac158d9222446d7fb7db2a08fc3ffa5da",
+    "server/revenue-source-chooser-loading-browser.test.ts": "1bd563d1f4919b872c63d00c233f0df39aee485cd9fe46da6f5298544b45e8f5"
+  },
+  "boundary": "Synthetic browsers and local checks. Does not certify real provider lifecycle or all application transitions. The fixture Salesforce status includes its required orgId; no Salesforce application code was changed."
+}

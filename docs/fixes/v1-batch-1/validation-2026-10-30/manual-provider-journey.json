@@ -1,0 +1,44 @@
+{
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "campaignName": "Batch 1 Provider Check",
+  "clientName": "Batch 1 Validation",
+  "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+  "checks": [
+    {
+      "recordedAt": "2026-10-30T20:58:57.716Z",
+      "step": "Google authorization and GA4 property discovery",
+      "userAnswer": "Yes, my GA4 property appears",
+      "result": "PASS_REPORTED"
+    },
+    {
+      "recordedAt": "2026-10-30T20:58:57.720Z",
+      "step": "Select property and discover its campaigns",
+      "userAnswer": "Yes, the campaign list appears",
+      "result": "PASS_REPORTED"
+    },
+    {
+      "recordedAt": "2026-10-30T21:03:51.514Z",
+      "step": "Create campaign and finish initial GA4 import",
+      "userAnswer": "Yes, the campaign was created",
+      "result": "PASS_REPORTED",
+      "independentReceipt": "disposable-scope-2026-10-30T21-02-08-325Z.json"
+    },
+    {
+      "recordedAt": "2026-10-30T21:20:42.420Z",
+      "step": "HubSpot authorization return",
+      "userAnswer": "i see this error, then it eventually connects",
+      "result": "CONNECTION_REPORTED_WITH_CHOOSER_TRANSITION_DEFECT",
+      "independentReceipt": "disposable-scope-2026-10-30T21-20-42-420Z.json",
+      "boundary": "One active encrypted connection with empty legacy credential columns and no saved mapping. Does not prove deal access, refresh, revocation, source import or the corrected deployed transition."
+    },
+    {
+      "recordedAt": "2026-10-30T21:30:42.199Z",
+      "step": "Open HubSpot setup from the revenue chooser after the transition correction",
+      "userAnswer": "What do you want MimoSaaS to pull from HubSpot? Total Revenue + Pipeline (Proxy); Total Revenue only (no Pipeline card)",
+      "result": "SETUP_SCREEN_REPORTED",
+      "publicationReceipt": "chooser-publication-2026-10-30T21-30-42-199Z.json",
+      "boundary": "User confirms reaching the Source choice. Deal properties/stages, selection, import and lifecycle checks remain pending."
+    }
+  ],
+  "boundary": "Manual sign-in/property selection on the disposable second-account campaign only; no complete provider lifecycle or Batch 1 closure inferred."
+}

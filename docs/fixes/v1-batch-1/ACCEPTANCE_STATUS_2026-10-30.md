@@ -81,18 +81,18 @@ Existing completed checks are carried forward; they are not being requested agai
 | V1-006 | Local owned persistence, deletion races and foreign-parent checks pass. All five current attribution tables are empty. User confirmed consolidated reads passed; deployed owned create/reload/restart remains unverified. No invisible attribution UI journey is invented. |
 | V1-008 | Explicit production-key/verified-TLS code and local negative tests pass; user-executed Render check decrypted all populated properly linked credentials. Key custody and same-machine protected restore are recorded. New direct DB connection uses verified TLS 1.3; this does not identify/inspect Render's process configuration. Historical incompatible ciphertext disposition and independent-machine recovery remain open. |
 | V1-026 | Local URL/DNS/redirect/size/deadline and current-parent controls pass. Supported token-authenticated file webhook still needs a valid deployed attachment/egress test; automatic email exclusion does not exclude this route. |
-| V1-027 | Real-browser synthetic callback encoding tests pass. Actual configured successful provider callbacks remain unverified. |
+| V1-027 | Real-browser synthetic callback encoding tests pass. The new second-account GA4 OAuth callback/property selection and initial import succeeded, with user confirmation and saved-state evidence below. Other configured providers' successful callbacks remain unverified. |
 | V1-030 | PostgreSQL whitelist save/reload/clear/omission/removed-sender controls pass. Supported generic whitelist path's deployed edit/sender acceptance remains open; no automatic email-import re-enablement is proposed. |
-| V1-034 | Temporary-ID bypass removed; both transfer parents guarded and Batch 4 tests retained. Actual owned draft/transfer journey remains unverified. |
+| V1-034 | Temporary-ID bypass removed; both transfer parents guarded and Batch 4 tests retained. User completed owned GA4 draft creation through initial-import activation in the second account, independently observed below. Deployed transfer acceptance remains unverified. |
 | V1-052 | User-confirmed ordinary sign-out/Back/account switch; report-cache guard deployed; additional toast leak reproduced and locally corrected above. Complete deployed Reports/notification and retained persistent-state acceptance is not claimed. |
 | V1-053 | Production caller-test-flag bypass removed; local environment/internal-refresh/identity quota tests pass. Deployed authenticated quota behavior remains unverified. No live saturation traffic was sent. |
 | V1-054 | Local real-handler and PostgreSQL immutable-parent controls pass; user confirmed invalid campaign edit gives owner 400 / second account 404. Valid owned child edits and rejected foreign-parent live mutations remain unverified. |
 | V1-057 | Forward bearer/body/provider-error logging corrections and synthetic marker tests pass. Historical hosting/provider log access/retention and any necessary narrowly scoped rotation remain unverified. Removing old database plaintext does not erase historical logs. |
 | V1-063 | **CLOSED.** Both production mock-write endpoints deny access; deferred provider features remain deferred. |
 | V1-075 | Both spend aliases enforce owner/currency/dated records with atomic storage. Current inventory finds no `connector_derived` sources. Previously inventoried orphan spend rows remain excluded by the traced active-source financial joins. Their full historical/downstream disposition and owned deployed route acceptance remain open. |
-| V1-078 | Purpose-specific configured/missing/tampered/expired signing tests pass. Configured real callback/session acceptance remains open; postponed provider functions are not silently included or waived. |
+| V1-078 | Purpose-specific configured/missing/tampered/expired signing tests pass. The configured GA4 callback completed under the second app account and its property/import persisted. Other configured real callback/session acceptance remains open; postponed provider functions are not silently included or waived. |
 | V1-088 | Ten PostgreSQL stale-migration/renewal interleavings pass. Exact approved 223 plaintext rows cleared and independently verified. Live renewal/reconnect and remaining historical ciphertext disposition remain open. |
-| V1-123 | Exact resource grants enforced in connect/storage/hydration; reviewed Promo grant and earlier scheduled continuity evidence retained. Real customer Google consent and deployed resource denial/revocation across workers remain unverified. Do not revoke Promo's working grant as a test. |
+| V1-123 | Exact resource grants enforced in connect/storage/hydration; reviewed Promo grant and earlier scheduled continuity evidence retained. Actual Google consent/property selection and a 30-day import succeeded on the new second-account campaign. Sheets consent and deployed resource denial/revocation across workers remain unverified. Do not revoke Promo's working grant or shared Google account access as a test. |
 
 ## Current read-only database evidence
 
@@ -137,14 +137,56 @@ consistent campaign/client ownership. Inventory script:
    and reached platform choices for `Batch 1 Provider Check`. The
    [read-only scope receipt](validation-2026-10-30/disposable-scope-2026-10-30T20-50-08-444Z.json)
    verifies one EUR/Europe-Amsterdam draft, consistent campaign/client ownership
-   distinct from Promo's owner, and no GA4 connection at that observation. Google
-   consent is the current manual step; availability/draft creation do not prove it.
+   distinct from Promo's owner, and no GA4 connection at that observation.
+   Availability/draft creation alone do not prove provider consent.
    The user clarified there is only one test Google account/property. Reusing it
    for the new campaign's read-only GA4 connection is allowed; do not revoke that
    shared Google's permission or alter its property for acceptance testing. The
    current callback stages credentials only for the signed, owned draft campaign;
    property confirmation commits within that campaign. Shared-account connection
    acceptance cannot close the separate revocation/worker-denial requirement.
+   Subsequent [manual confirmations](validation-2026-10-30/manual-provider-journey.json)
+   report successful Google sign-in/property discovery and the selected property's
+   campaign list. A [read-only observation](validation-2026-10-30/disposable-scope-2026-10-30T20-56-51-038Z.json)
+   confirms the test draft has its own active OAuth connection to property
+   `542352127`, with an encrypted container and no legacy access/refresh token.
+   At [20:59 UTC](validation-2026-10-30/disposable-scope-2026-10-30T20-59-11-923Z.json),
+   the campaign remained draft with no initial-import work or saved daily facts;
+   initial import and activation remain pending, not failed or certified.
+   This was superseded at [21:02 UTC](validation-2026-10-30/disposable-scope-2026-10-30T21-02-08-325Z.json):
+   the user confirmed campaign creation; the database independently shows active
+   status, completed non-invalidated initial work on its first attempt with no
+   recorded error, 30 non-simulated daily rows for September 30 through October 29,
+   and a matching Overview snapshot window. This proves this onboarding/import
+   path completed, not numerical certification of every tab/report or renewal,
+   denial/revocation, reconnect, or transfer. The user subsequently reported
+   eventual HubSpot connection after a false `sources unavailable` toast. The
+   [21:20 read-only receipt](validation-2026-10-30/disposable-scope-2026-10-30T21-20-42-420Z.json)
+   confirms one active encrypted HubSpot connection, empty legacy credential
+   columns and no saved mapping in the exact disposable campaign. The previous
+   completed initial-import work is now invalidated; this observation does not
+   certify a new publication or provider refresh.
+   The chooser treated pending discovery as failure while leaving cards clickable.
+   Runtime correction `62a38e0e` separates pending from failed lookup, disables
+   CRM/ecommerce cards during discovery and retains existing-source safeguards.
+   Ten isolated chooser browser cases, 69 adjacent HubSpot/Salesforce/Shopify
+   checks, TypeScript and the production build pass. No API, database, metric,
+   scheduler or OAuth request contract changed. The same two early-click tests
+   [reproduce the exact false HubSpot/Salesforce toasts against the previous component](validation-2026-10-30/chooser-baseline.json);
+   the isolated temporary baseline test is removed after the run.
+   [Public verification at 21:25 UTC](validation-2026-10-30/chooser-publication-2026-10-30T21-25-59-525Z.json)
+   confirms healthy Render runtime `62a38e0e` and an identical chooser bundle
+   after normalizing asset filenames/public Clerk keys. The local comparison
+   build used the already-enabled public Salesforce flag observed in Render;
+   no deployed configuration was changed. The
+   [21:30 verification](validation-2026-10-30/chooser-publication-2026-10-30T21-30-42-199Z.json)
+   confirms the complete hosted run `41130209461` passed, including the current
+   suite, certification step and retained deferred-source step. The user then
+   reported reaching HubSpot's Source mode choice from the chooser. This is
+   bounded navigation confirmation, not a complete provider-lifecycle result.
+   The next manual check selects Deal Name and reads the available open stages.
+   HubSpot deal selection/import,
+   renewal/revocation and other provider lifecycle gates remain open.
 3. **Operations:** Render process configuration/log disposition, incompatible old
    ciphertext disposition and recovery using the saved key on an independent
    machine. Existing backup/key-custody checks are not being repeated. Production

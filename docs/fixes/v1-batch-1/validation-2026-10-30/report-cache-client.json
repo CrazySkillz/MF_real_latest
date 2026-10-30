@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-30T13:35:48.288Z",
+  "result": "PASS",
+  "commit": "7e413779680901598e07f5ddf84990a78fde0115",
+  "entry": "/assets/index-CrCO-Min.js",
+  "reportAsset": "/assets/reports-ZQb0Ti-E.js",
+  "localBuildAsset": "reports-baoRU7ff.js",
+  "sourceSha256": "fff0835d79cbe04163fc28f94e621d9fb5f21bf966f638f7fcf8b620217e403d",
+  "normalizedLocalSha256": "01740aa83a32350e17142d40f5176749fc3e1d1b175645f6c81cd888745a0388",
+  "normalizedRemoteSha256": "01740aa83a32350e17142d40f5176749fc3e1d1b175645f6c81cd888745a0388",
+  "normalization": "Only quoted hashed JS/CSS asset filenames; report logic and all other bytes must match.",
+  "boundary": "Public static Reports chunk matches the locally built/tested correction. No JavaScript evaluated, personal browser/session used, or signed-in rendering/provider behavior inferred."
+}

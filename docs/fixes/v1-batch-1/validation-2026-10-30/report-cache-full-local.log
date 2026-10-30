@@ -1,0 +1,11 @@
+
+ Test Files  396 passed (396)
+      Tests  6870 passed (6870)
+   Start at  14:42:04
+   Duration  965.14s (transform 26.12s, setup 0ms, import 476.63s, tests 1244.72s, environment 152ms)
+
+JSON report written to [temporary JSON output removed by the test runner]
+[current-version] Full test execution completed.
+[current-version] Total 6870; passed 6870; failed 0.
+[current-version] Blocking current-version failures: 0
+[current-version] Visible non-blocking deferred failures: 0

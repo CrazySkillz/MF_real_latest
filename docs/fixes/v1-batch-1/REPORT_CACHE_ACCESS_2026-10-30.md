@@ -1,7 +1,7 @@
 # Reports cache access: October 30 follow-up
 
-**Locally corrected and validated; prepared for publication, not deployed.** Batch 1 and
-V1-052 remain OPEN. No production occurrence is claimed. The separately completed
+**Deployed as `7e413779`; full local checks pass, hosted CI failure remains unresolved.**
+Batch 1 and V1-052 remain OPEN. No production occurrence is claimed. The separately completed
 [campaign edit rejection check](CAMPAIGN_EDIT_ACCESS_2026-10-30.md) remains passed
 within its stated local and user-reported boundaries.
 
@@ -70,8 +70,39 @@ The user [confirmed all three ordinary sign-out/account-switch outcomes](validat
 Promo stayed hidden after signing out and pressing Back, the second account saw
 neither the original clients nor Promo, and the owner could reopen Promo after
 signing back in. Screens and sessions were not independently observed. This
-check concerns the already deployed sign-in boundary; it does not validate the
-separately unpublished Reports correction. Other browser-history/cache modes,
-remaining persistent/module state, real signed-in report acceptance and deployment
-of this correction are not certified by this packet. Finding counts remain
+check concerns the earlier deployed sign-in boundary; it does not validate the
+subsequently published Reports correction. Other browser-history/cache modes,
+remaining persistent/module state and real signed-in report acceptance
+are not certified by this packet. Finding counts remain
 116 OPEN / 10 DEFERRED / 4 CLOSED.
+
+## Publication and full-suite follow-up
+
+- Commit `7e413779680901598e07f5ddf84990a78fde0115` was pushed to `origin/main`.
+  [Deployed verification](validation-2026-10-30/report-cache-deployed.json) confirms
+  that exact healthy production revision and three anonymous GET denials.
+- [Public client verification](validation-2026-10-30/report-cache-client.json)
+  matches the deployed Reports JavaScript to the locally tested build after
+  normalizing only hashed JS/CSS asset filenames. No browser session was used.
+- GitHub [run 41063705622](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41063705622/job/124089580772)
+  failed at `Run npm run test:current-version`; setup and certification passed.
+  Its deferred-source step was skipped. [Failure receipt](validation-2026-10-30/report-cache-hosted-failed.json)
+  preserves this result; exact failed-test identities remain unknown. The public
+  log API requires authentication. Automatic approval review rejected an attempt
+  to obtain the log using a locally stored GitHub credential before execution;
+  no credential was read. The user was asked for the Failed Tests section and,
+  after reporting confusion, which screen the linked GitHub page shows.
+- The [complete isolated local reproduction](validation-2026-10-30/report-cache-full-local.json)
+  finished at 13:58 UTC: **396 files, 6,870 tests passed, zero failures**.
+  The actual current-version command exited zero; no blocking, deferred or
+  unhandled failure was waived. Both loopback PostgreSQL fixture databases
+  started and ended empty, all fixture connections closed, the cluster stopped,
+  and tracked-file hashes remained unchanged during the run. Production
+  credentials were excluded and external Node networking blocked by the existing
+  runner. [Final test output](validation-2026-10-30/report-cache-full-local.log)
+  is retained with full-log and execution-receipt hashes in the summary.
+
+The local pass does not explain or supersede the failed hosted run. No speculative
+runtime correction, test removal, retry or readiness closure was made. Next:
+obtain the hosted Failed Tests text, identify its cause, and validate any confirmed
+correction before treating hosted verification as passed.

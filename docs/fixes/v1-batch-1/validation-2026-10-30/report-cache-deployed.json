@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-30T13:34:39.369Z",
+  "result": "PASS",
+  "commit": "7e413779680901598e07f5ddf84990a78fde0115",
+  "healthy": true,
+  "checks": [
+    {
+      "route": "/api/clients",
+      "status": 401
+    },
+    {
+      "route": "/api/campaigns",
+      "status": 401
+    },
+    {
+      "route": "/api/campaigns/:promoId",
+      "status": 401
+    }
+  ],
+  "credentialsUsed": false,
+  "mutationsRequested": false,
+  "boundary": "Exact deployed commit/health and three anonymous GET denials. Does not independently validate signed-in Reports rendering, other browser storage, provider behavior or whole-app readiness."
+}

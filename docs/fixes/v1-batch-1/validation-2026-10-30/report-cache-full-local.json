@@ -1,0 +1,79 @@
+{
+  "result": "PASS_LOCAL_HOSTED_FAILURE_UNRESOLVED",
+  "recordedAt": "2026-10-30T13:59:55.970Z",
+  "startedAt": "2026-10-30T13:41:39.026Z",
+  "finishedAt": "2026-10-30T13:58:23.341Z",
+  "commit": "7e413779680901598e07f5ddf84990a78fde0115",
+  "command": "node docs/fixes/v1-batch-8/validation-2026-10-27-ci-scheduler/run-ci-gate.cjs report-cache-full-oct30",
+  "testFiles": 396,
+  "totalTests": 6870,
+  "passedTests": 6870,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "blockingCurrentVersionFailures": 0,
+  "deferredFailures": 0,
+  "checks": [
+    {
+      "name": "start",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "tests",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "stop",
+      "exitCode": 0,
+      "error": null
+    }
+  ],
+  "stopped": true,
+  "changedTrackedFiles": [],
+  "beforeDatabases": [
+    {
+      "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch8-20261026-pg",
+      "listen": "127.0.0.1",
+      "database": "ga4_alignment_test",
+      "other_sessions": 0,
+      "schemas": [],
+      "publicTables": []
+    },
+    {
+      "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch8-20261026-pg",
+      "listen": "127.0.0.1",
+      "database": "notifications_test",
+      "other_sessions": 0,
+      "schemas": [],
+      "publicTables": []
+    }
+  ],
+  "afterDatabases": [
+    {
+      "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch8-20261026-pg",
+      "listen": "127.0.0.1",
+      "database": "ga4_alignment_test",
+      "other_sessions": 0,
+      "schemas": [],
+      "publicTables": []
+    },
+    {
+      "directory": "C:/Users/me/Documents/MF_real_latest/audit-temp/v1-batch8-20261026-pg",
+      "listen": "127.0.0.1",
+      "database": "notifications_test",
+      "other_sessions": 0,
+      "schemas": [],
+      "publicTables": []
+    }
+  ],
+  "fullLogSha256": "55c37f69871b1bc7252617ee933b29b74cd65ff51a80cf5b958aa26b77e0746c",
+  "executionReceiptSha256": "fea47d6e5ba459686eaf5c4f764fd26a908a00d722cd1069661e894d9aa980cf",
+  "summarySha256": "f621eb6a0fcf2850954cb49af74e5c6a156b6c17e9ba7b789370c71e0b991b13",
+  "productionCredentialsExcluded": true,
+  "externalNodeNetworkingBlocked": true,
+  "hostedRunId": 41063705622,
+  "hostedConclusion": "failure",
+  "hostedFailureCauseKnown": false,
+  "boundary": "Full current-version run passes on isolated local Windows fixtures. This does not reproduce or supersede the failed Linux GitHub run, prove provider/signed-in acceptance, or close Batch 1. Only the terminal test summary is published; the full raw local log and hash inventory remain in the named runner directory."
+}

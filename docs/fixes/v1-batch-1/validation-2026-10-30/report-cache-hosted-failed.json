@@ -1,0 +1,19 @@
+{
+  "recordedAt": "2026-10-30T13:44:18Z",
+  "result": "FAILED_REQUIRES_INVESTIGATION",
+  "commit": "7e413779680901598e07f5ddf84990a78fde0115",
+  "runId": 41063705622,
+  "jobId": 124089580772,
+  "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41063705622/job/124089580772",
+  "setupAndCertification": "PASS",
+  "failedStep": "Run npm run test:current-version",
+  "deferredStep": "SKIPPED_AFTER_FAILURE",
+  "failureIdentitiesKnown": false,
+  "publicLogApiStatus": 403,
+  "publicJobPage": "Sign in to view logs",
+  "credentialReadAttemptExecuted": false,
+  "credentialReadBlockedByAutomaticApprovalReview": true,
+  "userRequestedToProvideFailedTestSection": true,
+  "localFullSuiteReproduction": "IN_PROGRESS",
+  "boundary": "Public GitHub job/check metadata proves a failed full-suite step, not its exact test cause. No test failure is waived and no whole-app readiness claim is made. Deployment health/static-client checks and earlier focused validation remain separate evidence."
+}

@@ -1,0 +1,17 @@
+{
+  "recordedAt": "2026-10-30T23:38:04Z",
+  "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "campaignName": "Batch 1 Provider Check",
+  "runtimeCommit": "f00ed5dc9ebe24d357d876533db28ac38c106375",
+  "step": "Reload deployed Overview and open Total Revenue Sources",
+  "userAnswer": "Yes—amount matches and messages are gone",
+  "confirmed": {
+    "totalRevenue": "32099.32",
+    "currency": "EUR",
+    "waitingMessageAbsentFor": ["hubspot", "salesforce", "shopify"]
+  },
+  "result": "PASS_REPORTED",
+  "boundary": "Closes the reported false waiting-message incident on the disposable campaign. Does not certify all provider lifecycles or close Batch 1. Personal browser was operated only by the user.",
+  "nextStep": "Resume Google Sheets connection acceptance on the same disposable campaign"
+}

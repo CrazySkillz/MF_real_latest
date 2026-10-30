@@ -9,7 +9,7 @@ displayed `Saved — waiting for Total Revenue to update.`
 
 This incident reopens the source-status display boundary; the earlier bounded
 initial-import checks do not certify this transition. Google Sheets acceptance
-is paused while this correction is validated. The redundant Shopify revenue
+was paused for this correction and resumes after the live confirmation below. The redundant Shopify revenue
 definition screen remains a separate deferred UX item.
 
 ## Confirmed cause and persisted evidence
@@ -111,9 +111,12 @@ are unchanged from the pre-deployment observation. Total Revenue remains
 EUR 32,099.32 and all three source hashes still match its completed receipt.
 This is a scoped comparison of whitelisted fields, not a global data audit.
 
-The user has been asked to reload the existing test-campaign page once and
-confirm the amount and absence of false waiting messages. No live browser
-result is assumed while that response is outstanding.
+The user reloaded the existing test-campaign page and confirmed:
+**"Yes—amount matches and messages are gone"**. This verifies Total Revenue
+EUR 32,099.32 and no false waiting messages for HubSpot, Salesforce or Shopify
+in the deployed Revenue Sources screen. The [manual confirmation](validation-2026-10-31/user-revenue-status-confirmation.json)
+is user-reported; the agent did not access the personal browser. This closes
+the reported source-status incident, without closing broader provider or Batch 1 gates.
 
 Remaining limits: the initial asynchronous completion duration is retained,
 not optimized or promised to be instantaneous. Full provider lifecycles,

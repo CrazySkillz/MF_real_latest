@@ -1,0 +1,8 @@
+{
+  "errors": [
+    "No QueryClient set, use QueryClientProvider to set one",
+    "No QueryClient set, use QueryClientProvider to set one",
+    "No QueryClient set, use QueryClientProvider to set one"
+  ],
+  "externalRequestsAllowed": false
+}

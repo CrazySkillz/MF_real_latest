@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-30T20:41:46.054Z",
+  "applicationCommit": "9a8853fc664629c02b15b899e689d613ebf9b1ac",
+  "rootCause": "Standalone Shopify wizard fixture omitted the existing app QueryClientProvider after useToast became account scoped. Browser captured No QueryClient set; real App has its provider.",
+  "fullBefore": {
+    "tests": 6871,
+    "passed": 6868,
+    "failed": 3,
+    "failedFile": "server/shopify-sale-date-window-browser.test.ts",
+    "changedTrackedFiles": [],
+    "fixtureDatabaseStopped": true,
+    "fixtureDatabasesEmpty": true,
+    "logSha256": "21d7e26a3b9b9884ad44d4e683368e86ce86e9f141a8d4fc0abdbe1c850311e2"
+  },
+  "after": {
+    "files": 2,
+    "tests": 4,
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "toastBrowserScenarios": 6
+  },
+  "change": "Only the Shopify browser fixture provider wrapper; test assertions and application source unchanged.",
+  "manifest": {
+    "client/src/hooks/use-toast.ts": "426b388cc71c3c08b7cc6788f8521d6512782af0be34768cf8cad8c931606626",
+    "client/src/components/ui/toaster.tsx": "3d129cfc68a5ae57690389b67576466cd8b520c9591bd7f3314136538e0c7797",
+    "server/shopify-sale-date-window-browser.test.ts": "cea12de9407d74c16b91021660fc9aa877e4ae2250672d13cfe41ef036362dfc",
+    "server/v1-toast-account-browser.cjs": "2c5fbe2ee167a95fb0c5a479159b58cb02caf287000b7858bdc9fe58df11c08f",
+    "server/v1-toast-account-browser.test.ts": "97694a4cfde07f8af6cc3bd82e2d1300685d9d40896b54377fd318afaee0148e"
+  },
+  "hostedAfter": "Pending separate exact-commit GitHub verification",
+  "productionDataWrites": false
+}

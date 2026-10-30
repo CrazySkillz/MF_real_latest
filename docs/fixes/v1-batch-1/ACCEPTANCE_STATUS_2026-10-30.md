@@ -40,6 +40,17 @@ Validation:
   agent. The user retains control of their browser. Deployment/full hosted results
   for this correction must be recorded separately.
 
+Full-run follow-up: hosted run `41121575291` failed. The isolated local full run
+then completed 6,871 tests: 6,868 passed and the three Shopify browser cases failed.
+The browser captured `No QueryClient set`: that standalone wizard fixture omitted
+the provider already present around all actual app pages. A three-line fixture
+correction adds the existing QueryClientProvider; all test assertions remain intact.
+The corrected Shopify cases and the notification regression pass (four tests,
+including six account-transition scenarios). Application source hashes are
+unchanged. [Correction receipt](validation-2026-10-30/toast-fixture-correction.json)
+records the failing full run, clean local database shutdown, focused result and
+hashes. A new full hosted run must pass before claiming the full gate is green.
+
 ## Remaining acceptance, every finding
 
 The user subsequently confirmed **both accounts said PASS** for the consolidated
@@ -55,11 +66,11 @@ Existing completed checks are carried forward; they are not being requested agai
 | Finding | Current evidence and exact remaining requirement |
 | --- | --- |
 | V1-001 | Conversion owner/token, zero/currency/date/retry and PostgreSQL race controls pass locally. New read-only inventory finds one event with a missing campaign, none for either protected campaign. A valid deployed sender/retry and downstream check remains; no orphan event was deleted. |
-| V1-002 | Authenticated owner filters and encrypted/redacted inserts are tested. Current global tables contain 4/7/5 unowned metrics/performance/integration rows; all five integration credential fields are empty. Sole runtime list callers pass the actor. These rows remain unassigned and excluded, not guessed into a customer. Consolidated live owner/second-account reads requested; owned live creation remains unverified. |
-| V1-003 | Previously recorded anonymous denial and Promo owner/foreign checks remain valid. Consolidated remaining campaign reads are prepared/requested. Google Trends' ordinary missing-keywords/provider branch is separate; no provider query was fabricated. |
+| V1-002 | Authenticated owner filters and encrypted/redacted inserts are tested. Current global tables contain 4/7/5 unowned metrics/performance/integration rows; all five integration credential fields are empty. Sole runtime list callers pass the actor. These rows remain unassigned and excluded, not guessed into a customer. User confirmed the consolidated live owner/second-account reads passed; owned live creation remains unverified. |
+| V1-003 | Previously recorded anonymous denial and Promo owner/foreign checks remain valid. User confirmed the consolidated remaining campaign reads passed. Google Trends' ordinary missing-keywords/provider branch is separate; no provider query was fabricated. |
 | V1-004 | **CLOSED.** User-excluded automatic email imports are disabled in UI/setup/ingestion. Re-enablement requires provider acceptance. |
 | V1-005 | **CLOSED.** Production test-email transport is disabled and deployed denial verified. |
-| V1-006 | Local owned persistence, deletion races and foreign-parent checks pass. All five current attribution tables are empty. Consolidated reads requested; deployed owned create/reload/restart remains unverified. No invisible attribution UI journey is invented. |
+| V1-006 | Local owned persistence, deletion races and foreign-parent checks pass. All five current attribution tables are empty. User confirmed consolidated reads passed; deployed owned create/reload/restart remains unverified. No invisible attribution UI journey is invented. |
 | V1-008 | Explicit production-key/verified-TLS code and local negative tests pass; user-executed Render check decrypted all populated properly linked credentials. Key custody and same-machine protected restore are recorded. New direct DB connection uses verified TLS 1.3; this does not identify/inspect Render's process configuration. Historical incompatible ciphertext disposition and independent-machine recovery remain open. |
 | V1-026 | Local URL/DNS/redirect/size/deadline and current-parent controls pass. Supported token-authenticated file webhook still needs a valid deployed attachment/egress test; automatic email exclusion does not exclude this route. |
 | V1-027 | Real-browser synthetic callback encoding tests pass. Actual configured successful provider callbacks remain unverified. |
@@ -105,14 +116,18 @@ consistent campaign/client ownership. Inventory script:
 
 ## Execution groups that require the user's environment
 
-1. **Account checks:** run the prepared [12-read procedure](validation-2026-10-30/manual-remaining-reads.js)
-   once per account. It emits only statuses/counts. Additional positive write and
+1. **Account checks:** the [12-read procedure](validation-2026-10-30/manual-remaining-reads.js)
+   passed in both accounts according to the user; do not repeat it. Additional positive write and
    draft/transfer checks must use separately identified disposable records, not
    Promo or V1 Batch 5 Test.
 2. **Provider checks:** actual consent/reconnect, configured callback, authorized
    file/conversion sender, and grant revocation on a disposable source. The agent
    has no authorized signed-in provider/test-browser session; synthetic responses
    cannot close these requirements.
+   The user confirmed separate Google (GA4/Sheets), HubSpot, Salesforce and Shopify
+   test accounts are available. They are now on Clients under the second app login;
+   creation of a disposable `Batch 1 Validation` client is the current manual step.
+   Availability and sign-in are not provider consent/import acceptance.
 3. **Operations:** Render process configuration/log disposition, incompatible old
    ciphertext disposition and recovery using the saved key on an independent
    machine. Existing backup/key-custody checks are not being repeated. Production

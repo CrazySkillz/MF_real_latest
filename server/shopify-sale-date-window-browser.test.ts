@@ -6,11 +6,12 @@ describe('Shopify order history wizard in Chromium with isolated HTTP', () => {
   let bundle: string, browser: Browser;
   beforeAll(async () => {
     const result = await build({ stdin: { contents: `import React from 'react';import {createRoot} from 'react-dom/client';
+      import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
       import {ShopifyRevenueWizard} from './client/src/components/ShopifyRevenueWizard';
       const edit=location.search.includes('edit');
-      createRoot(document.getElementById('root')).render(<ShopifyRevenueWizard campaignId="a" platformContext="ga4"
+      createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient()}><ShopifyRevenueWizard campaignId="a" platformContext="ga4"
       {...(edit?{mode:'edit',sourceId:'shopify-source',initialMappingConfig:{campaignField:'tags',selectedValues:['campaign3_eur_test']}}:{})}
-      onSuccess={value=>window.fixtureSaved=value}/>);`, loader: 'tsx', resolveDir: process.cwd() },
+      onSuccess={value=>window.fixtureSaved=value}/></QueryClientProvider>);`, loader: 'tsx', resolveDir: process.cwd() },
       bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"test"', 'import.meta.env': '{}' } });
     bundle = result.outputFiles[0].text; browser = await chromium.launch({ headless: true });
   }, 60_000);

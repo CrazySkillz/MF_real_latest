@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-30T12:34:25.736Z",
+  "result": "PASS",
+  "commit": "02bb9ad28ad8101fd5e47248028a57b5475427b5",
+  "status": 401,
+  "bodyMatched": true,
+  "authenticationUsed": false,
+  "validEditSupplied": false,
+  "boundary": "Anonymous deployed PATCH denial only. The malformed name also fails owner validation before every writer in the exact-route local HTTP tests. No actual provider/session or signed-in mutation acceptance inferred."
+}

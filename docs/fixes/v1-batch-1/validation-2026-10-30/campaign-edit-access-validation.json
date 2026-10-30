@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-30T12:37:20.479Z",
+  "result": "LOCAL_AND_ANONYMOUS_CHECKS_PASS_SIGNED_IN_RESULTS_USER_CONFIRMED",
+  "updatedAt": "2026-10-30T12:59:43Z",
+  "signedInEvidence": "user-campaign-edit-access.json",
+  "deployedCommit": "02bb9ad28ad8101fd5e47248028a57b5475427b5",
+  "tests": {
+    "total": 126,
+    "passed": 126,
+    "failed": 0,
+    "skipped": 0,
+    "newChecks": 26,
+    "files": [
+      {
+        "file": "ga4-initial-import-route.test.ts",
+        "tests": 22
+      },
+      {
+        "file": "v1-batch1-access-regression.test.ts",
+        "tests": 78
+      },
+      {
+        "file": "v1-campaign-edit-access.test.ts",
+        "tests": 26
+      }
+    ]
+  },
+  "typecheck": "PASS",
+  "runtimeDiffAgainstDeployedCommit": "EMPTY",
+  "runtimeChanged": false,
+  "databaseMutationPerformed": false,
+  "localBoundary": "Actual registered HTTP routes with synthetic Clerk actors and storage; storage durability/recovery remains covered only by its separately recorded PostgreSQL evidence.",
+  "liveBoundary": "Anonymous PATCH independently denied with deliberately invalid object-valued name; user explicitly confirmed owner 400 Invalid campaign data and second-account 404 Campaign not found. Authenticated sessions/responses were not independently observed; no valid live edit was submitted.",
+  "pending": [
+    "Complete deployed retained-child update acceptance",
+    "Remaining Batch 1 provider, credential, session and operational requirements"
+  ],
+  "batch1Status": "OPEN",
+  "findingCountsUnchanged": true,
+  "manifest": {
+    "server/routes-oauth.ts": "689aacd001c1db3d3d32b673492bd8a534f5eb560ca7e6d587d4bd2b2439ea39",
+    "server/storage.ts": "009a56adf73b6ab0ab9cb6a283ff24f7ca9b46668c2ca8b127c0b0b813b93061",
+    "shared/schema.ts": "986b489bca21ef6c9994b4cdd5c0cfe45cfdaded156875606f94068b892e3225",
+    "server/internal-request-auth.ts": "f980f0dce54d399a0711831880112a9807f6f73b83cff2e2f196ee0572c6dc54",
+    "client/src/pages/campaigns.tsx": "1e9911d7a19a170f67ca5d398bfa0a6c3ddbd2cf33fa15483dd0a64b803fd1d9",
+    "server/v1-campaign-edit-access.test.ts": "33f526614c898f72f13931b9cddd4b5b24024b986e1584846e6540447549a94a"
+  }
+}

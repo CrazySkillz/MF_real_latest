@@ -442,6 +442,7 @@ export default function Reports() {
 
   const campaignExecutiveSummary = liveCampaignExecutiveSummary;
   const campaignFinancialContext = liveCampaignFinancialContext;
+  const hasCampaignReportAccess = Boolean(campaignContextId && liveCampaignFinancialContext?.id === campaignContextId);
   const campaignKpis = liveCampaignKpis;
   const campaignBenchmarks = liveCampaignBenchmarks;
   const customReportPerformanceSummary = campaignOutcomeTotals?.performanceSummary;
@@ -468,7 +469,7 @@ export default function Reports() {
   // Load reports from storage
   useEffect(() => {
     const loadReports = () => {
-      const allReports = campaignContextId ? reportStorage.getReports() : [];
+      const allReports = hasCampaignReportAccess ? reportStorage.getReports() : [];
       
       if (allReports.length === 0) {
         setAllStoredReports([]);
@@ -491,7 +492,7 @@ export default function Reports() {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('reportAdded', handleStorageChange);
     };
-  }, [campaignContextId]);
+  }, [campaignContextId, hasCampaignReportAccess]);
 
   const resetForm = () => {
     setReportName("");
@@ -827,9 +828,9 @@ export default function Reports() {
     }
   };
 
-  const localVisibleReports = campaignContextId
+  const localVisibleReports = hasCampaignReportAccess
     ? allStoredReports.filter(report => report.campaignId === campaignContextId)
-    : allStoredReports;
+    : [];
   const visibleStoredReports = campaignContextId
     ? [
         ...localVisibleReports.filter(report => !report.backendReportId || !backendScheduledReportIds.has(report.backendReportId)),

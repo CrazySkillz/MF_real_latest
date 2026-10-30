@@ -1,0 +1,20 @@
+{
+  "recordedAt": "2026-10-30T12:59:43Z",
+  "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+  "origin": "https://marketforensics.onrender.com",
+  "method": "PATCH",
+  "route": "/api/campaigns/:promoId",
+  "targetIdSha256": "b85505d40a0a14398f36838d19d8d51e47037d32837d5a16464f4f1fc3601710",
+  "payload": { "name": { "batch1AccessCheck": true } },
+  "userConfirmation": "Yes—both matched",
+  "checks": [
+    { "account": "Promo owner", "reportedStatus": 400, "reportedMessage": "Invalid campaign data", "result": "PASS" },
+    { "account": "Second account", "reportedStatus": 404, "reportedMessage": "Campaign not found", "result": "PASS" }
+  ],
+  "sessionIdentitiesIndependentlyObserved": false,
+  "responsesIndependentlyObserved": false,
+  "validEditSubmitted": false,
+  "boundary": "Owner validation rejection and foreign-account access denial for the deliberately invalid name. The local registered-route checks prove this payload rejects before writes. Does not establish valid live edit success, retained child-update acceptance, or sign-out/late-response UI isolation.",
+  "batch1Status": "OPEN",
+  "findingCountsUnchanged": true
+}

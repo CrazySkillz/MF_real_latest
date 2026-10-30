@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-30T13:27:10Z",
+  "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+  "origin": "https://marketforensics.onrender.com",
+  "userConfirmation": "Yes—all matched",
+  "browserContext": "User instructed to use the same browser tab with ordinary Clerk sign-out and sign-in; no agent browser access or session credentials used.",
+  "checks": [
+    {
+      "action": "Open Promo as owner, sign out using the profile menu, then press browser Back once",
+      "reportedResult": "Promo dashboard and figures stay hidden; sign-in screen or redirect",
+      "result": "PASS"
+    },
+    {
+      "action": "Sign in with the second account",
+      "reportedResult": "Original account's clients and Promo remain absent",
+      "result": "PASS"
+    },
+    {
+      "action": "Sign back into the original account",
+      "reportedResult": "Promo opens normally",
+      "result": "PASS"
+    }
+  ],
+  "sessionsOrScreensIndependentlyObserved": false,
+  "exactRuntimeRevisionCapturedDuringManualTest": false,
+  "validDataMutationsRequested": false,
+  "boundary": "User-confirmed ordinary sign-out/history navigation, second-account client/campaign isolation, and return-to-owner access. Does not validate every browser/history cache mode, deliberately delayed network responses, the separately undeployed Reports cache correction, other persistent/module state, or the postponed production Clerk configuration.",
+  "batch1Status": "OPEN",
+  "findingCountsUnchanged": true
+}

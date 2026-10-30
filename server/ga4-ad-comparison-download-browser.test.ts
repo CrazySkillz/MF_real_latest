@@ -61,7 +61,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
     let releaseInsights!: () => void;
     const pendingInsights = new Promise<void>(resolve => { releaseInsights = resolve; });
     let holdInsights = true;
-    let holdFinancial = false, releaseFinancial!: () => void;
+    let holdFinancial = contextKind === "published-sources", releaseFinancial!: () => void;
     const pendingFinancial = new Promise<void>(resolve => { releaseFinancial = resolve; });
     const independentKind = ["landing-pages", "conversion-events", "report-library"].includes(contextKind);
     let holdIndependent = false, independentRequests = 0, releaseIndependent!: () => void;
@@ -161,12 +161,11 @@ describe("Ad Comparison precision through the real Reports page", () => {
       }
       if (url.pathname.endsWith("/financial-daily-snapshot")) {
         financialRequests++;
-        if (holdFinancial) await pendingFinancial;
+        if (holdFinancial && (contextKind !== "published-sources" || financialRequests > 1)) await pendingFinancial;
       }
       if (contextKind === "published-sources") {
         if (url.searchParams.has("statusOnly")) await new Promise(resolve => setTimeout(resolve, 300));
         if (url.pathname.endsWith("/revenue-sources")) await new Promise(resolve => setTimeout(resolve, 600));
-        if (url.pathname.endsWith("/financial-daily-snapshot") && financialRequests > 1) await new Promise(resolve => setTimeout(resolve, 900));
       }
       await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
     });
@@ -288,8 +287,11 @@ describe("Ad Comparison precision through the real Reports page", () => {
       if (contextKind === "publication-handoff") expect(await page.evaluate(() => (window as any).fixtureWarnings)).toEqual([]);
       if (contextKind === "published-sources") {
         await browserExpect.poll(() => financialRequests).toBeGreaterThanOrEqual(3);
+        // Keep replacement reads pending until this assertion, regardless of UI/CI speed.
         await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeDisabled();
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+        expect(downloads).toHaveLength(0);
+        holdFinancial = false; releaseFinancial();
         await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeEnabled();
       }
       await page.getByRole("dialog").getByText("Executive financials, trends, and recommended checks", { exact: true }).click();

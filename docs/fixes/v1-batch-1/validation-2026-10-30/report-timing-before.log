@@ -1,0 +1,49 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/me/Documents/MF_real_latest[39m
+
+[90mstdout[2m | server/ga4-ad-comparison-timing-probe.test.ts[2m > [22m[2mAd Comparison precision through the real Reports page[2m > [22m[2mdownloads with published-sources refresh timing and recovers after core refresh failures
+[22m[39mREPORT_TIMING_PROBE {"financialRequests":3,"downloads":[],"enabled":true,"queryErrors":[]}
+
+ [31m❯[39m server/ga4-ad-comparison-timing-probe.test.ts [2m([22m[2m12 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m11 skipped[39m[2m)[22m[33m 10445[2mms[22m[39m
+     [2m[90m↓[39m[22m downloads with channel refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with history refresh timing and recovers after core refresh failures
+[31m     [31m×[31m downloads with published-sources refresh timing and recovers after core refresh failures[39m[33m 10443[2mms[22m[39m
+     [2m[90m↓[39m[22m downloads with initial-reports refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with publication-handoff refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with publication-gap refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with background-read refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with landing-pages refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with conversion-events refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with report-library refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with revenue-pipeline-no-spend refresh timing and recovers after core refresh failures
+     [2m[90m↓[39m[22m downloads with promo-rounding refresh timing and recovers after core refresh failures
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m server/ga4-ad-comparison-timing-probe.test.ts[2m > [22mAd Comparison precision through the real Reports page[2m > [22mdownloads with published-sources refresh timing and recovers after core refresh failures
+[31m[1mError[22m[39m: Error: expect(locator).toBeDisabled() failed
+
+Locator:  getByRole('button', { name: 'Generate & Download Report' })
+Expected: disabled
+Received: enabled
+Timeout:  5000ms
+
+Call log:
+  - Expect "to.be.disabled" with timeout 5000ms
+  - waiting for getByRole('button', { name: 'Generate & Download Report' })
+    9 × locator resolved to <button aria-busy="false" class="inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md h-10 px-4 py-2 gap-2">…</button>
+      - unexpected value "enabled"
+
+{"errors":[],"downloads":[],"requests":["/api/platforms/google_analytics/reports?campaignId=a","/api/campaigns/a","/api/ga4/check-connection/a","/api/platforms/google_analytics/kpis?campaignId=a","/api/platforms/google_analytics/benchmarks?campaignId=a","/api/industry-benchmarks?ts=1793041200626","/api/campaigns/a/spend-to-date?platformContext=ga4","/api/campaigns/a/revenue-to-date","/api/campaigns/a/revenue-sources","/api/campaigns/a/spend-sources?platformContext=ga4","/api/campaigns/a/revenue-breakdown","/api/campaigns/a/spend-breakdown?platformContext=ga4","/api/campaigns/a/spend-daily?platformContext=ga4","/api/campaigns/a/revenue-daily","/api/campaigns/a/ga4-connections","/api/campaigns/a/ga4-daily?statusOnly=1&propertyId=123","/api/campaigns/a/ga4-daily?days=30&propertyId=123&readOnly=1","/api/campaigns/a/ga4-diagnostics?dateRange=30days&propertyId=123","/api/campaigns/a/ga4-to-date?propertyId=123&insightsScope=1","/api/campaigns/a/ga4-geographic?dateRange=30days&propertyId=123","/api/campaigns/a/financial-daily-snapshot?throughDate=2026-10-25","/api/campaigns/a/ga4-breakdown?window=import-to-date&propertyId=123&overviewCampaignBreakdown=1&snapshotEndDate=2026-10-25","/api/campaigns/a/ga4-landing-pages?propertyId=123&window=import-to-date&limit=50&snapshotEndDate=2026-10-25","/api/campaigns/a/ga4-conversion-events?propertyId=123&window=import-to-date&limit=50&snapshotEndDate=2026-10-25","/api/campaigns/a/ga4-breakdown?window=import-to-date&propertyId=123&adComparisonCampaignBreakdown=1","/api/platforms/google_analytics/reports?campaignId=a","/api/campaigns/a/ga4-geographic?dateRange=30days&propertyId=123","/api/campaigns/a/ga4-landing-pages?propertyId=123&window=import-to-date&limit=50&snapshotEndDate=2026-10-25","/api/campaigns/a/ga4-conversion-events?propertyId=123&window=import-to-date&limit=50&snapshotEndDate=2026-10-25","/api/platforms/google_analytics/kpis?campaignId=a","/api/platforms/google_analytics/benchmarks?campaignId=a","/api/campaigns/a/spend-to-date?platformContext=ga4","/api/campaigns/a/revenue-to-date","/api/campaigns/a/revenue-sources","/api/campaigns/a/spend-sources?platformContext=ga4","/api/campaigns/a/revenue-breakdown","/api/campaigns/a/spend-breakdown?platformContext=ga4","/api/campaigns/a/spend-daily?platformContext=ga4","/api/campaigns/a/revenue-daily","/api/campaigns/a/ga4-daily?days=30&propertyId=123&readOnly=1","/api/campaigns/a/ga4-breakdown?window=import-to-date&propertyId=123&adComparisonCampaignBreakdown=1","/api/campaigns/a/ga4-to-date?propertyId=123&insightsScope=1","/api/campaigns/a/financial-daily-snapshot?throughDate=2026-10-25","/api/campaigns/a/ga4-breakdown?window=import-to-date&propertyId=123&overviewCampaignBreakdown=1&snapshotEndDate=2026-10-25","/api/campaigns/a/ga4-daily?days=60&propertyId=123&readOnly=1&includeMonthly=1","/api/campaigns/a/ga4-breakdown?dateRange=30daysAgo&propertyId=123&insightsChannelAttribution=1&readOnly=1","/api/campaigns/a/ga4-daily?statusOnly=1&propertyId=123","/api/campaigns/a/financial-daily-snapshot?throughDate=2026-10-25","/api/platforms/google_analytics/kpis?campaignId=a","/api/platforms/google_analytics/benchmarks?campaignId=a","/api/platforms/google_analytics/reports?campaignId=a","/api/campaigns/a/ga4-daily?statusOnly=1&propertyId=123"],"refreshErrors":[{"name":"CancelledError","message":"CancelledError"}],"pageText":"Google Analytics\nyesop_prospectingyesop_paid_social\nClient: —\nCampaign: Precision regression\nGA4 Property ID: 123\nProperty Campaigns: yesop_prospecting, yesop_paid_social\nOverviewKPIsBenchmarksCampaign ComparisonInsightsReports\nReports\n\nCreate and download exec-ready GA4 reports (PDF) from this campaign’s live data.\n\nCreate Report\nNo reports created yet\nCreate your first GA4 report to download a PDF snapshot.\nReport Type\nStandard Templates\n\nPre-built professional report templates\n\nCustom Report\n\nBuild your own customized report\n\nChoose Template\nOverview\n\nComprehensive overview of campaign performance metrics\n\nOverviewMetricsInsights\nKPIs\n\nKey performance indicators and progress tracking\n\nMetricsTargetsProgress\nBenchmarks\n\nPerformance benchmarks and comparisons\n\nTargetsHistoricalGoals\nAd Comparison\n\nDetailed campaign-level performance analysis\n\nPerformanceRankingInsights\nInsights\n\nExecutive financials, trends, and recommended checks\n\nExecutiveTrendsActions\nSchedule Automated Reports\nReport Name\nDescription (Optional)\nCancel\nGenerate & Download Report\nClose"}
+[36m [2m❯[22m server/ga4-ad-comparison-timing-probe.test.ts:[2m386:13[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m11 skipped[39m[90m (12)[39m
+[2m   Start at [22m 20:29:29
+[2m   Duration [22m 16.79s[2m (transform 278ms, setup 0ms, import 4.06s, tests 10.45s, environment 0ms)[22m
+
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-1/validation-2026-10-30/report-timing-before.json

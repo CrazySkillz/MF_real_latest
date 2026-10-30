@@ -1,6 +1,8 @@
 # Reports cache access: October 30 follow-up
 
-**Deployed as `7e413779`; full local checks pass, hosted CI failure remains unresolved.**
+**Deployed as `7e413779`; full local checks pass. The hosted failure is reproduced
+as a browser-test timing defect; the test-only correction passes locally, with
+hosted revalidation pending below.**
 Batch 1 and V1-052 remain OPEN. No production occurrence is claimed. The separately completed
 [campaign edit rejection check](CAMPAIGN_EDIT_ACCESS_2026-10-30.md) remains passed
 within its stated local and user-reported boundaries.
@@ -102,7 +104,51 @@ are not certified by this packet. Finding counts remain
   runner. [Final test output](validation-2026-10-30/report-cache-full-local.log)
   is retained with full-log and execution-receipt hashes in the summary.
 
-The local pass does not explain or supersede the failed hosted run. No speculative
-runtime correction, test removal, retry or readiness closure was made. Next:
-obtain the hosted Failed Tests text, identify its cause, and validate any confirmed
-correction before treating hosted verification as passed.
+The initial local pass did not explain or supersede the failed hosted run.
+The subsequent user-provided error and targeted reproduction below establish
+its cause. No application correction, test removal or readiness closure was made.
+
+## October 30 hosted-test timing correction
+
+The user supplied the [failure detail](validation-2026-10-30/report-timing-hosted-failure-detail.json):
+`server/ga4-ad-comparison-download-browser.test.ts`, the `published-sources`
+scenario, expected `Generate & Download Report` to be disabled but found it enabled
+with `aria-busy="false"`. No downloads, page errors or refresh errors occurred;
+three financial snapshot requests had been made. This locates the failure before
+the first download, in the initial pending-state assertion.
+
+This fixture mounts `client/src/pages/ga4-metrics.tsx`, not the campaign Reports
+page changed in `7e413779`. Neither that GA4 page nor this fixture changed in that
+commit. Its simulated replacement financial reads used a fixed 900 ms delay.
+Waiting for three requests only proves those requests started; it does not prove
+they remain pending after navigation and opening the report modal. If they finish
+first, the actual page correctly clears `ga4PublicationDisplayPending` and enables
+the button. The test then incorrectly demands a transient state that already ended.
+
+A temporary copy of the unchanged test inserted a 1,500 ms delay immediately
+after the three-request checkpoint. The [before result](validation-2026-10-30/report-timing-before.json)
+reproduces the identical enabled-button failure, with no query errors or downloads.
+The copy was removed without changing the original. Repeating that same diagnostic
+delay after correction [passes](validation-2026-10-30/report-timing-after.json):
+the button is disabled until explicit response release, then the existing full
+download/failure/recovery journey completes. Each probe selects one scenario and
+intentionally skips the other eleven; these are not twelve-scenario pass claims.
+
+Only `server/ga4-ad-comparison-download-browser.test.ts` changes: five added and
+three removed lines. The published-source case reuses the existing financial
+response promise, allows its first snapshot through, holds replacement reads
+through the disabled/no-download assertions, then releases them and checks that
+the button becomes enabled. The earlier 300/600 ms source/status ordering remains
+to exercise overlapping reads. The original `finally` releases pending promises
+on failure. The separate background-read scenario retains its original behavior.
+No assertion is removed; no automatic retry or test exclusion is added.
+
+The [complete focused packet](validation-2026-10-30/report-timing-regressions.json)
+passes **86/86 checks in two files, zero failed/skipped**: all twelve browser
+download scenarios plus the 74 neighboring publication checks. The intentionally
+delayed probe is separate and is not added to that non-overlapping total.
+[TypeScript](validation-2026-10-30/report-timing-typecheck.log) also passes.
+The [validation receipt](validation-2026-10-30/report-timing-validation.json)
+records the source hashes and reproduction boundary. Hosted CI is pending. No app
+runtime, API, data, scheduler, provider or PDF calculation changes are included.
+Batch 1 and V1-052 remain open for their separate remaining acceptance.

@@ -1,0 +1,20 @@
+{
+  "recordedAt": "2026-10-30T19:32:59.294Z",
+  "source": "User-pasted GitHub failure text and screenshot",
+  "runId": 41063705622,
+  "jobId": 124089580772,
+  "commit": "7e413779680901598e07f5ddf84990a78fde0115",
+  "file": "server/ga4-ad-comparison-download-browser.test.ts",
+  "test": "Ad Comparison precision through the real Reports page downloads with published-sources refresh timing and recovers after core refresh failures",
+  "locator": "getByRole('button', { name: 'Generate & Download Report' })",
+  "expected": "disabled",
+  "received": "enabled",
+  "ariaBusy": "false",
+  "timeoutMs": 5000,
+  "pageErrors": [],
+  "downloads": [],
+  "refreshErrors": [],
+  "financialSnapshotRequestCount": 3,
+  "outerCatchLine": 384,
+  "boundary": "User-supplied hosted log confirms the first published-sources pending-state assertion failed: there are no downloads yet, no page/refresh errors, and the button is no longer busy. The raw GitHub log was not fetched using a stored credential."
+}

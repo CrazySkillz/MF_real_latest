@@ -1,0 +1,53 @@
+{
+  "recordedAt": "2026-10-30T19:37:59.557Z",
+  "result": "LOCAL_PASS_HOSTED_PENDING",
+  "baseCommit": "094021c65563bea63cd3198c891446ddc6f2141d",
+  "runtimeCommit": "7e413779680901598e07f5ddf84990a78fde0115",
+  "rootCause": "The browser test expected a transient pending state after a fixed 900 ms mock response had already completed. Counting started requests did not establish that a response remained pending.",
+  "correction": "Hold replacement financial responses with the existing explicit promise until disabled/no-download assertions complete, then release and verify enabled/download/failure/recovery behavior.",
+  "changedApplicationFiles": [],
+  "changedTestFiles": [
+    "server/ga4-ad-comparison-download-browser.test.ts"
+  ],
+  "linesAdded": 5,
+  "linesRemoved": 3,
+  "beforeProbe": {
+    "delayMs": 1500,
+    "failed": 1,
+    "skippedByNameFilter": 11,
+    "buttonEnabled": true,
+    "queryErrors": 0,
+    "downloads": 0
+  },
+  "afterProbe": {
+    "delayMs": 1500,
+    "passed": 1,
+    "skippedByNameFilter": 11,
+    "buttonEnabledBeforeRelease": false,
+    "queryErrors": 0
+  },
+  "focused": {
+    "testFiles": 2,
+    "passed": 86,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "PASS_EXIT_0",
+  "productionCredentialsExcluded": true,
+  "externalNodeNetworkingBlocked": true,
+  "personalBrowserUsed": false,
+  "diagnosticCopyRemoved": true,
+  "sourceSha256": {
+    "server/ga4-ad-comparison-download-browser.test.ts": "4d79bfe64d11727cee18aae0c7966ead062a381676605159e8ce9032953f7ee8",
+    "client/src/pages/ga4-metrics.tsx": "a69664a6fcd00468cd7a83d775b791428111def5ca6d248cf7316d87d72a9991",
+    "client/src/pages/reports.tsx": "fff0835d79cbe04163fc28f94e621d9fb5f21bf966f638f7fcf8b620217e403d"
+  },
+  "evidenceSha256": {
+    "report-timing-before.json": "a67e79e71d61193a966ecbc68e0e7235ad8465cbed4a1c15dc9a36ceeb83b571",
+    "report-timing-after.json": "92a58bb800b8a7e9ec96446906829b778d25a7ddb33e02e86db1095dabb05421",
+    "report-timing-regressions.json": "c6c56f7575306b4ec540ea23d8e19fc324c3bb799a552e02a4dee06fd7acf9fe",
+    "report-timing-before.log": "bdb420bb92c509f4865e9d6a77b79e2fd7f4c59762a4e1041f69a04bd9b282af",
+    "report-timing-after.log": "3b3e99e1a5a4686bd5382f922aa8321f7ef090a5e8ee001c0bb6d624494889a2"
+  },
+  "boundary": "The GitHub failure supplied by the user is reproduced and corrected in the synthetic browser fixture. No runtime implementation or source data changes. Hosted revalidation and separate Batch 1/provider/manual acceptance are not implied."
+}

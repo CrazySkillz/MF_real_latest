@@ -1,0 +1,15 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/me/Documents/MF_real_latest[39m
+
+[90mstdout[2m | server/ga4-ad-comparison-timing-probe.test.ts[2m > [22m[2mAd Comparison precision through the real Reports page[2m > [22m[2mdownloads with published-sources refresh timing and recovers after core refresh failures
+[22m[39mREPORT_TIMING_PROBE {"financialRequests":3,"downloads":[],"enabled":false,"queryErrors":[]}
+
+ [32m✓[39m server/ga4-ad-comparison-timing-probe.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m[33m 24737[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with published-sources refresh timing and recovers after core refresh failures [33m 24735[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m11 skipped[39m[90m (12)[39m
+[2m   Start at [22m 20:30:56
+[2m   Duration [22m 29.17s[2m (transform 228ms, setup 0ms, import 3.62s, tests 24.74s, environment 0ms)[22m
+
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-1/validation-2026-10-30/report-timing-after.json

@@ -1,0 +1,25 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/me/Documents/MF_real_latest[39m
+
+ [32m✓[39m server/ga4-browser-publication-refresh.test.ts [2m([22m[2m74 tests[22m[2m)[22m[33m 5590[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps idle metric queries off timers, with only scheduled status and pending-import follow-up [33m 326[2mms[22m[39m
+ [32m✓[39m server/ga4-ad-comparison-download-browser.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 326501[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with channel refresh timing and recovers after core refresh failures [33m 34417[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with history refresh timing and recovers after core refresh failures [33m 17962[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with published-sources refresh timing and recovers after core refresh failures [33m 16697[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with initial-reports refresh timing and recovers after core refresh failures [33m 16358[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with publication-handoff refresh timing and recovers after core refresh failures [33m 14850[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with publication-gap refresh timing and recovers after core refresh failures [33m 37851[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with background-read refresh timing and recovers after core refresh failures [33m 37707[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with landing-pages refresh timing and recovers after core refresh failures [33m 44065[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with conversion-events refresh timing and recovers after core refresh failures [33m 46169[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with report-library refresh timing and recovers after core refresh failures [33m 34463[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with revenue-pipeline-no-spend refresh timing and recovers after core refresh failures [33m 15257[2mms[22m[39m
+     [33m[2m✓[22m[39m downloads with promo-rounding refresh timing and recovers after core refresh failures [33m 10701[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m86 passed[39m[22m[90m (86)[39m
+[2m   Start at [22m 20:31:45
+[2m   Duration [22m 331.06s[2m (transform 494ms, setup 0ms, import 4.04s, tests 332.09s, environment 0ms)[22m
+
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-1/validation-2026-10-30/report-timing-regressions.json

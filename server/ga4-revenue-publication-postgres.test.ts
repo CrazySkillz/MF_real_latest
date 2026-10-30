@@ -67,7 +67,7 @@ async function publish(scope: Awaited<ReturnType<typeof claim>>, complete = true
   }
   return snapshot;
 }
-async function sourceResponse() {
+async function sourceResponse(reportingDate = day) {
   const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
   const start = source.indexOf('app.get("/api/campaigns/:id/revenue-sources"');
   const end = source.indexOf("// Unified data-sources endpoint", start);
@@ -75,7 +75,7 @@ async function sourceResponse() {
   new Function("app", "storage", "ensureCampaignAccess", "parseRevenueReadPlatformContext", "getReportingDateWindow", "getShopifyRevenueSourceFreshness",
     ts.transpileModule(source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(
     { get: (_path: string, callback: any) => { handler = callback; } }, storage, async () => storage.getCampaign("a"),
-    () => "ga4", () => ({ endDate: day }), () => null);
+    () => "ga4", () => ({ endDate: reportingDate }), () => null);
   const res: any = { setHeader() {}, status(code: number) { this.code = code; return this; }, json(body: any) { this.body = body; return this; } };
   await handler({ params: { id: "a" }, query: {} }, res);
   expect(res.code, JSON.stringify(res.body)).toBeUndefined(); return res.body;
@@ -280,6 +280,36 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     await save("csv", null, [...rows(), ...rows("100.00", nextDay)]);
     expect((await sourceResponse()).sources[0]).toMatchObject({ lastTotalRevenue: 350, completedDayRevenue: 250,
       completedDayEndDate: day, pendingCompletedDay: true, publicationStatus: "pending" });
+  });
+  it("keeps unchanged published sources included after midnight without publishing new work", async () => {
+    await save("hubspot", null, rows("0.00"));
+    await save("salesforce", null, rows("0.00"));
+    await save("shopify", null, rows("785.95", "2026-09-28"));
+    await publish(await claim());
+    const before = await pool.query("SELECT * FROM metric_snapshots ORDER BY id");
+    const workBefore = await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id");
+    const response = await sourceResponse(nextDay);
+    expect(response.sources).toHaveLength(3);
+    expect(response.sources.every((source: any) => source.publicationStatus === "published")).toBe(true);
+    expect(response.sources.find((source: any) => source.sourceType === "shopify")).toMatchObject({
+      completedDayEndDate: nextDay, lastTotalRevenue: 785.95, completedDayRevenue: 785.95, pendingCompletedDay: false,
+    });
+    expect((await pool.query("SELECT * FROM metric_snapshots ORDER BY id")).rows).toEqual(before.rows);
+    expect((await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows).toEqual(workBefore.rows);
+    expect(await storage.getGA4RevenuePublicationStatus("b", nextDay)).toEqual({});
+  });
+  it("keeps newly eligible sales pending after midnight while unchanged neighbors remain included", async () => {
+    const unchanged = await save("hubspot", null, rows("0.00"));
+    const source = await save("shopify", null, [...rows("785.95", "2026-09-28"), ...rows("10.00", nextDay)]);
+    await publish(await claim());
+    const status = await storage.getGA4RevenuePublicationStatus("a", nextDay);
+    expect(status[unchanged.id].status).toBe("published");
+    expect(status[source.id].status).toBe("pending");
+  });
+  it("rejects a receipt whose date disagrees with its saved snapshot after midnight", async () => {
+    const source = await save("shopify"); await publish(await claim());
+    await pool.query("UPDATE metric_snapshots SET metrics=jsonb_set(metrics, '{revenuePublication,reportingDate}', '\"2000-01-01\"') WHERE campaign_id='a' AND snapshot_type='financial_daily'");
+    expect((await storage.getGA4RevenuePublicationStatus("a", nextDay))[source.id].status).toBe("pending");
   });
   it("rejects a stale worker after a second edit and keeps exactly one recoverable job", async () => {
     const source = await save("csv"); const scope = await claim();

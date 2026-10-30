@@ -1,0 +1,69 @@
+[36mvite v5.4.19 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 3467 modules transformed.
+rendering chunks...
+computing gzip size...
+[2m../dist/public/[22m[32mindex.html                                       [39m[1m[2m  0.89 kB[22m[1m[22m[2m │ gzip:   0.45 kB[22m
+[2m../dist/public/[22m[35massets/index-MpaTBUgT.css                        [39m[1m[2m107.94 kB[22m[1m[22m[2m │ gzip:  17.97 kB[22m
+[2m../dist/public/[22m[36massets/startOfDay-CG6-kGL8.js                    [39m[1m[2m  0.11 kB[22m[1m[22m[2m │ gzip:   0.12 kB[22m
+[2m../dist/public/[22m[36massets/subDays-BeN9bdgv.js                       [39m[1m[2m  0.18 kB[22m[1m[22m[2m │ gzip:   0.16 kB[22m
+[2m../dist/public/[22m[36massets/filter-DLZZt8-C.js                        [39m[1m[2m  0.33 kB[22m[1m[22m[2m │ gzip:   0.26 kB[22m
+[2m../dist/public/[22m[36massets/arrow-down-right-HZT14SiD.js              [39m[1m[2m  0.34 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/search-B6BTxm_v.js                        [39m[1m[2m  0.34 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/circle-check-BjcBCAlP.js                  [39m[1m[2m  0.34 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/clock-DdQQKu-a.js                         [39m[1m[2m  0.35 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/info-BdIe_XgQ.js                          [39m[1m[2m  0.37 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2m../dist/public/[22m[36massets/trending-down-DC37G0kh.js                 [39m[1m[2m  0.38 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2m../dist/public/[22m[36massets/mail-BwtIqAIe.js                          [39m[1m[2m  0.38 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2m../dist/public/[22m[36massets/arrow-up-down-CuQrP_PN.js                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2m../dist/public/[22m[36massets/video-CyMtVHax.js                         [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2m../dist/public/[22m[36massets/chart-column-CNOuOAog.js                  [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2m../dist/public/[22m[36massets/calendar-EJrEFXb3.js                      [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2m../dist/public/[22m[36massets/zap-DhkeOmKo.js                           [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2m../dist/public/[22m[36massets/download-BgwTYkfM.js                      [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2m../dist/public/[22m[36massets/award-DoVyn8wT.js                         [39m[1m[2m  0.44 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2m../dist/public/[22m[36massets/pencil-DFBvpQBJ.js                        [39m[1m[2m  0.45 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2m../dist/public/[22m[36massets/mouse-pointer-BkihBx4_.js                 [39m[1m[2m  0.47 kB[22m[1m[22m[2m │ gzip:   0.34 kB[22m
+[2m../dist/public/[22m[36massets/talk-to-your-data-DyPiwLZL.js             [39m[1m[2m  0.53 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2m../dist/public/[22m[36massets/textarea-Dz--6DJN.js                      [39m[1m[2m  0.54 kB[22m[1m[22m[2m │ gzip:   0.35 kB[22m
+[2m../dist/public/[22m[36massets/trophy-CX3WTGxs.js                        [39m[1m[2m  0.63 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2m../dist/public/[22m[36massets/metric-math-DPASzpBF.js                   [39m[1m[2m  1.24 kB[22m[1m[22m[2m │ gzip:   0.56 kB[22m
+[2m../dist/public/[22m[36massets/form-G5WeJjjL.js                          [39m[1m[2m  1.71 kB[22m[1m[22m[2m │ gzip:   0.75 kB[22m
+[2m../dist/public/[22m[36massets/progress-BpLH18HI.js                      [39m[1m[2m  1.97 kB[22m[1m[22m[2m │ gzip:   0.98 kB[22m
+[2m../dist/public/[22m[36massets/tabs-8hd0DC69.js                          [39m[1m[2m  3.24 kB[22m[1m[22m[2m │ gzip:   1.37 kB[22m
+[2m../dist/public/[22m[36massets/ga4-kpi-consumer-state-DTNd4utg.js        [39m[1m[2m  3.76 kB[22m[1m[22m[2m │ gzip:   1.49 kB[22m
+[2m../dist/public/[22m[36massets/useQueries-DUfmIz7s.js                    [39m[1m[2m  4.16 kB[22m[1m[22m[2m │ gzip:   1.74 kB[22m
+[2m../dist/public/[22m[36massets/alert-dialog-DRVu35J_.js                  [39m[1m[2m  4.82 kB[22m[1m[22m[2m │ gzip:   1.78 kB[22m
+[2m../dist/public/[22m[36massets/financial-executive-actions-DGzuFheP.js   [39m[1m[2m  5.99 kB[22m[1m[22m[2m │ gzip:   2.28 kB[22m
+[2m../dist/public/[22m[36massets/kpi-math-S0HLBZD7.js                      [39m[1m[2m  6.35 kB[22m[1m[22m[2m │ gzip:   1.71 kB[22m
+[2m../dist/public/[22m[36massets/accordion-cwomZsgz.js                     [39m[1m[2m  6.57 kB[22m[1m[22m[2m │ gzip:   2.44 kB[22m
+[2m../dist/public/[22m[36massets/format-DyyphSEt.js                        [39m[1m[2m 12.60 kB[22m[1m[22m[2m │ gzip:   3.38 kB[22m
+[2m../dist/public/[22m[36massets/audiences-DLTi2-jU.js                     [39m[1m[2m 12.70 kB[22m[1m[22m[2m │ gzip:   3.53 kB[22m
+[2m../dist/public/[22m[36massets/platform-kpis-kNfyHchp.js                 [39m[1m[2m 15.29 kB[22m[1m[22m[2m │ gzip:   4.06 kB[22m
+[2m../dist/public/[22m[36massets/notifications-lyhQC7a-.js                 [39m[1m[2m 15.82 kB[22m[1m[22m[2m │ gzip:   5.02 kB[22m
+[2m../dist/public/[22m[36massets/purify.es-aGzT-_H7.js                     [39m[1m[2m 22.15 kB[22m[1m[22m[2m │ gzip:   8.67 kB[22m
+[2m../dist/public/[22m[36massets/kpis-BEKlhUtH.js                          [39m[1m[2m 26.12 kB[22m[1m[22m[2m │ gzip:   7.27 kB[22m
+[2m../dist/public/[22m[36massets/financial-analysis-C7EtQZ-v.js            [39m[1m[2m 29.93 kB[22m[1m[22m[2m │ gzip:   8.37 kB[22m
+[2m../dist/public/[22m[36massets/executive-summary-BNevMqnY.js             [39m[1m[2m 32.11 kB[22m[1m[22m[2m │ gzip:   8.40 kB[22m
+[2m../dist/public/[22m[36massets/GA4ConnectionFlow-BWWsKphx.js             [39m[1m[2m 35.50 kB[22m[1m[22m[2m │ gzip:  10.34 kB[22m
+[2m../dist/public/[22m[36massets/platform-comparison-pygLaTMT.js           [39m[1m[2m 45.12 kB[22m[1m[22m[2m │ gzip:  10.30 kB[22m
+[2m../dist/public/[22m[36massets/ColumnMappingInterface-Clq1ydDE.js        [39m[1m[2m 51.65 kB[22m[1m[22m[2m │ gzip:  12.13 kB[22m
+[2m../dist/public/[22m[36massets/campaign-performance-CfCQ-ZxY.js          [39m[1m[2m 57.19 kB[22m[1m[22m[2m │ gzip:  14.89 kB[22m
+[2m../dist/public/[22m[36massets/AddSpendWizardModal-Cv553yLA.js           [39m[1m[2m 77.85 kB[22m[1m[22m[2m │ gzip:  17.45 kB[22m
+[2m../dist/public/[22m[36massets/tiktok-analytics-DkF9xLKk.js              [39m[1m[2m 83.20 kB[22m[1m[22m[2m │ gzip:  16.89 kB[22m
+[2m../dist/public/[22m[36massets/reports-CFP4m_UZ.js                       [39m[1m[2m 84.86 kB[22m[1m[22m[2m │ gzip:  22.99 kB[22m
+[2m../dist/public/[22m[36massets/instagram-analytics-BrkVA5f6.js           [39m[1m[2m 85.85 kB[22m[1m[22m[2m │ gzip:  17.14 kB[22m
+[2m../dist/public/[22m[36massets/trend-analysis-C7HJCv4b.js                [39m[1m[2m 96.91 kB[22m[1m[22m[2m │ gzip:  22.26 kB[22m
+[2m../dist/public/[22m[36massets/custom-integration-analytics-WhV1jrHD.js  [39m[1m[2m141.23 kB[22m[1m[22m[2m │ gzip:  28.09 kB[22m
+[2m../dist/public/[22m[36massets/index.es-DIoligIT.js                      [39m[1m[2m150.50 kB[22m[1m[22m[2m │ gzip:  51.44 kB[22m
+[2m../dist/public/[22m[36massets/campaign-detail-1KXPaV2v.js               [39m[1m[2m150.55 kB[22m[1m[22m[2m │ gzip:  31.78 kB[22m
+[2m../dist/public/[22m[36massets/google-ads-analytics-gYGN97Pu.js          [39m[1m[2m162.43 kB[22m[1m[22m[2m │ gzip:  32.41 kB[22m
+[2m../dist/public/[22m[36massets/meta-analytics-C8iYXK2z.js                [39m[1m[2m168.49 kB[22m[1m[22m[2m │ gzip:  31.09 kB[22m
+[2m../dist/public/[22m[36massets/google-sheets-data-BzulCOyj.js            [39m[1m[2m186.70 kB[22m[1m[22m[2m │ gzip:  39.23 kB[22m
+[2m../dist/public/[22m[36massets/AddRevenueWizardModal-EqcbvFnU.js         [39m[1m[2m188.09 kB[22m[1m[22m[2m │ gzip:  43.09 kB[22m
+[2m../dist/public/[22m[36massets/linkedin-analytics-D3vfjW_x.js            [39m[1m[2m310.13 kB[22m[1m[22m[2m │ gzip:  65.08 kB[22m
+[2m../dist/public/[22m[36massets/ga4-metrics-BVG4tym0.js                   [39m[1m[2m369.60 kB[22m[1m[22m[2m │ gzip:  85.32 kB[22m
+[2m../dist/public/[22m[36massets/charts-vendor-mOBM8HJe.js                 [39m[1m[2m574.50 kB[22m[1m[22m[2m │ gzip: 160.03 kB[22m
+[2m../dist/public/[22m[36massets/pdf-vendor-Dx2Ol5NV.js                    [39m[1m[2m590.97 kB[22m[1m[22m[2m │ gzip: 176.06 kB[22m
+[2m../dist/public/[22m[36massets/index-ZUN51dum.js                         [39m[1m[2m633.28 kB[22m[1m[22m[2m │ gzip: 173.97 kB[22m
+[32m✓ built in 23.13s[39m

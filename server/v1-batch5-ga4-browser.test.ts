@@ -35,6 +35,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     await page.clock.install({ time: new Date("2026-10-23T18:00:00Z") });
     const confirmed: Record<string, number> = { hubspot: 25, salesforce: 30, shopify: 45, google_sheets: 25, csv: 25, manual: 25, custom: 25 };
     const updatedAt = "2026-10-23T12:10:00Z", day = "2026-10-22";
+    let sourceDay = day;
     const totals = { sessions: 100, users: 90, conversions: 2.75, revenue: 100, engagedSessions: 70, engagementRate: 0.7, pageviews: 120 };
     const selected = "fixture-selected";
     let selections = options.multipleItems ? [selected, "keep-selected"] : [selected];
@@ -42,7 +43,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     let publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0);
     const mutations: Array<{ method: string; path: string; body: any }> = [];
     const sources = () => providers.map(provider => ({ id: `${provider}-source`, sourceType: provider, platformContext: "ga4", isActive: true,
-      ...(publication ? { publicationStatus: publication === "waiting-card" ? "published" : publication, publicationHash: `${provider}:new`, completedDayEndDate: day } : {}),
+      ...(publication ? { publicationStatus: publication === "waiting-card" ? "published" : publication, publicationHash: `${provider}:new`, completedDayEndDate: sourceDay } : {}),
       displayName: provider === "hubspot" ? "HubSpot" : provider === "salesforce" ? "Salesforce" : "Shopify", currency: "EUR", lastTotalRevenue: confirmed[provider], completedDayRevenue: confirmed[provider], materializedRevenueStatus: "available",
       mappingConfig: JSON.stringify({ platformContext: "ga4", selectedValues: selections, campaignProperty: "campaign", campaignField: "Campaign__c", pipelineEnabled: provider !== "shopify", pipelineStageId: "open", pipelineStageName: "Open", pipelineStageLabel: "Open",
         campaignMappings: options.unmappedHubspot || options.unmappedSalesforce ? [] : selections.map(crmValue => ({ crmValue, linkedinCampaignUrn: crmValue, linkedinCampaignName: crmValue })), dateField: provider === "salesforce" ? "CloseDate" : "closedate",
@@ -106,6 +107,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     await browserExpect.poll(() => page.evaluate(() => (window as any).fixtureFetching())).toBe(0);
     return { page, revenue, pipeline, requests, errors, mutations,
       pendingStatusChecks: () => pendingStatusChecks,
+      setSourceDay: (value: string) => { sourceDay = value; },
       completeDeletion: () => { deletionPending = false; publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0); receipt = "after-deletion"; },
       setPublication: (value: string) => { publication = value; if (value === "published") receipt = "source-published"; }, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; }, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
   }
@@ -192,6 +194,32 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       await browserExpect(pending).toHaveCount(0);
       await f.page.keyboard.press("Escape");
       await browserExpect(f.revenue).toContainText(provider === "salesforce" ? "\u20ac130.00" : provider === "shopify" ? "\u20ac145.00" : "\u20ac125.00");
+    } finally { await f.close(); }
+  }, 30_000);
+  it.each([false, true])("keeps included source messages consistent with the card after midnight, empty breakdown=%s", async emptyBreakdown => {
+    const f = await fixture({ publication: "published", emptyBreakdown });
+    try {
+      await browserExpect(f.revenue).toContainText("\u20ac200.00");
+      await f.revenue.getByRole("button", { name: "Sources (4)", exact: true }).click();
+      const pending = f.page.getByText("Saved — waiting for Total Revenue to update.", { exact: true });
+      await browserExpect(pending).toHaveCount(0);
+      f.setSourceDay("2026-10-23");
+      await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect.poll(() => f.page.evaluate(() => (window as any).fixtureFetching())).toBe(0);
+      await browserExpect(pending).toHaveCount(0);
+      await browserExpect(f.revenue).toContainText("\u20ac200.00");
+      const requestCount = f.requests.length;
+      await f.page.clock.runFor(61_000);
+      expect(f.requests.length).toBe(requestCount);
+      f.setPublication("waiting-card");
+      await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(pending).toHaveCount(3);
+      f.setPublication("published");
+      await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(pending).toHaveCount(0);
+      await f.page.keyboard.press("Escape");
+      await browserExpect(f.revenue).toContainText("\u20ac200.00");
+      await browserExpect(f.pipeline).toContainText("\u20ac20.00");
     } finally { await f.close(); }
   }, 30_000);
   it.each(["failed", "waiting-card"])("keeps saved source figures visible for %s publication", async publication => {

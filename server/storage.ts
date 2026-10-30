@@ -2746,7 +2746,10 @@ export class DatabaseStorage implements IStorage {
       const completed = !receipt?.workId || receiptWork?.status === 'completed';
       const failed = work?.status !== 'completed' && (Boolean(work?.lastError) || work?.retryable === false || work?.attemptCount >= 3);
       return Object.fromEntries(Object.entries(current.sources).map(([id, hash]) => {
-        const included = receipt?.version === 1 && receipt.reportingDate === reportingDate && receipt.sources?.[id] === hash && completed;
+        // Midnight does not undo a completed publication. The current input hash
+        // still detects edits and sales newly eligible since that snapshot.
+        const included = receipt?.version === 1 && receipt.reportingDate === snapshot?.reportingDate
+          && receipt.reportingDate <= reportingDate && receipt.sources?.[id] === hash && completed;
         return [id, { status: included && !current.pendingSourceIds.includes(id) ? 'published' : !included && failed ? 'failed' : 'pending', hash }];
       }));
     });

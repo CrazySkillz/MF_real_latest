@@ -1,0 +1,95 @@
+{
+  "at": "2026-10-30T23:24:57.905Z",
+  "scope": "Revenue source publication status across campaign-local midnight",
+  "tests": [
+    {
+      "file": "midnight-before.json",
+      "passed": 1,
+      "failed": 4,
+      "skipped": 121,
+      "success": false
+    },
+    {
+      "file": "midnight-fixed.json",
+      "passed": 297,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    },
+    {
+      "file": "midnight-report.json",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 11,
+      "success": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "midnight-typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "midnight-client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "midnight-server-build.log"
+    }
+  ],
+  "certificationMetadataCheck": "PASS",
+  "localFixtureStopped": true,
+  "generatedReportPdfRestored": true,
+  "productionWritesAttempted": false,
+  "personalBrowserAccessed": false,
+  "files": [
+    {
+      "file": "server/storage.ts",
+      "sha256": "9cbf03c9c2829c8bbca4c687230d70f6b537543b32b6b9c05fd5968c7c47e5b4"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "cd2f0c849524b258c69328b03b76277011545c3665c12082dfadacea9566f14f"
+    },
+    {
+      "file": "server/ga4-revenue-publication-postgres.test.ts",
+      "sha256": "be1f99a4332af788ae36e87ebd8fca6f78018112188b8b61b485c678f14bef21"
+    },
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "sha256": "6fa2079c4d82c01c065e378cd0519ed7076a212f7ff285108686aac4c1a87819"
+    },
+    {
+      "file": "docs/fixes/v1-batch-1/validation-2026-10-31/midnight-before.json",
+      "sha256": "4eef5eb2fb43697c303f33aaa12ae0e81ed98dd26927ed16d9a91aeda54bf4b1"
+    },
+    {
+      "file": "docs/fixes/v1-batch-1/validation-2026-10-31/midnight-fixed.json",
+      "sha256": "2480e4756845caf95103e6c5d23dbb933058464d4f763d1676be1211f78504b6"
+    },
+    {
+      "file": "docs/fixes/v1-batch-1/validation-2026-10-31/midnight-report.json",
+      "sha256": "e351cf25bff5c765e64b18c9f26cf7e0c926bff19b667a63cccd77920f7d9ae8"
+    },
+    {
+      "file": "docs/fixes/v1-batch-1/validation-2026-10-31/midnight-build-checks.json",
+      "sha256": "92fb98d70c795e95edf9a1499e55b5b1d1b880dc4e1ac015e4488a3d3d9dde52"
+    },
+    {
+      "file": "docs/fixes/v1-batch-1/validation-2026-10-31/revenue-publication-2026-10-30T23-14-20-812Z.json",
+      "sha256": "737c79d272e6a8e8c9e3e54b877e761b3be377d4a850f95a6e55135870c115c3"
+    }
+  ],
+  "limits": [
+    "Initial asynchronous publication timing unchanged",
+    "Live authenticated browser remains manual",
+    "Not a full provider lifecycle or Batch 1 certification"
+  ]
+}

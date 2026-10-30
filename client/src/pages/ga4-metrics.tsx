@@ -2759,7 +2759,8 @@ export default function GA4Metrics() {
     const getPublicationStatus = (source: any) => {
       if (source?.publicationStatus !== "published") return source?.publicationStatus;
       const receipt = financialDailySnapshotResp?.snapshot?.metrics?.revenuePublication;
-      return receipt?.reportingDate === source.completedDayEndDate && receipt?.sources?.[source.id] === source.publicationHash
+      return receipt?.reportingDate === financialDailySnapshotResp?.snapshot?.reportingDate
+        && receipt?.reportingDate <= source.completedDayEndDate && receipt?.sources?.[source.id] === source.publicationHash
         ? "published" : "pending";
     };
     const getDefinitionRevenue = (source: any) => source?.materializedRevenueStatus === "available" && Number.isFinite(Number(source?.lastTotalRevenue))

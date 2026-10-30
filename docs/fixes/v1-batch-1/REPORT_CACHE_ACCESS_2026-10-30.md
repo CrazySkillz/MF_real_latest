@@ -1,8 +1,7 @@
 # Reports cache access: October 30 follow-up
 
-**Deployed as `7e413779`; full local checks pass. The hosted failure is reproduced
-as a browser-test timing defect; the test-only correction passes locally, with
-hosted revalidation pending below.**
+**Deployed as `7e413779`; full local checks pass. The hosted test-timing defect is
+corrected in test-only commit `05542b6e`, whose complete hosted workflow passes.**
 Batch 1 and V1-052 remain OPEN. No production occurrence is claimed. The separately completed
 [campaign edit rejection check](CAMPAIGN_EDIT_ACCESS_2026-10-30.md) remains passed
 within its stated local and user-reported boundaries.
@@ -149,6 +148,17 @@ download scenarios plus the 74 neighboring publication checks. The intentionally
 delayed probe is separate and is not added to that non-overlapping total.
 [TypeScript](validation-2026-10-30/report-timing-typecheck.log) also passes.
 The [validation receipt](validation-2026-10-30/report-timing-validation.json)
-records the source hashes and reproduction boundary. Hosted CI is pending. No app
+records the source hashes and reproduction boundary. No app
 runtime, API, data, scheduler, provider or PDF calculation changes are included.
 Batch 1 and V1-052 remain open for their separate remaining acceptance.
+
+**Hosted revalidation passed.** Commit `05542b6e31af12a4485c6ce1ef3d8b5d397a0a1f`
+was pushed with `[skip render]`. GitHub
+[run 41116916268](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41116916268)
+passed setup, certification, the full current-version suite and the separate
+deferred-source step. The [public verification receipt](validation-2026-10-30/report-timing-hosted.json)
+also confirms Render remains healthy on application revision `7e413779`; no app
+deployment was needed. Hosted test counts were not extracted from authenticated
+logs. The original failed run is retained as historical evidence, not relabeled
+successful. This closes the identified test-run blocker only; it does not certify
+Reports, Batch 1, the other batches or remaining signed-in/provider acceptance.

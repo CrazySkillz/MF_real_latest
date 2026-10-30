@@ -1,0 +1,93 @@
+{
+  "at": "2026-10-30T19:46:08.591Z",
+  "result": "PASS",
+  "commit": "05542b6e31af12a4485c6ce1ef3d8b5d397a0a1f",
+  "runId": 41116916268,
+  "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41116916268",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 124273422598,
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci --ignore-scripts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npx --no-install playwright install --with-deps chromium",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Create isolated notification fixture database",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run check:ga4-kpi-certification",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:current-version",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained deferred-source evidence (non-blocking)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "runtimeCommit": "7e413779680901598e07f5ddf84990a78fde0115",
+  "runtimeHealthy": true,
+  "credentialsUsed": false,
+  "personalBrowserUsed": false,
+  "mutationsRequested": false,
+  "boundary": "New exact-commit hosted workflow and required steps pass, including the deferred-source step. Test counts were not extracted from hosted logs. Render remains on the unchanged healthy application revision; no signed-in/provider or whole-app readiness claim."
+}

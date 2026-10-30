@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-30T23:31:11.770Z",
+  "commit": "f00ed5dc9ebe24d357d876533db28ac38c106375",
+  "result": "PASS",
+  "before": "revenue-publication-2026-10-30T23-14-20-812Z.json",
+  "after": "revenue-publication-2026-10-30T23-30-48-859Z.json",
+  "unchangedObservedFields": [
+    "campaign",
+    "sources",
+    "records",
+    "snapshots",
+    "work",
+    "overview"
+  ],
+  "scope": "Exact disposable campaign and whitelisted fields only; not a global production-data audit",
+  "totalRevenue": "32099.32",
+  "sourceReceiptsMatch": true,
+  "databaseWritesAttempted": false
+}

@@ -90,8 +90,30 @@ PDF is restored to its original tracked version; it is not part of this change.
 
 Tests use disposable local schemas, synthetic browser requests and blocked
 external networking. No personal browser or authenticated provider account is
-operated by the agent. Render publication and exact-commit hosted checks are
-pending; their evidence will be recorded after publishing.
+operated by the agent.
+
+## Deployment and saved-data verification
+
+Runtime commit `f00ed5dc9ebe24d357d876533db28ac38c106375` was pushed to the
+existing `main` branch. Render's public health endpoint reports this exact
+commit as healthy, and its compiled GA4 page matches the tested local build
+after normalizing asset hashes and the public Clerk key. The exact-commit
+[GitHub run 41144399245](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41144399245)
+passed certification, the full current-version suite and the retained deferred
+regression suite. The [final publication receipt](validation-2026-10-31/publication-2026-10-30T23-36-33-046Z.json)
+records those successful steps, healthy exact runtime commit and matching
+compiled GA4 page at 23:36 UTC on October 30 (October 31 in Amsterdam).
+
+The [post-deployment read-only comparison](validation-2026-10-31/postdeploy-data-check.json)
+confirms the exact observed campaign metadata, source definitions, normalized
+records, financial snapshots, refresh-work rows and native Overview totals
+are unchanged from the pre-deployment observation. Total Revenue remains
+EUR 32,099.32 and all three source hashes still match its completed receipt.
+This is a scoped comparison of whitelisted fields, not a global data audit.
+
+The user has been asked to reload the existing test-campaign page once and
+confirm the amount and absence of false waiting messages. No live browser
+result is assumed while that response is outstanding.
 
 Remaining limits: the initial asynchronous completion duration is retained,
 not optimized or promised to be instantaneous. Full provider lifecycles,

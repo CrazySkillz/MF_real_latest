@@ -73,6 +73,8 @@ Salesforce currently enforces one active GA4 Salesforce source per campaign/plat
 - after an active Salesforce source exists, the card is non-actionable and says `Already added. Edit opportunities from Revenue Sources.`
 - the source inventory must finish resolving before first-time setup is allowed, so a failed or pending lookup cannot accidentally enter additive mode
 
+The source chooser keeps its cards in place while connection/source discovery is pending. CRM/ecommerce actions are temporarily disabled, with no failure toast or premature `Not connected` badge. A completed failed inventory lookup still blocks HubSpot/Salesforce setup and offers reopening the dialog to retry; existing-source edit and duplicate protections remain intact.
+
 Editing starts from the provider-level pencil beside `Salesforce (Opportunities)` in `Total Revenue -> Sources`. It opens the first Source step with all saved settings and selections. The save request must retain the exact stable revenue `sourceId`; it replaces that source rather than adding another source.
 
 The Revenue Sources modal keeps the provider as the top-level source and itemizes confirmed CRM values from `campaignValueRevenueTotals`. For Salesforce:

@@ -364,6 +364,7 @@ export function AddRevenueWizardModal(props: {
   const [activeSalesforceSources, setActiveSalesforceSources] = useState<any[]>([]);
   const [hubspotSourcesResolved, setHubspotSourcesResolved] = useState(false);
   const [salesforceSourcesResolved, setSalesforceSourcesResolved] = useState(false);
+  const [crmSourcesLoading, setCrmSourcesLoading] = useState(true);
   const [salesforcePickerEditSource, setSalesforcePickerEditSource] = useState<any>(null);
   const salesforceEditSource = String(initialSource?.sourceType || "").toLowerCase() === "salesforce"
     ? initialSource
@@ -381,6 +382,7 @@ export function AddRevenueWizardModal(props: {
   };
   useEffect(() => {
     if (!open) return;
+    setCrmSourcesLoading(true);
     setHubspotSourcesResolved(false);
     setSalesforceSourcesResolved(false);
     let cancelled = false;
@@ -404,6 +406,7 @@ export function AddRevenueWizardModal(props: {
       setActiveCsvSources(csvSources);
       setHubspotSourcesResolved(sourcesResolved);
       setSalesforceSourcesResolved(sourcesResolved);
+      setCrmSourcesLoading(false);
       setImportSourceStatus({
         google_sheets: hasSource("google_sheets"),
         csv: csvSources.length > 0,
@@ -426,12 +429,13 @@ export function AddRevenueWizardModal(props: {
 
   // OAuth gate: connect platform first, then proceed to wizard
   const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {
+    if (crmSourcesLoading) return;
     if (platform === "hubspot" && !hubspotSourcesResolved) {
-      toast({ title: "HubSpot sources unavailable", description: "Please try again after the revenue sources finish loading.", variant: "destructive" });
+      toast({ title: "HubSpot sources unavailable", description: "Revenue sources could not be loaded. Close and reopen this dialog to retry.", variant: "destructive" });
       return;
     }
     if (platform === "salesforce" && !salesforceSourcesResolved) {
-      toast({ title: "Salesforce sources unavailable", description: "Please try again after the revenue sources finish loading.", variant: "destructive" });
+      toast({ title: "Salesforce sources unavailable", description: "Revenue sources could not be loaded. Close and reopen this dialog to retry.", variant: "destructive" });
       return;
     }
     // Already authenticated — go straight to wizard
@@ -1874,7 +1878,7 @@ export function AddRevenueWizardModal(props: {
             {step === "select" && (
               <div className="grid grid-cols-1 gap-4">
                 {!hideCrmSources && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "shopify" || crmDisconnecting === "shopify" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("shopify")}>
+                  <Card aria-disabled={crmSourcesLoading} aria-busy={crmSourcesLoading} className={`cursor-pointer hover:border-blue-500 transition-colors ${crmSourcesLoading || crmConnecting === "shopify" || crmDisconnecting === "shopify" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("shopify")}>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <ShoppingCart className="w-4 h-4" />
@@ -1905,7 +1909,7 @@ export function AddRevenueWizardModal(props: {
                         ) : crmHasSource.shopify ? (
                           <span className="ml-auto text-xs font-normal text-amber-600 dark:text-amber-400">Reconnect required</span>
                         ) : (
-                          <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
+                          <span className={`ml-auto text-xs font-normal text-muted-foreground/70 ${crmSourcesLoading ? "invisible" : ""}`}>Not connected</span>
                         )}
                       </CardTitle>
                       <CardDescription>{crmOAuth.shopify ? (crmHasSource.shopify ? "Attribute order revenue to this campaign." : "Connected to Shopify. Import order revenue.") : crmHasSource.shopify ? "Reconnect Shopify to refresh this revenue source." : "Connect Shopify to import order revenue."}</CardDescription>
@@ -1915,7 +1919,9 @@ export function AddRevenueWizardModal(props: {
 
                 {!hideCrmSources && (
                   <Card
-                    className={`${crmHasSource.hubspot ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${crmConnecting === "hubspot" || crmDisconnecting === "hubspot" ? "opacity-60 pointer-events-none" : ""}`}
+                    aria-disabled={crmSourcesLoading}
+                    aria-busy={crmSourcesLoading}
+                    className={`${crmHasSource.hubspot ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${crmSourcesLoading || crmConnecting === "hubspot" || crmDisconnecting === "hubspot" ? "opacity-60 pointer-events-none" : ""}`}
                     onClick={() => {
                       if (crmHasSource.hubspot) return;
                       void handleCrmSourceClick("hubspot");
@@ -1951,7 +1957,7 @@ export function AddRevenueWizardModal(props: {
                         ) : crmHasSource.hubspot ? (
                           <span className="ml-auto text-xs font-normal text-amber-600 dark:text-amber-400">Reconnect required</span>
                         ) : (
-                          <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
+                          <span className={`ml-auto text-xs font-normal text-muted-foreground/70 ${crmSourcesLoading ? "invisible" : ""}`}>Not connected</span>
                         )}
                       </CardTitle>
                       <CardDescription>{crmHasSource.hubspot ? "Already added. Edit deals from Revenue Sources." : "Connect HubSpot to import deal revenue."}</CardDescription>
@@ -1961,7 +1967,9 @@ export function AddRevenueWizardModal(props: {
 
                 {!hideCrmSources && showSalesforceRevenueSource && (
                   <Card
-                    className={`${crmHasSource.salesforce ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${crmConnecting === "salesforce" || crmDisconnecting === "salesforce" ? "opacity-60 pointer-events-none" : ""}`}
+                    aria-disabled={crmSourcesLoading}
+                    aria-busy={crmSourcesLoading}
+                    className={`${crmHasSource.salesforce ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${crmSourcesLoading || crmConnecting === "salesforce" || crmDisconnecting === "salesforce" ? "opacity-60 pointer-events-none" : ""}`}
                     onClick={() => {
                       if (crmHasSource.salesforce) return;
                       void handleCrmSourceClick("salesforce");
@@ -1997,7 +2005,7 @@ export function AddRevenueWizardModal(props: {
                         ) : crmHasSource.salesforce ? (
                           <span className="ml-auto text-xs font-normal text-amber-600 dark:text-amber-400">Reconnect required</span>
                         ) : (
-                          <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
+                          <span className={`ml-auto text-xs font-normal text-muted-foreground/70 ${crmSourcesLoading ? "invisible" : ""}`}>Not connected</span>
                         )}
                       </CardTitle>
                       <CardDescription>{crmHasSource.salesforce ? "Already added. Edit opportunities from Revenue Sources." : "Connect Salesforce to import opportunity revenue."}</CardDescription>

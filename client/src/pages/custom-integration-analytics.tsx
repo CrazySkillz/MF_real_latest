@@ -430,6 +430,7 @@ function calculateExpectedProgress(timeframe: string): number {
 }
 
 export default function CustomIntegrationAnalytics() {
+  const automaticEmailImportsEnabled = false;
   const queryClient = useQueryClient();
   const [matchCampaignRoute, campaignParams] = useRoute("/campaigns/:id/custom-integration-analytics");
   const [matchIntegrationRoute, integrationParams] = useRoute("/integrations/:id/analytics");
@@ -3358,7 +3359,10 @@ export default function CustomIntegrationAnalytics() {
                 )}
 
                 {/* Show "Awaiting Data" state when there are NO metrics AND data has finished loading */}
-                {!metricsLoading && !hasMetrics && customIntegrationEmail && (
+                {!automaticEmailImportsEnabled && !metricsLoading && !hasMetrics && customIntegrationEmail && (
+                  <p className="text-muted-foreground">Upload a PDF, CSV, or Excel (.xlsx) report from Campaign Overview to see metrics here.</p>
+                )}
+                {automaticEmailImportsEnabled && !metricsLoading && !hasMetrics && customIntegrationEmail && (
                   <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950">
                     <CardContent className="pt-8 pb-8">
                       <div className="text-center space-y-6">

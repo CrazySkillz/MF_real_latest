@@ -843,6 +843,12 @@ const verifySendGridInbound = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Automatic email imports are excluded from this release, including setup.
+  app.post([
+    "/api/email/inbound/:token", "/api/sendgrid/inbound", "/api/mailgun/inbound",
+    "/api/custom-integration/:campaignId/connect",
+  ], (_req, res) => res.status(404).json({ error: "Automatic email imports are disabled for this release" }));
+
   // Render/infra health checks should be fast and never depend on DB/OAuth.
   // Render defaults to checking "/" but that can depend on static serving; provide an explicit health endpoint.
   app.get("/health", (_req, res) => res.status(200).send("ok"));

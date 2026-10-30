@@ -1,0 +1,43 @@
+{
+  "recordedAt": "2026-10-30T12:12:00.307Z",
+  "result": "LOCAL_CHECKS_PASS",
+  "userDecision": "Keep automatic email imports disabled for this release",
+  "scope": {
+    "blockedPostRoutes": [
+      "/api/email/inbound/:token",
+      "/api/sendgrid/inbound",
+      "/api/mailgun/inbound",
+      "/api/custom-integration/:campaignId/connect"
+    ],
+    "retained": [
+      "manual uploads",
+      "token-authenticated file webhooks",
+      "Google Sheets",
+      "outgoing scheduled report emails",
+      "existing imported data and connections"
+    ]
+  },
+  "tests": {
+    "passed": 255,
+    "failed": 0,
+    "skipped": 0,
+    "files": 6,
+    "localResult": "email-exclusion-tests-complete.json"
+  },
+  "typecheck": "PASS",
+  "build": "PASS",
+  "protectedNeighborFilesUnchanged": true,
+  "manifest": {
+    "server/routes-oauth.ts": "689aacd001c1db3d3d32b673492bd8a534f5eb560ca7e6d587d4bd2b2439ea39",
+    "client/src/pages/campaigns.tsx": "1e9911d7a19a170f67ca5d398bfa0a6c3ddbd2cf33fa15483dd0a64b803fd1d9",
+    "client/src/pages/campaign-detail.tsx": "db094a3af97f12a16f67925f55f68feb6628b327f4aa1d2a22066a4f39422dbd",
+    "client/src/pages/custom-integration-analytics.tsx": "948b4c619a522120e93b9b5a8f20acdb8f8da2278d3025b2dbffdb26c2b26e4f",
+    "server/v1-email-import-exclusion.test.ts": "27fca8d42a3d4b0b91d67b2ec9c8a28513e20c426180a33a9ebf46c38789ed99",
+    "server/source-safety-regression.test.ts": "a96500399c6b96013aac124d81385c5f21454b71111a2bea18b1f3925514b156"
+  },
+  "limits": [
+    "Real provider delivery remains excluded, not certified.",
+    "Unaffected route tests prove non-interception; existing broader local upload/report checks remain separately scoped.",
+    "Deployment and production UI are not yet verified."
+  ]
+}

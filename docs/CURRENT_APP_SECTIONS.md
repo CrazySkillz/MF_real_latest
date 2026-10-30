@@ -357,6 +357,11 @@ list do not currently expose them:
 | TikTok Ads | `/campaigns/:id/tiktok-analytics` | Overview, KPIs, Benchmarks, Ad Comparison, Insights, Reports |
 | Custom Integration | `/campaigns/:id/custom-integration-analytics` | Overview, Summary, KPIs, Benchmarks, Insights, Reports |
 
+Automatic email imports are excluded from this release. Forwarding setup and
+instructions are hidden, and the three receiving routes plus the dedicated email
+setup route return 404. Manual report uploads, file webhooks, existing imported
+data and outgoing report emails remain supported within their separate validation scope.
+
 These routes should receive platform-specific onboarding only after their
 connection entry points and Campaign Overview visibility are intentionally
 enabled and revalidated.

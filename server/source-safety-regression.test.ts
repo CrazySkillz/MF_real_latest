@@ -497,7 +497,7 @@ describe("source safety regression guards", () => {
     expect(block).toContain("goToConfirmStep(3)");
   });
 
-  it("Create Campaign exposes Custom Integration through existing campaign-scoped setup routes", () => {
+  it("Create Campaign retains campaign-scoped Custom Integration uploads with email setup gated", () => {
     const source = readCampaignsPageSource();
     const blockStart = source.indexOf("selectedWizardPlatform === 'custom-integration' && (");
     const block = source.slice(blockStart, blockStart + 2500);
@@ -515,7 +515,9 @@ describe("source safety regression guards", () => {
     expect(block).toContain('customIntegrationConnectingAction === "upload"');
     expect(block).toContain('customIntegrationConnectingAction === "email"');
     expect(source).toContain("selectedWizardPlatform === 'custom-integration' ? \"Connect\" : \"Auth\"");
-    expect(block).toContain("Upload a PDF, CSV, or Excel (.xlsx) report to import metrics now. Use automatic imports for future recurring reports.");
+    expect(block).toContain("Upload a PDF, CSV, or Excel (.xlsx) report to import metrics.");
+    expect(source).toContain("const automaticEmailImportsEnabled = false;");
+    expect(block).toContain("automaticEmailImportsEnabled && !customIntegrationForwardingEmail");
     expect(source).toContain("input.accept = '.pdf,.csv,.xlsx'");
     expect(block).toContain("!customIntegrationForwardingEmail");
     expect(block).toContain("Forward future reports to");

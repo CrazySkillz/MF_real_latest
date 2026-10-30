@@ -209,6 +209,7 @@ const SIMULATED_TIKTOK_CAMPAIGNS = [
 ];
 
 export default function Campaigns() {
+  const automaticEmailImportsEnabled = false;
   const queryClient = useQueryClient();
   const { selectedClientId } = useClient();
   const [, setLocation] = useLocation();
@@ -1690,7 +1691,7 @@ export default function Campaigns() {
                         {selectedWizardPlatform === 'custom-integration' && (
                           <div className="space-y-3">
                             <p className="text-sm text-muted-foreground">
-                              Upload a PDF, CSV, or Excel (.xlsx) report to import metrics now. Use automatic imports for future recurring reports.
+                              Upload a PDF, CSV, or Excel (.xlsx) report to import metrics.
                             </p>
                             <Button
                               type="button"
@@ -1706,7 +1707,7 @@ export default function Campaigns() {
                               )}
                               Upload Report
                             </Button>
-                            {!customIntegrationForwardingEmail && (
+                            {automaticEmailImportsEnabled && !customIntegrationForwardingEmail && (
                               <Button
                                 type="button"
                                 className="w-full justify-start"
@@ -1722,7 +1723,7 @@ export default function Campaigns() {
                                 Set Up Automatic Imports
                               </Button>
                             )}
-                            {customIntegrationForwardingEmail && (
+                            {automaticEmailImportsEnabled && customIntegrationForwardingEmail && (
                               <div className="rounded-md border bg-muted/30 p-3">
                                 <div className="text-xs text-muted-foreground">Forward future reports to</div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -1900,7 +1901,7 @@ export default function Campaigns() {
                           ) : (
                             <p className="text-sm text-muted-foreground italic">No platforms selected yet. You can connect them later from the campaign detail page.</p>
                           )}
-                          {customIntegrationForwardingEmail && (
+                          {automaticEmailImportsEnabled && customIntegrationForwardingEmail && (
                             <div className="mt-3 rounded-md border bg-muted/30 p-3">
                               <div className="text-xs text-muted-foreground">Forward future reports to</div>
                               <div className="mt-1 flex flex-wrap items-center gap-2">

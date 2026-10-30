@@ -4262,6 +4262,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 }
 
 export default function CampaignDetail() {
+  const automaticEmailImportsEnabled = false;
   const queryClient = useQueryClient();
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id;
@@ -5651,7 +5652,7 @@ export default function CampaignDetail() {
                     <div key={columnIndex} className="space-y-4">
               {columnPlatforms.map((platform, index) => (
                 (() => {
-                  const customIntegrationEmailReady = platform.platform === "Custom Integration" && !!customIntegrationForwardingEmailDisplay;
+                  const customIntegrationEmailReady = automaticEmailImportsEnabled && platform.platform === "Custom Integration" && !!customIntegrationForwardingEmailDisplay;
                   const customIntegrationCanConfigure = platform.platform === "Custom Integration" && platform.connected;
                   const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport || platform.requiresReauthorization || customIntegrationEmailReady || customIntegrationCanConfigure;
                   return (
@@ -6128,7 +6129,7 @@ export default function CampaignDetail() {
                       ) : platform.platform === "Custom Integration" ? (
                         <div className="space-y-4">
                           <p className="text-sm text-muted-foreground/70">
-                            Upload a PDF, CSV, or Excel (.xlsx) report to import metrics now. Use automatic imports for future recurring reports.
+                            Upload a PDF, CSV, or Excel (.xlsx) report to import metrics.
                           </p>
                           <div className="space-y-3">
                             <button
@@ -6176,7 +6177,7 @@ export default function CampaignDetail() {
                               </div>
                             </button>
 
-                            {!customIntegrationForwardingEmailDisplay && (
+                            {automaticEmailImportsEnabled && !customIntegrationForwardingEmailDisplay && (
                               <button
                                 onClick={async () => {
                                   try {
@@ -6212,7 +6213,7 @@ export default function CampaignDetail() {
                                 </div>
                               </button>
                             )}
-                            {customIntegrationForwardingEmailDisplay && (
+                            {automaticEmailImportsEnabled && customIntegrationForwardingEmailDisplay && (
                               <div className="rounded-md border bg-muted/30 p-3">
                                 <div className="text-xs text-muted-foreground">Forward future reports to</div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">

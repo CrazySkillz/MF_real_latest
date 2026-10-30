@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-30T12:18:14.267Z",
+  "result": "PASS",
+  "commit": "02bb9ad28ad8101fd5e47248028a57b5475427b5",
+  "healthy": true,
+  "checks": [
+    {
+      "route": "/api/email/inbound/batch1-invalid-token",
+      "status": 404,
+      "expectedBodyMatched": true
+    },
+    {
+      "route": "/api/sendgrid/inbound",
+      "status": 404,
+      "expectedBodyMatched": true
+    },
+    {
+      "route": "/api/mailgun/inbound",
+      "status": 404,
+      "expectedBodyMatched": true
+    },
+    {
+      "route": "/api/custom-integration/batch1-check-nonexistent/connect",
+      "status": 404,
+      "expectedBodyMatched": true
+    },
+    {
+      "route": "/api/campaigns",
+      "status": 401,
+      "expectedStatusMatched": true
+    },
+    {
+      "route": "/api/clients",
+      "status": 401,
+      "expectedStatusMatched": true
+    }
+  ],
+  "credentialsUsed": false,
+  "validPayloadsSupplied": false,
+  "boundary": "Exact deployed route exclusion and adjacent signed-out guards. No valid token, account session, provider, report delivery or database mutation used; frontend exclusion is covered by local rendering/build checks, not a live signed-in UI observation."
+}

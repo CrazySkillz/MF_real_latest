@@ -1,0 +1,96 @@
+{
+  "at": "2026-10-30T12:24:58.975Z",
+  "result": "PASS",
+  "commit": "02bb9ad28ad8101fd5e47248028a57b5475427b5",
+  "hostedRun": {
+    "id": 41053676789,
+    "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41053676789",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 124055719504,
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Initialize containers",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npx --no-install playwright install --with-deps chromium",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Create isolated notification fixture database",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run check:ga4-kpi-certification",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run test:current-version",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Retained deferred-source evidence (non-blocking)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Stop containers",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "deployment": {
+    "healthy": true,
+    "nodeEnv": "production",
+    "commit": "02bb9ad28ad8101fd5e47248028a57b5475427b5"
+  },
+  "boundary": "Hosted workflow and every required test step passed on the exact deployed commit. Test counts were not extracted from hosted logs. No authenticated/provider journey or whole-app release certification is inferred."
+}

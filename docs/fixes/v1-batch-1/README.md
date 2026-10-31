@@ -4,6 +4,12 @@
 
 This is the detailed home for this batch's assigned findings. Read the required repository references first, then the release index, checklist and this record. Documentation records evidence; verify actual current code before changing behavior. Original audit paths and line numbers describe the recorded baseline, not an assertion that the defect remains unchanged.
 
+**October 31 callback/credential follow-up:** [Reproduction, correction and limits](CALLBACK_CREDENTIAL_CLOSEOUT_2026-10-31.md)
+adds two native-HTTP callback response guards, 138 passing focused tests and 60
+isolated PostgreSQL credential replacement/deletion/process-restart checks.
+External acceptance is not inferred from these tests; counts remain 16 CLOSED /
+4 OPEN. Full-suite/deployment evidence is recorded in that packet.
+
 ## Current Batch 1 status
 
 **October 31 provider/permission acceptance:** [Exact results and limits](PROVIDER_PERMISSION_ACCEPTANCE_2026-10-31.md)

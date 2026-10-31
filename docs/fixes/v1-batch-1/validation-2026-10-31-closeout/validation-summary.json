@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-31T16:53:54.228Z",
+  "runtimeCommit": "357e950fcf03d02c93465cd602eda119f08cf7f6",
+  "runtimeLinesAdded": 2,
+  "result": "PASS",
+  "before": {
+    "tests": 12,
+    "failed": 4
+  },
+  "focused": {
+    "passed": 138,
+    "failed": 0
+  },
+  "full": {
+    "files": 400,
+    "passed": 6971,
+    "failed": 0,
+    "skipped": 0,
+    "finishedAt": "2026-10-31T16:50:29.341Z"
+  },
+  "credentials": {
+    "passed": 60,
+    "separateProcesses": true,
+    "temporarySchemaRemoved": true
+  },
+  "typecheck": {
+    "mode": "typecheck",
+    "exitCode": 0,
+    "finishedAt": "2026-10-31T16:39:00.236Z"
+  },
+  "clientBuild": "PASS",
+  "serverBuild": "PASS",
+  "kpiGate": "PASS",
+  "localPostgresStopped": true,
+  "liveDataWrites": false,
+  "externalProviderTests": false,
+  "logHashes": {
+    "before.log": "c78373d5d00053f779890069825aa4b8a46c02cae9fc6e2863ff2209e9d92ccb",
+    "focused.log": "af1d34a25af378d7f59a4168f082b979c2e4e279aa8bb200f8817c66493bbaf0",
+    "full.log": "49be4d85dee31477de6d9fba5476d2fa83e3865d64e5a47f7e34b84bb598a9cd",
+    "build.log": "eb09d27c180816309135cc1a61b7cd56d2f3f8651e323e635b2439dd2e0520bb",
+    "server-build.log": "7c72d1c2a69d546d4e406c6a2a0577c413d1c4ce404a55150152b5492f3cbad0",
+    "kpi-gate.log": "c59957f9c837000793652921b1ece501a80edc80c4c3bdc793ce4bee57846e77",
+    "typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

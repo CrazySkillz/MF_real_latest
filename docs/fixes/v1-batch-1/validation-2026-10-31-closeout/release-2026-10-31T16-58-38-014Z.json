@@ -1,0 +1,82 @@
+{
+  "at": "2026-10-31T16:58:37.702Z",
+  "expected": "357e950fcf03d02c93465cd602eda119f08cf7f6",
+  "deployed": "357e950fcf03d02c93465cd602eda119f08cf7f6",
+  "healthy": true,
+  "checks": [
+    {
+      "name": "unit-tests",
+      "status": "in_progress",
+      "conclusion": null,
+      "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41221686468/job/124597379943"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Initialize containers",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/checkout@v4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/setup-node@v4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run npm ci --ignore-scripts",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run npx --no-install playwright install --with-deps chromium",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Create isolated notification fixture database",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run npm run check:ga4-kpi-certification",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run npm run test:current-version",
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "name": "Retained deferred-source evidence (non-blocking)",
+      "status": "pending",
+      "conclusion": null
+    },
+    {
+      "name": "Post Run actions/setup-node@v4",
+      "status": "pending",
+      "conclusion": null
+    },
+    {
+      "name": "Post Run actions/checkout@v4",
+      "status": "pending",
+      "conclusion": null
+    },
+    {
+      "name": "Stop containers",
+      "status": "pending",
+      "conclusion": null
+    }
+  ],
+  "complete": false
+}

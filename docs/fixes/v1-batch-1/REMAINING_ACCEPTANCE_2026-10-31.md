@@ -13,6 +13,13 @@ whole-app production-readiness certification.
 
 ## New evidence
 
+- [Callback and credential follow-up](CALLBACK_CREDENTIAL_CLOSEOUT_2026-10-31.md):
+  four native Express denial failures reproduced, two callback guards correct
+  them, and all 138 focused tests pass. Sixty isolated real-PostgreSQL checks
+  cover ten getters through credential replacement/deletion and a fresh local
+  process. Synthetic provider replay/reconnect is not live provider acceptance;
+  a local restart is not a Render restart. The external limits below remain.
+
 - [Saved-key check prepared](SAVED_KEY_CHECK_2026-10-31.md): the existing downloaded
   archive passes its hash/scope check; sixteen synthetic decryption safeguards and
   the exact hidden-input wrapper pass. The user objected to this interruption;

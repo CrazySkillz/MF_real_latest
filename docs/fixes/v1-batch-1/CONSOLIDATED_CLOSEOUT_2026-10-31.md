@@ -4,6 +4,12 @@ This is the current execution ledger. It supersedes pending statements in the
 October 30 acceptance record where later evidence is listed here. Historical
 receipts keep their original date, scope and result.
 
+The [callback/credential follow-up](CALLBACK_CREDENTIAL_CLOSEOUT_2026-10-31.md)
+reproduces and corrects duplicate denial responses in LinkedIn/Meta callbacks.
+It also adds 60 actual-getter PostgreSQL replacement/deletion/restart checks.
+Its local provider transport is synthetic; real provider replay/reconnect and
+the existing external limits remain explicitly unverified. Counts do not change.
+
 **20 original code corrections implemented; 16 findings CLOSED and 4 OPEN for
 acceptance.** Whole-app totals are **130 findings:
 103 OPEN, 10 DEFERRED, 17 CLOSED** (V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063/075/123).

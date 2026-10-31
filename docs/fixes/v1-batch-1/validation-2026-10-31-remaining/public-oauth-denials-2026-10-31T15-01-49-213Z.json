@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-31T15:01:49.213Z",
+  "result": "PASS",
+  "cookiesUsed": false,
+  "realAuthorizationCodesUsed": false,
+  "requests": [
+    {
+      "provider": "google-ads",
+      "phase": "invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "remaining": "9",
+      "responseSha256": "ab9b01dff671197ca3806878dc961e99c01cb15837d9031729cef3d6f4f60f46"
+    },
+    {
+      "provider": "google-ads",
+      "phase": "repeat-invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "remaining": "9",
+      "responseSha256": "ab9b01dff671197ca3806878dc961e99c01cb15837d9031729cef3d6f4f60f46"
+    }
+  ],
+  "scope": "Only the two unfinished Google Ads invalid-state cases",
+  "limits": "Anonymous missing/invalid/repeated-invalid callback denials only. Not valid signed-state replay prevention, authenticated foreign callback acceptance, real provider token renewal, reconnect, or resource-grant revocation."
+}

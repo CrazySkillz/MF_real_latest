@@ -4,9 +4,9 @@ This is the current execution ledger. It supersedes pending statements in the
 October 30 acceptance record where later evidence is listed here. Historical
 receipts keep their original date, scope and result.
 
-**20 original code corrections implemented; 14 findings CLOSED and 6 OPEN for
+**20 original code corrections implemented; 15 findings CLOSED and 5 OPEN for
 acceptance.** Whole-app totals are **130 findings:
-105 OPEN, 10 DEFERRED, 15 CLOSED** (V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063).
+104 OPEN, 10 DEFERRED, 16 CLOSED** (V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063/075).
 Whole-app release remains NO-GO. The [conversion/file packet](INGESTION_ACCEPTANCE_2026-10-31.md)
 closes V1-001/026, including the deployed one-line download compatibility correction
 `3c304f97`. All account/source/ingestion fixtures were removed with independent
@@ -16,7 +16,9 @@ The [final consolidated API packet](FINAL_API_ACCEPTANCE_2026-10-31.md) is compl
 18 deployed assertions pass, independently checked against saved state. Nine
 exact disposable rows were removed after rollback rehearsal and their absence
 verified using a fresh READ ONLY connection. V1-006/030 are CLOSED within their
-original boundaries; V1-075 retains historical/downstream acceptance. Its
+original boundaries. V1-075's [security/historical acceptance](SPEND_SECURITY_ACCEPTANCE_2026-10-31.md)
+now also closes, with twelve current-reader checks and retained orphan disposition;
+broader financial analytics and cached historical outputs remain unproven. Its
 [connector save/readback follow-up](CONNECTOR_CONTEXT_FOLLOWUP_2026-10-31.md)
 is pushed and confirmed deployed as `adc5a6fe`, after all 6,935 tests, typecheck,
 build and KPI gate pass. Hosted run 41204006137 also passes. No repeat manual
@@ -83,12 +85,13 @@ only dependent actions; successful evidence is retained.
 
 | Package | Consolidated work | Execution and exit condition |
 | --- | --- | --- |
-| A: account and API boundaries | Legacy Meta positive limit and connector-spend historical/downstream disposition remain. Attribution linked/default acceptance, separate-process persistence, notification/persistent-state acceptance, owned connector saves, global/Trends reads, ownership, transfers and actual Reports visibility are complete. | Reuse completed packets; do not request another account/API run or recreate their removed fixtures. Trace remaining historical/consumer boundaries without production saturation or creating legacy tables. |
+| A: account and API boundaries | Legacy Meta positive deployed limit remains. V1-075's original security and historical-reader boundary is now closed; full analytics certification remains separate. Attribution, notification/persistent-state, global/Trends access, ownership, transfers and actual Reports visibility are complete. | Reuse completed packets; do not request another account/API run or recreate removed fixtures. Do not create legacy Meta tables to manufacture deployed acceptance. |
 | B: provider lifecycle | Renewal/reconnect and invalid-session/replay boundaries for configured providers; exact disposable resource-grant denial/revocation. Whitelist edit/reload is closed for the enabled scope; automatic email imports stay disabled. Conversion and multipart/public-URL ingestion are complete. | Reuse established test mappings; do not repeat initial consent/imports. A shared provider grant must not be revoked merely because the app campaign is disposable. Prepare exact cleanup and expected outcomes before one grouped provider session. |
 | C: historical security and recovery | Shared independent recovery under Batch 8 V1-016. Historical-log custody/retention disposition and both approved historical credential cleanups are complete. Startup key/verified-TLS enforcement has deployed-code, production-health and successful-write evidence; exact orphan event disposition is retained/unassigned. | Retain completed backup/key-custody/same-machine restore and 223-plaintext / 126-ciphertext cleanup evidence. Do not repeat those cleanups or the completed log questions. Independent-machine recovery cannot be replaced by another same-machine restore; no paid database is authorized or required to continue Batch 1. |
 
-Next: finish the provider lifecycle procedure while tracing remaining historical
-spend/consumer and legacy Meta limits. The completed A fixtures are removed and
+Next: finish the provider lifecycle procedure. The [current remaining-evidence record](REMAINING_ACCEPTANCE_2026-10-31.md)
+includes new callback denials, natural publication continuity and exact blockers.
+The completed A fixtures are removed and
 must not be reused. No user action is requested on an untraced route or untested
 mutation. The production operations/provider bundle is not certified for execution
 merely by this plan. Independent recovery retains its existing external constraint.
@@ -172,9 +175,9 @@ foreign denial checks now pass; V1-003 is CLOSED. Do not request that test again
 | V1-054 | OPEN | A | LinkedIn valid owned edit preserves ID/parent despite replacement payload; foreign edit denied and stored state verified. Legacy Meta positive deployed acceptance is unavailable because its tables are absent; retained local cases pass. Owner 400/foreign 404 invalid campaign edit is complete and will not be repeated. |
 | V1-057 | CLOSED | C | [Historical disposition](HISTORICAL_LOG_DISPOSITION_2026-10-31.md): corrected deployment October 20, user-supplied Hobby recovery screen October 29 and documented retention, user-confirmed sole access/no sharing/no stream/no saved copies. No identified unauthorized recipient or external copy requiring rotation. Not proof that old logs never contained secrets. |
 | V1-063 | CLOSED | — | Production mock-write routes disabled and denial verified. |
-| V1-075 | OPEN | A, C | Both owned deployed aliases, replacement, dated persistence, scoped source/total and currency preservation pass; exact cleanup independently verified. Historical orphan/downstream disposition remains. Prior inventory has no historical connector-derived sources; no current frontend caller is invented. |
+| V1-075 | CLOSED | A, C | Both deployed aliases, replacement, dated persistence, scoped source/total and preserved currency pass. Exact cleanup and fresh historical inventory show no connector-derived rows. Twelve current PostgreSQL reader checks prove retained orphans excluded and valid spend preserved. [Exact closure limits](SPEND_SECURITY_ACCEPTANCE_2026-10-31.md): no reconstruction of unknown historical overwrites or whole-financial-analytics certification. |
 | V1-078 | OPEN | B | Configured real callback successes are complete. Invalid session/state/replay and deferred shared signing boundaries remain; stateless nonce checks are not proof of single-use replay prevention. |
-| V1-088 | OPEN | B | Actual renewal/reconnect remains. Ten local migration/renewal interleavings, the approved 223-record plaintext cleanup and the separately approved 126-record historical ciphertext cleanup are complete. |
+| V1-088 | OPEN | B | Actual renewal/reconnect remains. Ten local migration/renewal interleavings and both approved credential cleanups are complete. The [credential-only publication correction](CREDENTIAL_PUBLICATION_2026-10-31.md) is deployed as `5f0ffe96` after 6,959 current tests and hosted CI pass. Exact test sources/work/snapshots remain unchanged while Sheets expiry advances; this does not prove every provider or reconnect. |
 | V1-123 | OPEN | B | Deployed exact-resource denial/revocation and worker behavior on disposable scope. Actual GA4 AND Sheets consent/imports passed; reviewed Promo grant and scheduled continuity evidence retained. |
 
 ## Scope and protection

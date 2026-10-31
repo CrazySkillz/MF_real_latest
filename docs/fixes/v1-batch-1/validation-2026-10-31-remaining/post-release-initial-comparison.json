@@ -1,0 +1,9 @@
+{
+  "result": "NOT_VERIFIED",
+  "reason": "The initial comparator assumed all connection metadata, including expiry, would remain identical. Sheets expiry advanced between the before and after read-only receipts.",
+  "changedField": "google_sheets_connections.expires_at",
+  "before": "2026-10-31 14:08:00.616",
+  "after": "2026-10-31 16:13:28.514",
+  "disposition": "Compare stable connection identities/security flags exactly; record and assert this one advancing expiry separately. Require sources, work and snapshots to remain exactly identical.",
+  "applicationChangesMade": false
+}

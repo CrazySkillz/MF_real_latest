@@ -1,0 +1,199 @@
+{
+  "at": "2026-10-31T15:14:28.120Z",
+  "result": "PASS_SCHEDULED_PUBLICATION_METADATA",
+  "databaseWritesAttempted": false,
+  "providerCalls": 0,
+  "secretValuesEmitted": false,
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "connectionMetadata": [
+    {
+      "table": "ga4_connections",
+      "expiryTypes": [
+        {
+          "column_name": "expires_at",
+          "data_type": "timestamp without time zone"
+        }
+      ],
+      "rows": [
+        {
+          "id": "8403cf40-7c56-4a9b-8f30-9ce3dbfd76ad",
+          "is_active": true,
+          "expires_at": "2026-10-31 14:09:21.612",
+          "encrypted_present": true,
+          "plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "google_sheets_connections",
+      "expiryTypes": [
+        {
+          "column_name": "expires_at",
+          "data_type": "timestamp without time zone"
+        }
+      ],
+      "rows": [
+        {
+          "id": "ea5804fc-9cd7-4445-8806-d9f70528fceb",
+          "is_active": true,
+          "expires_at": "2026-10-31 16:13:28.514",
+          "encrypted_present": true,
+          "plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "hubspot_connections",
+      "expiryTypes": [
+        {
+          "column_name": "expires_at",
+          "data_type": "timestamp without time zone"
+        }
+      ],
+      "rows": [
+        {
+          "id": "053927ed-77e4-4b7c-ad61-b6c39ecd4374",
+          "is_active": true,
+          "expires_at": "2026-10-31 13:38:27.616",
+          "encrypted_present": true,
+          "plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "salesforce_connections",
+      "expiryTypes": [
+        {
+          "column_name": "expires_at",
+          "data_type": "timestamp without time zone"
+        }
+      ],
+      "rows": [
+        {
+          "id": "5a41a38b-f057-40ef-89d1-b84259064dd9",
+          "is_active": true,
+          "expires_at": "2026-10-31 15:08:40.279",
+          "encrypted_present": true,
+          "plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "shopify_connections",
+      "expiryTypes": [],
+      "rows": [
+        {
+          "id": "62cf9267-2348-46f2-aae0-ddf7ec021081",
+          "is_active": true,
+          "encrypted_present": true,
+          "plaintext_present": false
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "2be847ea-4842-43cb-a024-50d861272fc8",
+      "source_type": "salesforce",
+      "is_active": true,
+      "currency": "EUR",
+      "last_synced_at": "2026-10-31T13:08:46.483Z",
+      "last_refresh_run_id": null,
+      "last_total_revenue": "0"
+    },
+    {
+      "id": "59c30be2-5e98-472b-a552-f4c4ee44f47b",
+      "source_type": "hubspot",
+      "is_active": true,
+      "currency": "EUR",
+      "last_synced_at": "2026-10-31T13:08:30.590Z",
+      "last_refresh_run_id": null,
+      "last_total_revenue": "0"
+    },
+    {
+      "id": "b1ac1292-ef65-4829-b60c-5181bc6b17a7",
+      "source_type": "shopify",
+      "is_active": true,
+      "currency": "EUR",
+      "last_synced_at": "2026-10-31T13:09:02.004Z",
+      "last_refresh_run_id": "5e8c4810-8b68-4e4c-aa38-1352a48fa2ff",
+      "last_total_revenue": "785.95"
+    },
+    {
+      "id": "db536b7c-1b2e-40f2-9e04-af06c8e18b76",
+      "source_type": "google_sheets",
+      "is_active": true,
+      "currency": "EUR",
+      "last_synced_at": "2026-10-31T13:09:11.179Z",
+      "last_refresh_run_id": null,
+      "last_total_revenue": null
+    }
+  ],
+  "work": [
+    {
+      "id": "1064a21b-3524-4879-bb3a-3adb5d7ef8e2",
+      "status": "completed",
+      "due_at": "2026-10-31T13:00:00.000Z",
+      "started_at": "2026-10-31T13:08:11.866Z",
+      "completed_at": "2026-10-31T13:11:03.379Z",
+      "reporting_date": "2026-10-30",
+      "attempt_count": 1,
+      "invalidated": false,
+      "has_error": false
+    },
+    {
+      "id": "612a689d-d4d8-4be4-80da-5ddac4fcb78b",
+      "status": "pending",
+      "due_at": "2026-10-31T13:00:00.000Z",
+      "started_at": "2026-10-31T13:07:28.978Z",
+      "completed_at": null,
+      "reporting_date": "2026-10-30",
+      "attempt_count": 1,
+      "invalidated": true,
+      "has_error": false
+    },
+    {
+      "id": "4f6159a2-9af3-4961-ae19-87f6f53e0280",
+      "status": "completed",
+      "due_at": "2026-10-31T07:00:00.000Z",
+      "started_at": "2026-10-31T10:25:31.571Z",
+      "completed_at": "2026-10-31T10:28:16.334Z",
+      "reporting_date": "2026-10-30",
+      "attempt_count": 1,
+      "invalidated": true,
+      "has_error": false
+    },
+    {
+      "id": "4de99dae-ce87-4c11-954d-5e0a084b14bb",
+      "status": "completed",
+      "due_at": "2026-10-31T07:00:00.000Z",
+      "started_at": "2026-10-31T07:07:12.945Z",
+      "completed_at": "2026-10-31T07:10:09.351Z",
+      "reporting_date": "2026-10-30",
+      "attempt_count": 1,
+      "invalidated": true,
+      "has_error": false
+    }
+  ],
+  "snapshots": [
+    {
+      "snapshot_type": "executive_summary_daily",
+      "reporting_date": "2026-10-30",
+      "recorded_at": "2026-10-31 13:10:48.691788",
+      "aligned": true
+    },
+    {
+      "snapshot_type": "financial_daily",
+      "reporting_date": "2026-10-30",
+      "recorded_at": "2026-10-31 13:10:26.846502",
+      "aligned": null
+    },
+    {
+      "snapshot_type": "platform_sync",
+      "reporting_date": null,
+      "recorded_at": "2026-10-31 13:10:37.287351",
+      "aligned": false
+    }
+  ],
+  "limits": "Naive timestamps are returned as stored text, avoiding Windows pg timezone conversion. Advanced expiry metadata and completed publications are observational continuity evidence, not captured token-grant exchanges or reconnect/revocation acceptance."
+}

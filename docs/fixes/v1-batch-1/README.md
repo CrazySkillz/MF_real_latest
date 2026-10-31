@@ -6,6 +6,25 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 1 status
 
+**October 31 credential-publication correction:** [Root cause and validation](CREDENTIAL_PUBLICATION_2026-10-31.md)
+record the reproduced token-renewal invalidation defect and the localized storage
+fix. Credential-only saves retain published analytics and work leases; actual
+connection configuration changes still invalidate. The 257 source-ownership and
+138 publication/browser checks pass. All 6,959 current-version tests, typecheck,
+build, the KPI gate and hosted CI pass for `5f0ffe96`. It is pushed to main and
+[verified healthy on Render](validation-2026-10-31-remaining/release.json).
+The test campaign's sources, work and snapshots are unchanged while Sheets expiry
+advanced. This does not close the five remaining findings.
+
+**October 31 spend-security acceptance:** [Historical inventory and current reader proof](SPEND_SECURITY_ACCEPTANCE_2026-10-31.md)
+close V1-075's original unauthorized mutation/currency/materialization boundary.
+Batch 1 is **15 CLOSED / 5 OPEN**. Twelve new isolated PostgreSQL assertions pass;
+the live inventory has no connector-derived sources/records. Historical orphan
+rows remain retained and excluded, with no speculative data rewrite. Runtime,
+campaign figures and schedules are unchanged. Full financial analytics readiness
+is separate and remains unproven. The five remaining findings are V1-008, V1-054,
+V1-078, V1-088 and V1-123; their requirements have not been waived.
+
 **October 31 final API packet completed:** [18 deployed checks and independent cleanup](FINAL_API_ACCEPTANCE_2026-10-31.md)
 close V1-006 and V1-030 within their original security/persistence boundaries.
 Batch 1 is **14 CLOSED / 6 OPEN**. Both retained spend aliases also pass owned
@@ -155,7 +174,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-054](#v1-054) | P0 | VERIFIED LOCALLY | OPEN |
 | [V1-057](#v1-057) | P1 | CLOSED | CLOSED |
 | [V1-063](#v1-063) | P0 | CLOSED | CLOSED |
-| [V1-075](#v1-075) | P0 | VERIFIED LOCALLY | OPEN |
+| [V1-075](#v1-075) | P0 | VERIFIED LOCALLY | CLOSED |
 | [V1-078](#v1-078) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-088](#v1-088) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-123](#v1-123) | P0 | VERIFIED LOCALLY | OPEN |
@@ -547,7 +566,11 @@ The checkpoint below remains historical.
 
 ### V1-075
 
-**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** CLOSED.
+
+**October 31 acceptance:** [Exact security scope, live API evidence, historical disposition and twelve current-reader checks](SPEND_SECURITY_ACCEPTANCE_2026-10-31.md).
+Full source/consumer analytics certification and unknown historical overwritten
+values are not inferred from this bounded security closure.
 
 **V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
 

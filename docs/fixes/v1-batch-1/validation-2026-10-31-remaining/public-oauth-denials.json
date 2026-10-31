@@ -1,0 +1,243 @@
+{
+  "at": "2026-10-31T14:12:15.239Z",
+  "result": "NOT_VERIFIED",
+  "cookiesUsed": false,
+  "realAuthorizationCodesUsed": false,
+  "requests": [
+    {
+      "provider": "ga4",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "04bf0595469497f317771804b20e1b45354b65448bc0b47401f5d51fd02bfe10"
+    },
+    {
+      "provider": "ga4",
+      "phase": "invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "feb483512cf5748f8b3c4f694c9d64d8273336551cd3a020737b9fa1e78e4d90"
+    },
+    {
+      "provider": "ga4",
+      "phase": "repeat-invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "feb483512cf5748f8b3c4f694c9d64d8273336551cd3a020737b9fa1e78e4d90"
+    },
+    {
+      "provider": "sheets",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "04bf0595469497f317771804b20e1b45354b65448bc0b47401f5d51fd02bfe10"
+    },
+    {
+      "provider": "sheets",
+      "phase": "invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "716d473d416e1e504343c348029fed4b9ab4dbbc7476d14599f9ecec39be009d"
+    },
+    {
+      "provider": "sheets",
+      "phase": "repeat-invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "716d473d416e1e504343c348029fed4b9ab4dbbc7476d14599f9ecec39be009d"
+    },
+    {
+      "provider": "legacy-ga4",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "fa1b16178cb8761e62d13219870b8c82dd87a3121ee685ea0f5ef8cd3e83a8e0"
+    },
+    {
+      "provider": "legacy-ga4",
+      "phase": "invalid",
+      "status": 400,
+      "authDenied": true,
+      "popupDenied": false,
+      "passed": true,
+      "responseSha256": "632c4ad32e99caef8f9fad2ea25650dd19e2f79d5da65dddb681b34708c17276"
+    },
+    {
+      "provider": "legacy-ga4",
+      "phase": "repeat-invalid",
+      "status": 400,
+      "authDenied": true,
+      "popupDenied": false,
+      "passed": true,
+      "responseSha256": "632c4ad32e99caef8f9fad2ea25650dd19e2f79d5da65dddb681b34708c17276"
+    },
+    {
+      "provider": "hubspot",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "db2dd72a7afb27e687ed9bbf8654d528747788fa881cfd2bcc4a2b668e372efd"
+    },
+    {
+      "provider": "hubspot",
+      "phase": "invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "3655222417ceb76ba1e8f4cebd2363bfc3a40db2bd7c11daff4ebc29085a1064"
+    },
+    {
+      "provider": "hubspot",
+      "phase": "repeat-invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "3655222417ceb76ba1e8f4cebd2363bfc3a40db2bd7c11daff4ebc29085a1064"
+    },
+    {
+      "provider": "salesforce",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "8f8842b379826ba5bcc40779e9d6ff5982ec07cd9b68aca0bd207fb307f8ce2e"
+    },
+    {
+      "provider": "salesforce",
+      "phase": "invalid",
+      "status": 401,
+      "authDenied": true,
+      "popupDenied": false,
+      "passed": true,
+      "responseSha256": "7455a8f514c0a7bcce6372710460c9728264f5dfc624ab797c6c1620c1ae08d5"
+    },
+    {
+      "provider": "salesforce",
+      "phase": "repeat-invalid",
+      "status": 401,
+      "authDenied": true,
+      "popupDenied": false,
+      "passed": true,
+      "responseSha256": "7455a8f514c0a7bcce6372710460c9728264f5dfc624ab797c6c1620c1ae08d5"
+    },
+    {
+      "provider": "shopify",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "b7656345ab3d8ffc694810472c9cddb1735295f589385506822824caf4f5b257"
+    },
+    {
+      "provider": "shopify",
+      "phase": "invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "13bfee18057e668d002247e0a8fac0189161a014ca5f9481f55009a6197559f2"
+    },
+    {
+      "provider": "shopify",
+      "phase": "repeat-invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "13bfee18057e668d002247e0a8fac0189161a014ca5f9481f55009a6197559f2"
+    },
+    {
+      "provider": "linkedin",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "b765f43b437625cef335cb4dd100f38a4b04163deeec18cbe3dd0302d2a8c316"
+    },
+    {
+      "provider": "linkedin",
+      "phase": "invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "b808f651d64b08a525d10d43638d4697925af3285c04dde92bb6b1503c75fa89"
+    },
+    {
+      "provider": "linkedin",
+      "phase": "repeat-invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "b808f651d64b08a525d10d43638d4697925af3285c04dde92bb6b1503c75fa89"
+    },
+    {
+      "provider": "meta",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "4e05fa9847e0662c609b8061656670a6cd3f128191f0eb972446600530391994"
+    },
+    {
+      "provider": "meta",
+      "phase": "invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "714a58fe4b922a9d51f40bbde8021cd60349c064887ef9c12c03ab1d82c205ca"
+    },
+    {
+      "provider": "meta",
+      "phase": "repeat-invalid",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "714a58fe4b922a9d51f40bbde8021cd60349c064887ef9c12c03ab1d82c205ca"
+    },
+    {
+      "provider": "google-ads",
+      "phase": "missing",
+      "status": 200,
+      "authDenied": false,
+      "popupDenied": true,
+      "passed": true,
+      "responseSha256": "d3bb5e05fed34a9e7a60b578a61e7a1b8cd40020d3880cac34b807133b855a52"
+    },
+    {
+      "provider": "google-ads",
+      "phase": "invalid",
+      "status": 429,
+      "authDenied": false,
+      "popupDenied": false,
+      "passed": false,
+      "responseSha256": "42c949e06a671fcb9346fe1339111325cfb2bb1379e8abb729f56a4f0664a5ef"
+    }
+  ],
+  "error": "google-ads invalid unexpected result"
+}

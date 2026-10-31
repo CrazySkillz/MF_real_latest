@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-31T14:30:37.109Z",
+  "result": "FAIL",
+  "externalNetworkBlocked": true,
+  "createdNotificationDatabase": true,
+  "exitCode": 1,
+  "notificationDatabaseRemoved": true,
+  "finishedAt": "2026-10-31T14:44:56.436Z"
+}

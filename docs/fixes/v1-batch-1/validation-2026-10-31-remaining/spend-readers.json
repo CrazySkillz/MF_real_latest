@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-31T14:34:40.285Z",
+  "result": "PASS",
+  "productionAccess": false,
+  "providerCalls": 0,
+  "checks": [
+    {
+      "name": "storage total: orphans/inactive/foreign/out-of-range excluded",
+      "passed": true
+    },
+    {
+      "name": "storage provenance: no invented sources",
+      "passed": true
+    },
+    {
+      "name": "storage breakdown: empty",
+      "passed": true
+    },
+    {
+      "name": "server/routes-oauth.ts:2904 orphans excluded",
+      "passed": true
+    },
+    {
+      "name": "server/routes-oauth.ts:3113 orphans excluded",
+      "passed": true
+    },
+    {
+      "name": "server/scheduler.ts:416 orphans excluded",
+      "passed": true
+    },
+    {
+      "name": "storage total: positive source preserved",
+      "passed": true
+    },
+    {
+      "name": "storage provenance: exact eligible source",
+      "passed": true
+    },
+    {
+      "name": "storage breakdown: exact two cents",
+      "passed": true
+    },
+    {
+      "name": "server/routes-oauth.ts:2904 positive preserved",
+      "passed": true
+    },
+    {
+      "name": "server/routes-oauth.ts:3113 positive preserved",
+      "passed": true
+    },
+    {
+      "name": "server/scheduler.ts:416 positive preserved",
+      "passed": true
+    }
+  ],
+  "sourceHashes": {
+    "server/storage.ts": "b85c8331bafd8cd3678bbd4605570c2e6919f59008b5c43eabcc71ae695205d7",
+    "server/routes-oauth.ts": "792024ec69a20d13d2cbf770625b1589a43350985fe745d40553244558273dfa",
+    "server/scheduler.ts": "789fdbc398bd9112bfee8e104d2a978b4b79b38b2e28bfcac065ee0dd99a5b77",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96"
+  },
+  "limits": "Current normalized-spend readers only. Does not reconstruct historical campaign overwrite values, certify cached historical reports, or certify every platform analytics formula.",
+  "exactIsolatedSchemaRemoved": true
+}

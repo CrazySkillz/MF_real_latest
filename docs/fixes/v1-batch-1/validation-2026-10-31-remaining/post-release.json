@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-31T15:15:34.489Z",
+  "result": "PASS",
+  "commit": "5f0ffe96302aad0abee45c1c23f1a38bb77d2dce",
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "checks": [
+    {
+      "check": "sources unchanged across deployment",
+      "passed": true
+    },
+    {
+      "check": "work unchanged across deployment",
+      "passed": true
+    },
+    {
+      "check": "snapshots unchanged across deployment",
+      "passed": true
+    },
+    {
+      "check": "exact connections remain active, encrypted and without plaintext",
+      "passed": true
+    }
+  ],
+  "expiryChanges": [
+    {
+      "table": "google_sheets_connections",
+      "id": "ea5804fc-9cd7-4445-8806-d9f70528fceb",
+      "before": "2026-10-31 14:08:00.616",
+      "after": "2026-10-31 16:13:28.514"
+    }
+  ],
+  "databaseWritesAttempted": false,
+  "providerCalls": 0,
+  "secretValuesEmitted": false,
+  "limits": "Exact test-campaign metadata only. One observed Sheets expiry advancement with unchanged publication is consistent with renewal; no provider exchange was captured. Does not prove reconnect, every provider, other campaigns, or complete analytics correctness."
+}

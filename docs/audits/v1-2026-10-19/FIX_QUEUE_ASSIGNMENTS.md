@@ -9,9 +9,11 @@ closes V1-034 after transfer/ownership checks and verified cleanup. The
 closes V1-001/026. The account-session and historical-log evidence linked from
 the current ledger closes V1-052/057. The [final API packet](../../fixes/v1-batch-1/FINAL_API_ACCEPTANCE_2026-10-31.md)
 closes V1-006/030 after 18 deployed checks, saved-state verification and independent
-exact cleanup. Batch 1: **14 CLOSED / 6 OPEN**, all 20 original corrections implemented.
-Overall: **130 findings: 105 OPEN, 10 DEFERRED, 15 CLOSED**
-(V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063). Remaining provider,
+exact cleanup. The [spend-security disposition](../../fixes/v1-batch-1/SPEND_SECURITY_ACCEPTANCE_2026-10-31.md)
+closes V1-075 after historical inventory and twelve current-reader checks.
+Batch 1: **15 CLOSED / 5 OPEN**, all 20 original corrections implemented.
+Overall: **130 findings: 104 OPEN, 10 DEFERRED, 16 CLOSED**
+(V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063/075). Remaining provider,
 legacy/historical/downstream and recovery checks reuse the completed evidence;
 all temporary fixtures are removed. The connector save/readback correction is
 live in `adc5a6fe`; existing figures/schedules are unchanged by the packet.
@@ -198,7 +200,7 @@ Update this checklist, the affected batch record and the index summary in the sa
 | [V1-072](../../fixes/v1-batch-4/README.md#v1-072) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-073](../../fixes/v1-batch-4/README.md#v1-073) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-074](../../fixes/v1-batch-7/README.md#v1-074) | P2 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
-| [V1-075](../../fixes/v1-batch-1/README.md#v1-075) | P0 | 1 | VERIFIED LOCALLY | OPEN | Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred |
+| [V1-075](../../fixes/v1-batch-1/README.md#v1-075) | P0 | 1 | VERIFIED LOCALLY | CLOSED | Original authorization/currency/materialization boundary accepted; full analytics certification and deferred provider functionality remain separate |
 | [V1-076](../../fixes/v1-batch-2/README.md#v1-076) | P1 | 2 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-077](../../fixes/v1-batch-7/README.md#v1-077) | P1 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-078](../../fixes/v1-batch-1/README.md#v1-078) | P1 | 1 | VERIFIED LOCALLY | OPEN | Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred |

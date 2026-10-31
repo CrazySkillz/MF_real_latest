@@ -1,0 +1,275 @@
+{
+  "at": "2026-10-31T13:59:08.392Z",
+  "result": "NOT_VERIFIED",
+  "databaseWritesAttempted": false,
+  "providerCalls": 0,
+  "secretValuesEmitted": false,
+  "protectedCampaigns": [
+    {
+      "id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "status": "active",
+      "currency": "EUR",
+      "platform": "google-analytics",
+      "owner_matches": true
+    },
+    {
+      "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+      "status": "active",
+      "currency": "EUR",
+      "platform": "google-analytics",
+      "owner_matches": true
+    },
+    {
+      "id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "status": "active",
+      "currency": "EUR",
+      "platform": "google-analytics",
+      "owner_matches": true
+    }
+  ],
+  "spendSources": [
+    {
+      "source_type": "csv",
+      "platform_context": "ga4",
+      "is_active": true,
+      "rows": 1
+    },
+    {
+      "source_type": "csv",
+      "platform_context": null,
+      "is_active": false,
+      "rows": 9
+    },
+    {
+      "source_type": "google_sheets",
+      "platform_context": null,
+      "is_active": false,
+      "rows": 4
+    },
+    {
+      "source_type": "manual",
+      "platform_context": null,
+      "is_active": false,
+      "rows": 4
+    },
+    {
+      "source_type": "manual",
+      "platform_context": null,
+      "is_active": true,
+      "rows": 7
+    }
+  ],
+  "spendRecords": [
+    {
+      "source_type": "csv",
+      "rows": 15,
+      "missing_campaign": 0,
+      "missing_source": 0,
+      "wrong_source_campaign": 0,
+      "eligible_parent_rows": 1
+    },
+    {
+      "source_type": "google_sheets",
+      "rows": 4,
+      "missing_campaign": 0,
+      "missing_source": 0,
+      "wrong_source_campaign": 0,
+      "eligible_parent_rows": 0
+    },
+    {
+      "source_type": "linkedin_api",
+      "rows": 3267568,
+      "missing_campaign": 2101503,
+      "missing_source": 3267568,
+      "wrong_source_campaign": 0,
+      "eligible_parent_rows": 0
+    },
+    {
+      "source_type": "manual",
+      "rows": 15,
+      "missing_campaign": 0,
+      "missing_source": 0,
+      "wrong_source_campaign": 0,
+      "eligible_parent_rows": 12
+    },
+    {
+      "source_type": "meta_api",
+      "rows": 375096,
+      "missing_campaign": 281604,
+      "missing_source": 375096,
+      "wrong_source_campaign": 0,
+      "eligible_parent_rows": 0
+    }
+  ],
+  "legacyMeta": {
+    "kpis_present": false,
+    "benchmarks_present": false
+  },
+  "providerConnections": [
+    {
+      "table": "ga4_connections",
+      "rows": [
+        {
+          "id": "8403cf40-7c56-4a9b-8f30-9ce3dbfd76ad",
+          "created_at": "2026-10-30T19:56:00.305Z",
+          "expires_at": "2026-10-31T13:09:21.612Z",
+          "method": "access_token",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "google_sheets_connections",
+      "rows": [
+        {
+          "id": "ea5804fc-9cd7-4445-8806-d9f70528fceb",
+          "created_at": "2026-10-30T22:40:45.810Z",
+          "expires_at": "2026-10-31T13:08:00.616Z",
+          "method": "access_token",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "hubspot_connections",
+      "rows": [
+        {
+          "id": "053927ed-77e4-4b7c-ad61-b6c39ecd4374",
+          "created_at": "2026-10-30T20:08:06.958Z",
+          "expires_at": "2026-10-31T12:38:27.616Z",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "salesforce_connections",
+      "rows": [
+        {
+          "id": "5a41a38b-f057-40ef-89d1-b84259064dd9",
+          "created_at": "2026-10-30T20:49:39.414Z",
+          "expires_at": "2026-10-31T14:08:40.279Z",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "shopify_connections",
+      "rows": [
+        {
+          "id": "62cf9267-2348-46f2-aae0-ddf7ec021081",
+          "created_at": "2026-10-30T21:44:05.196Z",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    }
+  ],
+  "recentWork": [
+    {
+      "id": "1064a21b-3524-4879-bb3a-3adb5d7ef8e2",
+      "status": "completed",
+      "kind": null,
+      "due_at": "2026-10-31T13:00:00.000Z",
+      "reporting_date": "2026-10-30",
+      "started_at": "2026-10-31T13:08:11.866Z",
+      "completed_at": "2026-10-31T13:11:03.379Z",
+      "attempt_count": 1,
+      "has_error": false,
+      "invalidated": false
+    },
+    {
+      "id": "612a689d-d4d8-4be4-80da-5ddac4fcb78b",
+      "status": "pending",
+      "kind": null,
+      "due_at": "2026-10-31T13:00:00.000Z",
+      "reporting_date": "2026-10-30",
+      "started_at": "2026-10-31T13:07:28.978Z",
+      "completed_at": null,
+      "attempt_count": 1,
+      "has_error": false,
+      "invalidated": true
+    },
+    {
+      "id": "4de99dae-ce87-4c11-954d-5e0a084b14bb",
+      "status": "completed",
+      "kind": null,
+      "due_at": "2026-10-31T07:00:00.000Z",
+      "reporting_date": "2026-10-30",
+      "started_at": "2026-10-31T07:07:12.945Z",
+      "completed_at": "2026-10-31T07:10:09.351Z",
+      "attempt_count": 1,
+      "has_error": false,
+      "invalidated": true
+    },
+    {
+      "id": "4f6159a2-9af3-4961-ae19-87f6f53e0280",
+      "status": "completed",
+      "kind": null,
+      "due_at": "2026-10-31T07:00:00.000Z",
+      "reporting_date": "2026-10-30",
+      "started_at": "2026-10-31T10:25:31.571Z",
+      "completed_at": "2026-10-31T10:28:16.334Z",
+      "attempt_count": 1,
+      "has_error": false,
+      "invalidated": true
+    },
+    {
+      "id": "d2a3449a-78da-4bf7-aaca-3e2f8384b2b2",
+      "status": "completed",
+      "kind": "revenue_change",
+      "due_at": "2026-10-31T00:11:07.531Z",
+      "reporting_date": "2026-10-30",
+      "started_at": "2026-10-31T00:11:18.303Z",
+      "completed_at": "2026-10-31T00:14:03.212Z",
+      "attempt_count": 1,
+      "has_error": false,
+      "invalidated": true
+    },
+    {
+      "id": "4eb22e57-abb9-4bf4-be40-c61dfb53ca05",
+      "status": "completed",
+      "kind": "revenue_change",
+      "due_at": "2026-10-30T22:56:18.411Z",
+      "reporting_date": "2026-10-29",
+      "started_at": "2026-10-30T22:56:28.921Z",
+      "completed_at": "2026-10-30T22:57:36.572Z",
+      "attempt_count": 1,
+      "has_error": false,
+      "invalidated": true
+    },
+    {
+      "id": "55372c6f-eb15-4dd6-a1fe-ea344f83e440",
+      "status": "completed",
+      "kind": "revenue_change",
+      "due_at": "2026-10-30T22:00:47.254Z",
+      "reporting_date": "2026-10-29",
+      "started_at": "2026-10-30T22:01:32.819Z",
+      "completed_at": "2026-10-30T22:02:42.253Z",
+      "attempt_count": 1,
+      "has_error": false,
+      "invalidated": true
+    },
+    {
+      "id": "352fb9e1-95b4-47fb-8ba8-08c334c24a87",
+      "status": "pending",
+      "kind": "revenue_change",
+      "due_at": "2026-10-30T22:00:43.817Z",
+      "reporting_date": "2026-10-29",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "has_error": false,
+      "invalidated": true
+    }
+  ],
+  "errorCode": "42703"
+}

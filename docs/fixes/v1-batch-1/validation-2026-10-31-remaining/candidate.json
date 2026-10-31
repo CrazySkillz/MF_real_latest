@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-31T15:20:05.524Z",
+  "result": "PASS",
+  "beforeFailures": 10,
+  "focusedTests": 257,
+  "affectedTests": 138,
+  "fullTests": 6959,
+  "fullFiles": 399,
+  "skipped": 0,
+  "spendReaderChecks": 12,
+  "publicOAuthDenials": 27,
+  "publicOAuthPacketComplete": false,
+  "wholeApp": {
+    "OPEN": 104,
+    "DEFERRED": 10,
+    "CLOSED": 16
+  },
+  "batch1": {
+    "closed": 15,
+    "open": 5,
+    "remaining": [
+      "V1-008",
+      "V1-054",
+      "V1-078",
+      "V1-088",
+      "V1-123"
+    ]
+  },
+  "relativeLinksVerified": 552,
+  "secretValuesEmitted": false,
+  "files": 58,
+  "sourceHashes": {
+    "server/storage.ts": "b85c8331bafd8cd3678bbd4605570c2e6919f59008b5c43eabcc71ae695205d7",
+    "server/ga4-financial-source-ownership-postgres.test.ts": "dad1bb02620687d1f74d4986dca4fc399e7a130987b80a2205fa9f3ea13306d0",
+    "server/ga4-revenue-publication-postgres.test.ts": "68ea37e347d8ac8b5058a2f9e506762c0d8647bf731f07837abc5331383705b3",
+    "server/v1-batch5-ga4-browser.test.ts": "f16eab851ab675289e0ad88ec36eb64c3d6b622d2bf75cd82e6e8ca5eaae6d62"
+  },
+  "anonymousCallbackInventoryComplete": true,
+  "deployedCommit": "5f0ffe96302aad0abee45c1c23f1a38bb77d2dce",
+  "exactSourceMatchesRelease": true
+}

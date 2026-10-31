@@ -1,0 +1,193 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/me/Documents/MF_real_latest[39m
+
+[90mstdout[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mpreserves published report readiness for 'salesforce' Pipeline Proxy (context='ga4', provider failure=false)
+[22m[39m[Salesforce Pipeline Proxy][Trace] start {
+  campaignId: [32m'a'[39m,
+  campaignField: [32m'Campaign'[39m,
+  revenueField: [32m'Amount'[39m,
+  selectedValues: [ [32m'sale'[39m ],
+  pipelineSelected: [ [32m'sale'[39m ],
+  pipelineStageName: [32m'Contract Sent'[39m,
+  pipelineStageLabel: [32m'Contract Sent'[39m
+}
+
+[90mstdout[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mpreserves published report readiness for 'salesforce' Pipeline Proxy (context='ga4', provider failure=false)
+[22m[39m[Salesforce Pipeline Proxy][Trace] result {
+  campaignId: [32m'a'[39m,
+  pipelineStageName: [32m'Contract Sent'[39m,
+  pipelineSelected: [ [32m'sale'[39m ],
+  directRecordCount: [33m1[39m,
+  matchedRecordCount: [33m1[39m,
+  computedTotal: [33m3200[39m,
+  campaignValueTotals: [ { campaignValue: [32m'sale'[39m, revenue: [33m3200[39m } ],
+  currencies: [ [32m'EUR'[39m ],
+  warning: [1mnull[22m
+}
+
+[90mstdout[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mpreserves published report readiness for 'salesforce' Pipeline Proxy (context='ga4', provider failure=true)
+[22m[39m[Salesforce Pipeline Proxy][Trace] start {
+  campaignId: [32m'a'[39m,
+  campaignField: [32m'Campaign'[39m,
+  revenueField: [32m'Amount'[39m,
+  selectedValues: [ [32m'sale'[39m ],
+  pipelineSelected: [ [32m'sale'[39m ],
+  pipelineStageName: [32m'Contract Sent'[39m,
+  pipelineStageLabel: [32m'Contract Sent'[39m
+}
+
+[90mstderr[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mpreserves published report readiness for 'salesforce' Pipeline Proxy (context='ga4', provider failure=true)
+[22m[39m[Salesforce Pipeline Proxy] Error: Error: provider unavailable
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:92:68
+    at Mock [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/spy/dist/index.js:285:34[90m)[39m
+    at fetchCompleteSalesforceQuery (C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:101:55)
+    at runQuery (eval at pipelineResponse (C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:105:3), <anonymous>:187:32)
+    at eval (eval at pipelineResponse (C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:105:3), <anonymous>:206:19)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at pipelineResponse (C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:107:3)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:234:22
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+[90mstdout[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mpreserves published report readiness for 'salesforce' Pipeline Proxy (context=null, provider failure=false)
+[22m[39m[Salesforce Pipeline Proxy][Trace] start {
+  campaignId: [32m'a'[39m,
+  campaignField: [32m'Campaign'[39m,
+  revenueField: [32m'Amount'[39m,
+  selectedValues: [ [32m'sale'[39m ],
+  pipelineSelected: [ [32m'sale'[39m ],
+  pipelineStageName: [32m'Contract Sent'[39m,
+  pipelineStageLabel: [32m'Contract Sent'[39m
+}
+
+[90mstdout[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mpreserves published report readiness for 'salesforce' Pipeline Proxy (context=null, provider failure=false)
+[22m[39m[Salesforce Pipeline Proxy][Trace] result {
+  campaignId: [32m'a'[39m,
+  pipelineStageName: [32m'Contract Sent'[39m,
+  pipelineSelected: [ [32m'sale'[39m ],
+  directRecordCount: [33m1[39m,
+  matchedRecordCount: [33m1[39m,
+  computedTotal: [33m3200[39m,
+  campaignValueTotals: [ { campaignValue: [32m'sale'[39m, revenue: [33m3200[39m } ],
+  currencies: [ [32m'EUR'[39m ],
+  warning: [1mnull[22m
+}
+
+[90mstdout[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mpreserves published report readiness for 'salesforce' Pipeline Proxy (context=null, provider failure=true)
+[22m[39m[Salesforce Pipeline Proxy][Trace] start {
+  campaignId: [32m'a'[39m,
+  campaignField: [32m'Campaign'[39m,
+  revenueField: [32m'Amount'[39m,
+  selectedValues: [ [32m'sale'[39m ],
+  pipelineSelected: [ [32m'sale'[39m ],
+  pipelineStageName: [32m'Contract Sent'[39m,
+  pipelineStageLabel: [32m'Contract Sent'[39m
+}
+
+[90mstderr[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mpreserves published report readiness for 'salesforce' Pipeline Proxy (context=null, provider failure=true)
+[22m[39m[Salesforce Pipeline Proxy] Error: Error: provider unavailable
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:92:68
+    at Mock [90m(file:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/spy/dist/index.js:285:34[90m)[39m
+    at fetchCompleteSalesforceQuery (C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:101:55)
+    at runQuery (eval at pipelineResponse (C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:105:3), <anonymous>:187:32)
+    at eval (eval at pipelineResponse (C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:105:3), <anonymous>:206:19)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at pipelineResponse (C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:107:3)
+    at C:/Users/me/Documents/MF_real_latest/server/ga4-revenue-publication-postgres.test.ts:234:22
+    at [90mfile:///C:/Users/me/Documents/MF_real_latest/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:915:20
+
+[90mstdout[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mretains salesforce connection-cache updates for the existing LinkedIn path
+[22m[39m[Salesforce Pipeline Proxy][Trace] start {
+  campaignId: [32m'a'[39m,
+  campaignField: [32m'Campaign'[39m,
+  revenueField: [32m'Amount'[39m,
+  selectedValues: [ [32m'sale'[39m ],
+  pipelineSelected: [ [32m'sale'[39m ],
+  pipelineStageName: [32m'Contract Sent'[39m,
+  pipelineStageLabel: [32m'Contract Sent'[39m
+}
+
+[90mstdout[2m | server/ga4-revenue-publication-postgres.test.ts[2m > [22m[2msale-date eligibility and durable revenue publication with real PostgreSQL[2m > [22m[2mretains salesforce connection-cache updates for the existing LinkedIn path
+[22m[39m[Salesforce Pipeline Proxy][Trace] result {
+  campaignId: [32m'a'[39m,
+  pipelineStageName: [32m'Contract Sent'[39m,
+  pipelineSelected: [ [32m'sale'[39m ],
+  directRecordCount: [33m1[39m,
+  matchedRecordCount: [33m1[39m,
+  computedTotal: [33m3200[39m,
+  campaignValueTotals: [ { campaignValue: [32m'sale'[39m, revenue: [33m3200[39m } ],
+  currencies: [ [32m'EUR'[39m ],
+  warning: [1mnull[22m
+}
+
+ [32m✓[39m server/ga4-revenue-publication-postgres.test.ts [2m([22m[2m88 tests[22m[2m)[22m[33m 19798[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers report readiness after hubspot connection invalidation with unchanged revenue [33m 321[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers report readiness after salesforce connection invalidation with unchanged revenue [33m 302[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves published report readiness for 'hubspot' Pipeline Proxy (context='ga4', provider failure=false) [33m 578[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves published report readiness for 'salesforce' Pipeline Proxy (context='ga4', provider failure=false) [33m 334[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves published report readiness for 'salesforce' Pipeline Proxy (context=null, provider failure=false) [33m 324[2mms[22m[39m
+     [33m[2m✓[22m[39m retains the published source breakdown while a saved edit changes the live records [33m 364[2mms[22m[39m
+     [33m[2m✓[22m[39m deletes hubspot through the real route, publishes the lower total and prevents stale restoration [33m 459[2mms[22m[39m
+     [33m[2m✓[22m[39m deletes salesforce through the real route, publishes the lower total and prevents stale restoration [33m 469[2mms[22m[39m
+     [33m[2m✓[22m[39m deletes shopify through the real route, publishes the lower total and prevents stale restoration [33m 628[2mms[22m[39m
+     [33m[2m✓[22m[39m deletes google_sheets through the real route, publishes the lower total and prevents stale restoration [33m 557[2mms[22m[39m
+     [33m[2m✓[22m[39m deletes csv through the real route, publishes the lower total and prevents stale restoration [33m 515[2mms[22m[39m
+     [33m[2m✓[22m[39m deletes manual through the real route, publishes the lower total and prevents stale restoration [33m 414[2mms[22m[39m
+     [33m[2m✓[22m[39m deletes custom through the real route, publishes the lower total and prevents stale restoration [33m 440[2mms[22m[39m
+ [32m✓[39m server/v1-batch5-ga4-browser.test.ts [2m([22m[2m50 tests[22m[2m)[22m[33m 210281[2mms[22m[39m
+     [33m[2m✓[22m[39m the hubspot delete button removes only its source and updates the card after publication [33m 5643[2mms[22m[39m
+     [33m[2m✓[22m[39m the salesforce delete button removes only its source and updates the card after publication [33m 5072[2mms[22m[39m
+     [33m[2m✓[22m[39m the shopify delete button removes only its source and updates the card after publication [33m 5568[2mms[22m[39m
+     [33m[2m✓[22m[39m the google_sheets delete button removes only its source and updates the card after publication [33m 5251[2mms[22m[39m
+     [33m[2m✓[22m[39m the csv delete button removes only its source and updates the card after publication [33m 4945[2mms[22m[39m
+     [33m[2m✓[22m[39m the manual delete button removes only its source and updates the card after publication [33m 4959[2mms[22m[39m
+     [33m[2m✓[22m[39m the custom delete button removes only its source and updates the card after publication [33m 4992[2mms[22m[39m
+     [33m[2m✓[22m[39m removes one hubspot item while preserving the remaining mapping and pipeline settings [33m 5669[2mms[22m[39m
+     [33m[2m✓[22m[39m removes one salesforce item while preserving the remaining mapping and pipeline settings [33m 5352[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the hubspot source and total when removal fails [33m 4195[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the salesforce source and total when removal fails [33m 4438[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the shopify source and total when removal fails [33m 4104[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the google_sheets source and total when removal fails [33m 3937[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the csv source and total when removal fails [33m 3925[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps hubspot source amounts with their total until publication, including a reopened page [33m 5459[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps salesforce source amounts with their total until publication, including a reopened page [33m 5296[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps shopify source amounts with their total until publication, including a reopened page [33m 5116[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps google_sheets source amounts with their total until publication, including a reopened page [33m 5252[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps csv source amounts with their total until publication, including a reopened page [33m 5490[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps manual source amounts with their total until publication, including a reopened page [33m 5079[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps custom source amounts with their total until publication, including a reopened page [33m 5094[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps included source messages consistent with the card after midnight, empty breakdown=false [33m 4551[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps included source messages consistent with the card after midnight, empty breakdown=true [33m 5043[2mms[22m[39m
+     [33m[2m✓[22m[39m retains the previous source amount during an edit to 45, including native read failures [33m 6426[2mms[22m[39m
+     [33m[2m✓[22m[39m retains the previous source amount during an edit to -5, including native read failures [33m 6499[2mms[22m[39m
+     [33m[2m✓[22m[39m retains the previous source amount during an edit to 0, including native read failures [33m 6595[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps amounts together when the sources response arrives last [33m 2504[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps amounts together when the snapshot response arrives last [33m 2488[2mms[22m[39m
+     [33m[2m✓[22m[39m disables a retained hubspot item that is no longer in the current mapping [33m 5844[2mms[22m[39m
+     [33m[2m✓[22m[39m disables a retained salesforce item that is no longer in the current mapping [33m 6222[2mms[22m[39m
+     [33m[2m✓[22m[39m retains a verified legacy breakdown and never guesses missing pre-edit amounts after a reload [33m 6202[2mms[22m[39m
+     [33m[2m✓[22m[39m does not present a pending hubspot import as a confirmed zero [33m 6018[2mms[22m[39m
+     [33m[2m✓[22m[39m does not present a pending salesforce import as a confirmed zero [33m 5994[2mms[22m[39m
+     [33m[2m✓[22m[39m displays only the included contribution when a source also contains future sales [33m 3727[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps published figures consistent for failed publication [33m 2315[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps published figures consistent for waiting-card publication [33m 2148[2mms[22m[39m
+     [33m[2m✓[22m[39m renders provider revenue/itemization and keeps pipeline separate [33m 1844[2mms[22m[39m
+     [33m[2m✓[22m[39m restores the HubSpot EUR3200 card and source modal after verified currency recovery [33m 1803[2mms[22m[39m
+     [33m[2m✓[22m[39m shows an unmapped campaign-owned HubSpot source while retaining zero, currency and disconnect checks [33m 2004[2mms[22m[39m
+     [33m[2m✓[22m[39m shows unmapped Salesforce opportunities with combined HubSpot=false and withholds incomplete totals [33m 3173[2mms[22m[39m
+     [33m[2m✓[22m[39m shows unmapped Salesforce opportunities with combined HubSpot=true and withholds incomplete totals [33m 3044[2mms[22m[39m
+     [33m[2m✓[22m[39m shows current zero without resurrecting saved mapping amounts [33m 2068[2mms[22m[39m
+     [33m[2m✓[22m[39m withholds the combined proxy for failed [33m 2600[2mms[22m[39m
+     [33m[2m✓[22m[39m withholds the combined proxy for wrong-source [33m 2180[2mms[22m[39m
+     [33m[2m✓[22m[39m withholds the combined proxy for wrong-currency [33m 2240[2mms[22m[39m
+     [33m[2m✓[22m[39m withholds the combined proxy for missing-time [33m 2078[2mms[22m[39m
+     [33m[2m✓[22m[39m withholds the combined proxy for incomplete-items [33m 2127[2mms[22m[39m
+     [33m[2m✓[22m[39m withholds cached proxy after failure and recovers on a successful refetch [33m 2264[2mms[22m[39m
+     [33m[2m✓[22m[39m does not configure CRM proxy or request CRM APIs for Shopify-only revenue [33m 1558[2mms[22m[39m
+     [33m[2m✓[22m[39m removes disconnected CRM configuration without reusing cached endpoint amounts [33m 2144[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m138 passed[39m[22m[90m (138)[39m
+[2m   Start at [22m 15:50:14
+[2m   Duration [22m 216.13s[2m (transform 2.24s, setup 0ms, import 9.32s, tests 230.08s, environment 1ms)[22m
+
+JSON report written to C:/Users/me/Documents/MF_real_latest/docs/fixes/v1-batch-1/validation-2026-10-31-remaining/renewal-affected.json

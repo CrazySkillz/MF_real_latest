@@ -1,0 +1,40 @@
+// Evidence/secret/status consistency only; no Git mutation, database or network.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto'),{parseEnv}=require('node:util'),{execFileSync}=require('node:child_process');
+const base='docs/fixes/v1-batch-1/',dir=base+'validation-2026-10-31-remaining/';
+const readText=file=>{const bytes=fs.readFileSync(file);return bytes.toString(bytes[0]===0xff&&bytes[1]===0xfe?'utf16le':'utf8')};
+const json=name=>JSON.parse(fs.readFileSync(dir+name,'utf8'));
+const before=json('credential-only-before.json'),after=json('credential-only-after.json'),suite=json('renewal-full-suite.json');
+assert.equal(before.numFailedTests,10);assert.equal(after.numPassedTests,257);assert.equal(after.numFailedTests,0);assert.equal(after.numPendingTests,0);
+const affected=json('renewal-affected.json');assert.equal(affected.numPassedTests,138);assert.equal(affected.numFailedTests,0);assert.equal(affected.numPendingTests,0);
+assert.equal(suite.result,'PASS');assert.equal(suite.exitCode,0);assert.equal(suite.notificationDatabaseRemoved,true);
+const suiteText=fs.readFileSync(dir+'renewal-full-suite.log','utf8').replace(/\x1b\[[0-9;]*m/g,'');
+assert.match(suiteText,/6959 passed \(6959\)/);assert.match(suiteText,/399 passed \(399\)/);assert.doesNotMatch(suiteText,/Failed Tests|Unhandled Errors/);
+assert.match(readText(dir+'renewal-kpi-gate.log'),/PASS/);
+const readers=json('spend-readers.json');assert.equal(readers.result,'PASS');assert.equal(readers.checks.length,12);assert.ok(readers.checks.every(c=>c.passed));
+for(const [file,hash] of Object.entries(readers.sourceHashes))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),hash);
+assert.equal(json('callback-budget.json').result,'PASS');
+const publicChecks=json('public-oauth-denials.json');assert.equal(publicChecks.result,'NOT_VERIFIED');assert.equal(publicChecks.requests.filter(x=>x.passed).length,25);assert.equal(publicChecks.requests.at(-1).status,429);
+const adsChecks=json('public-oauth-denials-2026-10-31T15-01-49-213Z.json');assert.equal(adsChecks.result,'PASS');assert.equal(adsChecks.requests.length,2);assert.ok(adsChecks.requests.every(x=>x.passed&&x.provider==='google-ads'));
+const batchFile=base+'README.md',ledgerFile=base+'CONSOLIDATED_CLOSEOUT_2026-10-31.md',queueFile='docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md';
+const batch=fs.readFileSync(batchFile,'utf8'),ledger=fs.readFileSync(ledgerFile,'utf8'),queue=fs.readFileSync(queueFile,'utf8');
+const rows=[...batch.matchAll(/^\| \[(V1-\d+)\]\(#[^)]+\) \|[^\n]+\| (CLOSED|OPEN) \|$/gm)];assert.equal(rows.length,20);assert.equal(rows.filter(x=>x[2]==='CLOSED').length,15);
+const open=rows.filter(x=>x[2]==='OPEN').map(x=>x[1]);assert.deepEqual(open,['V1-008','V1-054','V1-078','V1-088','V1-123']);
+for(const r of rows){assert.ok(ledger.includes(`| ${r[1]} | ${r[2]} |`));assert.ok(batch.split(`### ${r[1]}\n`)[1]?.split('\n### ')[0].includes(`**Release acceptance:** ${r[2]}.`))}
+const all=[...queue.matchAll(/^\| \[(V1-\d+)\]\([^\n]+?\) \| P\d \| \d+ \| [^|]+ \| (OPEN|CLOSED|DEFERRED) \|/gm)];assert.equal(all.length,130);assert.equal(new Set(all.map(x=>x[1])).size,130);
+const counts=Object.fromEntries(['OPEN','DEFERRED','CLOSED'].map(s=>[s,all.filter(x=>x[2]===s).length]));assert.deepEqual(counts,{OPEN:104,DEFERRED:10,CLOSED:16});
+for(const r of rows)assert.equal(all.find(x=>x[1]===r[1])?.[2],r[2]);
+const docs=[batchFile,ledgerFile,queueFile,'docs/V1_RELEASE_READINESS.md',...['SPEND_SECURITY_ACCEPTANCE_2026-10-31.md','REMAINING_ACCEPTANCE_2026-10-31.md','CREDENTIAL_PUBLICATION_2026-10-31.md'].map(n=>base+n)];
+let links=0;for(const file of docs)for(const m of fs.readFileSync(file,'utf8').matchAll(/\]\(([^)]+)\)/g)){const target=m[1].split('#')[0];if(!target||/^[a-z]+:/i.test(target))continue;assert.ok(fs.existsSync(path.resolve(path.dirname(file),target)),`Missing link in ${file}: ${target}`);links++}
+const sourceFiles=['server/storage.ts','server/ga4-financial-source-ownership-postgres.test.ts','server/ga4-revenue-publication-postgres.test.ts','server/v1-batch5-ga4-browser.test.ts'];
+const release=json('release.json'),commit='5f0ffe96302aad0abee45c1c23f1a38bb77d2dce';
+assert.equal(release.result,'PASS');assert.equal(release.health.commit,commit);assert.equal(release.health.status,200);assert.equal(release.health.ok,true);assert.equal(release.health.nodeEnv,'production');
+assert.ok(release.runs.some(r=>r.name==='Tests'&&r.headSha===commit&&r.status==='completed'&&r.conclusion==='success'));
+const postRelease=json('post-release.json');assert.equal(postRelease.result,'PASS');assert.equal(postRelease.commit,commit);assert.equal(postRelease.checks.length,4);assert.ok(postRelease.checks.every(c=>c.passed));
+assert.match(readText(dir+'local-postgres-stop.log'),/server stopped/);
+execFileSync('git',['diff','--quiet',commit,'--',...sourceFiles],{windowsHide:true,stdio:'pipe'});
+const files=[...docs,...sourceFiles,...fs.readdirSync(dir).filter(n=>/\.(cjs|json|log)$/.test(n)&&!['candidate-paths.json','candidate.json'].includes(n)).map(n=>dir+n)].sort();
+const secrets=Object.entries(parseEnv(fs.readFileSync('.env','utf8'))).filter(([k,v])=>/SECRET|TOKEN|PASSWORD|KEY|DATABASE_URL/i.test(k)&&v.length>=12).map(([,v])=>v);
+for(const file of files)assert.ok(!secrets.some(s=>readText(file).includes(s)),`Private environment value in ${path.basename(file)}`);
+const receipt={at:new Date().toISOString(),result:'PASS',beforeFailures:10,focusedTests:257,affectedTests:138,fullTests:6959,fullFiles:399,skipped:0,spendReaderChecks:12,publicOAuthDenials:25,publicOAuthPacketComplete:false,wholeApp:counts,batch1:{closed:15,open:5,remaining:open},relativeLinksVerified:links,secretValuesEmitted:false,files:files.length,sourceHashes:Object.fromEntries(sourceFiles.map(f=>[f,crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')]))};
+receipt.publicOAuthDenials=27;receipt.anonymousCallbackInventoryComplete=true;receipt.deployedCommit=commit;receipt.exactSourceMatchesRelease=true;
+fs.writeFileSync(dir+'candidate.json',JSON.stringify(receipt,null,2)+'\n');fs.writeFileSync(dir+'candidate-paths.json',JSON.stringify([...files,dir+'candidate.json',dir+'candidate-paths.json'].sort(),null,2)+'\n');console.log(JSON.stringify(receipt));

@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-31T14:08:46.140Z",
+  "result": "NOT_VERIFIED",
+  "productionAccess": false,
+  "providerCalls": 0,
+  "checks": [],
+  "sourceHashes": {
+    "server/storage.ts": "b30793f4b931f8c5a562fd902ab6e7df5ca82fa04b649d9985e674f4a178aa76",
+    "server/routes-oauth.ts": "792024ec69a20d13d2cbf770625b1589a43350985fe745d40553244558273dfa",
+    "server/scheduler.ts": "789fdbc398bd9112bfee8e104d2a978b4b79b38b2e28bfcac065ee0dd99a5b77",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96"
+  },
+  "error": "role \"postgres\" does not exist"
+}

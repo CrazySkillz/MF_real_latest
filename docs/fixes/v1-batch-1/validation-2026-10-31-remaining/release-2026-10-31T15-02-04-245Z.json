@@ -1,0 +1,97 @@
+{
+  "at": "2026-10-31T15:02:04.245Z",
+  "expectedCommit": "5f0ffe96302aad0abee45c1c23f1a38bb77d2dce",
+  "credentialsEmitted": false,
+  "health": {
+    "status": 200,
+    "ok": true,
+    "commit": "adc5a6fe82219699454c9c21225534450c940a9a",
+    "nodeEnv": "production"
+  },
+  "runs": [
+    {
+      "id": 41212567147,
+      "name": "Tests",
+      "status": "in_progress",
+      "conclusion": null,
+      "headSha": "5f0ffe96302aad0abee45c1c23f1a38bb77d2dce",
+      "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41212567147",
+      "jobs": [
+        {
+          "id": 124570446190,
+          "name": "unit-tests",
+          "status": "in_progress",
+          "conclusion": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm ci --ignore-scripts",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npx --no-install playwright install --with-deps chromium",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Create isolated notification fixture database",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run check:ga4-kpi-certification",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run test:current-version",
+              "status": "in_progress",
+              "conclusion": null
+            },
+            {
+              "name": "Retained deferred-source evidence (non-blocking)",
+              "status": "pending",
+              "conclusion": null
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "pending",
+              "conclusion": null
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "pending",
+              "conclusion": null
+            },
+            {
+              "name": "Stop containers",
+              "status": "pending",
+              "conclusion": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "result": "PENDING"
+}

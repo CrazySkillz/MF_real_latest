@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-31T15:01:36.657Z",
+  "result": "PASS",
+  "networkCalls": 0,
+  "checks": [
+    {
+      "case": "normal",
+      "passed": true,
+      "syntheticRequests": 23
+    },
+    {
+      "case": "low-quota",
+      "passed": true,
+      "syntheticRequests": 1
+    },
+    {
+      "case": "rate-limit",
+      "passed": true,
+      "syntheticRequests": 1
+    },
+    {
+      "case": "remaining-ads",
+      "passed": true,
+      "syntheticRequests": 2
+    }
+  ]
+}

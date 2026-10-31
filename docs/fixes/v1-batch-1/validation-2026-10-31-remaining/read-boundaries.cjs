@@ -1,0 +1,24 @@
+// Read-only production metadata: no token values, providers, application startup or writes.
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),{parseEnv}=require('node:util'),{Client}=require('pg');
+const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
+const ids=['b74f98af-ede9-47af-9b19-0720ebb4d2c0','36493a43-accd-4360-8ff2-de62f5a19b6e','36631f9f-5f32-4ae6-8d20-d8430abb364c'];
+const receipt={at:new Date().toISOString(),result:'NOT_VERIFIED',databaseWritesAttempted:false,providerCalls:0,secretValuesEmitted:false};let client;
+(async()=>{try{
+ const u=new URL(parseEnv(fs.readFileSync('.env','utf8')).DATABASE_URL);assert.equal(hash(JSON.stringify([u.hostname,u.port||'5432',u.pathname])),'073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0');for(const k of ['sslmode','sslcert','sslkey','sslrootcert','ssl','options'])u.searchParams.delete(k);
+ client=new Client({connectionString:u.href,ssl:{rejectUnauthorized:true},options:'-c default_transaction_read_only=on',application_name:'batch1-remaining-read-only',connectionTimeoutMillis:10000,statement_timeout:45000,query_timeout:50000});await client.connect();await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');assert.equal((await client.query('SHOW transaction_read_only')).rows[0].transaction_read_only,'on');
+ receipt.protectedCampaigns=(await client.query('SELECT c.id,c.status,c.currency,c.platform,cl.owner_id=c.owner_id owner_matches FROM campaigns c JOIN clients cl ON cl.id=c.client_id WHERE c.id=ANY($1::text[]) ORDER BY c.id',[ids])).rows;assert.equal(receipt.protectedCampaigns.length,3);assert.ok(receipt.protectedCampaigns.every(x=>x.status==='active'&&x.owner_matches));
+ receipt.spendSources=(await client.query('SELECT source_type,platform_context,is_active,count(*)::int rows FROM spend_sources GROUP BY source_type,platform_context,is_active ORDER BY 1,2,3')).rows;
+ receipt.spendRecords=(await client.query("SELECT r.source_type,count(*)::int rows,count(*) FILTER(WHERE c.id IS NULL)::int missing_campaign,count(*) FILTER(WHERE s.id IS NULL)::int missing_source,count(*) FILTER(WHERE s.id IS NOT NULL AND s.campaign_id IS DISTINCT FROM r.campaign_id)::int wrong_source_campaign,count(*) FILTER(WHERE c.id IS NOT NULL AND s.campaign_id=r.campaign_id AND s.is_active)::int eligible_parent_rows FROM spend_records r LEFT JOIN campaigns c ON c.id=r.campaign_id LEFT JOIN spend_sources s ON s.id::text=r.spend_source_id GROUP BY r.source_type ORDER BY 1")).rows;
+ receipt.legacyMeta=(await client.query("SELECT to_regclass('public.meta_kpis') IS NOT NULL kpis_present,to_regclass('public.meta_benchmarks') IS NOT NULL benchmarks_present")).rows[0];
+ receipt.providerConnections=[];
+ for(const table of ['ga4_connections','google_sheets_connections','hubspot_connections','salesforce_connections','shopify_connections']){
+  const columns=(await client.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1",[table])).rows.map(x=>x.column_name);
+  const selected=['id','created_at','updated_at','expires_at','access_token_expires_at','refresh_token_expires_at','last_refresh','last_refreshed_at','method','is_active'].filter(x=>columns.includes(x));
+  const secrets=['access_token','refresh_token','client_secret'].filter(x=>columns.includes(x));
+  const rows=(await client.query(`SELECT ${selected.join(',')},encrypted_tokens IS NOT NULL encrypted_container_present,(${secrets.map(x=>`NULLIF(${x},'') IS NOT NULL`).join(' OR ')||'false'}) legacy_plaintext_present FROM ${table} WHERE campaign_id=$1 ORDER BY id`,[ids[2]])).rows;
+  receipt.providerConnections.push({table,rows});
+ }
+ receipt.recentWork=(await client.query("SELECT id,status,scope->>'kind' kind,due_at,reporting_date,started_at,completed_at,attempt_count,last_error IS NOT NULL has_error,scope_hash LIKE 'invalidated:%' invalidated FROM ga4_refresh_work WHERE campaign_id=$1 ORDER BY due_at DESC,id LIMIT 8",[ids[2]])).rows;
+ receipt.publications=(await client.query("SELECT DISTINCT ON(snapshot_type) snapshot_type,reporting_date,recorded_at,notes LIKE 'ga4_aligned_refresh_v1:%' aligned FROM metric_snapshots WHERE campaign_id=$1 ORDER BY snapshot_type,reporting_date DESC,recorded_at DESC",[ids[2]])).rows;
+ await client.query('ROLLBACK');receipt.result='PASS_READ_ONLY_INVENTORY';receipt.limits='Expiry/publication metadata alone is not provider renewal, credential decryption, replay prevention or whole-analytics acceptance. Historical rows are retained; no cleanup or grant change.';
+}catch(e){receipt.errorCode=e.code||e.name;process.exitCode=1}finally{await client?.end().catch(()=>{});const file='inventory-'+receipt.at.replace(/[:.]/g,'-')+'.json';fs.writeFileSync(path.join(__dirname,file),JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({...receipt,file}))}})();

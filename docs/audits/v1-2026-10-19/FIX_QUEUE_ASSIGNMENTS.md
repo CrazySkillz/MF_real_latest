@@ -16,8 +16,10 @@ check. Reuse applicable passes; stop when the essential gates pass. Broader
 assurance, modernization and optional hardening remain outside the launch queue.
 
 **V1-013 code prerequisite, October 31:** [custom Clerk hostname CSP correction](../../fixes/v1-batch-8/CLERK_CSP_2026-10-31.md)
-has a reproduced browser failure and 84 passing focused checks, TypeScript and
-server build. Deployment/cutover acceptance remains OPEN; no finding count changes.
+has a reproduced browser failure, 84 passing focused checks, TypeScript/build
+and successful hosted CI. Deployed `b2e94910` is healthy with unchanged current
+test-key policy and signed-out denial. Production cutover remains OPEN; no finding
+count changes.
 
 All 130 finding IDs and formal statuses remain intact: **103 OPEN / 10 DEFERRED /
 17 CLOSED**. OPEN includes missing broader acceptance evidence, not only unfixed

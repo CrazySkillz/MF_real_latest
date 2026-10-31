@@ -2844,7 +2844,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const scopedTotals = platformContext
         ? await storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)
         : null;
-      assertGA4InsightsFinancialCurrencyScope(campaign, sources, scopedTotals?.currency, "Spend");
+      if (!platformContext || platformContext === "ga4") {
+        assertGA4InsightsFinancialCurrencyScope(campaign, sources, scopedTotals?.currency, "Spend");
+      } else {
+        assertGA4InsightsFinancialCurrencyScope(campaign, sources, scopedTotals?.currency, "Spend total");
+      }
       const spendToDate = scopedTotals ? Number(scopedTotals.totalSpend || 0) : parseNum((campaign as any)?.spend);
       const currency = String(scopedTotals?.currency || (campaign as any)?.currency || (sources as any[])?.[0]?.currency || "USD");
 
@@ -6258,7 +6262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
       } as any, records);
       await recalcCampaignSpend(campaignId);
-      await recomputeGA4SpendBeforeResponse(campaignId);
+      if (platformContext.data === "ga4") await recomputeGA4SpendBeforeResponse(campaignId);
 
       res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur });
     } catch (e: any) {

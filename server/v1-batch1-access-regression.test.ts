@@ -6,6 +6,8 @@ import * as schema from "../shared/schema";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { resolveOAuthStateSigningSecret } from "./utils/tokenVault";
 import { normalizeStrictUtcDateKey } from "./utils/data-transformation";
+import { assertGA4InsightsFinancialCurrencyScope } from "../shared/ga4-insights";
+import { getReportingDateWindow } from "./utils/reporting-timezone";
 
 // Execute exact current handlers, including their access helpers, without loading
 // the server, a database, provider credentials, or delivery transports.
@@ -13,6 +15,7 @@ const source = ts.createSourceFile("routes.ts", readFileSync("server/routes-oaut
 const routes = new Map<string, string>();
 const names = new Map<string, string>();
 function visit(node: ts.Node) {
+  if (ts.isFunctionDeclaration(node) && node.name) names.set(node.name.text, node.getText(source));
   if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && !names.has(node.name.text))
     names.set(node.name.text, `const ${node.getText(source)};`);
   if (ts.isCallExpression(node) && /^app\.(get|post|patch|delete)$/.test(node.expression.getText(source))
@@ -41,10 +44,11 @@ function fixture(actor: string | null, overrides: Record<string, any> = {}, node
     console: { log() {}, warn() {}, error() {} }, process: { env: { NODE_ENV: nodeEnv, ALLOW_MOCK_DATA: "true" } },
     require: () => { throw new Error("Provider/module loading forbidden in access fixture"); },
     createHmac, randomBytes, timingSafeEqual, Buffer, resolveOAuthStateSigningSecret,
-    normalizeStrictUtcDateKey, recalcCampaignSpend: vi.fn(async () => 100), recomputeGA4SpendBeforeResponse: vi.fn(async () => {}),
+    normalizeStrictUtcDateKey, assertGA4InsightsFinancialCurrencyScope, getReportingDateWindow,
+    recalcCampaignSpend: vi.fn(async () => 100), recomputeGA4SpendBeforeResponse: vi.fn(async () => {}),
     getPlatformFields: () => [{ id: "fixture-field" }],
   };
-  for (const name of ["campaignIdSchema", "getActorId", "ensureCampaignAccess"])
+  for (const name of ["campaignIdSchema", "getActorId", "ensureCampaignAccess", "requireCampaignAccessParamId", "zPlatformContext", "sendBadRequest", "parsePlatformContext", "parseOptionalSpendPlatformContext"])
     env[name] = bind(names.get(name)!, name, env);
   env.parseNum = (value: any) => Number(value) || 0;
   env.processConnectorDerivedSpend = bind(names.get("processConnectorDerivedSpend")!, "processConnectorDerivedSpend", env);
@@ -113,6 +117,33 @@ describe("Batch 1 campaign entry boundaries", () => {
       expect(res.statusCode).toBe(401); expect(effects).toEqual([]);
     });
   }
+});
+
+describe("Batch 1 connector spend readback", () => {
+  async function read(platformContext: string | undefined, sources: any[], totalCurrency = "EUR", actor: string | null = "owner-a") {
+    const f = fixture(actor, { getSpendSources: vi.fn(async () => sources), getSpendTotalForRange: vi.fn(async () => ({ totalSpend: 100, currency: totalCurrency, sourceIds: sources.map(s => s.id) })) });
+    const handler = bind(`const handler=${routes.get("GET /api/campaigns/:id/spend-to-date")};`, "handler", f.env);
+    const req = { params: { id: "campaign-a" }, query: { platformContext }, headers: {} };
+    const res: any = { statusCode: 200, setHeader() {}, status(n: number) { this.statusCode = n; return this; }, json(payload: any) { this.payload = payload; return this; } };
+    await f.env.requireCampaignAccessParamId(req, res, () => handler(req, res));
+    return { ...f, res };
+  }
+  const source = (currency: string | null = "EUR", sourceType = "connector_derived") => ({ id: "source-a", sourceType, currency, isActive: true });
+  it.each(["linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"])("reads %s connector spend without applying GA4 source restrictions", async platform => {
+    const { res, storage } = await read(platform, [source()]);
+    expect(res.statusCode).toBe(200); expect(res.payload).toMatchObject({ success: true, spendToDate: 100, currency: "EUR", sourceIds: ["source-a"] });
+    expect(storage.getSpendTotalForRange).toHaveBeenCalledWith("campaign-a", "1900-01-01", expect.any(String), platform);
+  });
+  it.each(["ga4", undefined])("preserves GA4 and legacy unscoped source restrictions (%s)", async platform => {
+    const { res } = await read(platform, [source()]); expect(res.statusCode).toBe(500); expect(res.payload.error).toContain("outside the current GA4 Insights release scope");
+  });
+  it("keeps supported GA4 CSV spend available", async () => { expect((await read("ga4", [source("EUR", "csv")])).res.statusCode).toBe(200); });
+  it.each([[null, "EUR"], ["USD", "EUR"], ["USD", "USD"], ["EUR", "USD"]])("rejects non-GA4 source/record currency mismatch or missing currency (%s/%s)", async (configured, observed) => {
+    const { res } = await read("custom_integration", [source(configured)], observed!); expect(res.statusCode).toBe(500); expect(res.payload.error).toMatch(/currenc/);
+  });
+  it.each([[null, 401], ["owner-b", 404]] as const)("rejects %s before financial reads", async (actor, status) => {
+    const { res, storage } = await read("custom_integration", [source()], "EUR", actor); expect(res.statusCode).toBe(status); expect(storage.getSpendSources).not.toHaveBeenCalled(); expect(storage.getSpendTotalForRange).not.toHaveBeenCalled();
+  });
 });
 
 describe("Batch 1 immutable parent identities", () => {
@@ -205,6 +236,23 @@ describe("Batch 1 financial ingress", () => {
       expect(res.payload).toEqual({ success: true, sourceId: "source-a", spendToDate: 100, currency: "EUR" });
       expect(env.recalcCampaignSpend).toHaveBeenCalledWith("campaign-a");
       expect(env.recomputeGA4SpendBeforeResponse).toHaveBeenCalledWith("campaign-a");
+    });
+    it.each(["linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"])(`${route} keeps %s spend independent of GA4 publication`, async (platformContext) => {
+      const write = vi.fn(async () => ({ id: "source-a" }));
+      const f = fixture("owner-a", { replaceSpendSourceWithRecords: write });
+      // A non-GA4 campaign has no GA4 publication to recompute. The real helper
+      // rejects an unprocessed target; it must not turn a successful save into 500.
+      f.env.recomputeGA4SpendBeforeResponse.mockRejectedValue(new Error("GA4 KPI/Benchmark recompute incomplete for campaign campaign-a"));
+      const handler = bind(`const handler=${routes.get(route)};`, "handler", f.env);
+      const res: any = { statusCode: 200, status(n: number) { this.statusCode = n; return this; }, json(payload: any) { this.payload = payload; return this; } };
+      await handler({ params: { id: "campaign-a" }, body: { amount: 100, currency: "EUR", platformContext,
+        records: [{ date: "2026-10-19", spend: "100" }] }, headers: {}, get: () => undefined }, res);
+      expect(res.statusCode).toBe(200);
+      expect(res.payload).toEqual({ success: true, sourceId: "source-a", spendToDate: 100, currency: "EUR" });
+      expect(write).toHaveBeenCalledWith("campaign-a", null, "connector_derived", platformContext,
+        expect.objectContaining({ platformContext, currency: "EUR" }), expect.arrayContaining([expect.objectContaining({ spend: "100.00", currency: "EUR" })]));
+      expect(f.env.recalcCampaignSpend).toHaveBeenCalledWith("campaign-a");
+      expect(f.env.recomputeGA4SpendBeforeResponse).not.toHaveBeenCalled();
     });
   }
 });

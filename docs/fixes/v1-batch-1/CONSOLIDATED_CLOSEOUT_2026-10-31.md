@@ -11,6 +11,11 @@ instructions below without claiming those tests passed or changing formal
 acceptance counts. Reuse completed evidence; additional assurance permutations
 are not immediate Batch 1 tasks. Essential recovery stays with Batch 8 V1-016.
 
+The controlling [production launch task list](../../V1_RELEASE_READINESS.md#current-production-launch-task-list)
+now starts with production Clerk/domain setup (Batch 8 V1-013), then relevant
+dependency security, minimum recovery/rollback and one focused final production
+check. This reuses Batch 1 evidence and does not change formal acceptance counts.
+
 The [callback/credential follow-up](CALLBACK_CREDENTIAL_CLOSEOUT_2026-10-31.md)
 reproduces and corrects duplicate denial responses in LinkedIn/Meta callbacks.
 It also adds 60 actual-getter PostgreSQL replacement/deletion/restart checks.
@@ -111,7 +116,7 @@ only dependent actions; successful evidence is retained.
 | B: provider lifecycle | Renewal/reconnect and invalid-session/replay boundaries for configured providers; exact disposable resource-grant denial/revocation. Whitelist edit/reload is closed for the enabled scope; automatic email imports stay disabled. Conversion and multipart/public-URL ingestion are complete. | Reuse established test mappings; do not repeat initial consent/imports. A shared provider grant must not be revoked merely because the app campaign is disposable. Prepare exact cleanup and expected outcomes before one grouped provider session. |
 | C: historical security and recovery | Shared independent recovery under Batch 8 V1-016. Historical-log custody/retention disposition and both approved historical credential cleanups are complete. Startup key/verified-TLS enforcement has deployed-code, production-health and successful-write evidence; exact orphan event disposition is retained/unassigned. | Retain completed backup/key-custody/same-machine restore and 223-plaintext / 126-ciphertext cleanup evidence. Do not repeat those cleanups or the completed log questions. Independent-machine recovery cannot be replaced by another same-machine restore; no paid database is authorized or required to continue Batch 1. |
 
-Next: finish the remaining reconnect/replay evidence. The [prepared key check](SAVED_KEY_CHECK_2026-10-31.md)
+Historical next step, superseded by the launch task list above: finish the remaining reconnect/replay evidence. The [prepared key check](SAVED_KEY_CHECK_2026-10-31.md)
 is not requested for immediate execution after the user's objection; do not ask
 for it again while continuing Batch 1 security work. Recovery remains unverified
 under its existing Batch 8 V1-016 dependency. The [current remaining-evidence record](REMAINING_ACCEPTANCE_2026-10-31.md)

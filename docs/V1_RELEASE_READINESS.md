@@ -1,13 +1,57 @@
 # V1 release-readiness audit
 
-**Latest execution priority, October 31:** the user requests sufficient production
-readiness without unnecessary tasks. [Batch 1's current disposition](fixes/v1-batch-1/REMAINING_ACCEPTANCE_2026-10-31.md#current-execution-priority-sufficient-production-readiness)
-cancels the proposed extra HubSpot reconnect and defers additional manual
-assurance permutations. All twenty original Batch 1 corrections are implemented;
-the four broader acceptance limits are not four known unfixed code defects.
-Unperformed checks remain unverified. This is not whole-app release approval;
-remaining work must address confirmed defects or essential enabled-flow/recovery
-gates, with existing evidence reused before requesting more tests.
+## Current production launch task list
+
+**October 31 user priority: only work essential to client production launch.**
+This execution order supersedes older dated next-step instructions below and in
+the linked batch records. Reuse completed evidence; do not restart the audit or
+repeat manual checks merely to complete every historical assurance permutation.
+
+| Order / status | Essential task and existing owner | Completion boundary |
+| --- | --- | --- |
+| **1. NEXT — OPEN** | **Production sign-in and application domain.** Batch 8 V1-013; Batch 2 consumes the account/onboarding result. | Prepare production Clerk and the application domain/TLS, matching frontend/backend configuration, allowed origins/CSP and provider callback URLs. Prove how existing account ownership is preserved before switching keys. The public read below confirms test-mode Clerk; production setup/cutover is not complete. The earlier demo postponement no longer sets the launch priority. |
+| **2. OPEN — assessment missing** | **Deployment-relevant dependency security.** Batch 8 V1-019. | Identify current installed production advisories and affected reachable paths; correct release-blocking exposure with the smallest compatible change and relevant regression checks. Historical all-dependency counts are not evidence of current exploitable production flaws. No blanket upgrade, forced audit fix or bypass of an advisory-request approval restriction. |
+| **3. PARTIAL** | **Minimum backup/key recovery and application rollback.** Batch 8 V1-016, shared dependency of Batch 1 V1-008. | Reuse the downloaded backup, saved-key custody and completed local database restore. Establish the remaining actual recovery/key and compatible application-rollback evidence without changing live data. No new paid instance, second-computer requirement, repeated custody questions or synthetic-key pass. Broader independent-machine resilience remains explicitly unverified outside the immediate Batch 1 queue. |
+| **4. OPEN — after final configuration** | **One focused final production acceptance and launch decision.** Batches 2–7; Batch 8 V1-010/012/014/016 consumes their evidence. | Check final-domain sign-up/sign-in and tenant isolation, client/campaign creation, enabled source connection and initial publication, source/financial consistency, report download and scheduled-job health. Check scheduled email if offered, reusing valid prior receipt evidence. Recheck callbacks affected by the domain change, not every unchanged import permutation. Record final revision/build/CI, operator visibility of failures and rollback readiness. A reproduced security, data-integrity or core-journey failure remains a blocker. |
+
+[Public production-entry observation](fixes/v1-batch-8/validation-2026-10-31-launch/production-entry-read.json):
+the Render app was healthy on `357e950fcf03d02c93465cd602eda119f08cf7f6` at
+18:14 UTC; its public frontend used Clerk test mode and the proposed
+`app.mimosaas.app` lookup returned `ENOTFOUND`. This is public configuration
+evidence only; no private Clerk/Render settings or account sessions were inspected.
+The [latest runtime validation](fixes/v1-batch-1/CALLBACK_CREDENTIAL_CLOSEOUT_2026-10-31.md)
+records 6,971/6,971 local tests, TypeScript, builds and hosted CI passing. Reuse
+that evidence for unchanged code; a documentation-only priority update does not
+require another app deployment or full test run.
+
+Scope and reuse rules:
+
+- **Batch 1: all 20 original code corrections are implemented and deployed.**
+  [Its current disposition](fixes/v1-batch-1/REMAINING_ACCEPTANCE_2026-10-31.md#current-execution-priority-sufficient-production-readiness)
+  cancels the extra HubSpot reconnect. Additional manual reconnect/replay and
+  absent legacy Meta positive-path exercises are outside the immediate queue.
+  Unperformed checks remain unverified, not PASS; changed code/configuration or
+  a reproduced failure can justify targeted follow-up.
+- Reuse completed two-account checks, five-provider initial connections/imports,
+  observed renewals, exact cleanups and financial comparisons. Do not recreate
+  removed fixtures or rotate working grants solely to repeat that evidence.
+- LinkedIn/Meta/Instagram/TikTok functional expansion remains deferred; security
+  on retained routes remains mandatory. Automatic email imports remain disabled.
+  Cosmetic changes, refactors and new sources are outside this launch queue.
+- **Google Ads live acceptance was postponed, not excluded.** Before launch,
+  establish whether it is offered in the release. An offered path needs relevant
+  acceptance; an exclusion must be explicit and effective. This task-list update
+  neither enables nor disables it.
+- The focused final check is not certification of every analytics lifecycle or
+  fallback. Preserve uncovered paths and known defects in their existing records;
+  do not label an unproven subsystem production-ready.
+
+**Formal historical acceptance remains 103 OPEN / 10 DEFERRED / 17 CLOSED; Batch 1
+is 16 CLOSED / 4 OPEN under its broader recorded standard.** These counts include
+verification requirements, not 103 known unfixed bugs or 103 new manual tasks.
+Priorities change here; finding statuses and whole-app approval do not.
+
+## Dated evidence and prior checkpoints
 
 **October 31 consolidated Batch 1 acceptance:** [Current ledger and three execution packages](fixes/v1-batch-1/CONSOLIDATED_CLOSEOUT_2026-10-31.md)
 carry forward the completed two-account reads, five provider connections/imports,
@@ -255,21 +299,21 @@ Each finding has one detailed home in its assigned batch. Cross-batch consumers 
 
 ## Fix counts and progress tracking
 
-**130 findings: 112 unresolved V1 release items, 10 deferred-provider functional items, 8 closed for release.** V1-002, V1-003, V1-004, V1-005, V1-012, V1-027, V1-053 and V1-063 are closed. Severity remains 7 P0, 115 P1 and 8 P2; all ten exclusively deferred findings are P1. Findings include code corrections and required verification; they are not 130 independent code patches. The original 182 local failures and October 22 intermediate counts remain historical evidence; V1-012 is closed by the reconciled, complete hosted passing run on `997f1c39`. Test counts are not additional independent code fixes.
+**130 findings: 103 OPEN, 10 deferred-provider functional items, 17 CLOSED.** V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063/075/123 are closed. Severity remains 7 P0, 115 P1 and 8 P2; all ten exclusively deferred findings are P1. These formal acceptance counts match the finding checklist; they include verification requirements and are not counts of independent code patches or the immediate launch task list. The original 182 local failures and intermediate counts remain dated evidence. Test counts are not additional independent code fixes.
 
 | Batch | Area / detailed record | Unresolved V1 | Deferred | Implementation / acceptance |
 |---|---|---:|---:|---|
-| B1 | [Authorization, ingestion and credential exposure](fixes/v1-batch-1/README.md) | 13 | 0 | Implemented, locally checked and deployed; V1-002/003/004/005/027/053/063 CLOSED; remaining acceptance consolidated in three packages |
+| B1 | [Authorization, ingestion and credential exposure](fixes/v1-batch-1/README.md) | 4 | 0 | All 20 original corrections implemented/deployed; 16 formal acceptances CLOSED. Extra manual assurance is outside the immediate queue; shared recovery belongs to B8 V1-016. |
 | B2 | [Startup, migrations and account/campaign lifecycle](fixes/v1-batch-2/README.md) | 14 | 0 | Implemented, locally checked and deployed; release acceptance OPEN |
 | B3 | [Native GA4 query and financial contracts](fixes/v1-batch-3/README.md) | 10 | 0 | All ten corrections verified locally; deployed in `ff3c5115`; public deployment checks pass; release acceptance OPEN |
-| B4 | [Files, Sheets and Custom Integration](fixes/v1-batch-4/README.md) | 24 | 0 | All 24 corrections verified locally; final V1-069 correction committed in `dc33df48` on `62ec590b`; required deployment/provider/lifecycle/downstream acceptance OPEN |
-| B5 | [CRM and commerce Revenue](fixes/v1-batch-5/README.md) | 6 | 0 | Six corrections plus compatibility recovery deployed in `71468999`; public and isolated GA4 UI checks pass; deployed/provider acceptance OPEN |
-| B6 | [Deferred-source isolation and included Ads](fixes/v1-batch-6/README.md) | 9 | 10 | In progress; isolation and selected Google Ads value paths locally corrected; remaining inventory and release acceptance OPEN |
+| B4 | [Files, Sheets and Custom Integration](fixes/v1-batch-4/README.md) | 24 | 0 | Corrections documented; reuse completed CSV/Sheets import evidence. Final launch checks target enabled paths affected by deployment changes; broader acceptance remains OPEN. |
+| B5 | [CRM and commerce Revenue](fixes/v1-batch-5/README.md) | 6 | 0 | Six corrections and real HubSpot/Salesforce/Shopify initial imports recorded. Reuse Batch 1 provider evidence; no extra HubSpot reconnect in the immediate queue. Broader acceptance remains OPEN. |
+| B6 | [Deferred-source isolation and included Ads](fixes/v1-batch-6/README.md) | 9 | 10 | Nine included corrections documented; retained-route isolation remains mandatory. Google Ads live acceptance is postponed, not an approved exclusion; release scope/acceptance remains OPEN. |
 | B7 | [Diagnostics, goals, retained pages, alerts and reports](fixes/v1-batch-7/README.md) | 29 | 0 | Twenty-six findings have local forward-path evidence, one user-approved Dashboard exclusion, and two report findings retain explicit acceptance/coverage gates; current bounded report close-out passes locally; full release acceptance OPEN |
 | B8 | [Release checks and deployed operational acceptance](fixes/v1-batch-8/README.md) | 7 | 0 | V1-012 automated validation CLOSED; active-campaign natural refresh passes; broader operational/release acceptance OPEN |
-| **Total** | | **112** | **10** | **8 closed for release** |
+| **Total** | | **103** | **10** | **17 formally closed** |
 
-**Execution order, October 30:** complete the remaining Batch 1 account/session,
+**Historical execution order, October 30 — superseded by the current production launch task list above:** complete the remaining Batch 1 account/session,
 write-boundary, inbound/provider and credential checks first. Reuse each result
 in its dependent batch; do not repeat completed Promo or cleanup checks. Then
 complete the missing client/campaign/source journeys and value reconciliation

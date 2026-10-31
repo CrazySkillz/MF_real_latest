@@ -1,5 +1,19 @@
 # Finding-by-finding fix queue
 
+**Current execution order, October 31:** follow the controlling
+[production launch task list](../../V1_RELEASE_READINESS.md#current-production-launch-task-list):
+production Clerk/domain setup (B8 V1-013), deployment-relevant dependency security
+(V1-019), minimum recovery/rollback (V1-016), then one focused final production
+acceptance using existing evidence across batches. This supersedes older dated
+next-step instructions. Extra HubSpot reconnect/replay and absent legacy Meta
+positive-path exercises are not in the immediate queue. Google Ads acceptance
+was postponed, not excluded; establish its offered scope before launch.
+
+All 130 finding IDs and formal statuses remain intact: **103 OPEN / 10 DEFERRED /
+17 CLOSED**. OPEN includes missing broader acceptance evidence, not only unfixed
+code; it does not create 103 new manual launch tasks. Reuse completed checks and
+retain unverified limits without presenting them as passes.
+
 **October 31 consolidated acceptance:** [Batch 1 execution ledger](../../fixes/v1-batch-1/CONSOLIDATED_CLOSEOUT_2026-10-31.md)
 closes V1-027 using current callback rendering checks and the completed configured
 real OAuth successes. The [combined live account procedure and verified cleanup](../../fixes/v1-batch-1/ACCOUNT_API_PROCEDURE_2026-10-31.md)

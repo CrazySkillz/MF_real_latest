@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-31T18:14:39.184Z",
+  "healthy": true,
+  "commit": "357e950fcf03d02c93465cd602eda119f08cf7f6",
+  "publicClerkModes": [
+    "test"
+  ],
+  "appDomain": {
+    "dnsCode": "ENOTFOUND"
+  },
+  "publicReadOnly": true,
+  "settingsChanged": false,
+  "limit": "Public frontend mode and DNS only; no private Clerk/Render settings, users or provider sessions accessed."
+}

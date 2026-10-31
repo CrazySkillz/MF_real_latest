@@ -1,5 +1,14 @@
 # V1 release-readiness audit
 
+**Latest execution priority, October 31:** the user requests sufficient production
+readiness without unnecessary tasks. [Batch 1's current disposition](fixes/v1-batch-1/REMAINING_ACCEPTANCE_2026-10-31.md#current-execution-priority-sufficient-production-readiness)
+cancels the proposed extra HubSpot reconnect and defers additional manual
+assurance permutations. All twenty original Batch 1 corrections are implemented;
+the four broader acceptance limits are not four known unfixed code defects.
+Unperformed checks remain unverified. This is not whole-app release approval;
+remaining work must address confirmed defects or essential enabled-flow/recovery
+gates, with existing evidence reused before requesting more tests.
+
 **October 31 consolidated Batch 1 acceptance:** [Current ledger and three execution packages](fixes/v1-batch-1/CONSOLIDATED_CLOSEOUT_2026-10-31.md)
 carry forward the completed two-account reads, five provider connections/imports,
 credential cleanup and confirmed revenue-display correction. V1-027 is CLOSED

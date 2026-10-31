@@ -1,5 +1,39 @@
 # Remaining Batch 1 acceptance after spend-security closure
 
+## Current execution priority: sufficient production readiness
+
+The user subsequently clarified: the app must be sufficient for production,
+without unnecessary tasks. **Cancel the proposed manual HubSpot reconnect.**
+No reconnect result was supplied and none is claimed. The preparation captured
+only a read-only baseline; it did not change a connection or import data.
+
+All twenty original code corrections are implemented. The credential-overwrite
+defect has exact-getter PostgreSQL race/replacement/restart evidence and real
+provider renewal observations. Another manual HubSpot consent is additional
+provider-lifecycle assurance, not a response to a newly observed failure. Do not
+repeat it or the completed initial imports/account checks merely to increase
+coverage or close a checklist label.
+
+Separate the four remaining evidence limits from confirmed unfixed defects:
+
+| Evidence limit | Immediate production-focused disposition |
+| --- | --- |
+| V1-008 recovery dependency | Keep backup/key recovery under its existing Batch 8 V1-016 release decision. It is not another immediate Batch 1 request. Saved custody/local restore do not prove independent key recovery. |
+| V1-054 legacy Meta positive update | No positive test against absent legacy tables is required for the currently enabled GA4-first journey. Do not create those tables. Retained access/identity guards and existing tests remain mandatory; legacy functionality is not certified. |
+| V1-078 real valid-code replay | Retain as unverified assurance, separate from the deployed rejection of the original public-signing-secret exploit. No new session, real code capture or manual callback replay is requested now. Reassess if a concrete weakness or relevant flow change is found. |
+| V1-088 additional reconnect/renewal/hosted-restart combinations | Defer additional manual provider permutations. Reuse the real connections/imports, live renewal observations, isolated races and process-restart evidence. Do not rotate a shared grant to manufacture coverage. Reassess on an observed connection failure or credential-path change. |
+
+This changes execution priority, not test results. The earlier **16 CLOSED /
+4 OPEN** counts describe the broader formal acceptance standard; they do not
+mean four known code defects remain. Do not turn the unperformed checks into
+PASS or use this scope decision as whole-app production certification. Core
+security, tenant isolation, correct enabled flows, data integrity and recovery
+remain release concerns. Continue only with a confirmed unresolved defect or an
+essential enabled-flow/recovery gate, using existing evidence before adding work.
+
+The user has no immediate action from this record. The earlier reconnect/replay
+"next work" statements below are superseded by this execution priority.
+
 Current status: **16 CLOSED / 4 OPEN**. All twenty original code corrections are
 implemented. No remaining requirement is waived by this note. The earlier read-only
 observations changed no production state. The later provider/permission packet

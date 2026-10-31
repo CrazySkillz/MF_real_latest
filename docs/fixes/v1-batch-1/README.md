@@ -12,6 +12,13 @@ External acceptance is not inferred from these tests; counts remain 16 CLOSED /
 
 ## Current Batch 1 status
 
+**Production-focused execution priority:** The user requests sufficient
+production readiness without unnecessary tasks. [The current disposition](REMAINING_ACCEPTANCE_2026-10-31.md#current-execution-priority-sufficient-production-readiness)
+cancels the proposed HubSpot reconnect and defers additional manual assurance
+permutations. All twenty original corrections are implemented. Four broader
+acceptance limits remain unverified; they are not four known unfixed code defects.
+No new manual action is requested. Recovery remains owned by Batch 8 V1-016.
+
 **October 31 final boundary check:** [Deployed public-secret rejection and exact
 remaining limits](FINAL_SECURITY_BOUNDARIES_2026-10-31.md) adds two rejected
 forgeries per affected provider without changing runtime code or campaign data.

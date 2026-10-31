@@ -4,6 +4,13 @@ This is the current execution ledger. It supersedes pending statements in the
 October 30 acceptance record where later evidence is listed here. Historical
 receipts keep their original date, scope and result.
 
+**Latest user direction:** prioritize sufficient production readiness and stop
+unnecessary manual checks. [Current execution disposition](REMAINING_ACCEPTANCE_2026-10-31.md#current-execution-priority-sufficient-production-readiness)
+cancels the proposed HubSpot reconnect. It supersedes the reconnect/replay next-step
+instructions below without claiming those tests passed or changing formal
+acceptance counts. Reuse completed evidence; additional assurance permutations
+are not immediate Batch 1 tasks. Essential recovery stays with Batch 8 V1-016.
+
 The [callback/credential follow-up](CALLBACK_CREDENTIAL_CLOSEOUT_2026-10-31.md)
 reproduces and corrects duplicate denial responses in LinkedIn/Meta callbacks.
 It also adds 60 actual-getter PostgreSQL replacement/deletion/restart checks.

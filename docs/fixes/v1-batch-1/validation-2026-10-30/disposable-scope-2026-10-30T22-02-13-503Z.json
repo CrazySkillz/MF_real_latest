@@ -1,0 +1,147 @@
+{
+  "at": "2026-10-30T22:02:13.503Z",
+  "databaseWritesAttempted": false,
+  "credentialValuesReturned": false,
+  "applicationImports": false,
+  "checks": {
+    "revenueRecordAmountType": [
+      {
+        "data_type": "numeric"
+      }
+    ],
+    "disposableScope": [
+      {
+        "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+        "name": "Batch 1 Provider Check",
+        "status": "active",
+        "currency": "EUR",
+        "reporting_time_zone": "Europe/Amsterdam",
+        "created_at": "2026-10-30T19:48:45.285Z",
+        "client_name": "Batch 1 Validation",
+        "consistent_owner": true,
+        "ownerSha256": "1900b95d7361b41cd41b7a23571cb4645a1511a139d4044f04b9937ab86c6096",
+        "connections": [
+          {
+            "id": "8403cf40-7c56-4a9b-8f30-9ce3dbfd76ad",
+            "method": "access_token",
+            "property_id": "542352127",
+            "is_active": true,
+            "encrypted_container_present": true,
+            "legacy_access_present": false,
+            "legacy_refresh_present": false
+          }
+        ],
+        "hubspotConnections": [
+          {
+            "id": "053927ed-77e4-4b7c-ad61-b6c39ecd4374",
+            "is_active": true,
+            "created_at": "2026-10-30T20:08:06.958Z",
+            "encrypted_container_present": true,
+            "legacy_access_present": false,
+            "legacy_refresh_present": false,
+            "legacy_secret_present": false,
+            "mapping_present": true
+          }
+        ],
+        "salesforceConnections": [
+          {
+            "id": "5a41a38b-f057-40ef-89d1-b84259064dd9",
+            "is_active": true,
+            "created_at": "2026-10-30T20:49:39.414Z",
+            "encrypted_container_present": true,
+            "legacy_access_present": false,
+            "legacy_refresh_present": false,
+            "legacy_secret_present": false,
+            "mapping_present": true
+          }
+        ],
+        "hubspotSources": [
+          {
+            "id": "59c30be2-5e98-472b-a552-f4c4ee44f47b",
+            "is_active": true,
+            "platform_context": "ga4",
+            "currency": "EUR",
+            "campaign_property": "dealname",
+            "selected_values": [
+              "yesop_prospecting"
+            ],
+            "revenue_property": "amount",
+            "date_field": "closedate",
+            "last_total_revenue": "0",
+            "pipeline_enabled": "true",
+            "pipeline_stage_label": "Contract Sent",
+            "pipeline_total": "3200",
+            "pipeline_currency": "EUR",
+            "pipeline_mode": "current_stage"
+          }
+        ],
+        "hubspotRevenueRecords": [
+          {
+            "revenue_source_id": "59c30be2-5e98-472b-a552-f4c4ee44f47b",
+            "records": 1,
+            "total_revenue": "0.00"
+          }
+        ],
+        "initialImport": [
+          {
+            "status": "completed",
+            "reporting_date": "2026-10-29",
+            "attempt_count": 1,
+            "completed_at": "2026-10-30T21:01:43.674Z",
+            "retryable": true,
+            "invalidated": true,
+            "has_error": false
+          }
+        ],
+        "salesforceSources": [
+          {
+            "id": "2be847ea-4842-43cb-a024-50d861272fc8",
+            "is_active": true,
+            "platform_context": "ga4",
+            "currency": "EUR",
+            "campaign_field": "Name",
+            "selected_values": [
+              "Acme Expansion"
+            ],
+            "revenue_field": "Amount",
+            "date_field": "CloseDate",
+            "last_total_revenue": "0",
+            "pipeline_enabled": "true",
+            "pipeline_stage_name": "Prospecting",
+            "pipeline_stage_label": "Prospecting",
+            "pipeline_total": "51",
+            "pipeline_currency": "EUR",
+            "pipeline_mode": "current_stage"
+          }
+        ],
+        "salesforceRevenueRecords": [
+          {
+            "revenue_source_id": "2be847ea-4842-43cb-a024-50d861272fc8",
+            "records": 1,
+            "total_revenue": "0.00"
+          }
+        ],
+        "dailyImport": [
+          {
+            "property_id": "542352127",
+            "days": 30,
+            "first_day": "2026-09-30",
+            "last_day": "2026-10-29",
+            "simulated_days": 0
+          }
+        ],
+        "overviewSnapshots": [
+          {
+            "property_id": "542352127",
+            "window_start": "2026-09-30",
+            "window_end": "2026-10-29"
+          }
+        ]
+      }
+    ]
+  },
+  "databaseReadOnly": true,
+  "rolledBack": true,
+  "result": "PASS",
+  "limits": "Exact named test client/campaign metadata only; encryption-container presence does not prove decryption, consent or provider validity. No provider calls or writes."
+}

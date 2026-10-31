@@ -1,0 +1,35 @@
+{
+  "batch1AccountBundle": "PASS_RECHECK",
+  "account": "Second account",
+  "phase": "awaiting_database_cleanup",
+  "run": "8bacbb31-4f84-47ac-b362-aab1e6ab6c32",
+  "tag": "B1_ACCESS_8bacbb31-4f84-47ac-b362-aab1e6ab6c32",
+  "date": "2026-10-31",
+  "ids": {
+    "metric": "6cbacb7b-1e83-409e-9711-5fed44bbb720",
+    "performance": "d0c25edc-d873-4633-9d39-89c1d1912a13",
+    "integration": "12229a67-23ed-47b2-a350-a2ba6556e70e",
+    "model": "e442f455-649e-45b8-914a-a6a68497aee2",
+    "journey": "b8e704e9-98ba-4be8-8a6c-93fa375ea351",
+    "touchpoint": "ded247b7-57d2-407a-831e-f56d3b54f41f",
+    "result": "498d9b01-2bcd-44eb-9d80-d729d38d6c1d"
+  },
+  "pending": null,
+  "checks": [
+    { "check": "metric owner-scoped collection", "passed": true },
+    { "check": "metric persists after account switch", "passed": true },
+    { "check": "performance owner-scoped collection", "passed": true },
+    { "check": "performance persists after account switch", "passed": true },
+    { "check": "integration owner-scoped collection", "passed": true },
+    { "check": "integration credentials redacted", "passed": true },
+    { "check": "integration persists after account switch", "passed": true },
+    { "check": "model owner-scoped collection", "passed": true },
+    { "check": "model persists after account switch", "passed": true },
+    { "check": "foreign edit did not change model", "passed": true },
+    { "check": "journey owner-scoped collection", "passed": true },
+    { "check": "journey persists after account switch", "passed": true },
+    { "check": "foreign edit did not change journey", "passed": true },
+    { "check": "foreign insert did not add touchpoint", "passed": true },
+    { "check": "only exact browser fixture removed", "passed": true }
+  ]
+}

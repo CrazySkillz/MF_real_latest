@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-30T22:58:48.771Z",
+  "result": "PASS_BOUNDED_INITIAL_IMPORT",
+  "readOnlyReceipt": "disposable-scope-2026-10-30T22-58-17-848Z.json",
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "connectionId": "62cf9267-2348-46f2-aae0-ddf7ec021081",
+  "sourceId": "b1ac1292-ef65-4829-b60c-5181bc6b17a7",
+  "attributionKey": "tags",
+  "selectedValues": [
+    "campaign3_eur_test"
+  ],
+  "userReportedPreview": {
+    "revenue": 785.95,
+    "matchedOrders": 1,
+    "currency": "EUR"
+  },
+  "userReportedOverview": {
+    "shopifyRevenueSource": 785.95,
+    "pipelineProxy": 3251,
+    "currency": "EUR"
+  },
+  "persisted": {
+    "revenue": 785.95,
+    "matchedOrders": 1,
+    "normalizedRecords": 1,
+    "currency": "EUR",
+    "activeShopifySources": 1,
+    "legacyAccessColumnEmpty": true
+  },
+  "adjacentChecks": {
+    "hubspotSourceAndRecordsUnchanged": true,
+    "salesforceSourceAndRecordsUnchanged": true,
+    "ga4DailyCoverageAndSnapshotWindowUnchanged": true
+  },
+  "boundary": "User-reported Shopify connection, tag selection, preview, initial import and Revenue Sources amount reconciled to exact scoped persisted data. Does not independently reconcile the provider order, completed-day Total Revenue, financial formulas, reports, renewal, revocation, deletion, transfer, historical-order expiry or scheduled publication. Batch 1 is not closed by this bounded result."
+}

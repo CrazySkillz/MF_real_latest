@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-30T21:48:02.161Z",
+  "result": "PASS_BOUNDED_INITIAL_IMPORT",
+  "readOnlyReceipt": "disposable-scope-2026-10-30T21-46-59-669Z.json",
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "connectionId": "053927ed-77e4-4b7c-ad61-b6c39ecd4374",
+  "sourceId": "59c30be2-5e98-472b-a552-f4c4ee44f47b",
+  "userReportedPreview": {
+    "confirmedRevenue": 0,
+    "pipelineProxy": 3200,
+    "currency": "EUR"
+  },
+  "userReportedOverview": {
+    "expectedRevenue": 3200,
+    "currency": "EUR"
+  },
+  "persisted": {
+    "confirmedRevenue": 0,
+    "pipelineProxy": 3200,
+    "currency": "EUR",
+    "activeSources": 1,
+    "legacyCredentialColumnsEmpty": true
+  },
+  "boundary": "User-reported HubSpot navigation, preview and initial import reconciled to exact scoped persisted data. Does not certify renewal, revocation, deletion, transfer, scheduler publication or other providers."
+}

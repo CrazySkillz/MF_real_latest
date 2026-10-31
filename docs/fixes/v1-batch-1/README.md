@@ -6,9 +6,81 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 1 status
 
+**October 31 conversion/file acceptance completed:** [Live evidence, correction and exact limits](INGESTION_ACCEPTANCE_2026-10-31.md)
+close V1-001 and V1-026. Batch 1 is **10 CLOSED / 10 OPEN**. The one-line public
+download identifier correction is committed/pushed and verified live in `3c304f97`;
+conversion retry/downstream-zero, multipart CSV, public URL import and independent
+fixture absence checks pass. The historical missing-parent event is retained
+unchanged and unassigned. No existing campaign figure or update schedule changed.
+Hosted full-suite status is recorded in the linked evidence. Earlier checkpoints
+below keep their original counts and do not supersede this status.
+
+**October 31 transfer/source packet completed:** [Sixteen live checks and verified cleanup](SOURCE_ACCESS_PROCEDURE_2026-10-31.md)
+close V1-034's original ownership boundary. Owned LinkedIn edits preserve identity,
+foreign edits/transfers are denied, and the actual Reports card is visible to its
+owner and hidden from the other account. Five exact temporary records were
+verified and removed, with a fresh read-only absence check. Batch 1 is now
+**8 CLOSED / 12 OPEN**. V1-054's unavailable legacy Meta positive acceptance and
+V1-052's remaining notification/persistent-state checks stay open. No runtime or
+refresh-schedule change. The earlier checkpoints below retain their original scope.
+
+**October 31 combined account completion:** [Live results, cleanup and exact limits](ACCOUNT_API_PROCEDURE_2026-10-31.md)
+record user-reported `PASS_OWNER`/`PASS_FOREIGN` and the complete `PASS_RECHECK`.
+Independent production checks verified the seven synthetic records, rehearsed
+deletion with rollback, committed the exact seven deletes and reread their
+absence. All original table IDs and protected campaign identities/statuses remain.
+V1-002/003/053 are now CLOSED: **7 CLOSED / 13 OPEN** for Batch 1. No runtime code,
+provider configuration or refresh schedule changed. Attribution restart and
+remaining access/provider/operational acceptance stay open. Reports foreign
+absence is confirmed, but the user did not confirm positive owner reappearance;
+V1-052 remains open. The corrected test setup and its final-filter regression
+are recorded without claiming full deployed Reports acceptance.
+
+**October 31 consolidated close-out:** [One execution ledger](CONSOLIDATED_CLOSEOUT_2026-10-31.md)
+reconciles all 20 findings and carries forward the completed account checks,
+five provider connections/imports, credential cleanup and confirmed revenue-display
+fix. V1-027 is CLOSED: six current-code callback browser checks pass and the
+configured real OAuth successes meet its remaining gate. At that earlier checkpoint: **4 CLOSED / 16 OPEN**,
+with all 20 original corrections implemented. Remaining acceptance is assigned
+once to three packages: account/API, connection/ingestion lifecycle, and production
+configuration/recovery. Do not repeat completed initial imports or ordinary
+sign-out checks. Earlier dated counts below remain historical.
+
+**October 30 report-cache follow-up:** [Exact local correction and limits](REPORT_CACHE_ACCESS_2026-10-30.md)
+records a reproduced V1-052 boundary missed by the query-cache-only check:
+browser-saved Reports metadata could display before campaign access succeeded.
+The five-line guard passes 170/170 focused checks, TypeScript and client/server
+builds. It is deployed as `7e413779`; 6,870/6,870 full local tests pass, but the
+hosted failure was reproduced as a browser-test timing defect. Test-only correction
+`05542b6e` passes 86 focused checks, TypeScript and the complete hosted workflow
+(run 41116916268); the healthy application revision remains unchanged.
+The user confirmed the
+ordinary sign-out/Back-button, second-account isolation and return-to-owner checks;
+remaining report-cache and broader acceptance stay open. No production data changed.
+
+**October 30 campaign edit follow-up:** [Bounded HTTP/access evidence](CAMPAIGN_EDIT_ACCESS_2026-10-30.md)
+passes 126/126 checks and TypeScript without changing application code. The live
+anonymous campaign PATCH denial passes; the user confirmed owner 400 and
+second-account 404 for the manual invalid-name check. Valid live edits,
+retained child-route and broader acceptance remain open;
+this checkpoint does not change finding counts.
+
+**October 30 acceptance progress:** [Current close-out and exact remaining requirements](CLOSEOUT_2026-10-30.md)
+records the current security and deployed boundary checks. V1-004, V1-005 and
+V1-063 are CLOSED for enforced feature/endpoint exclusions. The user-approved
+automatic email-import exclusion is live in `02bb9ad2`: 255 focused checks,
+TypeScript and build pass; all four deployed exclusion routes and two neighboring
+signed-out guards pass. The complete hosted CI workflow passes on the same commit.
+The other 17 findings remain
+OPEN. The exact 223-record obsolete credential
+cleanup was approved and committed at 10:59 UTC after backup, 14 restored-copy
+checks and read-only preflight. Independent verification confirms zero remaining
+plaintext candidates and unchanged retained connections. That cleanup changed no
+runtime; the later email-import exclusion is the separate deployment above.
+
 **October 27 consolidated status:** [Batches 1–5 checkpoint](../v1-batch-8/BATCHES_1_TO_5_CHECKPOINT.md) accounts for all 74 original findings, the current 6,548/6,548 regression pass, deployed/read-only data checks and remaining live/historical acceptance. Earlier dated counts are historical; release acceptance is not silently closed.
 
-**IMPLEMENTED AND DEPLOYED; RELEASE ACCEPTANCE OPEN.** All 20 code corrections are implemented and locally validated within the stated boundaries. Batch 1 runtime `4522f834` was deployed and is superseded by Batch 2 runtime `839bf508`. No finding is closed for release.
+**IMPLEMENTED AND DEPLOYED; RELEASE ACCEPTANCE OPEN.** All 20 code corrections are implemented and locally validated within the stated boundaries. Eight release findings are closed and 12 remain open as detailed in the [October 31 consolidated ledger](CONSOLIDATED_CLOSEOUT_2026-10-31.md). Earlier deployment revisions below retain their historical scope.
 
 **Ptomo visual and scheduled-refresh checks: PASSED within their stated boundaries.** The visual check is user-reported. October 21 native/financial publications through October 20 updated at 08:10/08:11 Amsterdam, before Batch 2 deployed at 09:32. The [read-only work record](../v1-batch-2/ptomo-refresh-2026-10-21.json) confirms the exact 08:00 work item completed at 08:11:52.504 on its first attempt without a recorded error. This supersedes the earlier pre-refresh uncertainty. No manual Render setup or repeat freshness wait is required. Other [release acceptance](#remaining-release-acceptance) remains open.
 
@@ -37,22 +109,22 @@ These records retain their own dates and verification limits. Use the current fi
 
 | Finding | Severity | Fix status | Release acceptance |
 |---|---|---|---|
-| [V1-001](#v1-001) | P0 | VERIFIED LOCALLY | OPEN |
-| [V1-002](#v1-002) | P0 | VERIFIED LOCALLY | OPEN |
-| [V1-003](#v1-003) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-004](#v1-004) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-005](#v1-005) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-001](#v1-001) | P0 | CLOSED | CLOSED |
+| [V1-002](#v1-002) | P0 | CLOSED | CLOSED |
+| [V1-003](#v1-003) | P1 | CLOSED | CLOSED |
+| [V1-004](#v1-004) | P1 | CLOSED | CLOSED |
+| [V1-005](#v1-005) | P1 | CLOSED | CLOSED |
 | [V1-006](#v1-006) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-008](#v1-008) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-026](#v1-026) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-027](#v1-027) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-026](#v1-026) | P1 | CLOSED | CLOSED |
+| [V1-027](#v1-027) | P1 | CLOSED | CLOSED |
 | [V1-030](#v1-030) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-034](#v1-034) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-034](#v1-034) | P1 | CLOSED | CLOSED |
 | [V1-052](#v1-052) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-053](#v1-053) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-053](#v1-053) | P1 | CLOSED | CLOSED |
 | [V1-054](#v1-054) | P0 | VERIFIED LOCALLY | OPEN |
 | [V1-057](#v1-057) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-063](#v1-063) | P0 | VERIFIED LOCALLY | OPEN |
+| [V1-063](#v1-063) | P0 | CLOSED | CLOSED |
 | [V1-075](#v1-075) | P0 | VERIFIED LOCALLY | OPEN |
 | [V1-078](#v1-078) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-088](#v1-088) | P1 | VERIFIED LOCALLY | OPEN |
@@ -64,7 +136,12 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 ### V1-001
 
-**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P0. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
+
+**October 31 closure:** [Live sender/retry, stored average and historical disposition](INGESTION_ACCEPTANCE_2026-10-31.md)
+complete the original write-security gate. One historical orphan remains retained
+and unassigned; no active-campaign currency mismatch exists. Broader provider
+analytics and historical repair are not certified by this closure.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -84,7 +161,13 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 ### V1-002
 
-**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P0. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
+
+**October 31 acceptance:** [Combined deployed account checks and exact cleanup](ACCOUNT_API_PROCEDURE_2026-10-31.md)
+prove owned insertion/read, ignored supplied owner, actual foreign-row exclusion,
+disconnected encrypted/redacted integration and preserved original unowned IDs.
+The original six-route exposure is closed; startup seeding and unrelated provider
+lifecycles retain their separate finding boundaries.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -104,7 +187,12 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 ### V1-003
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
+
+**October 31 acceptance:** [Combined live procedure](ACCOUNT_API_PROCEDURE_2026-10-31.md)
+completes Trends foreign denial and owned no-keywords handling without a provider
+query. Earlier anonymous denials and owned/foreign retained campaign reads are
+carried forward. This closes access protection, not provider-query correctness.
 
 **V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
 
@@ -124,7 +212,17 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 ### V1-004
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
+
+**October 30 disposition:** the user explicitly excluded automatic email imports
+for this release. `02bb9ad2` blocks all three ingestion POSTs and their dedicated
+setup POST before their route handlers, while hiding email-forwarding controls.
+All four deployed denials and neighboring signed-out guards pass. Local checks
+cover route order, non-interception of supported uploads/webhooks, and UI render
+conditions. No existing imported data was removed. [Exact evidence and limits](CLOSEOUT_2026-10-30.md)
+close the exclusion, not provider delivery; the acceptance below is mandatory
+before re-enablement. Supported file webhook and whitelist paths remain tracked
+separately under V1-026/V1-030.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -144,7 +242,7 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 ### V1-005
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED. Disabled production test-email transport; [October 30 evidence](CLOSEOUT_2026-10-30.md).
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -204,7 +302,12 @@ Attribution routes 30814–31464 expose unauthenticated mutations/reads. `Databa
 
 ### V1-026
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
+
+**October 31 closure:** [Actual multipart/public-URL imports and guarded cleanup](INGESTION_ACCEPTANCE_2026-10-31.md)
+complete the deployed gate. A missing client identifier caused a valid public
+host to reject downloads; one request header fixes it in deployed `3c304f97`.
+Destination, redirect, byte, deadline and storage security controls remain intact.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -224,7 +327,7 @@ Attribution routes 30814–31464 expose unauthenticated mutations/reads. `Databa
 
 ### V1-027
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
 
 **V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
 
@@ -234,7 +337,7 @@ Simulation callback10821 and real Salesforce11506, LinkedIn23517, Meta24073 call
 
 **Implemented correction and exact files:** Untrusted popup content interpolated into HTML/scripts. Four [paths](../../../server/routes-oauth.ts) reuse existing HTML/JSON serializers; simulation state is URL-encoded.
 
-**Validation and limits:** Handler sentinels and actual Chromium callback execution; normal Google callback control. Live successful OAuth remains external.
+**Validation and limits:** Handler sentinels and actual Chromium callback execution; normal Google callback control. [October 31 closure](CONSOLIDATED_CLOSEOUT_2026-10-31.md#v1-027-closure) combines six current-code Chromium checks with user-reported configured Google/Sheets, HubSpot, Salesforce and Shopify OAuth success and persisted connection/import evidence. Replay/session, renewal and resource-revocation acceptance remains in V1-078/088/123; deferred providers remain deferred.
 
 **Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
 
@@ -264,7 +367,7 @@ Simulation callback10821 and real Salesforce11506, LinkedIn23517, Meta24073 call
 
 ### V1-034
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -275,6 +378,13 @@ Simulation callback10821 and real Salesforce11506, LinkedIn23517, Meta24073 call
 **Implemented correction and exact files:** Shared temporary-ID authorization exemptions. [Connect and transfer routes](../../../server/routes-oauth.ts) now guard both parents normally.
 
 **Validation and limits:** Ordinary/magic-ID rejection; existing owned draft architecture retained. Separate transfer-copy defects remain Batch 4.
+
+**October 31 closure:** The [live transfer/source packet](SOURCE_ACCESS_PROCEDURE_2026-10-31.md)
+proves successful owned transfer, actual foreign source/destination denial and
+both magic-ID parent denials. Prior real owned GA4 draft creation is retained.
+The connect endpoint is blocked by the approved automatic-email-import exclusion.
+Independent stored-state verification and five-row cleanup/readback pass. This
+closes the original authorization defect; it does not certify Batch 4 copy logic.
 
 **Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
 
@@ -304,7 +414,12 @@ Simulation callback10821 and real Salesforce11506, LinkedIn23517, Meta24073 call
 
 ### V1-053
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
+
+**October 31 acceptance:** [Bounded authenticated live requests](ACCOUNT_API_PROCEDURE_2026-10-31.md)
+with and without the caller test flag show all three expected quota limits and
+counted requests. The production bypass finding is closed. No saturation test,
+distributed-capacity certification or broader quota redesign is inferred.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -364,7 +479,7 @@ LinkedIn update28649→storage4445 permits replacement campaignId; legacy Meta K
 
 ### V1-063
 
-**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P0. **Fix status:** CLOSED. **Release acceptance:** CLOSED. Production mock-write exclusion; [October 30 evidence](CLOSEOUT_2026-10-30.md). Deferred provider functionality remains uncertified.
 
 **V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
 

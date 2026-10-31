@@ -1,0 +1,49 @@
+{
+  "result": "PASS",
+  "at": "2026-10-30T11:02:43.654Z",
+  "readOnly": true,
+  "connectionTables": 11,
+  "connectionRows": 356,
+  "plaintextCredentialRowsBefore": 223,
+  "plaintextCredentialRowsAfter": 0,
+  "retainedCampaignMetadataUnchanged": true,
+  "allCampaignAndClientMetadataUnchanged": true,
+  "connectionRowCountsUnchanged": true,
+  "tableCountComparison": {
+    "tables": 71,
+    "changed": [
+      {
+        "table": "metric_snapshots",
+        "before": [
+          {
+            "scope": "missing_campaign",
+            "rows": "7244"
+          },
+          {
+            "scope": "other_owner_or_unowned",
+            "rows": "73140"
+          },
+          {
+            "scope": "protected",
+            "rows": "438"
+          }
+        ],
+        "after": [
+          {
+            "scope": "missing_campaign",
+            "rows": "7244"
+          },
+          {
+            "scope": "other_owner_or_unowned",
+            "rows": "73148"
+          },
+          {
+            "scope": "protected",
+            "rows": "438"
+          }
+        ]
+      }
+    ]
+  },
+  "boundary": "Named access/refresh/client-secret fields across eleven connection stores; no claim about webhook capability tokens, logs, encrypted legacy compatibility or backups."
+}

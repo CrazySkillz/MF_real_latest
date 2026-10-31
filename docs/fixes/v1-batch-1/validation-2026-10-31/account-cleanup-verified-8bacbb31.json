@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-31T09:07:13.337Z",
+  "result": "PASS_INDEPENDENT_CLEANUP_VERIFICATION",
+  "run": "8bacbb31-4f84-47ac-b362-aab1e6ab6c32",
+  "exactFixtureRowsAbsent": 7,
+  "originalIdsPreserved": true,
+  "outsideRowsUnchangedDuringDeletion": true,
+  "protectedCampaignIdentitiesUnchanged": true,
+  "protectedCampaignsActive": true,
+  "evidence": {
+    "before": {
+      "filename": "account-baseline-2026-10-31T04-59-37-473Z.json",
+      "sha256": "bcbb7250c368088c7c7c6b739ad0e66ee2fce2e47d51ad92a539a02cb82f75b1"
+    },
+    "manifest": {
+      "filename": "user-account-recheck-8bacbb31.json",
+      "sha256": "e29620a5ba09e0c0a3f3f01f51d49bc3876ec9a2752f8d93070642cd10da1e25"
+    },
+    "rehearsal": {
+      "filename": "account-cleanup-2026-10-31T09-04-22-883Z.json",
+      "sha256": "d10b0b51ece0387caeee7ca5aab900f34413d9acf11ac352903441ed0cb18970"
+    },
+    "commit": {
+      "filename": "account-cleanup-2026-10-31T09-05-14-966Z.json",
+      "sha256": "5c1a5cf8db36b70e958201283d2c3e42090f20314a61608f976e3f6afed83868"
+    },
+    "after": {
+      "filename": "account-baseline-2026-10-31T09-05-53-625Z.json",
+      "sha256": "4ba6bf122cb8716b56e32b71520daef09933348644267c7dfbb1a649b4a24a4e"
+    }
+  },
+  "limits": "Original row IDs and protected campaign identity/status independently reread after commit. Unrelated-row values verified inside the cleanup transaction. No provider validity, analytics recomputation, real report delivery or Render restart is inferred."
+}

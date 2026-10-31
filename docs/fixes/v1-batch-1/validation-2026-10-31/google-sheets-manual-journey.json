@@ -1,0 +1,123 @@
+{
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "campaignName": "Batch 1 Provider Check",
+  "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+  "checks": [
+    {
+      "recordedAt": "2026-10-30T23:41:46.317Z",
+      "step": "Google Sheets authorization and spreadsheet discovery",
+      "userAnswer": "Yes—Available Spreadsheets appears",
+      "result": "PASS_REPORTED"
+    },
+    {
+      "recordedAt": "2026-10-30T23:45:25.931Z",
+      "step": "Choose test spreadsheet and tab before connecting",
+      "spreadsheetName": "B2B",
+      "sheetName": "Client_ROI_Summary",
+      "userAnswer": "spreadsheet name B2B; tab name Client_ROI_Summary",
+      "result": "SELECTION_REPORTED"
+    },
+    {
+      "recordedAt": "2026-10-30T23:50:49.441Z",
+      "step": "Reach sheet column mapping and inspect automatic Revenue selection",
+      "spreadsheetName": "B2B",
+      "sheetName": "Client_ROI_Summary",
+      "userAnswer": "there are several column names, it automatically selects \"Revenue\"",
+      "result": "PREVIEW_MAPPING_REPORTED",
+      "selectedRevenueColumn": "Revenue"
+    },
+    {
+      "recordedAt": "2026-10-30T23:56:13.841Z",
+      "step": "User selects Sheets campaign value and shows mapping preview",
+      "spreadsheetName": "B2B",
+      "sheetName": "Client_ROI_Summary",
+      "userAnswer": "i chose yesop_brand_search",
+      "observedFromScreenshots": {
+        "revenueColumn": "Revenue",
+        "dateColumn": "Date",
+        "campaignColumn": "Campaign Name",
+        "selectedCampaignValues": [
+          "yesop_brand_search"
+        ],
+        "ga4CampaignMapping": "No campaign mapping",
+        "sampleRow": {
+          "date": "2026-01-02",
+          "revenueText": "30,000"
+        }
+      },
+      "result": "MAPPING_AND_SAMPLE_OBSERVED",
+      "limit": "Preview implementation returns one representative row per campaign value, so the screenshot does not prove the full selected total or absence of repeated cumulative rows."
+    },
+    {
+      "recordedAt": "2026-10-31T00:01:10.630Z",
+      "step": "Confirm complete selected amounts before importing",
+      "selectedCampaignValue": "yesop_brand_search",
+      "userAnswers": [
+        "there is one additional row",
+        "additional to the €30,000, 1000, 2026-01-03"
+      ],
+      "expectedRows": [
+        {
+          "date": "2026-01-02",
+          "revenue": "30000.00"
+        },
+        {
+          "date": "2026-01-03",
+          "revenue": "1000.00"
+        }
+      ],
+      "additionalNotCumulative": true,
+      "expectedSourceTotal": "31000.00",
+      "currency": "EUR",
+      "result": "EXPECTED_IMPORT_CONFIRMED",
+      "baselineReceipt": "revenue-publication-2026-10-31T00-00-25-695Z.json",
+      "baselineTotalRevenue": "32099.32",
+      "baselineReportingDate": "2026-10-29"
+    },
+    {
+      "recordedAt": "2026-10-31T00:17:13.635Z",
+      "step": "User shows Overview and Sources after Google Sheets import",
+      "evidenceType": "USER_SCREENSHOTS",
+      "observed": {
+        "totalRevenue": "32099.32",
+        "pipelineProxy": "3251.00",
+        "googleSheetsRevenue": "31000.00",
+        "shopifyRevenue": "785.95",
+        "currency": "EUR",
+        "waitingMessages": [
+          "hubspot",
+          "salesforce",
+          "google_sheets"
+        ],
+        "nativeGa4RowVisible": false,
+        "displayedThroughDate": "2026-10-29"
+      },
+      "result": "SAVED_SOURCE_VISIBLE_PUBLICATION_PENDING",
+      "readOnlyInProgressReceipt": "revenue-publication-2026-10-31T00-13-31-417Z.json"
+    },
+    {
+      "recordedAt": "2026-10-31T00:17:13.637Z",
+      "step": "Independently verify saved Sheets scope and completed publication",
+      "result": "PASS_SAVED_IMPORT_AND_COMPLETED_PUBLICATION",
+      "receipt": "google-sheets-initial-import.json",
+      "publishedRevenue": "63099.32",
+      "currency": "EUR",
+      "liveBrowserResult": "PENDING_USER_CONFIRMATION"
+    }
+  ],
+  "liveBrowserConfirmation": {
+    "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+    "userAnswer": "yes, all figures match but wht does it keep doing this?",
+    "result": "PASS_BOUNDED_INITIAL_IMPORT_AND_AUTOMATIC_UI_COMPLETION",
+    "totalRevenue": "63099.32",
+    "pipelineProxy": "3251.00",
+    "nativeGa4Revenue": "31313.37",
+    "googleSheetsRevenue": "31000.00",
+    "currency": "EUR",
+    "nativeGa4SourceRowVisible": true,
+    "waitingMessagesCleared": true,
+    "manualRefreshOrReimportRequired": false
+  },
+  "boundary": "Exact stored Google Sheets connection/mapping and two dated revenue records verified; successful first-attempt publication and all four source hashes verified read-only. User confirmed automatic browser completion, native-source row restoration, matching amounts and cleared waiting messages. The confusing mixed display during initial processing remains a usability issue. Full provider lifecycle and Batch 1 remain open.",
+  "nextStep": "Explain the source-save and background-publication timing, distinguishing initial processing from the previously fixed false waiting status after completion. Do not repeat this successful initial-import check or infer full lifecycle acceptance."
+}

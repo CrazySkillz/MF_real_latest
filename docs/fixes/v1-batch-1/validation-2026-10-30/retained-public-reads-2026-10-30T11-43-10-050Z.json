@@ -1,0 +1,66 @@
+{
+  "startedAt": "2026-10-30T11:43:10.050Z",
+  "method": "GET",
+  "credentialsUsed": false,
+  "checks": [
+    {
+      "route": "/api/campaigns/:id/linkedin-campaigns",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "route": "/api/campaigns/:id/linkedin-campaign-revenue",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "route": "/api/campaigns/:id/google-trends",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "route": "/api/campaigns/:id/attribution",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "route": "/api/platforms/linkedin/fields?campaignId=:id",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "route": "/api/attribution/journeys",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "route": "/api/attribution/journeys/batch1-read-check-nonexistent",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "route": "/api/attribution/touchpoints?journeyId=batch1-read-check-nonexistent",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "route": "/api/attribution/channel-performance",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    }
+  ],
+  "deployedCommit": "d2fba5300e68763ce5391133db967ef4c59dc465",
+  "routesSha256": "428615081b8cc7ac98b81a1a9301948702a823249129481e378071ee53a04e77",
+  "result": "PASS",
+  "boundary": "Nine previously unverified deployed anonymous read denials. Guards precede data/provider work in the matching source. No ordinary owner/foreign-owner result, mutation safety, provider callback, complete finding closure, or whole-app acceptance is inferred.",
+  "finishedAt": "2026-10-30T11:43:10.998Z"
+}

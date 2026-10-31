@@ -1,5 +1,135 @@
 # V1 release-readiness audit
 
+**October 31 consolidated Batch 1 acceptance:** [Current ledger and three execution packages](fixes/v1-batch-1/CONSOLIDATED_CLOSEOUT_2026-10-31.md)
+carry forward the completed two-account reads, five provider connections/imports,
+credential cleanup and confirmed revenue-display correction. V1-027 is CLOSED
+after current callback rendering checks plus configured real OAuth success.
+The [combined live account checks and verified exact fixture cleanup](fixes/v1-batch-1/ACCOUNT_API_PROCEDURE_2026-10-31.md)
+also close V1-002/003/053. The [second live packet](fixes/v1-batch-1/SOURCE_ACCESS_PROCEDURE_2026-10-31.md)
+closes V1-034 with owned/foreign transfer evidence and verified cleanup. The
+[conversion/file packet](fixes/v1-batch-1/INGESTION_ACCEPTANCE_2026-10-31.md) closes
+V1-001/026 with live import/retry/downstream checks and exact cleanup. Batch 1:
+**10 CLOSED / 10 OPEN**, all 20 original code corrections implemented. Overall:
+**109 OPEN / 10 DEFERRED / 11 CLOSED**; whole-app NO-GO remains. All temporary
+fixtures were removed. The one-line download correction is live in `3c304f97`;
+existing campaign figures and schedules are unchanged. Earlier checkpoints retain their scope.
+
+**October 30 account-cache follow-up:** [Reports cache access](fixes/v1-batch-1/REPORT_CACHE_ACCESS_2026-10-30.md)
+records a reproduced gap and localized access guard in the campaign Reports
+page. Four negative cases fail before correction; 170/170 focused checks,
+TypeScript and client/server builds pass afterward. Deployed as `7e413779`, with
+healthy revision/static-client verification and 6,870/6,870 full local tests passing.
+The hosted failure was reproduced as a browser-test timing defect; test-only
+correction `05542b6e` passes 86 focused checks, TypeScript and the complete hosted
+workflow (run 41116916268). Render remains on the unchanged healthy runtime. No
+production data change. V1-052, Batch 1 and whole-app acceptance remain OPEN;
+finding counts are unchanged. The separate owner/foreign campaign-edit rejection
+check is now explicitly user-confirmed.
+
+**October 30 Batch 1 close-out progress:** [Exact current evidence and remaining requirements](fixes/v1-batch-1/CLOSEOUT_2026-10-30.md)
+closes V1-004/005/063 for verified production exclusions. The user-approved automatic
+email-import exclusion is live on `02bb9ad2`, with 255 focused checks, TypeScript,
+build, six deployed route checks and the full hosted CI workflow passing.
+Overall: 116 OPEN / 10 DEFERRED / 4 CLOSED. The approved 223-record obsolete
+credential cleanup committed at 10:59 UTC and passed independent verification:
+zero remaining plaintext candidates, retained connections unchanged. Other Batch 1/
+live operational gates and whole-app NO-GO remain. Earlier pending statements are historical.
+
+**October 30 approved Stage A cleanup completed:** [Live evidence](fixes/v1-batch-8/REDUNDANT_DATA_CLEANUP_PLAN_2026-10-29.md#stage-a-live-execution-october-30)
+confirms atomic removal of V2 Test/V3 test and 108 current operational children,
+with verified fresh recovery and 12 passing local checks. All 68 protected
+comparisons passed inside the transaction and independently after commit. Promo
+and V1 Batch 5 Test remain unchanged. No runtime or deployment changed. The
+historical Stage B/223 plaintext records and whole-app NO-GO remain open.
+
+**October 30 combined Stage A review:** [Read-only review and concrete proposal](fixes/v1-batch-8/REDUNDANT_DATA_CLEANUP_PLAN_2026-10-29.md#stage-a-final-review-october-30)
+rechecks the live scope, protects Promo/V1 Batch 5 Test, and verifies a fresh
+encrypted scoped backup with nine passing restore/concurrency/rollback checks.
+V2 Test/V3 test now have 98 operational children. No live deletion or runtime
+change occurred; approval and guarded execution remain. Stage B, historical
+credentials, off-machine recovery, Batch 1 and whole-app NO-GO remain open.
+
+**October 29 isolated cleanup rehearsal:** [Stage A evidence](fixes/v1-batch-8/REDUNDANT_DATA_CLEANUP_PLAN_2026-10-29.md#stage-a-isolated-rehearsal-october-29)
+passes 20/20 final checks. The backup-copy deletion removes only V2 Test/V3 test
+and 94 operational children, preserves every outside-scope row in all 71 tables,
+and passes rollback/identity/audit checks. Promo/V1 Batch 5 Test are unchanged;
+the local clone is stopped/removed and backups retained. No runtime or live-data
+change occurred. Live writer safety/execution, Stage B and historical credentials
+remain open; Batch 1 and whole-app NO-GO are unchanged.
+
+**October 29 scoped cleanup planning:** [Live inventory and staged plan](fixes/v1-batch-8/REDUNDANT_DATA_CLEANUP_PLAN_2026-10-29.md)
+cover all 71 tables and protect both retained campaigns. Two current-owner test
+campaigns are identified separately from historical owner/orphan records; the
+223 plaintext candidates remain unchanged. Eight existing guard tests pass, but
+mutation rehearsal and live cleanup are not performed. No runtime/key/data
+changes; Batch 1 and whole-app NO-GO remain unchanged.
+
+**October 29 retained-campaign clarification:** the user needs Promo and V1 Batch
+5 Test only. [Verified-export mapping](fixes/v1-batch-8/LEGACY_CREDENTIAL_REMEDIATION.md)
+places all 223 legacy plaintext-credential records outside those two campaigns.
+The next step is a scoped redundant-data cleanup review; no deletion or migration
+has occurred and live/shared-dependency safety remains unverified. NO-GO unchanged.
+
+**October 29 fresh export recovery verified locally:** [Restore evidence and
+limits](fixes/v1-batch-8/RENDER_EXPORT_RESTORE_2026-10-29.md) confirm **71 tables /
+5,903,996 rows** match the downloaded snapshot, with unchanged credential counts
+and preservation of the existing unvalidated campaign/client foreign key.
+Encrypted-copy recovery passes on this Windows profile; the temporary database
+is stopped and removed. No runtime/production change occurred. Earlier pending
+fresh-restore statements are historical. Off-machine/app/provider recovery,
+application-key retrieval, historical disposition and production maintenance
+remain open. This bounded pass does not close Batch 1 or change whole-app NO-GO.
+
+**October 29 current scoped deployed-key result:** all populated encrypted fields
+on matching-owner connection records decrypt: 20 fields on seven active rows and
+two on one inactive row. All 218 failures belong to 126 missing-campaign/client
+records; a separate GA4 service-account record has no populated OAuth fields.
+[Recorded scope result](fixes/v1-batch-8/LEGACY_CREDENTIAL_REMEDIATION.md#october-29-scope-result-and-remaining-recovery-gates)
+does not prove provider/service-account health, orphan scheduler safety or their
+historical failure cause. Key custody, fresh restore, historical disposition and
+maintenance execution remain OPEN. Documentation only; no key/runtime/production
+data change. Batch 1 and whole-app release acceptance remain OPEN/NO-GO.
+The user subsequently confirms saving the existing key privately. Recovery-copy
+custody now has user evidence; retrieval remains unverified. The subsequent fresh
+isolated restore is recorded above. No application/production configuration change occurred.
+
+**October 29 first deployed-key result (preceding state):** the user-executed Shell check returns
+**NOT_VERIFIED**: 22 credential fields authenticate, 218 fail, and one of 135
+encrypted containers is empty. Active-campaign impact and cause are not yet known.
+[Read-only scope follow-up](fixes/v1-batch-8/LEGACY_CREDENTIAL_REMEDIATION.md#october-29-user-executed-key-check-and-scope-follow-up)
+passes 78/78 local checks; Render scope execution is pending. No key/runtime/data
+change or migration occurred. Batch 1 acceptance, compatibility disposition,
+restore and key-custody gates remain OPEN; whole-app NO-GO is unchanged.
+
+**October 29 deployed-key diagnostic prepared (preceding state):** user-confirmed key-variable
+presence is recorded; a [manual read-only checker](fixes/v1-batch-8/LEGACY_CREDENTIAL_REMEDIATION.md#prepared-manual-render-shell-key-check)
+passes 59/59 local checks and TypeScript/Node/Bash validation. Production execution
+and compatibility are not yet proven. Restore/key-custody and Batch 1 acceptance
+remain OPEN. No app/runtime/production data change occurred.
+
+**October 29 recovery verification:** [The existing October 21 backup](fixes/v1-batch-8/LEGACY_CREDENTIAL_REMEDIATION.md#october-29-key-and-backup-verification)
+passes fresh protection, full authentication and current-profile backup-key
+recovery checks. This is not a current backup/restore or deployed application-key
+check. Render access remains unconnected; production credentials and runtime are
+unchanged. Fresh recovery, key compatibility and Batch 1 acceptance remain OPEN.
+Subsequent user screenshots show three-day PITR and a successful October 29
+3:05 PM export; the user confirmed its Database name matches `mf_db_pjsn`.
+Restore and key checks remain unverified. No migration occurred.
+
+**October 29 credential-maintenance preparation:** [Local rehearsal](fixes/v1-batch-8/LEGACY_CREDENTIAL_REMEDIATION.md#october-29-local-maintenance-rehearsal)
+passes 59/59 targeted checks and strict TypeScript validation, including exact
+synthetic credential round-trips and transaction/concurrency failure cases.
+Production was not accessed or changed. This advances V1-008/V1-088 preparation;
+production key/recovery verification and execution remain OPEN. Whole-app **NO-GO** remains.
+
+**October 29 security review (read-only):** [Current credential inventory](fixes/v1-batch-8/LEGACY_CREDENTIAL_REMEDIATION.md#october-29-expanded-credential-review)
+confirms the same 223 legacy plaintext candidates; [production sign-in evidence](fixes/v1-batch-8/CLERK_PRODUCTION_SETUP.md#october-29-current-evidence-and-cutover-dependencies)
+confirms Clerk test mode, five anonymous access denials and explicit owner/origin
+cutover dependencies. No runtime or production settings/data changed. These gates
+remain OPEN; whole-app **NO-GO** remains. Separately, [hosted CI evidence](fixes/v1-batch-8/validation-2026-10-29-ci-repair/hosted-validation.json)
+confirms the regression repair passed on `cf982599` (6,703/6,703 and 52/52 retained
+deferred checks); that closes the V1-012 regression gate only.
+
 **October 29 regression-gate repair:** [Current test-only correction and failure inventory](fixes/v1-batch-8/CI_REGRESSION_REPAIR_2026-10-29.md) resolves the 27 failures on `d2fba530`: **6,703/6,703** full local checks, **357/357** targeted checks, TypeScript and the CI certification command pass. No tests are waived and application runtime is unchanged. Hosted acceptance is the `Tests` check on the repair commit; deployment is skipped. This supersedes earlier green-suite evidence for V1-012 only when that hosted check passes. All other production/provider/operational acceptance gates remain OPEN; whole-app **NO-GO** remains.
 
 **October 27 Batches 1–5 reconciliation:** [Current consolidated checkpoint](fixes/v1-batch-8/BATCHES_1_TO_5_CHECKPOINT.md) accounts for all **74 original fixes**, **6,548/6,548** current local regression checks, deployed `49202eaf`, and enforced read-only data evidence. One outdated scheduler test assertion is corrected; application runtime is unchanged. Production Clerk remains in test mode; real identity/provider, historical and operational acceptance remain explicitly OPEN. Earlier dated failures and deployment states are historical. This is not whole-app certification or a new audit queue.
@@ -104,11 +234,11 @@ Each finding has one detailed home in its assigned batch. Cross-batch consumers 
 
 ## Fix counts and progress tracking
 
-**130 findings: 119 unresolved V1 release items, 10 deferred-provider functional items, 1 closed for release.** Severity remains 7 P0, 115 P1 and 8 P2; all ten exclusively deferred findings are P1. Findings include code corrections and required verification; they are not 130 independent code patches. The original 182 local failures and October 22 intermediate counts remain historical evidence; V1-012 is now closed by the reconciled, complete hosted passing run on `997f1c39`. Test counts are not additional independent code fixes.
+**130 findings: 112 unresolved V1 release items, 10 deferred-provider functional items, 8 closed for release.** V1-002, V1-003, V1-004, V1-005, V1-012, V1-027, V1-053 and V1-063 are closed. Severity remains 7 P0, 115 P1 and 8 P2; all ten exclusively deferred findings are P1. Findings include code corrections and required verification; they are not 130 independent code patches. The original 182 local failures and October 22 intermediate counts remain historical evidence; V1-012 is closed by the reconciled, complete hosted passing run on `997f1c39`. Test counts are not additional independent code fixes.
 
 | Batch | Area / detailed record | Unresolved V1 | Deferred | Implementation / acceptance |
 |---|---|---:|---:|---|
-| B1 | [Authorization, ingestion and credential exposure](fixes/v1-batch-1/README.md) | 20 | 0 | Implemented, locally checked and deployed; release acceptance OPEN |
+| B1 | [Authorization, ingestion and credential exposure](fixes/v1-batch-1/README.md) | 13 | 0 | Implemented, locally checked and deployed; V1-002/003/004/005/027/053/063 CLOSED; remaining acceptance consolidated in three packages |
 | B2 | [Startup, migrations and account/campaign lifecycle](fixes/v1-batch-2/README.md) | 14 | 0 | Implemented, locally checked and deployed; release acceptance OPEN |
 | B3 | [Native GA4 query and financial contracts](fixes/v1-batch-3/README.md) | 10 | 0 | All ten corrections verified locally; deployed in `ff3c5115`; public deployment checks pass; release acceptance OPEN |
 | B4 | [Files, Sheets and Custom Integration](fixes/v1-batch-4/README.md) | 24 | 0 | All 24 corrections verified locally; final V1-069 correction committed in `dc33df48` on `62ec590b`; required deployment/provider/lifecycle/downstream acceptance OPEN |
@@ -116,7 +246,21 @@ Each finding has one detailed home in its assigned batch. Cross-batch consumers 
 | B6 | [Deferred-source isolation and included Ads](fixes/v1-batch-6/README.md) | 9 | 10 | In progress; isolation and selected Google Ads value paths locally corrected; remaining inventory and release acceptance OPEN |
 | B7 | [Diagnostics, goals, retained pages, alerts and reports](fixes/v1-batch-7/README.md) | 29 | 0 | Twenty-six findings have local forward-path evidence, one user-approved Dashboard exclusion, and two report findings retain explicit acceptance/coverage gates; current bounded report close-out passes locally; full release acceptance OPEN |
 | B8 | [Release checks and deployed operational acceptance](fixes/v1-batch-8/README.md) | 7 | 0 | V1-012 automated validation CLOSED; active-campaign natural refresh passes; broader operational/release acceptance OPEN |
-| **Total** | | **119** | **10** | **1 closed for release** |
+| **Total** | | **112** | **10** | **8 closed for release** |
+
+**Execution order, October 30:** complete the remaining Batch 1 account/session,
+write-boundary, inbound/provider and credential checks first. Reuse each result
+in its dependent batch; do not repeat completed Promo or cleanup checks. Then
+complete the missing client/campaign/source journeys and value reconciliation
+for Batches 2–5, included Google Ads and deferred-source isolation for Batch 6,
+and goals/notifications/report/PDF/scheduled-delivery acceptance for Batch 7.
+Batch 8 consumes those results and completes monitoring, capacity, dependency,
+recovery/rollback and final candidate checks. Production Clerk setup and Google
+Ads live sign-off remain previously postponed external requirements; they are
+not silently waived or changed. Read-only checks may proceed while those wait.
+The user chose grouped manual account checks and declined a separate agent-operated
+test browser. Give full URLs, expected results and a single grouped response;
+do not request passwords/tokens or access the user's personal browser.
 
 **Batch 3 code corrections are complete and VERIFIED LOCALLY within their documented scope.** Six earlier corrections are deployed; the final four address durable external-source recovery, cancellation/late writes, shared-property concurrency and provider-quality metadata. The latest changes are live in `ff3c5115` with public readiness/access checks passed. The [October 23 Ptomo UI freshness follow-up passes](fixes/v1-batch-3/README.md#ptomo-afternoon-refresh-october-23): GA4 14:08 and financial figures 14:09, both through October 22. Exact scheduler/process attribution, provider reconciliation and full authenticated/downstream acceptance remain open. See the [Batch 3 completion checkpoint](fixes/v1-batch-3/README.md#completion-checkpoint-october-22). All ten Batch 3 release acceptances remain open. Batch 4 implementation fixes are locally verified and deployed with release acceptance OPEN; Batch 5 is implemented/deployed with acceptance open; Batches 6-7 are still queued, and Batch 8 retains the whole-app release checks. Batch 1/2 and Ptomo freshness evidence retains its existing boundaries; no repeat morning-refresh wait is required.
 

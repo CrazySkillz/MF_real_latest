@@ -1,0 +1,105 @@
+{
+  "at": "2026-10-31T09:23:37.012Z",
+  "result": "PASS",
+  "checks": [
+    "Seeding rollback then exact draft-only seed",
+    "Real Reports component displays the exact paused owner card",
+    "Completed owner pass makes no duplicate requests",
+    "Foreign actual report hidden, edits and both transfer parents denied",
+    "Complete cleanup rehearsal rolls back",
+    "Activated campaign blocks cleanup",
+    "Unexpected dependent blocks cleanup",
+    "Exact seven-row cleanup preserves clients"
+  ],
+  "manualChecks": [
+    {
+      "check": "a exact owned draft",
+      "passed": true
+    },
+    {
+      "check": "b exact owned draft",
+      "passed": true
+    },
+    {
+      "check": "LinkedIn valid edit preserves IDs",
+      "passed": true
+    },
+    {
+      "check": "Meta KPI valid edit preserves IDs",
+      "passed": true
+    },
+    {
+      "check": "Meta Benchmark valid edit preserves IDs",
+      "passed": true
+    },
+    {
+      "check": "foreign or magic transfer parent denied",
+      "passed": true
+    },
+    {
+      "check": "foreign or magic transfer parent denied",
+      "passed": true
+    },
+    {
+      "check": "foreign or magic transfer parent denied",
+      "passed": true
+    },
+    {
+      "check": "foreign or magic transfer parent denied",
+      "passed": true
+    },
+    {
+      "check": "owned draft transfer accepted",
+      "passed": true
+    },
+    {
+      "check": "actual owner Reports page displays exact fixture",
+      "passed": true
+    },
+    {
+      "check": "original account exact owned draft",
+      "passed": true
+    },
+    {
+      "check": "actual foreign Reports page hides fixture",
+      "passed": true
+    },
+    {
+      "check": "foreign LinkedIn edit denied",
+      "passed": true
+    },
+    {
+      "check": "foreign Meta KPI edit denied",
+      "passed": true
+    },
+    {
+      "check": "foreign Meta Benchmark edit denied",
+      "passed": true
+    },
+    {
+      "check": "foreign transfer denied",
+      "passed": true
+    },
+    {
+      "check": "foreign transfer denied",
+      "passed": true
+    },
+    {
+      "check": "foreign transfer denied",
+      "passed": true
+    },
+    {
+      "check": "exact paused report cleanup",
+      "passed": true
+    }
+  ],
+  "pageErrors": [],
+  "externalRequests": 0,
+  "productionConnections": 0,
+  "sourceHashes": {
+    "fixture.cjs": "a460c629cf2365bb5b42f225eb3777bf95c3a49f03cc49c05b05c0fcd7507879",
+    "manual-template.js": "fbe66222b797bc7ff6c9ec26ac1da93f6fdcb50c2b72173bb632ca7905afe840",
+    "rehearse.cjs": "532b5bf83ca1bccb0cc76601ed0b6366f88f7a08a7a70e25aed5a38275a59fe0"
+  },
+  "limits": "Synthetic Clerk identity and routed API transport. Current actual handlers/storage, isolated PostgreSQL and real Reports component. Production manual acceptance remains required."
+}

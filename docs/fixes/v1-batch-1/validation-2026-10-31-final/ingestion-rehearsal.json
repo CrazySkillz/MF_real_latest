@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-31T10:20:20.789Z",
+  "result": "PASS",
+  "checks": [
+    "Seed rehearsal rolls back all three rows",
+    "Exact partial cleanup is available before any webhook",
+    "Zero conversion stored once; identical retry and downstream zero average/count/total verified",
+    "Conversion rejects wrong token",
+    "Conversion rejects no token",
+    "Conversion rejects currency",
+    "Conversion rejects future",
+    "Conversion rejects non-finite",
+    "Conversion rejects different retry",
+    "Actual CSV parser, normalization, storage and latest consumer preserve four zero metrics",
+    "Content-type CSV without extension reaches the same scoped snapshot call",
+    "Invalid CSV, non-HTTPS, unsupported port and wrong token publish no rows",
+    "Complete six-row cleanup rehearsal rolls back",
+    "Wrong owner or token blocks cleanup",
+    "Any nonzero campaign figure blocks cleanup",
+    "Unplanned child blocks cleanup",
+    "Late-delete fault restores all six rows",
+    "Exact cleanup preserves unrelated client/campaign/connection",
+    "Fresh read confirms all temporary rows removed"
+  ],
+  "productionConnections": 0,
+  "externalRequests": 0,
+  "sourceHashes": {
+    "ingestion-fixture.cjs": "bd01b549777d0d3561e57fdebab3d4a1ec54ee221da65fc95205efb335544d4a",
+    "rehearse-ingestion.cjs": "81ce830a30f06c361e139b6b9c7741bce6e23d0e717ea911fe7609e3126b7a6d"
+  },
+  "limits": "Actual current route/storage/CSV parser; authenticated actor stub only for absent-token denial, middleware transport and live downloader not exercised here. Scheduler call recorded, aggregate execution not started."
+}

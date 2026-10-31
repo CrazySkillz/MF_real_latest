@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-30T11:01:34.309Z",
+  "result": "PASS",
+  "status": 200,
+  "healthy": true,
+  "commit": "d2fba5300e68763ce5391133db967ef4c59dc465",
+  "nodeEnv": "production",
+  "boundary": "Public application health only; not a signed-in/provider journey."
+}

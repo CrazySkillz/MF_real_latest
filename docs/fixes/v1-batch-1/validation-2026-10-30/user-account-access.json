@@ -1,0 +1,110 @@
+{
+  "recordedAt": "2026-10-30T11:26:51Z",
+  "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+  "batch1Status": "OPEN",
+  "checks": [
+    {
+      "method": "GET",
+      "route": "/api/campaigns/:id",
+      "origin": "https://marketforensics.onrender.com",
+      "target": "Promo",
+      "targetIdSha256": "b85505d40a0a14398f36838d19d8d51e47037d32837d5a16464f4f1fc3601710",
+      "accountContext": "User instructed to sign out of Promo's owner account and sign in with a different account in the same browser; user supplied the resulting body.",
+      "observedBody": {
+        "success": false,
+        "message": "Campaign not found"
+      },
+      "result": "EXPECTED_DENIAL_REPORTED",
+      "httpStatusIndependentlyObserved": false,
+      "sessionIdentityIndependentlyObserved": false,
+      "dataMutationsRequested": false
+    },
+    {
+      "method": "GET",
+      "route": "/api/campaigns/:id",
+      "origin": "https://marketforensics.onrender.com",
+      "target": "Promo",
+      "targetIdSha256": "b85505d40a0a14398f36838d19d8d51e47037d32837d5a16464f4f1fc3601710",
+      "accountContext": "User instructed to sign back into the original account; user supplied the resulting campaign JSON.",
+      "observedFields": {
+        "name": "Promo",
+        "status": "active",
+        "ownerIdSha256": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60",
+        "clientIdSha256": "6be34241134ff8ec9ad98fe9f82f37cd705e11fc7bb0275de430a573b1de697c"
+      },
+      "result": "EXPECTED_OWNER_SUCCESS_REPORTED",
+      "matchesPreviouslyVerifiedRetainedIdentifiers": true,
+      "httpStatusIndependentlyObserved": false,
+      "sessionIdentityIndependentlyObserved": false,
+      "dataMutationsRequested": false
+    },
+    {
+      "evidenceType": "DIRECT_PUBLIC_HTTP_CHECK",
+      "at": "2026-10-30T11:33:37.811Z",
+      "method": "GET",
+      "route": "/api/campaigns/:id",
+      "origin": "https://marketforensics.onrender.com",
+      "target": "Promo",
+      "targetIdSha256": "b85505d40a0a14398f36838d19d8d51e47037d32837d5a16464f4f1fc3601710",
+      "accountContext": "Node fetch with no cookies or authorization headers; no user browser or session accessed.",
+      "httpStatus": 401,
+      "observedBody": {
+        "success": false,
+        "message": "Your session expired. Please refresh and try again."
+      },
+      "result": "EXPECTED_UNAUTHENTICATED_DENIAL_OBSERVED",
+      "dataMutationsRequested": false
+    }
+  ],
+  "pending": [
+    "Other retained route/global API ownership checks",
+    "UI cache isolation on other surfaces and late responses after sign-out/account switch"
+  ],
+  "uiObservations": [
+    {
+      "recordedAt": "2026-10-30T11:36:31Z",
+      "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+      "accountContext": "Second account after switching from Promo's owner account",
+      "observation": "No clients were displayed, so no Promo campaign was displayed through the client-linked campaign journey.",
+      "result": "NO_ORIGINAL_ACCOUNT_CLIENT_OR_PROMO_VISIBLE_REPORTED",
+      "boundary": "Ordinary client-list observation only. Does not independently establish the second account's database contents or absence of delayed responses on other surfaces. The separately recorded direct-link check establishes the reported Promo read denial."
+    }
+  ],
+  "boundary": "The exact Promo campaign-read route has user-reported owner success and foreign-account denial, plus directly observed unauthenticated denial. The second account's client list displayed no clients or Promo, per user report. Does not close V1-002, V1-003, V1-052 or Batch 1, and does not certify other routes, all UI cache/late-response behavior or production Clerk configuration. Four additional list endpoints have user-reported owner success and foreign-owner denial; their contents and HTTP statuses were not collected.",
+  "updatedAt": "2026-10-30T11:56:25Z",
+  "manualListGroup": {
+    "recordedAt": "2026-10-30T11:56:25Z",
+    "evidenceType": "USER_REPORTED_MANUAL_CHECK",
+    "userConfirmation": "yes",
+    "promptConfirmed": "Original account displayed lists; second account displayed the four expected access errors.",
+    "checks": [
+      {
+        "route": "/api/campaigns?clientId=:retainedClientId",
+        "ownerResult": "LIST_REPORTED",
+        "foreignMessage": "Client not found"
+      },
+      {
+        "route": "/api/campaigns/:promoId/kpis",
+        "scope": "Campaign-level KPIs",
+        "ownerResult": "LIST_REPORTED",
+        "foreignMessage": "Campaign not found"
+      },
+      {
+        "route": "/api/campaigns/:promoId/benchmarks",
+        "scope": "Campaign-level Benchmarks",
+        "ownerResult": "LIST_REPORTED",
+        "foreignMessage": "Campaign not found"
+      },
+      {
+        "route": "/api/platforms/google_analytics/reports?campaignId=:promoId",
+        "ownerResult": "LIST_REPORTED",
+        "foreignMessage": "Campaign not found"
+      }
+    ],
+    "result": "EXPECTED_OWNER_AND_FOREIGN_RESULTS_REPORTED",
+    "httpStatusesIndependentlyObserved": false,
+    "rawListContentsCollected": false,
+    "dataMutationsRequested": false,
+    "boundary": "Four read-only list endpoints, allowing legitimate empty owner lists; does not certify list values, mutations, individual child/report artifacts, provider permissions, or delayed UI responses."
+  }
+}

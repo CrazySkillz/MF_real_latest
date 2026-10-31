@@ -1,0 +1,381 @@
+{
+  "at": "2026-10-31T05:02:56.784Z",
+  "result": "PASS",
+  "boundary": "Current extracted API handlers and storage bodies against isolated PostgreSQL; synthetic identity and browser storage. Actual Reports storage reader/visible-list access filter accepts the new fixture only with matching access. Quota headers simulated from current limiter configuration/skip functions; live Clerk, middleware transport, full rendered Reports, process restart and production acceptance remain separate.",
+  "apiChecks": 81,
+  "checks": [
+    {
+      "check": "expected disposable campaign owner",
+      "passed": true
+    },
+    {
+      "check": "metric owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "performance owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "integration owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "integration credentials redacted",
+      "passed": true
+    },
+    {
+      "check": "model owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "journey owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "metric create",
+      "passed": true
+    },
+    {
+      "check": "metric saved scope",
+      "passed": true
+    },
+    {
+      "check": "performance create",
+      "passed": true
+    },
+    {
+      "check": "performance saved scope",
+      "passed": true
+    },
+    {
+      "check": "integration create",
+      "passed": true
+    },
+    {
+      "check": "integration saved scope",
+      "passed": true
+    },
+    {
+      "check": "model create",
+      "passed": true
+    },
+    {
+      "check": "model saved scope",
+      "passed": true
+    },
+    {
+      "check": "journey create",
+      "passed": true
+    },
+    {
+      "check": "journey saved scope",
+      "passed": true
+    },
+    {
+      "check": "touchpoint create",
+      "passed": true
+    },
+    {
+      "check": "touchpoint saved scope",
+      "passed": true
+    },
+    {
+      "check": "detached zero-value attribution",
+      "passed": true
+    },
+    {
+      "check": "owned model edit preserves identity",
+      "passed": true
+    },
+    {
+      "check": "owned journey edit preserves identity",
+      "passed": true
+    },
+    {
+      "check": "metric owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "metric positive persisted read",
+      "passed": true
+    },
+    {
+      "check": "performance owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "performance positive persisted read",
+      "passed": true
+    },
+    {
+      "check": "integration owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "integration credentials redacted",
+      "passed": true
+    },
+    {
+      "check": "integration positive persisted read",
+      "passed": true
+    },
+    {
+      "check": "model owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "model positive persisted read",
+      "passed": true
+    },
+    {
+      "check": "journey owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "journey positive persisted read",
+      "passed": true
+    },
+    {
+      "check": "foreign Trends denied",
+      "passed": true
+    },
+    {
+      "check": "metric owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "metric actual foreign row hidden",
+      "passed": true
+    },
+    {
+      "check": "performance owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "performance actual foreign row hidden",
+      "passed": true
+    },
+    {
+      "check": "integration owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "integration credentials redacted",
+      "passed": true
+    },
+    {
+      "check": "integration actual foreign row hidden",
+      "passed": true
+    },
+    {
+      "check": "model owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "model actual foreign row hidden",
+      "passed": true
+    },
+    {
+      "check": "journey owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "journey actual foreign row hidden",
+      "passed": true
+    },
+    {
+      "check": "foreign journey read denied",
+      "passed": true
+    },
+    {
+      "check": "foreign touchpoints read denied",
+      "passed": true
+    },
+    {
+      "check": "foreign model edit denied",
+      "passed": true
+    },
+    {
+      "check": "foreign journey edit denied",
+      "passed": true
+    },
+    {
+      "check": "foreign touchpoint insert denied",
+      "passed": true
+    },
+    {
+      "check": "foreign attribution calculate denied",
+      "passed": true
+    },
+    {
+      "check": "foreign model deletion denied",
+      "passed": true
+    },
+    {
+      "check": "Promo Trends preflight",
+      "passed": true
+    },
+    {
+      "check": "owned Trends reaches no-keywords branch",
+      "passed": true
+    },
+    {
+      "check": "OAuth invalid input rejected",
+      "passed": true
+    },
+    {
+      "check": "OAuth test flag still counted",
+      "passed": true
+    },
+    {
+      "check": "OAuth invalid input rejected",
+      "passed": true
+    },
+    {
+      "check": "OAuth ordinary still counted",
+      "passed": true
+    },
+    {
+      "check": "LinkedIn invalid input rejected",
+      "passed": true
+    },
+    {
+      "check": "LinkedIn test flag still counted",
+      "passed": true
+    },
+    {
+      "check": "LinkedIn invalid input rejected",
+      "passed": true
+    },
+    {
+      "check": "LinkedIn ordinary still counted",
+      "passed": true
+    },
+    {
+      "check": "Import invalid input rejected",
+      "passed": true
+    },
+    {
+      "check": "Import test flag still counted",
+      "passed": true
+    },
+    {
+      "check": "Import invalid input rejected",
+      "passed": true
+    },
+    {
+      "check": "Import ordinary still counted",
+      "passed": true
+    },
+    {
+      "check": "metric owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "metric persists after account switch",
+      "passed": true
+    },
+    {
+      "check": "performance owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "performance persists after account switch",
+      "passed": true
+    },
+    {
+      "check": "integration owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "integration credentials redacted",
+      "passed": true
+    },
+    {
+      "check": "integration persists after account switch",
+      "passed": true
+    },
+    {
+      "check": "model owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "model persists after account switch",
+      "passed": true
+    },
+    {
+      "check": "foreign edit did not change model",
+      "passed": true
+    },
+    {
+      "check": "journey owner-scoped collection",
+      "passed": true
+    },
+    {
+      "check": "journey persists after account switch",
+      "passed": true
+    },
+    {
+      "check": "foreign edit did not change journey",
+      "passed": true
+    },
+    {
+      "check": "foreign insert did not add touchpoint",
+      "passed": true
+    },
+    {
+      "check": "only exact browser fixture removed",
+      "passed": true
+    }
+  ],
+  "cleanupChecks": [
+    {
+      "name": "wrong owner fails without deletion",
+      "result": "PASS"
+    },
+    {
+      "name": "incomplete phase fails",
+      "result": "PASS"
+    },
+    {
+      "name": "pre-existing record protected",
+      "result": "PASS"
+    },
+    {
+      "name": "changed run marker rejected",
+      "result": "PASS"
+    },
+    {
+      "name": "changed fixture fails with rollback",
+      "result": "PASS"
+    },
+    {
+      "name": "unexpected child prevents broadened cleanup",
+      "result": "PASS"
+    },
+    {
+      "name": "last-delete failure rolls back all prior deletions",
+      "result": "PASS"
+    },
+    {
+      "name": "full cleanup rehearsal rolls back",
+      "result": "PASS"
+    },
+    {
+      "name": "exact seven-row cleanup preserves all outside records",
+      "result": "PASS"
+    }
+  ],
+  "requests": 54,
+  "wrongOriginAndAccountRequests": 0,
+  "browserCacheOtherEntriesUnchanged": true,
+  "reportVisibilityChecks": 3,
+  "lostCreateResponseStopsRetry": true,
+  "providerCalls": 0,
+  "productionConnections": 0,
+  "sourceHashes": {
+    "manual-account-bundle.js": "98661ede5fe35def6866b6360239ac3c25997a0aeb3a12b9a8507378a49ec8bd",
+    "account-fixture-cleanup.cjs": "e9a7fdd3abfb5d78690891573d049c2325c4fb14683ea5e3fa10722dd010de48"
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "at": "2026-10-31T10:25:49.879Z",
+  "databaseWritesAttempted": false,
+  "secretValuesReturned": false,
+  "conversionSummary": {
+    "total": 1,
+    "missing_campaign": 1,
+    "linked_currency_mismatches": 0
+  },
+  "orphanEvents": [
+    {
+      "id": "14f133dc-e5c0-49df-9f16-10d786bd0092",
+      "campaign_id": "9f907458-0c1f-461a-ae34-f0a5a85a9798",
+      "currency": "USD",
+      "received_at": "2025-12-06T12:26:48.214Z"
+    }
+  ],
+  "connectorSpend": {
+    "total": 0,
+    "missing_campaign": 0
+  },
+  "retainedLegacyTables": {
+    "meta_kpis": false,
+    "meta_benchmarks": false
+  },
+  "connectionMetadata": [
+    {
+      "table": "ga4_connections",
+      "rows": [
+        {
+          "id": "8403cf40-7c56-4a9b-8f30-9ce3dbfd76ad",
+          "created_at": "2026-10-30T19:56:00.305Z",
+          "expires_at": "2026-10-31T08:35:24.773Z",
+          "method": "access_token",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "google_sheets_connections",
+      "rows": [
+        {
+          "id": "ea5804fc-9cd7-4445-8806-d9f70528fceb",
+          "created_at": "2026-10-30T22:40:45.810Z",
+          "expires_at": "2026-10-31T10:25:20.917Z",
+          "method": "access_token",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "hubspot_connections",
+      "rows": [
+        {
+          "id": "053927ed-77e4-4b7c-ad61-b6c39ecd4374",
+          "created_at": "2026-10-30T20:08:06.958Z",
+          "expires_at": "2026-10-31T06:37:29.665Z",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "salesforce_connections",
+      "rows": [
+        {
+          "id": "5a41a38b-f057-40ef-89d1-b84259064dd9",
+          "created_at": "2026-10-30T20:49:39.414Z",
+          "expires_at": "2026-10-31T08:07:42.413Z",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    },
+    {
+      "table": "shopify_connections",
+      "rows": [
+        {
+          "id": "62cf9267-2348-46f2-aae0-ddf7ec021081",
+          "created_at": "2026-10-30T21:44:05.196Z",
+          "is_active": true,
+          "encrypted_container_present": true,
+          "legacy_plaintext_present": false
+        }
+      ]
+    }
+  ],
+  "fixtureAbsent": {
+    "clients": true,
+    "campaigns": true,
+    "custom_integrations": true,
+    "conversion_events": true,
+    "custom_integration_metrics": true,
+    "metric_snapshots": true
+  },
+  "result": "PASS_READ_ONLY_INVENTORY",
+  "limits": "No historical row repaired/deleted/reassigned. Expiry/container metadata is not decryption or provider-acceptance proof; empty legacy tables do not certify deferred provider functionality."
+}

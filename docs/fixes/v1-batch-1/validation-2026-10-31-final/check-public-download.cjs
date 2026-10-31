@@ -1,0 +1,6 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict'),path=require('node:path');
+const fixture=require('./ingestion-fixture.cjs'),exportsObject={};
+const compiled=ts.transpileModule(fs.readFileSync('server/services/custom-integration-file-parser.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+new Function('exports','require',compiled)(exportsObject,name=>['../utils/csv','./pdf-parser'].includes(name)?{}:require(name));
+const started=Date.now(),receipt={at:new Date().toISOString(),productionConnections:0,syntheticBytes:Buffer.byteLength(fixture.csv)};
+(async()=>{const d=await exportsObject.downloadCustomIntegrationReport(fixture.remote.href);assert.equal(d.buffer.toString(),fixture.csv);assert.ok(d.contentType.includes('text/csv'));receipt.result='PASS_ACTUAL_DOWNLOADER';receipt.contentType=d.contentType;receipt.fileName=d.fileName;})().catch(e=>{receipt.result='NOT_VERIFIED';receipt.error=e.message;process.exitCode=1}).finally(()=>{receipt.durationMs=Date.now()-started;fs.writeFileSync(path.join(__dirname,'actual-public-downloader.json'),JSON.stringify(receipt,null,2)+'\n');console.log(JSON.stringify(receipt));});

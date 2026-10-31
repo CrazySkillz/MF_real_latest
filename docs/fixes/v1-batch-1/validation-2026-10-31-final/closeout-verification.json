@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-31T10:39:17.548Z",
+  "result": "PASS_INGESTION_CLOSEOUT",
+  "runtime": "3c304f9723a65e8d9ee8650c74eacf7e03b63d34",
+  "hostedWorkflow": 41192512174,
+  "hostedConclusion": "success",
+  "focusedTests": 37,
+  "isolatedChecks": 19,
+  "liveChecks": {
+    "original": 7,
+    "correctedEgress": 3,
+    "finalConversion": 6
+  },
+  "allFixtureRowsAbsent": true,
+  "protectedCampaignIdentitiesPreserved": true,
+  "newlyClosed": [
+    "V1-001",
+    "V1-026"
+  ],
+  "batch1": {
+    "closed": 10,
+    "open": 10
+  },
+  "openIds": [
+    "V1-006",
+    "V1-008",
+    "V1-030",
+    "V1-052",
+    "V1-054",
+    "V1-057",
+    "V1-075",
+    "V1-078",
+    "V1-088",
+    "V1-123"
+  ],
+  "totals": {
+    "OPEN": 109,
+    "DEFERRED": 10,
+    "CLOSED": 11
+  },
+  "sourceHashes": {
+    "server/index.ts": "dcd548d3486c97a9151bb388828b1716a1da400a703619d0ef1fb5930f5555da",
+    "server/db.ts": "42a5851103fcfe6b8249d20c8a16f7d673d1538eda3eb5d99d6a5e432adebbe9",
+    "server/utils/tokenVault.ts": "ffd53cd965ca441262fbf27cf9c45479e546a3038ea80581230ceb731fab0cfc"
+  },
+  "localLinksChecked": 36,
+  "limits": "Original conversion/file-ingestion findings only. Retained orphan is unassigned; no historical repair, whole-source analytics, private log inspection, provider revocation or independent-machine recovery is inferred."
+}

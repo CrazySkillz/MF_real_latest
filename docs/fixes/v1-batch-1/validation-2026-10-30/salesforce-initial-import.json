@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-30T22:02:46.841Z",
+  "result": "PASS_BOUNDED_INITIAL_IMPORT",
+  "readOnlyReceipt": "disposable-scope-2026-10-30T22-02-13-503Z.json",
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "connectionId": "5a41a38b-f057-40ef-89d1-b84259064dd9",
+  "sourceId": "2be847ea-4842-43cb-a024-50d861272fc8",
+  "selectedOpportunity": "Acme Expansion",
+  "stage": "Prospecting",
+  "userReportedPreview": {
+    "confirmedRevenue": 0,
+    "pipelineProxy": 51,
+    "currency": "EUR"
+  },
+  "userReportedOverview": {
+    "expectedRevenue": 3251,
+    "sourceAmounts": {
+      "hubspot": 3200,
+      "salesforce": 51
+    },
+    "currency": "EUR"
+  },
+  "persisted": {
+    "confirmedRevenue": 0,
+    "pipelineProxy": 51,
+    "currency": "EUR",
+    "activeSalesforceSources": 1,
+    "legacyCredentialColumnsEmpty": true
+  },
+  "adjacentChecks": {
+    "hubspotSourceAndValuesUnchanged": true,
+    "hubspotConfirmedRecordsUnchanged": true,
+    "ga4DailyCoverageAndSnapshotWindowUnchanged": true
+  },
+  "boundary": "User-reported Salesforce navigation, preview, import and combined Pipeline source display reconciled to exact scoped persisted data. No independent provider amount check, full GA4 metric comparison, renewal, revocation, deletion, transfer, scheduler publication or whole Batch 1 certification is inferred."
+}

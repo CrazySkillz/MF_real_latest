@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-31T09:52:18.795Z",
+  "result": "PASS_SOURCE_CLOSEOUT_VERIFICATION",
+  "userChecks": 16,
+  "exactFixtureRowsAbsent": 5,
+  "protectedCampaignIdentitiesUnchanged": true,
+  "outsideRowsUnchangedWithinCleanup": true,
+  "batch1": {
+    "total": 20,
+    "closed": 8,
+    "open": 12
+  },
+  "totals": {
+    "OPEN": 111,
+    "DEFERRED": 10,
+    "CLOSED": 9
+  },
+  "newlyClosed": [
+    "V1-034"
+  ],
+  "reportsOwnerVisibility": "USER_SCRIPT_CONFIRMED",
+  "reportsForeignVisibility": "USER_SCRIPT_CONFIRMED_HIDDEN",
+  "localLinksChecked": 36,
+  "limits": "V1-052 and V1-054 remain open for documented separate acceptance; no provider renewal, analytics or whole-app readiness claim."
+}

@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-31T10:11:35.506Z",
+  "mode": "--preflight",
+  "result": "PASS_READ_ONLY_PREFLIGHT",
+  "checks": [],
+  "secretValuesEmitted": false,
+  "providerCredentialsUsed": false,
+  "existingCampaignWrites": false,
+  "runtime": "fa7792872539f1bd6fd75cf8174a49a9a55218ee",
+  "applicationHashes": {
+    "server/routes-oauth.ts": "689aacd001c1db3d3d32b673492bd8a534f5eb560ca7e6d587d4bd2b2439ea39",
+    "server/storage.ts": "b30793f4b931f8c5a562fd902ab6e7df5ca82fa04b649d9985e674f4a178aa76",
+    "server/services/custom-integration-file-parser.ts": "bd10647964292cdfa93a54ed8e1adb6227eb45d44b27033bc4e05f755043a25e",
+    "shared/schema.ts": "986b489bca21ef6c9994b4cdd5c0cfe45cfdaded156875606f94068b892e3225",
+    "server/scheduler.ts": "fc1f33147466c1a8d88afd926a65f71ed4878da87bbc08a5c9133cce60b36060"
+  },
+  "tls": {
+    "ssl": true,
+    "version": "TLSv1.3",
+    "bits": 256
+  },
+  "protectedCampaigns": [
+    {
+      "id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "name": "V1 Batch 5 Test",
+      "status": "active",
+      "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+      "currency": "EUR",
+      "ownerHash": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60"
+    },
+    {
+      "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+      "name": "Batch 1 Provider Check",
+      "status": "active",
+      "client_id": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+      "currency": "EUR",
+      "ownerHash": "1900b95d7361b41cd41b7a23571cb4645a1511a139d4044f04b9937ab86c6096"
+    },
+    {
+      "id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "name": "Promo",
+      "status": "active",
+      "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+      "currency": "EUR",
+      "ownerHash": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60"
+    }
+  ],
+  "targetFingerprint": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "externalSyntheticFileVerified": true,
+  "databaseWritesAttempted": false,
+  "limits": "CSV attachment and public HTTPS file URL, zero-value conversion and exact temporary scope only. No provider-account permission revocation, real email, process restart, historical repair, PDF/XLSX acceptance or independent recovery is inferred."
+}

@@ -1,6 +1,16 @@
 # Batch 1 acceptance status, October 30
 
-Batch 1 release acceptance remains **OPEN: 3 closed, 17 open**. All 20 original
+**October 31 reconciliation:** [The consolidated ledger](CONSOLIDATED_CLOSEOUT_2026-10-31.md)
+is now authoritative for remaining work. Batch 1 is **OPEN: 10 closed, 10 open**;
+V1-002/003/053 close after the combined live account checks and independently
+verified exact fixture cleanup. V1-034 closes after the subsequent live transfer
+packet and verified five-row cleanup. V1-027 is closed using configured callbacks and
+current rendering checks. [Live conversion/file acceptance](INGESTION_ACCEPTANCE_2026-10-31.md)
+closes V1-001/026 with exact cleanup and retained unassigned orphan disposition.
+Provider initial imports and the revenue-display fix are complete within
+their documented boundaries. The dated chronology below is retained.
+
+At this October 30 checkpoint, Batch 1 was **OPEN: 3 closed, 17 open**. All 20 original
 forward corrections are implemented. This record accounts for every finding;
 it does not turn local tests into live provider acceptance. The earlier full
 hosted run [41116916268](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41116916268)
@@ -81,7 +91,7 @@ Existing completed checks are carried forward; they are not being requested agai
 | V1-006 | Local owned persistence, deletion races and foreign-parent checks pass. All five current attribution tables are empty. User confirmed consolidated reads passed; deployed owned create/reload/restart remains unverified. No invisible attribution UI journey is invented. |
 | V1-008 | Explicit production-key/verified-TLS code and local negative tests pass; user-executed Render check decrypted all populated properly linked credentials. Key custody and same-machine protected restore are recorded. New direct DB connection uses verified TLS 1.3; this does not identify/inspect Render's process configuration. Historical incompatible ciphertext disposition and independent-machine recovery remain open. |
 | V1-026 | Local URL/DNS/redirect/size/deadline and current-parent controls pass. Supported token-authenticated file webhook still needs a valid deployed attachment/egress test; automatic email exclusion does not exclude this route. |
-| V1-027 | Real-browser synthetic callback encoding tests pass. The new second-account GA4 OAuth callback/property selection and initial import succeeded, with user confirmation and saved-state evidence below. Other configured providers' successful callbacks remain unverified. |
+| V1-027 | **CLOSED October 31.** Six current-code callback rendering checks and the completed configured Google/Sheets, HubSpot, Salesforce and Shopify callbacks meet this finding's remaining gate. [Scope and evidence](CONSOLIDATED_CLOSEOUT_2026-10-31.md#v1-027-closure); broader lifecycle gates remain separate. |
 | V1-030 | PostgreSQL whitelist save/reload/clear/omission/removed-sender controls pass. Supported generic whitelist path's deployed edit/sender acceptance remains open; no automatic email-import re-enablement is proposed. |
 | V1-034 | Temporary-ID bypass removed; both transfer parents guarded and Batch 4 tests retained. User completed owned GA4 draft creation through initial-import activation in the second account, independently observed below. Deployed transfer acceptance remains unverified. |
 | V1-052 | User-confirmed ordinary sign-out/Back/account switch; report-cache guard deployed; additional toast leak reproduced and locally corrected above. Complete deployed Reports/notification and retained persistent-state acceptance is not claimed. |
@@ -90,9 +100,9 @@ Existing completed checks are carried forward; they are not being requested agai
 | V1-057 | Forward bearer/body/provider-error logging corrections and synthetic marker tests pass. Historical hosting/provider log access/retention and any necessary narrowly scoped rotation remain unverified. Removing old database plaintext does not erase historical logs. |
 | V1-063 | **CLOSED.** Both production mock-write endpoints deny access; deferred provider features remain deferred. |
 | V1-075 | Both spend aliases enforce owner/currency/dated records with atomic storage. Current inventory finds no `connector_derived` sources. Previously inventoried orphan spend rows remain excluded by the traced active-source financial joins. Their full historical/downstream disposition and owned deployed route acceptance remain open. |
-| V1-078 | Purpose-specific configured/missing/tampered/expired signing tests pass. The configured GA4 callback completed under the second app account and its property/import persisted. Other configured real callback/session acceptance remains open; postponed provider functions are not silently included or waived. |
+| V1-078 | Purpose-specific configured/missing/tampered/expired signing tests pass. Configured real GA4/Sheets, HubSpot, Salesforce and Shopify callback success is complete. Session/replay/denial acceptance remains open; postponed provider functions are not silently included or waived. |
 | V1-088 | Ten PostgreSQL stale-migration/renewal interleavings pass. Exact approved 223 plaintext rows cleared and independently verified. Live renewal/reconnect and remaining historical ciphertext disposition remain open. |
-| V1-123 | Exact resource grants enforced in connect/storage/hydration; reviewed Promo grant and earlier scheduled continuity evidence retained. Actual Google consent/property selection and a 30-day import succeeded on the new second-account campaign. Sheets consent and deployed resource denial/revocation across workers remain unverified. Do not revoke Promo's working grant or shared Google account access as a test. |
+| V1-123 | Exact resource grants enforced in connect/storage/hydration; reviewed Promo grant and earlier scheduled continuity evidence retained. Actual GA4 AND Sheets consent/import succeeded on the new second-account campaign. Deployed resource denial/revocation across workers remains unverified. Do not revoke Promo's working grant or shared Google account access as a test. |
 
 ## Current read-only database evidence
 
@@ -184,14 +194,61 @@ consistent campaign/client ownership. Inventory script:
    suite, certification step and retained deferred-source step. The user then
    reported reaching HubSpot's Source mode choice from the chooser. This is
    bounded navigation confirmation, not a complete provider-lifecycle result.
-   The next manual check selects Deal Name and reads the available open stages.
-   HubSpot deal selection/import,
-   renewal/revocation and other provider lifecycle gates remain open.
+   The subsequent [initial HubSpot import check](validation-2026-10-30/hubspot-initial-import.json)
+   passed for Deal Name `yesop_prospecting`, stage `Contract Sent`, Amount and
+   Close Date: the user reported preview Revenue EUR 0 / Pipeline EUR 3,200 and
+   Overview Expected Revenue EUR 3,200. An enforced read-only database check
+   confirms exactly one active GA4/EUR source, matching persisted values, zero
+   normalized confirmed revenue, and an encrypted connection with no legacy
+   credential values. This closes that bounded positive import check only.
+   The user also confirmed Salesforce setup after authorization. The
+   [21:51 read-only observation](validation-2026-10-30/disposable-scope-2026-10-30T21-51-30-355Z.json)
+   shows one active encrypted Salesforce connection with empty legacy credential
+   columns and no mapping, while the exact HubSpot source and values remain.
+   The subsequent [Salesforce initial import](validation-2026-10-30/salesforce-initial-import.json)
+   also passed its bounded check: Opportunity Name `Acme Expansion`, stage
+   `Prospecting`, Amount and Close Date. The user reported preview Revenue EUR 0 /
+   Pipeline EUR 51, then Overview Expected Revenue EUR 3,251 with HubSpot EUR 3,200
+   and Salesforce EUR 51 in Sources. The [22:02 read-only observation](validation-2026-10-30/disposable-scope-2026-10-30T22-02-13-503Z.json)
+   independently confirms one active GA4/EUR Salesforce source with those values,
+   zero normalized confirmed revenue, and empty legacy credential columns. Exact
+   HubSpot source values/records and GA4 daily coverage/snapshot windows remain
+   unchanged; this is not a full metric comparison or independent provider audit.
+   The [Shopify initial import](validation-2026-10-30/shopify-initial-import.json)
+   passed for attribution key `tags`, value `campaign3_eur_test`, and current
+   total price: the user confirmed EUR 785.95 / one matched order in Preview,
+   the same amount in Revenue Sources after import, and Pipeline Proxy still
+   EUR 3,251. The [22:58 read-only observation](validation-2026-10-30/disposable-scope-2026-10-30T22-58-17-848Z.json)
+   confirms one active encrypted Shopify connection with no legacy access token,
+   one active GA4/EUR source and one normalized revenue record for EUR 785.95.
+   Both CRM sources/records and GA4 coverage/window metadata remain unchanged.
+   This does not independently certify provider order correctness, completed-day
+   headline totals, historical-order expiry, downstream formulas or reports.
+   Google Sheets subsequently reached the picker and mapping screen. The user
+   selected `B2B` / `Client_ROI_Summary`, `yesop_brand_search`, Revenue and Date,
+   with no GA4 campaign crosswalk. The user confirmed two additive rows: EUR
+   30,000 on January 2 and EUR 1,000 on January 3, 2026. The
+   [October 31 saved-import check](validation-2026-10-31/google-sheets-initial-import.json)
+   verifies one active GA4/EUR source, the exact two normalized rows, an encrypted
+   connection with empty legacy credentials, and first-attempt completed
+   publication of EUR 63,099.32. Pipeline remains EUR 3,251. The native reporting
+   window and CRM zero-row dates advanced to October 30; prior provider amounts
+   remain unchanged. The user's screenshot was taken during processing and
+   still showed the old total and pending statuses. The user subsequently
+   confirmed automatic browser completion without refreshing or re-importing:
+   Total Revenue EUR 63,099.32, Pipeline EUR 3,251, native GA4 EUR 31,313.37,
+   Sheets EUR 31,000 and no waiting messages. Initial publication took about
+   176 seconds. The confusing mixed display during that processing interval
+   was subsequently corrected and user-confirmed in the [October 31 revenue
+   display record](REVENUE_SOURCE_TRANSITION_2026-10-31.md); this initial-import
+   evidence does not close full lifecycle gates.
+   HubSpot/Salesforce/Shopify renewal/revocation,
+   deletion/transfer, scheduler publication and other provider gates remain open.
 3. **Operations:** Render process configuration/log disposition, incompatible old
    ciphertext disposition and recovery using the saved key on an independent
    machine. Existing backup/key-custody checks are not being repeated. Production
    Clerk cutover and Google Ads acceptance remain postponed under the user's
    earlier instructions; they are shared release dependencies, not newly added fixes.
 
-No count or release gate is silently closed by this record. No historical record
-is deleted or credential rotated by the new checks.
+The October 31 V1-027 closure and updated counts are explicit in the consolidated
+ledger. No historical record is deleted or credential rotated by these checks.

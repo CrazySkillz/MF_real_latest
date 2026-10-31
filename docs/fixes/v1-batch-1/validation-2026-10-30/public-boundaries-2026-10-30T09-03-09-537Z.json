@@ -1,0 +1,88 @@
+{
+  "startedAt": "2026-10-30T09:03:09.537Z",
+  "checks": [
+    {
+      "method": "GET",
+      "route": "/api/clients",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "expectedMessageMatched": true
+    },
+    {
+      "method": "GET",
+      "route": "/api/campaigns",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "expectedMessageMatched": true
+    },
+    {
+      "method": "GET",
+      "route": "/api/metrics",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "expectedMessageMatched": true
+    },
+    {
+      "method": "GET",
+      "route": "/api/performance",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "expectedMessageMatched": true
+    },
+    {
+      "method": "GET",
+      "route": "/api/integrations",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "expectedMessageMatched": true
+    },
+    {
+      "method": "GET",
+      "route": "/api/attribution/models",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "expectedMessageMatched": true
+    },
+    {
+      "method": "POST",
+      "route": "/api/alerts/test-email",
+      "status": 404,
+      "expected": 404,
+      "passed": true,
+      "expectedMessageMatched": true
+    },
+    {
+      "method": "POST",
+      "route": "/api/campaigns/batch1-security-check-nonexistent/linkedin-daily/mock",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "expectedMessageMatched": true
+    },
+    {
+      "method": "POST",
+      "route": "/api/campaigns/batch1-security-check-nonexistent/linkedin/mock-seed",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "expectedMessageMatched": true
+    }
+  ],
+  "credentialsUsed": false,
+  "realCampaignIdsUsed": false,
+  "emailRecipientsSupplied": false,
+  "routesSha256": "428615081b8cc7ac98b81a1a9301948702a823249129481e378071ee53a04e77",
+  "deployedCommit": "d2fba5300e68763ce5391133db967ef4c59dc465",
+  "result": "PASS",
+  "limits": [
+    "Public denials only; ordinary authenticated owner/foreign-owner sessions and provider callbacks not tested.",
+    "POST requests use empty bodies and nonexistent campaign names; matched production guards precede storage/transport."
+  ],
+  "finishedAt": "2026-10-30T09:03:10.696Z"
+}

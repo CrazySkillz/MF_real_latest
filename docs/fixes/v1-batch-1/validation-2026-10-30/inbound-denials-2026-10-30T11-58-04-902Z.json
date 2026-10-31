@@ -1,0 +1,43 @@
+{
+  "startedAt": "2026-10-30T11:58:04.902Z",
+  "method": "POST",
+  "credentialsUsed": false,
+  "validDataOrRecipientsSupplied": false,
+  "checks": [
+    {
+      "route": "/api/sendgrid/inbound",
+      "status": 503,
+      "passed": true,
+      "outcome": "VERIFICATION_UNAVAILABLE_FAILS_CLOSED"
+    },
+    {
+      "route": "/api/mailgun/inbound",
+      "status": 503,
+      "passed": true,
+      "outcome": "VERIFICATION_UNAVAILABLE_FAILS_CLOSED"
+    },
+    {
+      "route": "/api/webhook/custom-integration/:invalidToken",
+      "status": 401,
+      "passed": true,
+      "outcome": "UNAUTHORIZED_REQUEST_DENIED"
+    },
+    {
+      "route": "/api/email/inbound/:invalidToken",
+      "status": 401,
+      "passed": true,
+      "outcome": "UNAUTHORIZED_REQUEST_DENIED"
+    },
+    {
+      "route": "/api/webhook/conversion/:nonexistentCampaignId",
+      "status": 401,
+      "passed": true,
+      "outcome": "UNAUTHORIZED_REQUEST_DENIED"
+    }
+  ],
+  "deployedCommit": "d2fba5300e68763ce5391133db967ef4c59dc465",
+  "routesSha256": "428615081b8cc7ac98b81a1a9301948702a823249129481e378071ee53a04e77",
+  "result": "PASS",
+  "boundary": "Rejection checks only. 503 indicates unavailable verification, not a working provider integration. Valid signed delivery, replay/attachment ingestion, sender whitelist, provider configuration and recovery remain unverified. These requests cannot exercise a valid ingestion path and contain no metric values, files, URLs, real recipient, or valid integration token.",
+  "finishedAt": "2026-10-30T11:58:07.021Z"
+}

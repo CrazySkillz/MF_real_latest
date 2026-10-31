@@ -1,0 +1,59 @@
+{
+  "at": "2026-10-31T04:27:07.269Z",
+  "result": "PASS",
+  "boundary": "Local VM fixtures for manual read-only procedure; no live identity/API/provider/database access; no deployed acceptance inferred.",
+  "checks": [
+    {
+      "name": "owner missing-keywords branch",
+      "result": "PASS"
+    },
+    {
+      "name": "owner empty-array branch",
+      "result": "PASS"
+    },
+    {
+      "name": "foreign campaign denial",
+      "result": "PASS"
+    },
+    {
+      "name": "configured keywords stop before provider",
+      "result": "PASS"
+    },
+    {
+      "name": "unexpected keyword shape stops",
+      "result": "PASS"
+    },
+    {
+      "name": "wrong preflight owner stops",
+      "result": "PASS"
+    },
+    {
+      "name": "unexpected foreign success fails",
+      "result": "PASS"
+    },
+    {
+      "name": "wrong denial reason fails",
+      "result": "PASS"
+    },
+    {
+      "name": "unknown account stops",
+      "result": "PASS"
+    },
+    {
+      "name": "signed-out stops",
+      "result": "PASS"
+    },
+    {
+      "name": "wrong origin stops",
+      "result": "PASS"
+    },
+    {
+      "name": "network failure hides error details",
+      "result": "PASS"
+    },
+    {
+      "name": "non-JSON failure hides response",
+      "result": "PASS"
+    }
+  ]
+}

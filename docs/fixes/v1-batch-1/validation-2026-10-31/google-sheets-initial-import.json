@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-31T00:16:37.298Z",
+  "result": "PASS_SAVED_IMPORT_AND_COMPLETED_PUBLICATION",
+  "campaignId": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+  "sourceId": "db536b7c-1b2e-40f2-9e04-af06c8e18b76",
+  "connectionId": "ea5804fc-9cd7-4445-8806-d9f70528fceb",
+  "evidence": {
+    "scope": "../validation-2026-10-30/disposable-scope-2026-10-31T00-14-49-282Z.json",
+    "publication": "revenue-publication-2026-10-31T00-14-48-576Z.json"
+  },
+  "mapping": {
+    "spreadsheet": "B2B",
+    "tab": "Client_ROI_Summary",
+    "campaignValue": "yesop_brand_search",
+    "revenueColumn": "Revenue",
+    "dateColumn": "Date",
+    "ga4CampaignMapping": null
+  },
+  "expectedSourceRevenue": "31000.00",
+  "sourceRecordCount": 2,
+  "publishedTotalRevenue": "63099.32",
+  "currency": "EUR",
+  "pipelineProxy": "3251.00",
+  "nativeGa4Revenue": "31313.37",
+  "shopifyRevenue": "785.95",
+  "work": {
+    "id": "d2a3449a-78da-4bf7-aaca-3e2f8384b2b2",
+    "completedAt": "2026-10-31T00:14:03.212Z",
+    "attemptCount": 1,
+    "secondsFromDueToComplete": 175.681
+  },
+  "credentialContainerPresent": true,
+  "legacyCredentialFieldsEmpty": true,
+  "liveBrowserCompletion": "PASS_USER_REPORTED_AUTOMATIC_UPDATE",
+  "liveBrowserConfirmation": {
+    "userAnswer": "yes, all figures match but wht does it keep doing this?",
+    "manualRefreshOrReimportRequired": false,
+    "nativeGa4SourceRowRestored": true,
+    "waitingMessagesCleared": true,
+    "remainingUsabilityIssue": "During processing, the source list shows newly saved amounts while Total Revenue retains the previous published total."
+  },
+  "limits": [
+    "Container presence does not prove full credential lifecycle",
+    "Native reporting window advanced from October 29 to October 30; CRM zero-value record dates advanced too",
+    "No full provider lifecycle, scheduler cadence, downstream report, or Batch 1 closure inferred"
+  ]
+}

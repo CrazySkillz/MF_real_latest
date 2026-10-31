@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-31T09:31:49.354Z",
+  "mode": "inventory",
+  "commitRequested": false,
+  "manifestSha256": "ad2b087922228e1ff9e628312d8e218824741ca0445b7640696827f698d9189c",
+  "run": "b7ff502f-6b96-4b3e-9822-6cd73ab5040b",
+  "providerCalls": 0,
+  "secretValuesEmitted": false,
+  "tablePresence": {
+    "campaigns": true,
+    "linkedin_connections": true,
+    "meta_kpis": false,
+    "meta_benchmarks": false,
+    "custom_integrations": true
+  },
+  "result": "PASS_TABLE_INVENTORY",
+  "databaseReadOnly": true,
+  "exactRemaining": {
+    "a": 0,
+    "b": 0,
+    "foreign": 0,
+    "linkedin": 0,
+    "custom": 0
+  }
+}

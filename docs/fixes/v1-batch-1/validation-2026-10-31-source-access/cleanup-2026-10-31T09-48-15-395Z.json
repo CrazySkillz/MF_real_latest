@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-31T09:48:15.395Z",
+  "mode": "cleanup",
+  "commitRequested": true,
+  "manifestSha256": "3b830ec8e767f75508416d8ccf275897aabdbf33d8601a3d6ec385c9ca5c0c87",
+  "run": "6302ecc4-0b0a-4caf-90e2-0cfcb5cae0bd",
+  "providerCalls": 0,
+  "secretValuesEmitted": false,
+  "tablePresence": {
+    "campaigns": true,
+    "linkedin_connections": true,
+    "custom_integrations": true
+  },
+  "targetFingerprint": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "protectedCampaigns": [
+    {
+      "id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "name": "V1 Batch 5 Test",
+      "status": "active",
+      "ownerHash": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60",
+      "clientId": "861d3921-1903-491c-8ec3-57c0f6d05e92"
+    },
+    {
+      "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+      "name": "Batch 1 Provider Check",
+      "status": "active",
+      "ownerHash": "1900b95d7361b41cd41b7a23571cb4645a1511a139d4044f04b9937ab86c6096",
+      "clientId": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220"
+    },
+    {
+      "id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "name": "Promo",
+      "status": "active",
+      "ownerHash": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60",
+      "clientId": "861d3921-1903-491c-8ec3-57c0f6d05e92"
+    }
+  ],
+  "userReceiptSha256": "0bea02527e12112d2ef1a89e7316a0162e9f6ebd899855b8d7000061d88a1679",
+  "databaseWritesAttempted": true,
+  "operation": {
+    "exactRows": 5,
+    "draftOnly": true,
+    "credentialsAbsent": true,
+    "unplannedDependents": 0,
+    "edited": true,
+    "committed": true,
+    "outsideRowsUnchanged": true
+  },
+  "result": "PASS_EXACT_FIXTURE_CLEANUP"
+}

@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-31T04:22:16.359Z",
+  "result": "PASS",
+  "sourceSha256": "adf4a5229e05ec2d9175e15ab86a605f5cc0f8832a6f26a0bc2bb879f6774537",
+  "boundary": "Current extracted callback error renderers in local Chromium; browser requests blocked. Configured real OAuth success is separate user-reported evidence. No live attack, provider, database or app startup.",
+  "checks": [
+    {
+      "endpoint": "/api/auth/salesforce/callback",
+      "field": "error",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "endpoint": "/api/auth/salesforce/callback",
+      "field": "error_description",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "endpoint": "/api/auth/linkedin/callback",
+      "field": "error_description",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "endpoint": "/api/auth/meta/callback",
+      "field": "error_description",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "endpoint": "/api/auth/google/callback",
+      "field": "error",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "endpoint": "/api/auth/google/simulation-auth",
+      "field": "state",
+      "result": "PASS",
+      "markerExecuted": false
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "at": "2026-10-31T09:04:22.883Z",
+  "mode": "cleanup",
+  "commitRequested": false,
+  "databaseWritesAttempted": true,
+  "providerCalls": 0,
+  "secretValuesEmitted": false,
+  "protectedCampaigns": [
+    {
+      "id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "name": "V1 Batch 5 Test",
+      "status": "active",
+      "ownerHash": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60",
+      "clientId": "861d3921-1903-491c-8ec3-57c0f6d05e92"
+    },
+    {
+      "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+      "name": "Batch 1 Provider Check",
+      "status": "active",
+      "ownerHash": "1900b95d7361b41cd41b7a23571cb4645a1511a139d4044f04b9937ab86c6096",
+      "clientId": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220"
+    },
+    {
+      "id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "name": "Promo",
+      "status": "active",
+      "ownerHash": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60",
+      "clientId": "861d3921-1903-491c-8ec3-57c0f6d05e92"
+    }
+  ],
+  "targetFingerprint": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "secondaryOwnerHash": "1900b95d7361b41cd41b7a23571cb4645a1511a139d4044f04b9937ab86c6096",
+  "baselineSha256": "bcbb7250c368088c7c7c6b739ad0e66ee2fce2e47d51ad92a539a02cb82f75b1",
+  "manifestSha256": "e29620a5ba09e0c0a3f3f01f51d49bc3876ec9a2752f8d93070642cd10da1e25",
+  "cleanup": {
+    "result": "PASS",
+    "exactSyntheticRows": 7,
+    "committed": false,
+    "outsideRowsUnchanged": true
+  },
+  "result": "PASS_CLEANUP_REHEARSAL",
+  "limits": "Exact synthetic rows only. No historical cleanup, provider tokens, campaign records or report objects changed. Failed guards roll back."
+}

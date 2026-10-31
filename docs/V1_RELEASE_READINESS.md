@@ -7,12 +7,21 @@ This execution order supersedes older dated next-step instructions below and in
 the linked batch records. Reuse completed evidence; do not restart the audit or
 repeat manual checks merely to complete every historical assurance permutation.
 
+**Strict scope limit for every batch:** the four gates below are the active launch
+queue. Add work only for a concrete unresolved launch defect or missing essential
+configuration/security/recovery evidence for an enabled production path. Record
+the specific launch risk, existing evidence and smallest completion check before
+adding it. A historical OPEN label alone is not a reason to start more work.
+Reuse evidence that remains applicable; repeat checks only when a code/configuration
+change, observed failure or material evidence gap makes them necessary. Optional
+hardening and broader certification stay outside this launch queue.
+
 | Order / status | Essential task and existing owner | Completion boundary |
 | --- | --- | --- |
-| **1. NEXT — OPEN** | **Production sign-in and application domain.** Batch 8 V1-013; Batch 2 consumes the account/onboarding result. | Prepare production Clerk and the application domain/TLS, matching frontend/backend configuration, allowed origins/CSP and provider callback URLs. Prove how existing account ownership is preserved before switching keys. The public read below confirms test-mode Clerk; production setup/cutover is not complete. The earlier demo postponement no longer sets the launch priority. |
-| **2. OPEN — assessment missing** | **Deployment-relevant dependency security.** Batch 8 V1-019. | Identify current installed production advisories and affected reachable paths; correct release-blocking exposure with the smallest compatible change and relevant regression checks. Historical all-dependency counts are not evidence of current exploitable production flaws. No blanket upgrade, forced audit fix or bypass of an advisory-request approval restriction. |
-| **3. PARTIAL** | **Minimum backup/key recovery and application rollback.** Batch 8 V1-016, shared dependency of Batch 1 V1-008. | Reuse the downloaded backup, saved-key custody and completed local database restore. Establish the remaining actual recovery/key and compatible application-rollback evidence without changing live data. No new paid instance, second-computer requirement, repeated custody questions or synthetic-key pass. Broader independent-machine resilience remains explicitly unverified outside the immediate Batch 1 queue. |
-| **4. OPEN — after final configuration** | **One focused final production acceptance and launch decision.** Batches 2–7; Batch 8 V1-010/012/014/016 consumes their evidence. | Check final-domain sign-up/sign-in and tenant isolation, client/campaign creation, enabled source connection and initial publication, source/financial consistency, report download and scheduled-job health. Check scheduled email if offered, reusing valid prior receipt evidence. Recheck callbacks affected by the domain change, not every unchanged import permutation. Record final revision/build/CI, operator visibility of failures and rollback readiness. A reproduced security, data-integrity or core-journey failure remains a blocker. |
+| **1. NEXT — OPEN** | **Production sign-in on the launch domain.** Batch 8 V1-013; Batch 2 consumes the account/onboarding result. | Production Clerk works on the selected HTTPS launch domain with matching frontend/backend keys, required origins/CSP and provider callback URLs. Verify existing account ownership before the key switch and affected sign-in/callback behavior afterward. Stop when that configuration works; no authentication redesign or unrelated domain work. The public read below still shows test-mode Clerk. |
+| **2. OPEN — assessment missing** | **Security exposure relevant to this deployment.** Batch 8 V1-019. | Assess the installed dependencies used by the deployed app or release process, then resolve confirmed release-blocking exposure with minimal compatible fixes and relevant tests. Stop when those risks have a supported disposition; do not pursue a zero-advisory count, unrelated development tooling or blanket upgrades. Historical all-dependency counts are not proof of production exposure. Preserve the advisory-request approval boundary. |
+| **3. PARTIAL** | **Usable backup/key and a rollback path.** Batch 8 V1-016, shared dependency of Batch 1 V1-008. | Reuse the completed database restore and saved-key custody; establish only the missing evidence that the retained recovery key works and a compatible prior app revision can be restored. Stop at that minimum recovery boundary. No repeat database restore, live destructive drill, new hosting purchase or second-computer exercise. Do not repeat the postponed key prompt; actual key usability remains unverified until evidenced. |
+| **4. OPEN — after final configuration** | **One consolidated final launch check.** Batches 2–7; Batch 8 V1-010/012/014/016 consumes existing results. | Confirm the final deployed revision is healthy, sign-up/sign-in and tenant isolation work, and the core client → campaign → connected data → figures → report journey and scheduled jobs have applicable passing evidence. Re-run only checks affected by final code/domain/configuration changes or a concrete failure; reuse unchanged provider/import, financial, report and email-receipt results. Existing health/log facilities suffice if they expose failures. Stop when essential gates pass; record the launch decision without expanding into a new full-app audit. |
 
 [Public production-entry observation](fixes/v1-batch-8/validation-2026-10-31-launch/production-entry-read.json):
 the Render app was healthy on `357e950fcf03d02c93465cd602eda119f08cf7f6` at
@@ -45,6 +54,11 @@ Scope and reuse rules:
 - The focused final check is not certification of every analytics lifecycle or
   fallback. Preserve uncovered paths and known defects in their existing records;
   do not label an unproven subsystem production-ready.
+- Broad provider permutations, absent legacy positive paths, independent-machine
+  disaster-recovery exercises, capacity/stress campaigns, new monitoring stacks,
+  cosmetic changes and dependency modernization are not launch tasks absent a
+  specific demonstrated launch risk. A security, data-integrity or core-journey
+  blocker cannot be moved out of scope merely to meet the deadline.
 
 **Formal historical acceptance remains 103 OPEN / 10 DEFERRED / 17 CLOSED; Batch 1
 is 16 CLOSED / 4 OPEN under its broader recorded standard.** These counts include

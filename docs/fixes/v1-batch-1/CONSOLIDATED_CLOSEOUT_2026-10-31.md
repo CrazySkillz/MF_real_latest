@@ -15,6 +15,9 @@ The controlling [production launch task list](../../V1_RELEASE_READINESS.md#curr
 now starts with production Clerk/domain setup (Batch 8 V1-013), then relevant
 dependency security, minimum recovery/rollback and one focused final production
 check. This reuses Batch 1 evidence and does not change formal acceptance counts.
+Its strict scope limit applies here: no further Batch 1 manual exercise solely
+to close a historical label. Follow up only on a concrete launch blocker or an
+essential evidence gap, using the smallest relevant check.
 
 The [callback/credential follow-up](CALLBACK_CREDENTIAL_CLOSEOUT_2026-10-31.md)
 reproduces and corrects duplicate denial responses in LinkedIn/Meta callbacks.

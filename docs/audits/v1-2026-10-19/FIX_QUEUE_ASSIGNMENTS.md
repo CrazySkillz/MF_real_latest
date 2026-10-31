@@ -9,6 +9,12 @@ next-step instructions. Extra HubSpot reconnect/replay and absent legacy Meta
 positive-path exercises are not in the immediate queue. Google Ads acceptance
 was postponed, not excluded; establish its offered scope before launch.
 
+**Minimal launch scope is mandatory:** do not turn this historical finding
+inventory into a new task queue. Work must fit one of the four launch gates and
+identify its concrete launch risk, missing evidence and smallest completion
+check. Reuse applicable passes; stop when the essential gates pass. Broader
+assurance, modernization and optional hardening remain outside the launch queue.
+
 All 130 finding IDs and formal statuses remain intact: **103 OPEN / 10 DEFERRED /
 17 CLOSED**. OPEN includes missing broader acceptance evidence, not only unfixed
 code; it does not create 103 new manual launch tasks. Reuse completed checks and

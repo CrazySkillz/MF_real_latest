@@ -4,9 +4,9 @@ This is the current execution ledger. It supersedes pending statements in the
 October 30 acceptance record where later evidence is listed here. Historical
 receipts keep their original date, scope and result.
 
-**20 original code corrections implemented; 15 findings CLOSED and 5 OPEN for
+**20 original code corrections implemented; 16 findings CLOSED and 4 OPEN for
 acceptance.** Whole-app totals are **130 findings:
-104 OPEN, 10 DEFERRED, 16 CLOSED** (V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063/075).
+103 OPEN, 10 DEFERRED, 17 CLOSED** (V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063/075/123).
 Whole-app release remains NO-GO. The [conversion/file packet](INGESTION_ACCEPTANCE_2026-10-31.md)
 closes V1-001/026, including the deployed one-line download compatibility correction
 `3c304f97`. All account/source/ingestion fixtures were removed with independent
@@ -23,6 +23,15 @@ broader financial analytics and cached historical outputs remain unproven. Its
 is pushed and confirmed deployed as `adc5a6fe`, after all 6,935 tests, typecheck,
 build and KPI gate pass. Hosted run 41204006137 also passes. No repeat manual
 account/API packet or cleanup is required.
+
+The [provider/permission acceptance packet](PROVIDER_PERMISSION_ACCEPTANCE_2026-10-31.md)
+closes V1-123: deployed GA4/Sheets denials, 21 production-database transaction
+checks, traced credential-hydration/worker boundaries and exact two-row cleanup
+pass. All five providers pass two metadata reads; GA4/HubSpot/Salesforce expiry
+advances with successful requests and unchanged selected publication metadata.
+Fresh signed-state callbacks without a session are denied for five providers.
+Reconnect, valid authorization-code replay, absent legacy Meta acceptance and
+independent key recovery remain distinct outstanding boundaries.
 
 ## Evidence already complete: do not repeat
 
@@ -89,7 +98,10 @@ only dependent actions; successful evidence is retained.
 | B: provider lifecycle | Renewal/reconnect and invalid-session/replay boundaries for configured providers; exact disposable resource-grant denial/revocation. Whitelist edit/reload is closed for the enabled scope; automatic email imports stay disabled. Conversion and multipart/public-URL ingestion are complete. | Reuse established test mappings; do not repeat initial consent/imports. A shared provider grant must not be revoked merely because the app campaign is disposable. Prepare exact cleanup and expected outcomes before one grouped provider session. |
 | C: historical security and recovery | Shared independent recovery under Batch 8 V1-016. Historical-log custody/retention disposition and both approved historical credential cleanups are complete. Startup key/verified-TLS enforcement has deployed-code, production-health and successful-write evidence; exact orphan event disposition is retained/unassigned. | Retain completed backup/key-custody/same-machine restore and 223-plaintext / 126-ciphertext cleanup evidence. Do not repeat those cleanups or the completed log questions. Independent-machine recovery cannot be replaced by another same-machine restore; no paid database is authorized or required to continue Batch 1. |
 
-Next: finish the provider lifecycle procedure. The [current remaining-evidence record](REMAINING_ACCEPTANCE_2026-10-31.md)
+Next: finish the remaining reconnect/replay evidence. The [prepared key check](SAVED_KEY_CHECK_2026-10-31.md)
+is not requested for immediate execution after the user's objection; do not ask
+for it again while continuing Batch 1 security work. Recovery remains unverified
+under its existing Batch 8 V1-016 dependency. The [current remaining-evidence record](REMAINING_ACCEPTANCE_2026-10-31.md)
 includes new callback denials, natural publication continuity and exact blockers.
 The completed A fixtures are removed and
 must not be reused. No user action is requested on an untraced route or untested
@@ -176,9 +188,9 @@ foreign denial checks now pass; V1-003 is CLOSED. Do not request that test again
 | V1-057 | CLOSED | C | [Historical disposition](HISTORICAL_LOG_DISPOSITION_2026-10-31.md): corrected deployment October 20, user-supplied Hobby recovery screen October 29 and documented retention, user-confirmed sole access/no sharing/no stream/no saved copies. No identified unauthorized recipient or external copy requiring rotation. Not proof that old logs never contained secrets. |
 | V1-063 | CLOSED | — | Production mock-write routes disabled and denial verified. |
 | V1-075 | CLOSED | A, C | Both deployed aliases, replacement, dated persistence, scoped source/total and preserved currency pass. Exact cleanup and fresh historical inventory show no connector-derived rows. Twelve current PostgreSQL reader checks prove retained orphans excluded and valid spend preserved. [Exact closure limits](SPEND_SECURITY_ACCEPTANCE_2026-10-31.md): no reconstruction of unknown historical overwrites or whole-financial-analytics certification. |
-| V1-078 | OPEN | B | Configured real callback successes are complete. Invalid session/state/replay and deferred shared signing boundaries remain; stateless nonce checks are not proof of single-use replay prevention. |
-| V1-088 | OPEN | B | Actual renewal/reconnect remains. Ten local migration/renewal interleavings and both approved credential cleanups are complete. The [credential-only publication correction](CREDENTIAL_PUBLICATION_2026-10-31.md) is deployed as `5f0ffe96` after 6,959 current tests and hosted CI pass. Exact test sources/work/snapshots remain unchanged while Sheets expiry advances; this does not prove every provider or reconnect. |
-| V1-123 | OPEN | B | Deployed exact-resource denial/revocation and worker behavior on disposable scope. Actual GA4 AND Sheets consent/imports passed; reviewed Promo grant and scheduled continuity evidence retained. |
+| V1-078 | OPEN | B | Configured real callback successes, anonymous invalid/repeated-invalid state and fresh valid-state/no-session denials pass. Valid authorization-code replay remains unproven; stateless nonce checks are not single-use prevention. See provider/permission acceptance. |
+| V1-088 | OPEN | B | All five providers pass two live reads; GA4/HubSpot/Salesforce renewals and earlier Sheets expiry advancement preserve selected source/work/publication metadata. Reconnect and remaining provider-specific renewal/restart evidence remain. Ten migration interleavings, both historical cleanups and deployed `5f0ffe96` with 6,959 tests/hosted CI pass. See provider/permission acceptance. |
+| V1-123 | CLOSED | B | Deployed exact-resource denials, 21 current-policy/hydration checks against production PostgreSQL with rollback, traced worker callers and existing failure regressions close the original shared-credential tenant boundary. Real GA4/Sheets consent/import and Promo grant continuity retained. Actual live worker revocation and Google Ads functionality are not claimed. Two-row fixture cleanup independently verified. |
 
 ## Scope and protection
 

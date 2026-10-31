@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-31T16:09:21.214Z",
+  "result": "PASS",
+  "checks": [
+    {
+      "check": "ten real provider reads",
+      "passed": true
+    },
+    {
+      "check": "five exact connections retain active encrypted state",
+      "passed": true
+    },
+    {
+      "check": "sources selected metadata unchanged",
+      "passed": true
+    },
+    {
+      "check": "work selected metadata unchanged",
+      "passed": true
+    },
+    {
+      "check": "snapshots selected metadata unchanged",
+      "passed": true
+    },
+    {
+      "check": "three credential expiry advancements",
+      "passed": true
+    },
+    {
+      "check": "21 policy/hydration checks against production PostgreSQL rolled back",
+      "passed": true
+    },
+    {
+      "check": "live exact resource denials and five fresh-state session denials",
+      "passed": true
+    },
+    {
+      "check": "local procedure and cleanup safeguards passed",
+      "passed": true
+    },
+    {
+      "check": "exact two-row cleanup independently verified",
+      "passed": true
+    }
+  ],
+  "databaseAccess": false,
+  "providerCalls": 0,
+  "limits": "Reconciles recorded user observations, selected metadata and exact fixture receipts; not full mappings/snapshot-payload comparison, reconnect, authorization-code replay or live worker revocation."
+}

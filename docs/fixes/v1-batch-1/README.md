@@ -6,6 +6,15 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 1 status
 
+**October 31 provider/permission acceptance:** [Exact results and limits](PROVIDER_PERMISSION_ACCEPTANCE_2026-10-31.md)
+close V1-123. Batch 1 is **16 CLOSED / 4 OPEN**; remaining findings are V1-008,
+V1-054, V1-078 and V1-088. Deployed shared-resource denials, 21 real-database
+policy/hydration checks and exact two-row cleanup pass. Ten provider reads and
+five fresh-state/no-session callback denials pass. GA4/HubSpot/Salesforce renewal
+preserves selected publication metadata. Reconnect, code replay, absent legacy
+Meta acceptance and independent recovery are not claimed complete. Earlier
+checkpoints retain their historical counts; no runtime code changed here.
+
 **October 31 credential-publication correction:** [Root cause and validation](CREDENTIAL_PUBLICATION_2026-10-31.md)
 record the reproduced token-renewal invalidation defect and the localized storage
 fix. Credential-only saves retain published analytics and work leases; actual
@@ -177,7 +186,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-075](#v1-075) | P0 | VERIFIED LOCALLY | CLOSED |
 | [V1-078](#v1-078) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-088](#v1-088) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-123](#v1-123) | P0 | VERIFIED LOCALLY | OPEN |
+| [V1-123](#v1-123) | P0 | CLOSED | CLOSED |
 
 ## Findings
 
@@ -630,7 +639,15 @@ values are not inferred from this bounded security closure.
 
 ### V1-123
 
-**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P0. **Fix status:** CLOSED. **Release acceptance:** CLOSED within the original shared-credential tenant boundary.
+
+**October 31 closure:** [Provider/permission acceptance](PROVIDER_PERMISSION_ACCEPTANCE_2026-10-31.md)
+combines deployed GA4/Sheets resource denials, 21 production-database transaction
+checks of current policy/hydration, worker caller tracing, prior real consent and
+scheduled continuity, and verified exact fixture removal. Allowlists/token
+issuance in the transaction were synthetic; real worker revocation and Google
+Ads functional acceptance are not claimed. The original gate is satisfied;
+the October 20 checkpoint below is retained as historical evidence.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 

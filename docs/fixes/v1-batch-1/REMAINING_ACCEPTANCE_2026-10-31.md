@@ -1,8 +1,10 @@
 # Remaining Batch 1 acceptance after spend-security closure
 
-Current status: **15 CLOSED / 5 OPEN**. All twenty original code corrections are
-implemented. No remaining requirement is waived by this note. The read-only
-evidence below changed no production state. Subsequent isolated investigation
+Current status: **16 CLOSED / 4 OPEN**. All twenty original code corrections are
+implemented. No remaining requirement is waived by this note. The earlier read-only
+observations changed no production state. The later provider/permission packet
+records normal credential renewal and its exact temporary-fixture cleanup separately.
+Subsequent isolated investigation
 reproduced the credential/publication defect and produced the
 [localized storage correction](CREDENTIAL_PUBLICATION_2026-10-31.md), with its own
 validation/release boundary. No live provider configuration, campaign data or
@@ -10,6 +12,20 @@ refresh cadence was changed for these checks. This is not complete Batch 1 or
 whole-app production-readiness certification.
 
 ## New evidence
+
+- [Saved-key check prepared](SAVED_KEY_CHECK_2026-10-31.md): the existing downloaded
+  archive passes its hash/scope check; sixteen synthetic decryption safeguards and
+  the exact hidden-input wrapper pass. The user objected to this interruption;
+  they were told not to run it now. Do not repeat the request. Actual key retrieval
+  remains unverified under Batch 8 V1-016, not an additional immediate Batch 1 task.
+  The prepared check reads no live database or provider.
+
+- [Provider/permission acceptance](PROVIDER_PERMISSION_ACCEPTANCE_2026-10-31.md)
+  closes V1-123 with deployed resource denials, 21 production-database policy and
+  hydration checks, traced worker callers and verified exact fixture cleanup.
+  Ten live provider reads pass; GA4/HubSpot/Salesforce renewal evidence is retained
+  with unchanged selected publication metadata. Five fresh signed-state callbacks
+  without a session are denied. No repeat of these user checks is needed.
 
 - [V1-075 acceptance](SPEND_SECURITY_ACCEPTANCE_2026-10-31.md) closes the original
   spend security finding after live API acceptance, exact cleanup, fresh historical
@@ -52,13 +68,14 @@ whole-app production-readiness certification.
 | --- | --- | --- |
 | V1-008 | Explicit-key/verified-TLS startup enforcement, current connected-field compatibility, approved obsolete plaintext/ciphertext cleanup, saved-key custody and local export restore. | Independent recovery remains under Batch 8 V1-016. The user has no second computer; a paid Render database is neither approved nor required. A fresh remote recovery environment and secure independent key retrieval have not been prepared or tested. Do not repeat key-saving or local restoration questions. |
 | V1-054 | Actual owner/foreign LinkedIn edit acceptance and independent state check; retained exact legacy Meta handler/storage tests. | Live positive legacy Meta row-update acceptance cannot run because `meta_kpis` and `meta_benchmarks` are absent. The fresh production inventory reconfirms absence. Do not create those tables to manufacture acceptance. Current Meta UI uses shared KPI/Benchmark paths; legacy API branches remain guarded and tested locally, not represented as deployed positives. |
-| V1-078 | Current production signing correction, configured real OAuth successes, signature negatives and all 27 anonymous callback denial cases across the original and bounded follow-up receipts. | Valid-state/session/replay acceptance remains. The signed-state verifiers are stateless and accept an otherwise-valid state again; a nonce in the payload does not itself consume it. This packet does not prove valid authorization-code replay rejection. |
-| V1-088 | Ten real-PG migration/renewal interleavings, zero obsolete plaintext/public-fallback credentials, actual first connections/imports and observed scheduled continuity. The credential-only publication defect is corrected and deployed as `5f0ffe96`, with 6,959 passing current tests and hosted CI. Read-only post-release evidence shows one Sheets expiry advancement with unchanged sources/work/snapshots. | Controlled real renewal/reconnect acceptance across configured providers remains. The metadata comparison did not capture a provider exchange. Application metadata endpoints can renew credentials and therefore are not read-only diagnostics. |
-| V1-123 | Exact resource/customer policy and three hydration revocation controls locally; configured Promo grant/continuity; real GA4 and Sheets customer consent/imports. | Deployed exact-resource denial/revocation and worker behavior need a disposable, precisely bounded grant fixture. Revoking the shared Google authorization is unsafe because other campaigns use it. No protected grant, token or provider authorization was changed. |
+| V1-078 | Current signing correction, real OAuth successes, 27 anonymous denial cases, and five fresh valid-state/no-session callback denials. | Valid authorization-code replay remains. Signed-state verifiers are stateless; a nonce does not itself consume the state. The successful session-denial packet is not code-replay proof. |
+| V1-088 | Ten real-PG migration interleavings, both credential cleanups, initial connections/imports, scheduled continuity and deployed `5f0ffe96`. Two live reads for each of five providers pass. GA4/HubSpot/Salesforce renewals and earlier Sheets expiry advancement preserve selected publication metadata. | Reconnect and remaining provider-specific renewal/restart evidence. No provider exchange secrets were captured. Shopify renewal is not established by its successful read or inferred from the absent expiry column. |
+| V1-123 — CLOSED | Deployed resource denials; 21 policy/hydration checks against production PostgreSQL with rollback; traced current worker callers; prior real GA4/Sheets consent/import and Promo continuity. Exact fixture removed with fresh READ ONLY absence proof. | No remaining gate for the original shared-credential tenant boundary. Real worker revocation was not induced on a protected grant; Google Ads functionality remains postponed. Full scheduler/provider analytics readiness is not inferred. |
 
 Release verification of the credential correction is complete. The next work is
-a consolidated provider/grant acceptance procedure with exact cleanup. The
+a remaining reconnect/replay procedure. Recovery remains under Batch 8 V1-016
+and is not requested for immediate execution. The
 user's completed initial consent/import and account checks must not be repeated.
-No new manual procedure is represented as ready by this note. Independent recovery
+The completed provider/grant packet must not be repeated. Independent recovery
 and absent legacy Meta tables remain explicit external limitations; they are not
 resolved by another passing local test suite or a tracker status change.

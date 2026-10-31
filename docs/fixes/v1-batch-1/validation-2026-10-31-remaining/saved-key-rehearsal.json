@@ -1,0 +1,74 @@
+{
+  "at": "2026-10-31T16:12:52.692Z",
+  "result": "PASS",
+  "checks": [
+    {
+      "check": "base64 key authenticates all fields and accepts service-account empty container",
+      "passed": true
+    },
+    {
+      "check": "base64 wrong key is not accepted",
+      "passed": true
+    },
+    {
+      "check": "base64 one corrupted authenticated field refuses overall pass",
+      "passed": true
+    },
+    {
+      "check": "base64 source ciphertext retained byte-for-byte",
+      "passed": true
+    },
+    {
+      "check": "hex key authenticates all fields and accepts service-account empty container",
+      "passed": true
+    },
+    {
+      "check": "hex wrong key is not accepted",
+      "passed": true
+    },
+    {
+      "check": "hex one corrupted authenticated field refuses overall pass",
+      "passed": true
+    },
+    {
+      "check": "hex source ciphertext retained byte-for-byte",
+      "passed": true
+    },
+    {
+      "check": "text key authenticates all fields and accepts service-account empty container",
+      "passed": true
+    },
+    {
+      "check": "text wrong key is not accepted",
+      "passed": true
+    },
+    {
+      "check": "text one corrupted authenticated field refuses overall pass",
+      "passed": true
+    },
+    {
+      "check": "text source ciphertext retained byte-for-byte",
+      "passed": true
+    },
+    {
+      "check": "empty key rejected",
+      "passed": true
+    },
+    {
+      "check": "all empty containers cannot pass",
+      "passed": true
+    },
+    {
+      "check": "malformed version rejected",
+      "passed": true
+    },
+    {
+      "check": "malformed tag rejected",
+      "passed": true
+    }
+  ],
+  "syntheticKeysOnly": true,
+  "productionKeyRead": false,
+  "databaseAccess": false,
+  "providerCalls": 0
+}

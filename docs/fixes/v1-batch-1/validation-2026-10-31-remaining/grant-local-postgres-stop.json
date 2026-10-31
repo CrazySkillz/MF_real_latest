@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "date": "2026-10-31",
+  "cluster": "audit-temp/revenue-consistency-pg-20261031",
+  "port": 55444,
+  "command": "pg_ctl -D <exact local cluster> -m fast -w stop",
+  "exitCode": 0,
+  "output": "waiting for server to shut down.... done; server stopped",
+  "productionDatabaseAffected": false
+}

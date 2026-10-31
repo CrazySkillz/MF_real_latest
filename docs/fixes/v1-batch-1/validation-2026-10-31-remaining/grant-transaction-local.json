@@ -1,0 +1,99 @@
+{
+  "at": "2026-10-31T15:44:49.604Z",
+  "result": "PASS",
+  "productionAccess": false,
+  "acceptance": {
+    "result": "PASS",
+    "checks": [
+      {
+        "check": "other connections cannot see temporary campaigns",
+        "passed": true
+      },
+      {
+        "check": "ga4: denied before token issuance without a grant",
+        "passed": true
+      },
+      {
+        "check": "ga4: exact granted resource accepted",
+        "passed": true
+      },
+      {
+        "check": "ga4: wrong owner and resource denied",
+        "passed": true
+      },
+      {
+        "check": "ga4: revoked database grant denies even with cached token",
+        "passed": true
+      },
+      {
+        "check": "ga4: restarted policy observes revocation",
+        "passed": true
+      },
+      {
+        "check": "ga4: separately configured environment grant and revocation",
+        "passed": true
+      },
+      {
+        "check": "google_sheets: denied before token issuance without a grant",
+        "passed": true
+      },
+      {
+        "check": "google_sheets: exact granted resource accepted",
+        "passed": true
+      },
+      {
+        "check": "google_sheets: wrong owner and resource denied",
+        "passed": true
+      },
+      {
+        "check": "google_sheets: revoked database grant denies even with cached token",
+        "passed": true
+      },
+      {
+        "check": "google_sheets: restarted policy observes revocation",
+        "passed": true
+      },
+      {
+        "check": "google_sheets: separately configured environment grant and revocation",
+        "passed": true
+      },
+      {
+        "check": "google_ads: denied before token issuance without a grant",
+        "passed": true
+      },
+      {
+        "check": "google_ads: exact granted resource accepted",
+        "passed": true
+      },
+      {
+        "check": "google_ads: wrong owner and resource denied",
+        "passed": true
+      },
+      {
+        "check": "google_ads: revoked database grant denies even with cached token",
+        "passed": true
+      },
+      {
+        "check": "google_ads: restarted policy observes revocation",
+        "passed": true
+      },
+      {
+        "check": "google_ads: separately configured environment grant and revocation",
+        "passed": true
+      },
+      {
+        "check": "no temporary grant became visible to another connection",
+        "passed": true
+      },
+      {
+        "check": "fresh independent read confirms no temporary rows remain",
+        "passed": true
+      }
+    ],
+    "committedRows": 0,
+    "realProviderCalls": 0,
+    "applicationStartup": false,
+    "limits": "Current source grant policy and credential-hydration functions with real PostgreSQL grant reads. Allowlists and token issuance are synthetic. This is not an HTTP request or a real scheduler/provider run."
+  },
+  "injectedFailureRolledBack": true
+}

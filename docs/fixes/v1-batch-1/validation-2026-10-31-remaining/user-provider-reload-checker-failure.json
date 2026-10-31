@@ -1,0 +1,20 @@
+{
+  "batch1ProviderReload": "CHECK_REQUIRED",
+  "startedAt": "2026-10-31T15:45:37.590Z",
+  "checks": [
+    {
+      "provider": "GA4",
+      "pass": 1,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "Google Sheets",
+      "pass": 1,
+      "status": 200,
+      "passed": false
+    }
+  ],
+  "code": "PROVIDER_CHECK_FAILED",
+  "diagnosis": "The checker incorrectly required success:true. The current OAuth Sheets endpoint returns {spreadsheets}. Checker and synthetic response corrected; application unchanged."
+}

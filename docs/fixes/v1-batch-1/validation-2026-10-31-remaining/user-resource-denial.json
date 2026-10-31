@@ -1,0 +1,18 @@
+{
+  "batch1ResourceCheck": "PASS_RESOURCE_DENIAL",
+  "run": "aff80984-46a4-4216-8668-5c69c75e51b7",
+  "clientId": "3435bf1b-9ab2-4195-9bb8-6e0c0c78f858",
+  "campaignId": "599f723c-63d0-493c-aca5-d733fb192f1e",
+  "checks": [
+    { "check": "exact empty owned draft", "passed": true },
+    { "check": "GA4 denies another clientâ€™s otherwise approved resource", "passed": true },
+    { "check": "Sheets denies a resource without this clientâ€™s permission", "passed": true }
+  ],
+  "callbacks": [
+    { "provider": "ga4", "status": 200, "result": "PASS_VALID_STATE_WITHOUT_SESSION_DENIED" },
+    { "provider": "google-sheets", "status": 200, "result": "PASS_VALID_STATE_WITHOUT_SESSION_DENIED" },
+    { "provider": "hubspot", "status": 401, "result": "PASS_VALID_STATE_WITHOUT_SESSION_DENIED" },
+    { "provider": "linkedin", "status": 401, "result": "PASS_VALID_STATE_WITHOUT_SESSION_DENIED" },
+    { "provider": "meta", "status": 401, "result": "PASS_VALID_STATE_WITHOUT_SESSION_DENIED" }
+  ]
+}

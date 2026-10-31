@@ -1,0 +1,68 @@
+{
+  "batch1ProviderReload": "PASS_PROVIDER_RELOAD",
+  "startedAt": "2026-10-31T15:48:43.161Z",
+  "finishedAt": "2026-10-31T15:49:05.256Z",
+  "checks": [
+    {
+      "provider": "GA4",
+      "pass": 1,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "Google Sheets",
+      "pass": 1,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "HubSpot",
+      "pass": 1,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "Salesforce",
+      "pass": 1,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "Shopify",
+      "pass": 1,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "GA4",
+      "pass": 2,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "Google Sheets",
+      "pass": 2,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "HubSpot",
+      "pass": 2,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "Salesforce",
+      "pass": 2,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "provider": "Shopify",
+      "pass": 2,
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "evidence": "Exact JSON reported by the user from the manually operated second-account console."
+}

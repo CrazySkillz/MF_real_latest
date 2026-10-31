@@ -15,8 +15,12 @@ close V1-052/057. The [final API packet](fixes/v1-batch-1/FINAL_API_ACCEPTANCE_2
 closes V1-006/030 with 18 deployed assertions, independent stored-state checks,
 and verified removal of nine temporary rows. The [spend-security close-out](fixes/v1-batch-1/SPEND_SECURITY_ACCEPTANCE_2026-10-31.md)
 also closes V1-075 after historical inventory and twelve current-reader checks.
-Batch 1: **15 CLOSED / 5 OPEN**, all
-20 original code corrections implemented. Overall: **104 OPEN / 10 DEFERRED / 16 CLOSED**;
+The [provider/permission packet](fixes/v1-batch-1/PROVIDER_PERMISSION_ACCEPTANCE_2026-10-31.md)
+closes V1-123 after deployed resource denials, real-database policy/revocation
+checks, traced worker boundaries and exact cleanup. Ten provider reads and five
+fresh-state/no-session callback denials also pass; remaining limits are explicit.
+Batch 1: **16 CLOSED / 4 OPEN**, all
+20 original code corrections implemented. Overall: **103 OPEN / 10 DEFERRED / 17 CLOSED**;
 whole-app NO-GO remains. All temporary fixtures were removed. The connector
 save/readback correction is live in `adc5a6fe` with 6,935 local tests and the hosted
 workflow passing. Existing campaign figures and schedules are unchanged by the

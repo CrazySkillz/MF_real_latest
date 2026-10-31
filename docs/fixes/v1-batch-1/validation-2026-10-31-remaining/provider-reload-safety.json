@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-31T15:47:18.023Z",
+  "result": "PASS",
+  "realProviderCalls": 0,
+  "checks": [
+    {
+      "check": "pass",
+      "passed": true,
+      "requests": 11
+    },
+    {
+      "check": "origin",
+      "passed": true,
+      "requests": 0
+    },
+    {
+      "check": "owner",
+      "passed": true,
+      "requests": 0
+    },
+    {
+      "check": "target",
+      "passed": true,
+      "requests": 1
+    },
+    {
+      "check": "pending",
+      "passed": true,
+      "requests": 2
+    },
+    {
+      "check": "http",
+      "passed": true,
+      "requests": 4
+    },
+    {
+      "check": "timeout",
+      "passed": true,
+      "requests": 3
+    },
+    {
+      "check": "switch",
+      "passed": true,
+      "requests": 3
+    },
+    {
+      "check": "shopify-denied",
+      "passed": true,
+      "requests": 6
+    }
+  ]
+}

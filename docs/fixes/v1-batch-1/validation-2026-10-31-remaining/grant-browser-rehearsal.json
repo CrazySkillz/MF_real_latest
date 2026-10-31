@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-31T15:56:58.388Z",
+  "result": "PASS",
+  "productionAccess": false,
+  "checks": [
+    {
+      "check": "seed rehearsal rolls back",
+      "passed": true
+    },
+    {
+      "check": "cleanup rehearsal rolls back",
+      "passed": true
+    },
+    {
+      "check": "changed target refuses deletion",
+      "passed": true
+    },
+    {
+      "check": "unexpected child refuses deletion",
+      "passed": true
+    },
+    {
+      "check": "exact cleanup preserves unrelated rows",
+      "passed": true
+    },
+    {
+      "check": "browser pass",
+      "passed": true
+    },
+    {
+      "check": "browser owner",
+      "passed": true
+    },
+    {
+      "check": "browser origin",
+      "passed": true
+    },
+    {
+      "check": "browser target",
+      "passed": true
+    },
+    {
+      "check": "browser ga4",
+      "passed": true
+    },
+    {
+      "check": "browser sheets",
+      "passed": true
+    },
+    {
+      "check": "browser timeout",
+      "passed": true
+    },
+    {
+      "check": "browser unconfigured",
+      "passed": true
+    },
+    {
+      "check": "browser quota",
+      "passed": true
+    },
+    {
+      "check": "browser 429",
+      "passed": true
+    },
+    {
+      "check": "browser callback",
+      "passed": true
+    }
+  ]
+}

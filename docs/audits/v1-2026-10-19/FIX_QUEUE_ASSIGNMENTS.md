@@ -11,9 +11,12 @@ the current ledger closes V1-052/057. The [final API packet](../../fixes/v1-batc
 closes V1-006/030 after 18 deployed checks, saved-state verification and independent
 exact cleanup. The [spend-security disposition](../../fixes/v1-batch-1/SPEND_SECURITY_ACCEPTANCE_2026-10-31.md)
 closes V1-075 after historical inventory and twelve current-reader checks.
-Batch 1: **15 CLOSED / 5 OPEN**, all 20 original corrections implemented.
-Overall: **130 findings: 104 OPEN, 10 DEFERRED, 16 CLOSED**
-(V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063/075). Remaining provider,
+The [provider/permission packet](../../fixes/v1-batch-1/PROVIDER_PERMISSION_ACCEPTANCE_2026-10-31.md)
+closes V1-123 after deployed denials, production-database policy/revocation checks,
+traced worker boundaries and verified cleanup.
+Batch 1: **16 CLOSED / 4 OPEN**, all 20 original corrections implemented.
+Overall: **130 findings: 103 OPEN, 10 DEFERRED, 17 CLOSED**
+(V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063/075/123). Remaining provider,
 legacy/historical/downstream and recovery checks reuse the completed evidence;
 all temporary fixtures are removed. The connector save/readback correction is
 live in `adc5a6fe`; existing figures/schedules are unchanged by the packet.
@@ -248,7 +251,7 @@ Update this checklist, the affected batch record and the index summary in the sa
 | [V1-120](../../fixes/v1-batch-4/README.md#v1-120) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-121](../../fixes/v1-batch-6/README.md#v1-121) | P1 | 6 | OPEN | OPEN | Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred |
 | [V1-122](../../fixes/v1-batch-7/README.md#v1-122) | P1 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
-| [V1-123](../../fixes/v1-batch-1/README.md#v1-123) | P0 | 1 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
+| [V1-123](../../fixes/v1-batch-1/README.md#v1-123) | P0 | 1 | CLOSED | CLOSED | Deployed resource denials, real-database policy/hydration revocation, traced worker callers, configured consent/continuity and verified exact cleanup; Google Ads functionality remains postponed |
 | [V1-124](../../fixes/v1-batch-2/README.md#v1-124) | P1 | 2 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-125](../../fixes/v1-batch-7/README.md#v1-125) | P1 | 7 | OPEN | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-126](../../fixes/v1-batch-4/README.md#v1-126) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |

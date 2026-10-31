@@ -113,7 +113,14 @@ and three source-text assertions expecting the former render/edit expressions.
 The five affected test files now reflect the new contract, including explicit
 saved-native/source contribution assertions; all **266 checks** in those files
 pass in [the local rerun](validation-2026-10-31/revenue-consistency-hosted-contracts.json).
-No additional runtime change was required. The full hosted rerun remains pending.
+No additional runtime change was required. The full
+[hosted rerun](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41155357151)
+for test-only commit `5a4f8daf0bd54e1355fdca29ca2bd6f4a9bf66d3` passed the KPI
+metadata gate, current-version suite and retained deferred checks. The
+[final publication receipt](validation-2026-10-31/publication-2026-10-31T01-37-04-243Z.json)
+records `PASS` for the hosted results, exact deployed runtime and compiled GA4
+page. The verifier also confirms that only tests and documentation differ
+between the deployed runtime and the tested follow-up commit.
 
 The [initial comparison](validation-2026-10-31/revenue-consistency-data-comparison.json)
 retains its `REVIEW_DIFFERENCES` result: source connection timestamps and work

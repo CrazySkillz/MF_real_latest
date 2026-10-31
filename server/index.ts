@@ -39,17 +39,23 @@ app.set("env", process.env.NODE_ENV || "development");
 // This prevents OAuth redirect_uri mismatches (http vs https).
 app.set("trust proxy", 1);
 
+// Production Clerk loads from the exact frontend API hostname encoded in the UI's public key.
+const clerkLiveKey = /^pk_live_([A-Za-z0-9+/]+={0,2})$/.exec(process.env.VITE_CLERK_PUBLISHABLE_KEY || "");
+const clerkDecodedHost = clerkLiveKey ? Buffer.from(clerkLiveKey[1], "base64").toString("utf8") : "";
+const clerkFrontendApiSource = clerkDecodedHost.length <= 254 && clerkDecodedHost.endsWith("$")
+  && /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?\$$/i.test(clerkDecodedHost)
+  ? ` https://${clerkDecodedHost.slice(0, -1)}` : "";
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com",
-  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com" + clerkFrontendApiSource,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*",
+  "connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*" + clerkFrontendApiSource,
   "frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",

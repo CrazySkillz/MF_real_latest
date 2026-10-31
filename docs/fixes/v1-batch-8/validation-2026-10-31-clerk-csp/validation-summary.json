@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-31T18:58:28.474Z",
+  "scope": "Configured production Clerk frontend origin in script/connect CSP only",
+  "before": {
+    "tests": 18,
+    "passed": 15,
+    "failed": 3
+  },
+  "focused": {
+    "files": 5,
+    "passed": 84,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheckExit": 0,
+  "serverBuildExit": 0,
+  "fullLocalSuiteRepeated": false,
+  "liveSettingsChanged": false,
+  "liveDataWrites": false,
+  "realProviderOrUserBrowserAccess": false,
+  "productionLoginVerified": false,
+  "hashes": {
+    "server/index.ts": "0e8263b3a3f2f3a9c2d8f5ae02e49275dce9493ea2924069d746697f6c6552f7",
+    "server/security-headers-regression.test.ts": "92edb730530d284891a248bb61c220222c38f06a91c370781e85b1179f19d3fb"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-31T18:57:39.005Z",
+  "commit": "357e950fcf03d02c93465cd602eda119f08cf7f6",
+  "healthy": true,
+  "publicClerkModes": [
+    "test"
+  ],
+  "cspSha256": "af89ea50e777fe1cea266603811a01df33c47706a1300ac765039b19a222916e",
+  "signedOutClientsStatus": 401,
+  "frameOptions": "DENY",
+  "noSniff": "nosniff",
+  "hsts": "max-age=31536000",
+  "publicReadOnly": true,
+  "settingsChanged": false
+}

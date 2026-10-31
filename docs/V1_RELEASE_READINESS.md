@@ -67,6 +67,14 @@ Priorities change here; finding statuses and whole-app approval do not.
 
 ## Dated evidence and prior checkpoints
 
+**October 31 launch task 1 code prerequisite:** the
+[production Clerk CSP correction](fixes/v1-batch-8/CLERK_CSP_2026-10-31.md)
+reproduces blocked custom-host sign-in resources and adds only the configured
+production Clerk origin to script/API browser permissions. All 84 focused checks,
+TypeScript and the server build pass. Current test-key policy is unchanged;
+deployment confirmation and the actual production instance/domain/key cutover
+remain separate. V1-013 stays OPEN; no additional launch task is introduced.
+
 **October 31 consolidated Batch 1 acceptance:** [Current ledger and three execution packages](fixes/v1-batch-1/CONSOLIDATED_CLOSEOUT_2026-10-31.md)
 carry forward the completed two-account reads, five provider connections/imports,
 credential cleanup and confirmed revenue-display correction. V1-027 is CLOSED

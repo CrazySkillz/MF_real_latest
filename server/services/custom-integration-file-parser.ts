@@ -32,7 +32,7 @@ export async function downloadCustomIntegrationReport(rawUrl: string): Promise<{
         : privateReportDestinations.check(address, "ipv4"))) throw new Error("Report URL is not a public destination");
     const pinned = addresses[0];
     const response = await new Promise<import("node:http").IncomingMessage>((resolve, reject) => {
-      const req = request(url, { signal, agent: false, lookup: (_host, options, callback: any) =>
+      const req = request(url, { signal, agent: false, headers: { "User-Agent": "MimoSaaS/1.0" }, lookup: (_host, options, callback: any) =>
         options.all ? callback(null, [pinned]) : callback(null, pinned.address, pinned.family) }, resolve);
       req.on("error", () => reject(new Error("Report download failed")));
       req.end();

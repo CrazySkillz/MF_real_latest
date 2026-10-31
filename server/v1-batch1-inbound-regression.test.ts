@@ -55,6 +55,20 @@ describe("Batch 1 public report download boundary", () => {
     await expect(downloadCustomIntegrationReport("https://example.com/a.csv")).rejects.toThrow("public destination");
     expect(network.request).toHaveBeenCalledTimes(1);
   });
+  it("downloads through public redirects when hosts require client identification", async () => {
+    network.lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+    network.request.mockImplementation((url, options, callback) => {
+      const req = new EventEmitter() as any;
+      req.end = () => callback(!options.headers?.["User-Agent"] ? response(402, [])
+        : url.hostname === "example.com" ? response(302, [], { location: "https://files.example.com/a.csv" })
+        : response(200, [Buffer.from("Spend\n0\n")], { "content-type": "text/csv" }));
+      return req;
+    });
+    expect((await downloadCustomIntegrationReport("https://example.com/a.csv?secret=fixture")).buffer.toString()).toBe("Spend\n0\n");
+    expect(network.lookup).toHaveBeenCalledTimes(2);
+    expect(network.request).toHaveBeenCalledTimes(2);
+    for (const [, options] of network.request.mock.calls) expect(options.headers).toEqual({ "User-Agent": "MimoSaaS/1.0" });
+  });
   it("bounds streamed bodies even without Content-Length", async () => {
     network.lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     mockResponse(response(200, [Buffer.alloc(10 * 1024 * 1024), Buffer.alloc(1)]));

@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-31T13:28:56.524Z",
+  "mode": "verify-cleanup",
+  "result": "NOT_VERIFIED",
+  "secretValuesReturned": false,
+  "providerCalls": 0,
+  "existingOwnerModels": 0,
+  "protectedCampaigns": [
+    {
+      "id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "status": "active"
+    },
+    {
+      "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+      "status": "active"
+    },
+    {
+      "id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "status": "active"
+    }
+  ],
+  "errorCode": "42883"
+}

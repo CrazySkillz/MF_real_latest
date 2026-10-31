@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-31T13:29:55.778Z",
+  "mode": "verify-cleanup",
+  "result": "PASS",
+  "secretValuesReturned": false,
+  "providerCalls": 0,
+  "existingOwnerModels": 0,
+  "protectedCampaigns": [
+    {
+      "id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "status": "active"
+    },
+    {
+      "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+      "status": "active"
+    },
+    {
+      "id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "status": "active"
+    }
+  ],
+  "independentConnection": true,
+  "exactFixtureAbsent": true,
+  "manifest": {
+    "version": 1,
+    "run": "72859c4e-f955-48a2-b0a6-5c63f4cd387d",
+    "tag": "B1_FINAL_72859c4e-f955-48a2-b0a6-5c63f4cd387d",
+    "date": "2026-10-30",
+    "ids": {
+      "campaign": "5d27ee86-1c1a-4d96-864f-598dbbb0f3ca",
+      "custom": "4c176b52-cf39-4b6d-ac07-757505df5dcb",
+      "modelA": "4495d9d0-2a84-4c78-b5bc-2ec7cee69475",
+      "modelB": "bfb0d221-d334-4cfd-9cd4-818207f9f94e",
+      "journey": "c4767bea-9eaa-4af7-bfbc-422be1eb92d4",
+      "touchpoint": "e363e516-185a-45f4-a501-820c6b44fe26"
+    }
+  },
+  "databaseWritesAttempted": false
+}

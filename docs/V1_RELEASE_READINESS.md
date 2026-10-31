@@ -11,10 +11,14 @@ closes V1-034 with owned/foreign transfer evidence and verified cleanup. The
 V1-001/026 with live import/retry/downstream checks and exact cleanup. The
 [account-session close-out](fixes/v1-batch-1/ACCOUNT_SESSION_CLOSEOUT_2026-10-31.md)
 and [historical-log disposition](fixes/v1-batch-1/HISTORICAL_LOG_DISPOSITION_2026-10-31.md)
-close V1-052/057. Batch 1: **12 CLOSED / 8 OPEN**, all 20 original code corrections implemented. Overall:
-**107 OPEN / 10 DEFERRED / 13 CLOSED**; whole-app NO-GO remains. All temporary
-fixtures were removed. The one-line download correction is live in `3c304f97`;
-existing campaign figures and schedules are unchanged. Earlier checkpoints retain their scope.
+close V1-052/057. The [final API packet](fixes/v1-batch-1/FINAL_API_ACCEPTANCE_2026-10-31.md)
+closes V1-006/030 with 18 deployed assertions, independent stored-state checks,
+and verified removal of nine temporary rows. Batch 1: **14 CLOSED / 6 OPEN**, all
+20 original code corrections implemented. Overall: **105 OPEN / 10 DEFERRED / 15 CLOSED**;
+whole-app NO-GO remains. All temporary fixtures were removed. The connector
+save/readback correction is live in `adc5a6fe` with 6,935 local tests and the hosted
+workflow passing. Existing campaign figures and schedules are unchanged by the
+fixture packet. Earlier checkpoints retain their scope.
 
 **October 30 account-cache follow-up:** [Reports cache access](fixes/v1-batch-1/REPORT_CACHE_ACCESS_2026-10-30.md)
 records a reproduced gap and localized access guard in the campaign Reports

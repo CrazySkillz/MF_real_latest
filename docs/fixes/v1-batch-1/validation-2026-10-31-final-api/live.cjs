@@ -1,7 +1,7 @@
 // Explicit modes only; exact disposable fixture, pinned database, no providers/app startup.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),{parseEnv}=require('node:util'),{Client}=require('pg');
 const fixture=require('./fixture.cjs'),hash=x=>crypto.createHash('sha256').update(x).digest('hex');
-const mode=process.argv[2],allowed=['preflight','seed-rehearsal','seed','inspect','cleanup-rehearsal','cleanup','cleanup-partial'];
+const mode=process.argv[2],allowed=['preflight','seed-rehearsal','seed','inspect','cleanup-rehearsal','cleanup','cleanup-partial','verify-cleanup'];
 assert.ok(allowed.includes(mode),'Explicit reviewed mode required');
 const manifestPath=path.join(__dirname,'manifest.json'),receipt={at:new Date().toISOString(),mode,result:'NOT_VERIFIED',secretValuesReturned:false,providerCalls:0};let client;
 async function owner(){const row=(await client.query('SELECT id,owner_id,name FROM clients WHERE id=$1',['e3ec20ad-89ea-450d-8caf-8c0ab7abd220'])).rows[0];assert.ok(row);assert.equal(hash(row.owner_id),'1900b95d7361b41cd41b7a23571cb4645a1511a139d4044f04b9937ab86c6096');assert.equal(row.name,'Batch 1 Validation');return{ownerId:row.owner_id,clientId:row.id}}
@@ -14,11 +14,19 @@ function checkedSources(){const r=JSON.parse(fs.readFileSync(path.join(__dirname
 (async()=>{try{
  checkedSources();const u=new URL(parseEnv(fs.readFileSync('.env','utf8')).DATABASE_URL);assert.equal(hash(JSON.stringify([u.hostname,u.port||'5432',u.pathname])),'073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0');for(const k of ['sslmode','sslcert','sslkey','sslrootcert','ssl','options'])u.searchParams.delete(k);
  client=new Client({connectionString:u.href,ssl:{rejectUnauthorized:true},application_name:'batch1-exact-final-fixture',connectionTimeoutMillis:10000,statement_timeout:20000,query_timeout:25000});await client.connect();await client.query("SET search_path TO public");const o=await owner();
- if(mode==='preflight'){
+ if(mode==='preflight'||mode==='verify-cleanup'){
   await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');assert.equal((await client.query('SHOW transaction_read_only')).rows[0].transaction_read_only,'on');
   receipt.existingOwnerModels=(await client.query('SELECT count(*)::int n FROM attribution_models WHERE owner_id=$1',[o.ownerId])).rows[0].n;assert.equal(receipt.existingOwnerModels,0,'Existing models prevent disposable default test');
   receipt.protectedCampaigns=(await client.query('SELECT id,status FROM campaigns WHERE id=ANY($1::text[]) ORDER BY id',[['b74f98af-ede9-47af-9b19-0720ebb4d2c0','36493a43-accd-4360-8ff2-de62f5a19b6e','36631f9f-5f32-4ae6-8d20-d8430abb364c']])).rows;assert.equal(receipt.protectedCampaigns.length,3);
-  const m=fs.existsSync(manifestPath)?JSON.parse(fs.readFileSync(manifestPath)):fixture.plan();fixture.validate(m);await noFixture(m);await client.query('ROLLBACK');
+  const m=fs.existsSync(manifestPath)?JSON.parse(fs.readFileSync(manifestPath)):fixture.plan();fixture.validate(m);await noFixture(m);
+  if(mode==='verify-cleanup'){
+   const prior=JSON.parse(fs.readFileSync(path.join(__dirname,'cleanup.json'))),reported=JSON.parse(fs.readFileSync(path.join(__dirname,'user-result.json')));
+   assert.equal(prior.result,'PASS');assert.equal(prior.run,m.run);assert.equal(prior.execution.committed,true);assert.equal(prior.execution.rows,9);assert.equal(reported.batch1FinalApi,'PASS_FINAL_API');assert.equal(reported.run,m.run);assert.equal(reported.checks.length,18);assert.ok(reported.checks.every(x=>x.passed));
+   for(const[k,id]of Object.entries(m.ids))assert.equal(reported.ids[k],id);assert.deepEqual(prior.execution.sourceIds,[reported.ids.source]);assert.deepEqual(prior.execution.resultIds,[reported.ids.result]);
+   for(const[table,ids]of [['spend_sources',prior.execution.sourceIds],['spend_records',prior.execution.recordIds],['attribution_results',prior.execution.resultIds]])assert.equal((await client.query(`SELECT id FROM ${table} WHERE id::text=ANY($1::text[])`,[ids])).rowCount,0);
+   assert.deepEqual(receipt.protectedCampaigns,JSON.parse(fs.readFileSync(path.join(__dirname,'preflight.json'))).protectedCampaigns);receipt.independentConnection=true;receipt.exactFixtureAbsent=true;
+  }
+  await client.query('ROLLBACK');
   if(!fs.existsSync(manifestPath))fs.writeFileSync(manifestPath,JSON.stringify(m,null,2)+'\n',{flag:'wx'});receipt.manifest=m;receipt.databaseWritesAttempted=false;
  }else{
   const m=JSON.parse(fs.readFileSync(manifestPath));fixture.validate(m);receipt.run=m.run;

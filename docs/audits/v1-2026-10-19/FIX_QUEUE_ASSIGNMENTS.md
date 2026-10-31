@@ -7,12 +7,15 @@ also close V1-002/003/053. The [second live packet](../../fixes/v1-batch-1/SOURC
 closes V1-034 after transfer/ownership checks and verified cleanup. The
 [conversion/file packet](../../fixes/v1-batch-1/INGESTION_ACCEPTANCE_2026-10-31.md)
 closes V1-001/026. The account-session and historical-log evidence linked from
-the current ledger closes V1-052/057. Batch 1: **12 CLOSED / 8 OPEN**, all 20 original corrections
-implemented. Overall: **130 findings: 107 OPEN, 10 DEFERRED, 13 CLOSED**
-(V1-001/002/003/004/005/012/026/027/034/052/053/057/063). Three packages consolidate remaining
-account/API, provider and operational acceptance. Existing passed checks are reused;
-all temporary fixtures are removed. The one-line download correction is live in
-`3c304f97`; existing figures/schedules are unchanged. Earlier counts are historical.
+the current ledger closes V1-052/057. The [final API packet](../../fixes/v1-batch-1/FINAL_API_ACCEPTANCE_2026-10-31.md)
+closes V1-006/030 after 18 deployed checks, saved-state verification and independent
+exact cleanup. Batch 1: **14 CLOSED / 6 OPEN**, all 20 original corrections implemented.
+Overall: **130 findings: 105 OPEN, 10 DEFERRED, 15 CLOSED**
+(V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063). Remaining provider,
+legacy/historical/downstream and recovery checks reuse the completed evidence;
+all temporary fixtures are removed. The connector save/readback correction is
+live in `adc5a6fe`; existing figures/schedules are unchanged by the packet.
+Earlier counts are historical.
 
 **October 30 Batch 1 acceptance:** [Current evidence](../../fixes/v1-batch-1/CLOSEOUT_2026-10-30.md)
 closes V1-004/005/063 for verified production exclusions. Automatic email imports
@@ -126,7 +129,7 @@ Update this checklist, the affected batch record and the index summary in the sa
 | [V1-003](../../fixes/v1-batch-1/README.md#v1-003) | P1 | 1 | CLOSED | CLOSED | Retained campaign-read access accepted; provider query correctness remains separate |
 | [V1-004](../../fixes/v1-batch-1/README.md#v1-004) | P1 | 1 | CLOSED | CLOSED | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-005](../../fixes/v1-batch-1/README.md#v1-005) | P1 | 1 | CLOSED | CLOSED | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
-| [V1-006](../../fixes/v1-batch-1/README.md#v1-006) | P1 | 1 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
+| [V1-006](../../fixes/v1-batch-1/README.md#v1-006) | P1 | 1 | CLOSED | CLOSED | Original access/sample-data/in-memory persistence boundary; broader attribution analytics unverified |
 | [V1-007](../../fixes/v1-batch-2/README.md#v1-007) | P0 | 2 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-008](../../fixes/v1-batch-1/README.md#v1-008) | P1 | 1 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-009](../../fixes/v1-batch-2/README.md#v1-009) | P1 | 2 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
@@ -150,7 +153,7 @@ Update this checklist, the affected batch record and the index summary in the sa
 | [V1-027](../../fixes/v1-batch-1/README.md#v1-027) | P1 | 1 | CLOSED | CLOSED | Callback encoding and configured OAuth success verified; deferred provider functionality remains deferred; session/replay/renewal gates remain in V1-078/088/123 |
 | [V1-028](../../fixes/v1-batch-4/README.md#v1-028) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-029](../../fixes/v1-batch-4/README.md#v1-029) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
-| [V1-030](../../fixes/v1-batch-1/README.md#v1-030) | P1 | 1 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
+| [V1-030](../../fixes/v1-batch-1/README.md#v1-030) | P1 | 1 | CLOSED | CLOSED | Sender-list persistence verified; signed-sender acceptance required before excluded automatic email imports are re-enabled |
 | [V1-031](../../fixes/v1-batch-4/README.md#v1-031) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-032](../../fixes/v1-batch-3/README.md#v1-032) | P1 | 3 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-033](../../fixes/v1-batch-3/README.md#v1-033) | P1 | 3 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |

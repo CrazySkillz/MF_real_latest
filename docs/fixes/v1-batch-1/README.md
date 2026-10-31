@@ -6,6 +6,16 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 1 status
 
+**October 31 final API packet completed:** [18 deployed checks and independent cleanup](FINAL_API_ACCEPTANCE_2026-10-31.md)
+close V1-006 and V1-030 within their original security/persistence boundaries.
+Batch 1 is **14 CLOSED / 6 OPEN**. Both retained spend aliases also pass owned
+save/readback, while V1-075 retains historical/downstream acceptance. All nine
+exact temporary rows were removed after rehearsal and their absence independently
+verified. The three protected campaigns remain active; no application code,
+provider connection or refresh schedule changed during this completion.
+The live `adc5a6fe` release has 6,935 passing local tests and a successful hosted
+workflow. Earlier checkpoints below retain their historical counts and limits.
+
 **October 31 account-session and historical-log close-out:**
 [V1-052](ACCOUNT_SESSION_CLOSEOUT_2026-10-31.md) and
 [V1-057](HISTORICAL_LOG_DISPOSITION_2026-10-31.md) are CLOSED within their original
@@ -100,7 +110,7 @@ runtime; the later email-import exclusion is the separate deployment above.
 
 **October 27 consolidated status:** [Batches 1–5 checkpoint](../v1-batch-8/BATCHES_1_TO_5_CHECKPOINT.md) accounts for all 74 original findings, the current 6,548/6,548 regression pass, deployed/read-only data checks and remaining live/historical acceptance. Earlier dated counts are historical; release acceptance is not silently closed.
 
-**IMPLEMENTED AND DEPLOYED; RELEASE ACCEPTANCE OPEN.** All 20 code corrections are implemented and locally validated within the stated boundaries. Twelve release findings are closed and eight remain open as detailed in the [October 31 consolidated ledger](CONSOLIDATED_CLOSEOUT_2026-10-31.md). Earlier deployment revisions below retain their historical scope.
+**IMPLEMENTED AND DEPLOYED; RELEASE ACCEPTANCE OPEN.** All 20 code corrections are implemented and locally validated within the stated boundaries. Fourteen release findings are closed and six remain open as detailed in the [October 31 consolidated ledger](CONSOLIDATED_CLOSEOUT_2026-10-31.md). Earlier deployment revisions below retain their historical scope.
 
 **Ptomo visual and scheduled-refresh checks: PASSED within their stated boundaries.** The visual check is user-reported. October 21 native/financial publications through October 20 updated at 08:10/08:11 Amsterdam, before Batch 2 deployed at 09:32. The [read-only work record](../v1-batch-2/ptomo-refresh-2026-10-21.json) confirms the exact 08:00 work item completed at 08:11:52.504 on its first attempt without a recorded error. This supersedes the earlier pre-refresh uncertainty. No manual Render setup or repeat freshness wait is required. Other [release acceptance](#remaining-release-acceptance) remains open.
 
@@ -134,16 +144,16 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-003](#v1-003) | P1 | CLOSED | CLOSED |
 | [V1-004](#v1-004) | P1 | CLOSED | CLOSED |
 | [V1-005](#v1-005) | P1 | CLOSED | CLOSED |
-| [V1-006](#v1-006) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-006](#v1-006) | P1 | CLOSED | CLOSED |
 | [V1-008](#v1-008) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-026](#v1-026) | P1 | CLOSED | CLOSED |
 | [V1-027](#v1-027) | P1 | CLOSED | CLOSED |
-| [V1-030](#v1-030) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-030](#v1-030) | P1 | CLOSED | CLOSED |
 | [V1-034](#v1-034) | P1 | CLOSED | CLOSED |
-| [V1-052](#v1-052) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-052](#v1-052) | P1 | CLOSED | CLOSED |
 | [V1-053](#v1-053) | P1 | CLOSED | CLOSED |
 | [V1-054](#v1-054) | P0 | VERIFIED LOCALLY | OPEN |
-| [V1-057](#v1-057) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-057](#v1-057) | P1 | CLOSED | CLOSED |
 | [V1-063](#v1-063) | P0 | CLOSED | CLOSED |
 | [V1-075](#v1-075) | P0 | VERIFIED LOCALLY | OPEN |
 | [V1-078](#v1-078) | P1 | VERIFIED LOCALLY | OPEN |
@@ -282,7 +292,13 @@ separately under V1-026/V1-030.
 
 ### V1-006
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
+
+**October 31 closure:** [Deployed linked/default acceptance and verified cleanup](FINAL_API_ACCEPTANCE_2026-10-31.md)
+complete the remaining owned API gate, reusing actual foreign-account denials and
+two-process PostgreSQL durability checks. This closes the original access,
+fabricated-data and in-memory persistence defects; it does not certify attribution
+formulas/configuration/downstream analytics or claim a Render restart.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -367,7 +383,13 @@ Simulation callback10821 and real Salesforce11506, LinkedIn23517, Meta24073 call
 
 ### V1-030
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** CLOSED. **Release acceptance:** CLOSED.
+
+**October 31 closure:** [Deployed replace/clear/reload and independent stored-state verification](FINAL_API_ACCEPTANCE_2026-10-31.md)
+complete the ignored sender-list update finding. Current PostgreSQL tests prove
+allowed/removed-sender publication and omission behavior. Automatic email import
+remains disabled under the user's V1-004 exclusion; deployed signed-sender
+acceptance remains required before any re-enablement and is not claimed here.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 

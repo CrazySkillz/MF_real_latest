@@ -1,0 +1,37 @@
+{
+  "evidenceSource": "User-operated deployed browser console; full JSON supplied in chat on 2026-10-31",
+  "batch1FinalApi": "PASS_FINAL_API",
+  "run": "72859c4e-f955-48a2-b0a6-5c63f4cd387d",
+  "tag": "B1_FINAL_72859c4e-f955-48a2-b0a6-5c63f4cd387d",
+  "ids": {
+    "campaign": "5d27ee86-1c1a-4d96-864f-598dbbb0f3ca",
+    "custom": "4c176b52-cf39-4b6d-ac07-757505df5dcb",
+    "modelA": "4495d9d0-2a84-4c78-b5bc-2ec7cee69475",
+    "modelB": "bfb0d221-d334-4cfd-9cd4-818207f9f94e",
+    "journey": "c4767bea-9eaa-4af7-bfbc-422be1eb92d4",
+    "touchpoint": "e363e516-185a-45f4-a501-820c6b44fe26",
+    "result": "60a1f78e-9695-44e5-97b1-166ca4dbb740",
+    "source": "63b1659b-0f24-4fcb-9c7f-0908f40e9928"
+  },
+  "checks": [
+    { "check": "exact new owned draft", "passed": true },
+    { "check": "only the two disposable models", "passed": true },
+    { "check": "exact fixture whitelist before edit", "passed": true },
+    { "check": "owned whitelist save", "passed": true },
+    { "check": "whitelist reload removes old sender", "passed": true },
+    { "check": "owned whitelist save", "passed": true },
+    { "check": "explicit empty whitelist persists", "passed": true },
+    { "check": "owned whitelist save", "passed": true },
+    { "check": "whitelist reload removes old sender", "passed": true },
+    { "check": "owned default selection accepted", "passed": true },
+    { "check": "default selection reload is owner scoped", "passed": true },
+    { "check": "linked zero-value calculation persists correct parents", "passed": true },
+    { "check": "linked touchpoint reload", "passed": true },
+    { "check": "connectors accepts exact dated spend", "passed": true },
+    { "check": "ad-platforms accepts exact dated spend", "passed": true },
+    { "check": "scoped spend total and provenance", "passed": true },
+    { "check": "source replacement leaves one exact source", "passed": true },
+    { "check": "only fixture spend changed; currency and draft preserved", "passed": true }
+  ],
+  "phase": "awaiting_exact_cleanup"
+}

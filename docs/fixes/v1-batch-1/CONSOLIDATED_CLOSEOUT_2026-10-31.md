@@ -4,22 +4,23 @@ This is the current execution ledger. It supersedes pending statements in the
 October 30 acceptance record where later evidence is listed here. Historical
 receipts keep their original date, scope and result.
 
-**20 original code corrections implemented; 12 findings CLOSED and 8 OPEN for
+**20 original code corrections implemented; 14 findings CLOSED and 6 OPEN for
 acceptance.** Whole-app totals are **130 findings:
-107 OPEN, 10 DEFERRED, 13 CLOSED** (V1-001/002/003/004/005/012/026/027/034/052/053/057/063).
+105 OPEN, 10 DEFERRED, 15 CLOSED** (V1-001/002/003/004/005/006/012/026/027/030/034/052/053/057/063).
 Whole-app release remains NO-GO. The [conversion/file packet](INGESTION_ACCEPTANCE_2026-10-31.md)
 closes V1-001/026, including the deployed one-line download compatibility correction
 `3c304f97`. All account/source/ingestion fixtures were removed with independent
 readback. Existing campaign figures and refresh schedules were not changed.
 
-The [final consolidated API packet](FINAL_API_ACCEPTANCE_2026-10-31.md) is prepared
-for V1-006/030/075: 18 actual-handler/storage assertions and 13 cleanup guards
-pass locally. Production preflight and seed rollback pass; six exact disposable
-rows are seeded and the one second-account run has been requested. Its
+The [final consolidated API packet](FINAL_API_ACCEPTANCE_2026-10-31.md) is complete:
+18 deployed assertions pass, independently checked against saved state. Nine
+exact disposable rows were removed after rollback rehearsal and their absence
+verified using a fresh READ ONLY connection. V1-006/030 are CLOSED within their
+original boundaries; V1-075 retains historical/downstream acceptance. Its
 [connector save/readback follow-up](CONNECTOR_CONTEXT_FOLLOWUP_2026-10-31.md)
 is pushed and confirmed deployed as `adc5a6fe`, after all 6,935 tests, typecheck,
-build and KPI gate pass. Hosted run 41204006137 also passes. The single manual
-acceptance pass and its exact cleanup are still pending.
+build and KPI gate pass. Hosted run 41204006137 also passes. No repeat manual
+account/API packet or cleanup is required.
 
 ## Evidence already complete: do not repeat
 
@@ -82,14 +83,15 @@ only dependent actions; successful evidence is retained.
 
 | Package | Consolidated work | Execution and exit condition |
 | --- | --- | --- |
-| A: account and API boundaries | Deployed attribution campaign-linked/default-model acceptance; legacy Meta positive limit; connector-spend positive/downstream acceptance. Local separate-process persistence now passes; notification/persistent-state acceptance is closed. Global/Trends reads, ordinary ownership checks, transfers and actual Reports owner/foreign visibility are already complete. | Trace/rehearse only the remaining paths before one grouped manual account session. Reuse passed results and do not recreate the removed account/source fixtures. No production saturation test or new legacy tables. |
-| B: provider and retained whitelist lifecycle | Renewal/reconnect and invalid-session/replay boundaries for configured providers; exact disposable resource-grant denial/revocation; retained whitelist edit/reload and sender boundary, with automatic email imports still disabled. Conversion and multipart/public-URL ingestion are complete. | Reuse established test mappings; do not repeat initial consent/imports. A shared provider grant must not be revoked merely because the app campaign is disposable. Prepare exact cleanup and expected outcomes before one grouped provider session. |
+| A: account and API boundaries | Legacy Meta positive limit and connector-spend historical/downstream disposition remain. Attribution linked/default acceptance, separate-process persistence, notification/persistent-state acceptance, owned connector saves, global/Trends reads, ownership, transfers and actual Reports visibility are complete. | Reuse completed packets; do not request another account/API run or recreate their removed fixtures. Trace remaining historical/consumer boundaries without production saturation or creating legacy tables. |
+| B: provider lifecycle | Renewal/reconnect and invalid-session/replay boundaries for configured providers; exact disposable resource-grant denial/revocation. Whitelist edit/reload is closed for the enabled scope; automatic email imports stay disabled. Conversion and multipart/public-URL ingestion are complete. | Reuse established test mappings; do not repeat initial consent/imports. A shared provider grant must not be revoked merely because the app campaign is disposable. Prepare exact cleanup and expected outcomes before one grouped provider session. |
 | C: historical security and recovery | Shared independent recovery under Batch 8 V1-016. Historical-log custody/retention disposition and both approved historical credential cleanups are complete. Startup key/verified-TLS enforcement has deployed-code, production-health and successful-write evidence; exact orphan event disposition is retained/unassigned. | Retain completed backup/key-custody/same-machine restore and 223-plaintext / 126-ciphertext cleanup evidence. Do not repeat those cleanups or the completed log questions. Independent-machine recovery cannot be replaced by another same-machine restore; no paid database is authorized or required to continue Batch 1. |
 
-Order: prepare A first, reuse its fixtures in B, and perform safe read-only C work
-while awaiting the user's session results. No user action is requested on an
-untraced route or untested mutation. The API write/cleanup bundle and production
-operations bundle are not yet certified for execution merely by this plan.
+Next: finish the provider lifecycle procedure while tracing remaining historical
+spend/consumer and legacy Meta limits. The completed A fixtures are removed and
+must not be reused. No user action is requested on an untraced route or untested
+mutation. The production operations/provider bundle is not certified for execution
+merely by this plan. Independent recovery retains its existing external constraint.
 
 **Recovery scope correction, October 31:** the user has no second computer and
 questions the need for an additional paid Render database. No paid creation was
@@ -159,18 +161,18 @@ foreign denial checks now pass; V1-003 is CLOSED. Do not request that test again
 | V1-003 | CLOSED | A | Remaining Trends foreign 404 / owner no-keywords 400 passed in the combined live procedure; prior campaign reads and anonymous denials are retained. Provider query/formula correctness is separate. |
 | V1-004 | CLOSED | — | Approved automatic email-import exclusion is enforced and verified; no more acceptance for this disabled feature. |
 | V1-005 | CLOSED | — | Production test-email transport disabled and denial verified. |
-| V1-006 | OPEN | A | Owned detached create/read/edit, reload/account-switch persistence and actual foreign parent/row denials pass live. [Two separate Node processes](validation-2026-10-31-final/attribution-process-restart.json) now prove durable defaults, campaign-linked touchpoints/results and owner partitions in PostgreSQL (six checks; schema removed). This is not a Render restart; deployed campaign-linked/default-model acceptance remains. No current Attribution page is invented. |
+| V1-006 | CLOSED | A | Actual owned/foreign checks, deployed linked calculation/default save/readback, independently verified persisted state and [two-process PostgreSQL durability](validation-2026-10-31-final/attribution-process-restart.json) close the original access/in-memory/sample-data defects. Not a Render restart or certification of attribution formulas/configuration/downstream analytics. Exact nine-row cleanup passes. |
 | V1-008 | OPEN | C | Historical public-fallback ciphertext disposition is complete and independently verified. Shared independent recovery dependency remains under Batch 8 V1-016; it does not mandate purchasing another database. Explicit-key/verified-TLS startup enforcement has deployed-code, production-health and successful-write evidence; private environment was not inspected. Existing linked-field decrypt, key custody and same-machine restore remain complete. |
 | V1-026 | CLOSED | B | Live supported multipart CSV and public HTTPS URL import pass; current local destination/DNS/redirect/size/deadline/parent controls pass. Missing client identifier corrected in deployed 3c304f97; exact fixtures removed. |
 | V1-027 | CLOSED | — | Callback rendering guards plus configured real OAuth successes meet this finding's recorded gate; exact limits above. |
-| V1-030 | OPEN | B | Deployed supported whitelist edit/save/reload and accepted/removed-sender behavior. Existing PostgreSQL clear/omission controls retained; no automatic email re-enablement. |
+| V1-030 | CLOSED | B | Deployed whitelist replacement/clear/replacement/reload and independent saved-state check pass. Actual PostgreSQL publication tests prove allowed/removed-sender and omission behavior. Automatic email import remains user-excluded; real signed-sender acceptance is required before re-enablement, not claimed by this closure. |
 | V1-034 | CLOSED | A | Actual owned draft creation, owned transfer, foreign source/destination and magic-ID denial pass. Independent stored-scope verification and exact cleanup pass. Connect remains release-disabled. Batch 4 transfer-copy correctness stays separate. |
 | V1-052 | CLOSED | A | Actual Clerk sign-out/switch/return and owner/foreign Reports evidence combined with real Notifications/Navigation switch, cancellation, late-response, return/reload and persistent-state trace. See account-session close-out; no repeat login test or runtime change. |
 | V1-053 | CLOSED | A | User-operated bounded requests prove caller test flags still receive configured OAuth/LinkedIn/import limits and counted requests. Original bypass is closed; distributed load/capacity is not inferred. No saturation test performed. |
 | V1-054 | OPEN | A | LinkedIn valid owned edit preserves ID/parent despite replacement payload; foreign edit denied and stored state verified. Legacy Meta positive deployed acceptance is unavailable because its tables are absent; retained local cases pass. Owner 400/foreign 404 invalid campaign edit is complete and will not be repeated. |
 | V1-057 | CLOSED | C | [Historical disposition](HISTORICAL_LOG_DISPOSITION_2026-10-31.md): corrected deployment October 20, user-supplied Hobby recovery screen October 29 and documented retention, user-confirmed sole access/no sharing/no stream/no saved copies. No identified unauthorized recipient or external copy requiring rotation. Not proof that old logs never contained secrets. |
 | V1-063 | CLOSED | — | Production mock-write routes disabled and denial verified. |
-| V1-075 | OPEN | A, C | Owned deployed connector-spend alias acceptance and historical orphan/downstream disposition. Local atomic owner/currency/date controls pass; current inventory has no connector-derived sources. No current frontend caller: do not invent UI steps. |
+| V1-075 | OPEN | A, C | Both owned deployed aliases, replacement, dated persistence, scoped source/total and currency preservation pass; exact cleanup independently verified. Historical orphan/downstream disposition remains. Prior inventory has no historical connector-derived sources; no current frontend caller is invented. |
 | V1-078 | OPEN | B | Configured real callback successes are complete. Invalid session/state/replay and deferred shared signing boundaries remain; stateless nonce checks are not proof of single-use replay prevention. |
 | V1-088 | OPEN | B | Actual renewal/reconnect remains. Ten local migration/renewal interleavings, the approved 223-record plaintext cleanup and the separately approved 126-record historical ciphertext cleanup are complete. |
 | V1-123 | OPEN | B | Deployed exact-resource denial/revocation and worker behavior on disposable scope. Actual GA4 AND Sheets consent/imports passed; reviewed Promo grant and scheduled continuity evidence retained. |

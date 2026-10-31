@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-31T13:34:10.231Z",
+  "result": "PASS",
+  "userReportedApiChecks": 18,
+  "independentlyVerifiedFixtureRows": 9,
+  "cleanupCommitted": true,
+  "freshReadOnlyAbsenceCheck": true,
+  "batch1": {
+    "closed": 14,
+    "open": 6,
+    "remaining": [
+      "V1-008",
+      "V1-054",
+      "V1-075",
+      "V1-078",
+      "V1-088",
+      "V1-123"
+    ]
+  },
+  "wholeApp": {
+    "OPEN": 105,
+    "DEFERRED": 10,
+    "CLOSED": 15
+  },
+  "relativeLinksVerified": 544,
+  "runtimeFilesUnchanged": true,
+  "secretValuesEmitted": false
+}

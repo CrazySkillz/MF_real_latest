@@ -1,7 +1,9 @@
 # V1-075 non-GA4 connector-spend acceptance follow-up
 
-Status: committed, pushed and deployed as `adc5a6fe`; hosted run passes. Owned live
-acceptance is pending at this checkpoint.
+Status: committed, pushed and deployed as `adc5a6fe`; hosted run passes. The
+[consolidated API packet](FINAL_API_ACCEPTANCE_2026-10-31.md) now also passes
+owned live save/readback and verified exact cleanup. V1-075's broader historical
+and downstream acceptance remains open.
 
 Both retained aliases use `processConnectorDerivedSpend` in
 `server/routes-oauth.ts`. They validate owner, campaign currency, explicit platform
@@ -67,10 +69,13 @@ passes, including certification, the current-version suite and retained deferred
 evidence. The [release receipt](validation-2026-10-31-final-api/release.json)
 matches the healthy Render commit to that exact successful workflow.
 
-No owned live API packet has been submitted yet. Scoped positive/cleanup results
-must be appended before
-claiming this follow-up complete. Existing protected campaign figures, connections
-and configured schedules have not been changed.
+The user supplied all 18 passing combined API assertions, including both spend
+aliases, source replacement, scoped total/source provenance and preserved currency.
+Independent inspection matched the exact result/source IDs and dated EUR 0.02
+record. Nine fixture rows were removed after rollback rehearsal, followed by a
+fresh READ ONLY absence check. This completes the reported non-GA4 save/readback
+follow-up within the tested scope. Existing protected campaign figures,
+connections and configured schedules were not changed by this packet.
 
 Separate renewal observation (V1-088): ordinary non-worker token updates for
 Sheets/HubSpot/Salesforce/Shopify call `writeGA4RefreshInputChange`. That method can

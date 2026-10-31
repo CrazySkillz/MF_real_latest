@@ -23031,6 +23031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[LinkedIn OAuth] Processing callback for campaign ${campaignId} (spendOnly: ${spendOnly})`);
 
       const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (res.headersSent) return;
       if (!accessOk) {
         return res.send(`
           <html>
@@ -23586,6 +23587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Meta OAuth] Processing callback for campaign ${campaignId} (spendOnly: ${spendOnly})`);
 
       const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (res.headersSent) return;
       if (!accessOk) {
         return res.send(`
           <html>

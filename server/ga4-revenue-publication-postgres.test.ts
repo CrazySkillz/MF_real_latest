@@ -49,8 +49,10 @@ async function claim() {
   const claimed = (await storage.claimGA4RefreshWork("a", "owner-a", work.id, 120_000))!;
   return { campaignId: "a", ownerId: "owner-a", reportingDate: day, work: { id: claimed.id, leaseToken: claimed.leaseToken! } };
 }
-async function publish(scope: Awaited<ReturnType<typeof claim>>, complete = true) {
+async function publish(scope: Awaited<ReturnType<typeof claim>>, complete = true, includeDisplay = false) {
   const revenuePublication = await storage.getGA4RevenuePublication("a", day);
+  if (includeDisplay) revenuePublication.display = { nativeRevenue: 7653.96, sources:
+    (await storage.getRevenueBreakdownBySource("a", "1900-01-01", day)).map(row => ({ ...row, mappingConfig: {} })) };
   const total = await storage.getRevenueTotalForRange("a", "1900-01-01", day);
   const snapshot = { version: "financial_daily_snapshot_v1" as const, campaignId: "a", reportingDate: day, currency: "EUR",
     currentValueWindow: { mode: "initial_import_to_latest_completed_day" as const, startDate: "2026-09-04", endDate: day,
@@ -258,6 +260,23 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     expect(JSON.parse(connection.mapping_config).pipelineTotalToDate).toBe(3200);
     expect(JSON.parse((await storage.getRevenueSource("a", source.id))!.mappingConfig!).pipelineTotalToDate).toBe(3200);
   });
+  it("retains the published source breakdown while a saved edit changes the live records", async () => {
+    const source = await save("google_sheets");
+    await publish(await claim(), true, true);
+    const before = await storage.getLatestFinancialDailySnapshot("a", day);
+    expect((before!.metrics as any).revenuePublication.display).toMatchObject({ nativeRevenue: 7653.96,
+      sources: [{ sourceId: source.id, revenue: 250 }] });
+    await save("google_sheets", source.id, rows("31000.00"));
+    const retained = await storage.getLatestFinancialDailySnapshot("a", day);
+    expect(retained!.metrics).toEqual(before!.metrics);
+    expect((await storage.getRevenueBreakdownBySource("a", "1900-01-01", day))[0].revenue).toBe(31000);
+    expect((await sourceResponse()).sources[0].publicationStatus).toBe("pending");
+    await publish(await claim(), true, true);
+    const updated = await storage.getLatestFinancialDailySnapshot("a", day);
+    expect((updated!.metrics as any).financialDaily.inputs.revenue.value).toBe("38653.96");
+    expect((updated!.metrics as any).revenuePublication.display.sources[0].revenue).toBe(31000);
+  });
+
   it("does not clear pending merely because a financial snapshot was written before the coordinated job finished", async () => {
     const source = await save("hubspot"); const scope = await claim();
     await publish(scope, false);

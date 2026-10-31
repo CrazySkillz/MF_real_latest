@@ -350,8 +350,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("selectGA4FinancialTotalsSource(ga4FinancialCandidates, ga4ToDateOverviewTotals)");
     expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);");
     expect(ga4Metrics).toContain("const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials !== 0;");
-    expect(ga4Metrics).toContain("const ga4NativeRevenueContributes = ga4HasRevenueMetric && ga4RevenueForFinancials !== 0;");
-    expect(ga4Metrics).toContain("const totalRevenueDisplaySources = revenueDisplaySources;");
+    expect(ga4Metrics).toContain("revenueSnapshotDisplay.nativeRevenue !== 0");
+    expect(ga4Metrics).toContain("const totalRevenueDisplaySources = [...(revenueSnapshotDisplay?.sources || [])");
     expect(ga4Metrics).toContain('const latestRevenue = s.latestRevenue != null && Number.isFinite(Number(s.latestRevenue)) ? Number(s.latestRevenue) : Number(s.revenue || 0);');
     expect(ga4Metrics).toContain('const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && latestRevenue === 0;');
     expect(ga4Metrics).toContain("const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);");

@@ -79,6 +79,39 @@ describe("gated financial daily snapshot writer", () => {
     beginFinancialDailySnapshotRefreshObservation("financial_sources");
     beginFinancialDailySnapshotRefreshObservation("ga4_daily");
   });
+  it("saves the exact completed-day revenue breakdown with the financial snapshot", async () => {
+    successfulEvidence();
+    const receipt = { version: 1, reportingDate, sources: { "revenue-1": "hash-1", "future-source": "hash-2" }, pendingSourceIds: ["future-source"] };
+    const deps = dependencies({
+      getGA4RevenuePublication: vi.fn().mockResolvedValue(receipt),
+      getRevenueSources: vi.fn().mockResolvedValue([
+        { id: "revenue-1", sourceType: "google_sheets", displayName: "Revenue", currency: "USD", mappingConfig: JSON.stringify({ sheetName: "Sales", selectedValues: ["brand"], lastTotalRevenue: 99999, connectionId: "private-connection" }) },
+        { id: "future-source", sourceType: "csv", displayName: "Future orders", currency: "USD", mappingConfig: "{}" },
+      ]),
+      getRevenueBreakdownBySource: vi.fn().mockResolvedValue([{ sourceId: "revenue-1", revenue: 16799.99, currency: "USD" }]),
+    });
+    await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+    const written = deps.upsertFinancialDailySnapshot.mock.calls[0][0];
+    expect(written.revenuePublication.display).toEqual({ nativeRevenue: 55966.70, sources: [
+      { sourceId: "revenue-1", sourceType: "google_sheets", displayName: "Revenue", revenue: 16799.99, mappingConfig: { sheetName: "Sales", selectedValues: ["brand"] } },
+      { sourceId: "future-source", sourceType: "csv", displayName: "Future orders", revenue: 0, mappingConfig: {} },
+    ] });
+    expect(deps.getRevenueBreakdownBySource).toHaveBeenCalledWith(campaignId, "1900-01-01", reportingDate, "ga4");
+    expect(written.inputs.revenue.value).toBe("72766.69");
+    expect(written.revenuePublication.sources).toEqual(receipt.sources);
+  });
+
+  it.each(["amount", "currency", "source", "duplicate"])("does not attach a mismatched %s breakdown to a valid total", async mismatch => {
+    successfulEvidence();
+    const row = { sourceId: mismatch === "source" ? "other" : "revenue-1", revenue: mismatch === "amount" ? 5 : 16799.99, currency: mismatch === "currency" ? "EUR" : "USD" };
+    const deps = dependencies({
+      getGA4RevenuePublication: vi.fn().mockResolvedValue({ version: 1, reportingDate, sources: { "revenue-1": "hash" }, pendingSourceIds: [] }),
+      getRevenueSources: vi.fn().mockResolvedValue([{ id: "revenue-1", sourceType: "csv", displayName: "Orders", currency: "USD", mappingConfig: "{}" }]),
+      getRevenueBreakdownBySource: vi.fn().mockResolvedValue(mismatch === "duplicate" ? [row, row] : [row]),
+    });
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    expect(deps.upsertFinancialDailySnapshot.mock.calls[0][0].revenuePublication.display).toBeUndefined();
+  });
   it("publishes signed native and imported refunds through the same readiness and ownership gates", async () => {
     successfulEvidence();
     const deps = dependencies();

@@ -6,7 +6,7 @@ const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(), getGA4Connections: vi.fn(), getGA4DailyMetrics: vi.fn(), getGA4OverviewSnapshot: vi.fn(),
   getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
-  getSpendSources: vi.fn(), upsertFinancialDailySnapshot: vi.fn(),
+  getSpendSources: vi.fn(), getRevenueSources: vi.fn(), upsertFinancialDailySnapshot: vi.fn(),
 }));
 const provider = vi.hoisted(() => ({ getTotalsWithRevenue: vi.fn(), getAcquisitionBreakdown: vi.fn() }));
 vi.mock("./storage", () => ({ storage: storageMock }));
@@ -50,6 +50,7 @@ describe("financial snapshot reuses the verified GA4 Overview", () => {
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 30, currency: "EUR", sourceIds: ["revenue-1"] });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 20, currency: "EUR", sourceIds: ["spend-1"] });
     storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
+    storageMock.getRevenueSources.mockResolvedValue([]);
     storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
     storageMock.getSpendSources.mockResolvedValue([{ id: "spend-1", isActive: true, createdAt: "2026-10-01T00:00:00Z" }]);
     provider.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 110, conversions: 6 } });

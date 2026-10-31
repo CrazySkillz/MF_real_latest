@@ -2808,7 +2808,6 @@ export default function GA4Metrics() {
       completedDayEndDate: d.completedDayEndDate || revenueBreakdownResp?.endDate || null,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp, financialDailySnapshotResp]);
-  const totalRevenueDisplaySources = revenueDisplaySources;
   const persistedFinancialSourceCleanupAvailable =
     revenueDisplaySources.length > 0 || spendDisplaySources.length > 0;
   const pipelineProxyData = useMemo(() => {
@@ -2931,7 +2930,6 @@ export default function GA4Metrics() {
     : ga4ToDateResp !== undefined || (!ga4DailyPlaceholder && ga4DailyRows.length > 0) || (!breakdownPlaceholder && hasBreakdownOverviewResponse);
   const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials !== 0;
-  const ga4NativeRevenueContributes = ga4HasRevenueMetric && ga4RevenueForFinancials !== 0;
 
   const revenueMetricAvailable = useMemo(() => {
     // Revenue-dependent KPIs, Benchmarks, and Insights must follow the same GA4
@@ -3058,7 +3056,6 @@ export default function GA4Metrics() {
   }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp]);
   const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
-  const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
   const hasPipelineProxy = !!pipelineProxyData?.success;
   const pipelineProxyConfigured = configuredPipelineSourceTypes.size > 0;
@@ -3083,6 +3080,45 @@ export default function GA4Metrics() {
   const overviewFinancialSpendAvailable = overviewFinancialInputs?.spend?.available === true;
   const overviewFinancialConversionsAvailable = overviewFinancialInputs?.conversions?.available === true;
   const overviewFinancialRevenue = Number(overviewFinancialInputs?.revenue?.value || 0);
+  const retainedRevenueDisplay = useRef<{ key: string; nativeRevenue: number; sources: any[] } | null>(null);
+  const revenueSnapshotDisplay = useMemo(() => {
+    const receipt = overviewFinancialSnapshot?.metrics?.revenuePublication;
+    const key = JSON.stringify([campaignId, campaignCurrency, overviewFinancialSnapshot?.reportingDate,
+      overviewFinancialSnapshot?.recordedAt, overviewFinancialInputs?.revenue, receipt]);
+    const saved = receipt?.display;
+    const definitions = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : [];
+    const candidate = saved || { nativeRevenue: ga4RevenueForFinancials, sources: revenueDisplaySources };
+    const rows = Array.isArray(candidate.sources) ? candidate.sources : [];
+    const ids = rows.map((row: any) => row?.sourceId);
+    const receiptMatches = !receipt ? !saved && definitions.every((source: any) => !source.publicationStatus)
+      : receipt.version === 1 && receipt.reportingDate === overviewFinancialReportingDate
+        && Object.keys(receipt.sources || {}).length === ids.length
+        && ids.every((id: string) => typeof receipt.sources[id] === "string" && (saved
+          || definitions.some((source: any) => source.id === id && source.publicationHash === receipt.sources[id])));
+    const valid = overviewFinancialSnapshot?.campaignId === campaignId && overviewFinancialRevenueAvailable && receiptMatches && new Set(ids).size === ids.length
+      && typeof candidate.nativeRevenue === "number" && Number.isFinite(candidate.nativeRevenue)
+      && rows.every((row: any) => typeof row?.revenue === "number" && Number.isFinite(row.revenue))
+      && Math.abs(candidate.nativeRevenue + rows.reduce((sum: number, row: any) => sum + row.revenue, 0) - overviewFinancialRevenue) < 0.005
+      && (saved || (!revenueSourcesError && !revenueBreakdownError && !ga4ToDateError && ga4FinancialNativeAvailable && ga4NativeCurrencyVerified));
+    if (valid) retainedRevenueDisplay.current = { key, nativeRevenue: candidate.nativeRevenue,
+      sources: rows.map((row: any) => ({ ...row, latestRevenue: row.revenue, publicationStatus: undefined, pendingCompletedDay: false })) };
+    // Legacy snapshots can retain an already verified display. Never substitute
+    // newer saved source amounts when an older total is still on the card.
+    if (retainedRevenueDisplay.current?.key === key) return retainedRevenueDisplay.current;
+    retainedRevenueDisplay.current = null;
+    return null;
+  }, [campaignId, campaignCurrency, overviewFinancialSnapshot, revenueSourcesResp, revenueDisplaySources,
+    ga4RevenueForFinancials, ga4FinancialNativeAvailable, ga4NativeCurrencyVerified, revenueSourcesError, revenueBreakdownError, ga4ToDateError]);
+  const totalRevenueDisplaySources = [...(revenueSnapshotDisplay?.sources || []), ...revenueDisplaySources
+    .filter((source: any) => !revenueSnapshotDisplay?.sources.some((published: any) => published.sourceId === source.sourceId)).map((source: any) => ({
+    ...source, latestRevenue: null, revenue: null, materializedRevenueStatus: source.materializedRevenueStatus === "unavailable" ? "unavailable" : "updating", publicationStatus: undefined, pendingCompletedDay: false,
+  }))];
+  const initialNativeRevenue = !overviewFinancialSnapshot && ga4FinancialNativeAvailable && ga4NativeCurrencyVerified && !ga4ToDateError
+    ? ga4RevenueForFinancials : null;
+  const ga4NativeRevenueContributes = revenueSnapshotDisplay ? revenueSnapshotDisplay.nativeRevenue !== 0
+    : initialNativeRevenue != null ? initialNativeRevenue !== 0 : overviewFinancialInputs?.revenue?.sources?.includes("ga4") === true;
+  const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);
+  const revenuePublicationFailed = revenueDisplaySources.some((source: any) => source.publicationStatus === "failed");
   const overviewFinancialSpend = Number(overviewFinancialInputs?.spend?.value || 0);
   const overviewFinancialConversions = Number(overviewFinancialInputs?.conversions?.value || 0);
   const overviewFinancialROAS = overviewFinancialSpend > 0 ? overviewFinancialRevenue / overviewFinancialSpend : 0;
@@ -7477,24 +7513,33 @@ export default function GA4Metrics() {
                       <DialogHeader>
                         <DialogTitle className="text-foreground">Revenue Sources</DialogTitle>
                         <DialogDescription className="text-muted-foreground/70">
-                          Latest imported source values. Total Revenue uses completed data through {formatReportingDateLabel(overviewFinancialReportingDate)}.
+                          {overviewFinancialReportingDate ? <>Revenue included in Total Revenue through {formatReportingDateLabel(overviewFinancialReportingDate)}.</> : "Imported revenue sources. Total Revenue is not available yet."}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="scrollbar-hide max-h-[65vh] space-y-2 overflow-y-auto pr-1">
                         {revenueSourcesUnavailable && (
                           <div className="text-sm text-destructive">Revenue sources are unavailable. Refresh the page to try again.</div>
                         )}
+                        {revenuePublicationFailed && <p className="text-sm text-destructive" role="alert">The revenue update could not finish. Your saved changes are intact.</p>}
                         {ga4NativeRevenueContributes && (
                           <div className="flex items-center justify-between rounded-md border border-border p-3 text-sm">
                             <div>
                               <p className="font-medium text-foreground">GA4 Revenue</p>
                               <p className="text-xs text-muted-foreground/70">Native GA4 revenue</p>
                             </div>
-                            <p className="font-medium tabular-nums text-foreground">{formatMoney(ga4RevenueForFinancials)}</p>
+                            <p className="font-medium tabular-nums text-foreground">{revenueSnapshotDisplay ? formatMoney(revenueSnapshotDisplay.nativeRevenue) : initialNativeRevenue != null ? formatMoney(initialNativeRevenue) : "—"}</p>
                           </div>
                         )}
                         {totalRevenueDisplaySources.map((s: any) => {
+                          const currentSource = revenueDisplaySources.find((source: any) => source.sourceId === s.sourceId);
+                          const currentDefinition = revenueSourcesResp?.sources?.find((source: any) => source.id === s.sourceId && source.isActive !== false);
+                          const sourceActionsAvailable = ga4ConnectionUsable && !!currentSource && !!currentDefinition
+                            && (s.materializedRevenueStatus === "updating" || currentSource.publicationStatus === "failed" || !currentDefinition.publicationHash
+                              || currentDefinition.publicationHash === overviewFinancialSnapshot?.metrics?.revenuePublication?.sources?.[s.sourceId]);
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
+                          const currentConfig = typeof currentSource?.mappingConfig === "string"
+                            ? (() => { try { return JSON.parse(currentSource.mappingConfig); } catch { return null; } })() : currentSource?.mappingConfig;
+                          const currentSelectedValues = Array.isArray(currentConfig?.selectedValues) ? currentConfig.selectedValues.map((value: any) => String(value).trim()).filter(Boolean) : [];
                           const sourceType = String(s.sourceType || "").trim().toLowerCase();
                           const isGoogleSheets = sourceType === "google_sheets";
                           const isCsv = sourceType === "csv";
@@ -7508,7 +7553,7 @@ export default function GA4Metrics() {
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && latestRevenue === 0;
                           const hasConfirmedRevenueItems = (sourceType === "salesforce" && Array.isArray(cfg?.campaignValueRevenueTotals))
                             || (sourceType === "hubspot" && Array.isArray(cfg?.campaignValueRevenueTotals));
-                          const confirmedRevenueItems = hasConfirmedRevenueItems
+                          const confirmedRevenueItems = s.revenue != null && hasConfirmedRevenueItems && Math.abs(cfg.campaignValueRevenueTotals.reduce((sum: number, item: any) => sum + Number(item.revenue), 0) - Number(s.revenue)) < 0.005
                             ? cfg.campaignValueRevenueTotals
                               .map((item: any) => ({ name: String(item?.campaignValue || "").trim(), revenue: Number(item?.revenue) }))
                               .filter((item: any) => item.name && Number.isFinite(item.revenue))
@@ -7532,10 +7577,10 @@ export default function GA4Metrics() {
                                       {sourceDisplayText}{dateLabel}
                                     </p>
                                     {(confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown) && ga4ConnectionUsable && (
-                                      <button
+                                      <button disabled={!sourceActionsAvailable}
                                         onClick={() => {
                                           setShowRevenueSourcesDialog(false);
-                                          setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus });
+                                          setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: currentSource.mappingConfig, revenue: currentSource.revenue, materializedRevenueStatus: currentSource.materializedRevenueStatus });
                                           setShowRevenueDialog(true);
                                         }}
                                         className="shrink-0 rounded p-1 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
@@ -7547,20 +7592,18 @@ export default function GA4Metrics() {
                                     )}
                                   </div>
                                   {!hasSingleSourceBreakdown && sourceType !== "hubspot" && sourceType !== "salesforce" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
-                                  {s.publicationStatus === "pending" && <p className="text-xs text-red-600 dark:text-red-400">Saved — waiting for Total Revenue to update.</p>}
-                                  {s.publicationStatus === "failed" && <p className="text-xs text-red-600 dark:text-red-400" role="alert">Saved — Total Revenue update failed. Your saved data is intact.</p>}
                                   {pendingCompletedDay && <p className="text-xs text-amber-700 dark:text-amber-300">Pending for totals · included through {formatReportingDateLabel(s.completedDayEndDate)}: {formatMoney(completedDayRevenue)}</p>}
                                 </div>
                                 <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown ? "col-span-2" : ""}`}>
-                                  {materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}
+                                  {s.materializedRevenueStatus === "updating" ? "—" : materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}
                                 </span>
                                 {confirmedRevenueItems.length === 0 && !hasSingleSourceBreakdown && (
                                   <div className="flex items-center justify-end gap-1">
                                     {ga4ConnectionUsable && s.sourceType !== "manual" && (
-                                      <button
+                                      <button disabled={!sourceActionsAvailable}
                                         onClick={() => {
                                           setShowRevenueSourcesDialog(false);
-                                          setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue, materializedRevenueStatus: s.materializedRevenueStatus });
+                                          setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: currentSource.mappingConfig, revenue: currentSource.revenue, materializedRevenueStatus: currentSource.materializedRevenueStatus });
                                           setShowRevenueDialog(true);
                                         }}
                                         className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
@@ -7569,7 +7612,7 @@ export default function GA4Metrics() {
                                         <Edit className="h-3.5 w-3.5" />
                                       </button>
                                     )}
-                                    <button
+                                    <button disabled={!sourceActionsAvailable}
                                       onClick={() => {
                                         setShowRevenueSourcesDialog(false);
                                         setDeletingRevenueSourceId(s.sourceId);
@@ -7587,10 +7630,10 @@ export default function GA4Metrics() {
                                   <div className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs">
                                     <span className="min-w-0 truncate text-muted-foreground" title={sourceDetailText}>{sourceDetailText}</span>
                                     <span className="text-right tabular-nums text-foreground">
-                                      {materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}
+                                      {s.materializedRevenueStatus === "updating" ? "—" : materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}
                                     </span>
                                     <div className="flex items-center justify-end">
-                                      <button
+                                      <button disabled={!sourceActionsAvailable}
                                         onClick={() => {
                                           setShowRevenueSourcesDialog(false);
                                           setDeletingRevenueSourceId(s.sourceId);
@@ -7613,12 +7656,12 @@ export default function GA4Metrics() {
                                         <span className="min-w-0 truncate text-muted-foreground" title={item.name}>{item.name}</span>
                                         <span className="text-right tabular-nums text-foreground">{formatMoney(item.revenue)}</span>
                                         <div className="flex items-center justify-end gap-1">
-                                          {sourceType === "hubspot" && <button
+                                          {sourceType === "hubspot" && <button disabled={!sourceActionsAvailable || !currentSelectedValues.includes(item.name)}
                                             onClick={() => {
-                                              const selectedValues = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean) : [];
+                                              const selectedValues = currentSelectedValues;
                                               setShowRevenueSourcesDialog(false);
                                               setDeletingHubSpotRevenueItem({
-                                                source: s,
+                                                source: currentSource,
                                                 campaignValue: item.name,
                                                 isLastSelectedValue: selectedValues.filter((value: string) => value !== item.name).length === 0,
                                               });
@@ -7629,12 +7672,12 @@ export default function GA4Metrics() {
                                           >
                                             <Trash2 className="h-3.5 w-3.5" />
                                           </button>}
-                                          {sourceType === "salesforce" && <button
+                                          {sourceType === "salesforce" && <button disabled={!sourceActionsAvailable || !currentSelectedValues.includes(item.name)}
                                             onClick={() => {
-                                              const selectedValues = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value).trim()).filter(Boolean) : [];
+                                              const selectedValues = currentSelectedValues;
                                               setShowRevenueSourcesDialog(false);
                                               setDeletingSalesforceRevenueItem({
-                                                source: s,
+                                                source: currentSource,
                                                 campaignValue: item.name,
                                                 isLastSelectedValue: selectedValues.filter((value: string) => value !== item.name).length === 0,
                                               });

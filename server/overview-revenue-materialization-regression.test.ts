@@ -63,7 +63,7 @@ describe("GA4 Overview revenue materialization integrity", () => {
     expect(routes).toContain("completedDayRevenue:");
     expect(routes).toContain("pendingCompletedDay,");
     expect(page).toContain('const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";');
-    expect(page).toContain("Latest imported source values. Total Revenue uses completed data through");
+    expect(page).toContain("Revenue included in Total Revenue through");
     expect(page).toContain("Pending for totals");
   });
 });

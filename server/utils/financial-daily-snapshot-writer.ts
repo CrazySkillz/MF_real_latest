@@ -14,6 +14,8 @@ type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: stri
 type WriterDependencies = {
   getGA4PublicationVersion?: (campaignId: string) => Promise<string | null>;
   getGA4RevenuePublication?: (campaignId: string, reportingDate: string) => Promise<GA4RevenuePublication>;
+  getRevenueSources?: typeof storage.getRevenueSources;
+  getRevenueBreakdownBySource?: typeof storage.getRevenueBreakdownBySource;
   getCampaign: (campaignId: string) => Promise<any>;
   getGA4Connections: (campaignId: string) => Promise<any[]>;
   getGA4OverviewSnapshot: (campaignId: string, propertyId: string) => Promise<any>;
@@ -28,6 +30,8 @@ type WriterDependencies = {
 const defaultDependencies: WriterDependencies = {
   getGA4PublicationVersion: campaignId => storage.getGA4PublicationVersion(campaignId),
   getGA4RevenuePublication: (campaignId, reportingDate) => storage.getGA4RevenuePublication(campaignId, reportingDate),
+  getRevenueSources: (campaignId, context) => storage.getRevenueSources(campaignId, context),
+  getRevenueBreakdownBySource: (campaignId, start, end, context) => storage.getRevenueBreakdownBySource(campaignId, start, end, context),
   getCampaign: (campaignId) => storage.getCampaign(campaignId),
   getGA4Connections: (campaignId) => storage.getGA4Connections(campaignId),
   getGA4OverviewSnapshot: (campaignId, propertyId) => storage.getGA4OverviewSnapshot(campaignId, propertyId),
@@ -157,6 +161,34 @@ export async function writeFinancialDailySnapshotIfReady(
     snapshot: cumulative.snapshot,
   });
   if (!readiness.ready) return { status: "blocked", reasons: readiness.reasons, snapshot: cumulative.snapshot };
+
+  // Keep display provenance with its total. Reads share the existing guarded
+  // publication boundary; a concurrent input change still rejects the write.
+  if (revenuePublication && dependencies.getRevenueSources && dependencies.getRevenueBreakdownBySource) {
+    const [definitions, breakdown] = await Promise.all([
+      dependencies.getRevenueSources(campaignId, "ga4"),
+      dependencies.getRevenueBreakdownBySource(campaignId, "1900-01-01", reportingDate, "ga4"),
+    ]);
+    const amounts = new Map(breakdown.map(row => [row.sourceId, row.revenue]));
+    const sourceIds = new Set(definitions.map(source => source.id));
+    if (sourceIds.size === definitions.length && amounts.size === breakdown.length
+      && sourceIds.size === Object.keys(revenuePublication.sources).length
+      && definitions.every(source => source.id in revenuePublication.sources && source.currency === currency)
+      && breakdown.every(row => sourceIds.has(row.sourceId) && row.currency === currency && Number.isFinite(row.revenue))
+      && Math.abs(breakdown.reduce((sum, row) => sum + row.revenue, 0) - Number(revenueSourceTotal.totalRevenue || 0)) < 0.005) {
+      const orderedDefinitions = [...breakdown.map(row => definitions.find(source => source.id === row.sourceId)!),
+        ...definitions.filter(source => !amounts.has(source.id))];
+      revenuePublication.display = { nativeRevenue: totals.ga4Revenue, sources: orderedDefinitions.map(source => {
+        let config: any = {};
+        try { config = JSON.parse(source.mappingConfig || "{}"); } catch {}
+        // Only presentation fields, never credentials or connection configuration.
+        const mappingConfig = Object.fromEntries(["sheetName", "selectedValues", "campaignMappings", "campaignValueRevenueTotals", "dateField", "pipelineEnabled"]
+          .filter(key => config?.[key] !== undefined).map(key => [key, config[key]]));
+        return { sourceId: source.id, sourceType: source.sourceType, displayName: source.displayName || source.sourceType,
+          revenue: amounts.get(source.id) ?? 0, mappingConfig };
+      }) };
+    }
+  }
 
   try {
     await dependencies.upsertFinancialDailySnapshot({ ...cumulative.snapshot,

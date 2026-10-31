@@ -25,7 +25,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
   }, 60_000);
   afterAll(async () => { await browser?.close(); });
 
-  async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number; unmappedHubspot?: boolean; unmappedSalesforce?: boolean; publication?: string; emptyBreakdown?: boolean; deletion?: "success" | "failed"; multipleItems?: boolean } = {}) {
+  async function fixture(options: { legacySnapshot?: boolean; futureRevenue?: number; state?: string; providers?: string[]; hubspotAmount?: number; unmappedHubspot?: boolean; unmappedSalesforce?: boolean; publication?: string; emptyBreakdown?: boolean; deletion?: "success" | "failed"; multipleItems?: boolean } = {}) {
     let state = options.state ?? "positive"; let providers = options.providers ?? ["hubspot", "salesforce", "shopify"];
     let publication = options.publication;
     let deletionPending = false, pendingStatusChecks = 0;
@@ -35,19 +35,23 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     await page.clock.install({ time: new Date("2026-10-23T18:00:00Z") });
     const confirmed: Record<string, number> = { hubspot: 25, salesforce: 30, shopify: 45, google_sheets: 25, csv: 25, manual: 25, custom: 25 };
     const updatedAt = "2026-10-23T12:10:00Z", day = "2026-10-22";
-    let sourceDay = day;
+    let sourceDay = day, nativeUnavailable = false;
     const totals = { sessions: 100, users: 90, conversions: 2.75, revenue: 100, engagedSessions: 70, engagementRate: 0.7, pageviews: 120 };
     const selected = "fixture-selected";
     let selections = options.multipleItems ? [selected, "keep-selected"] : [selected];
     let receipt = "fixture-publication";
     let publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0);
     const mutations: Array<{ method: string; path: string; body: any }> = [];
+    const responseGates = new Map<string, { wait: Promise<void>; release: () => void }>();
     const sources = () => providers.map(provider => ({ id: `${provider}-source`, sourceType: provider, platformContext: "ga4", isActive: true,
-      ...(publication ? { publicationStatus: publication === "waiting-card" ? "published" : publication, publicationHash: `${provider}:new`, completedDayEndDate: sourceDay } : {}),
-      displayName: provider === "hubspot" ? "HubSpot" : provider === "salesforce" ? "Salesforce" : "Shopify", currency: "EUR", lastTotalRevenue: confirmed[provider], completedDayRevenue: confirmed[provider], materializedRevenueStatus: "available",
+      ...(publication ? { publicationStatus: publication === "waiting-card" ? "published" : publication, publicationHash: `${provider}:${confirmed[provider]}`, completedDayEndDate: sourceDay } : {}),
+      displayName: provider === "hubspot" ? "HubSpot" : provider === "salesforce" ? "Salesforce" : "Shopify", currency: "EUR", lastTotalRevenue: confirmed[provider] + (options.futureRevenue || 0), pendingCompletedDay: Boolean(options.futureRevenue), completedDayRevenue: confirmed[provider], materializedRevenueStatus: "available",
       mappingConfig: JSON.stringify({ platformContext: "ga4", selectedValues: selections, campaignProperty: "campaign", campaignField: "Campaign__c", pipelineEnabled: provider !== "shopify", pipelineStageId: "open", pipelineStageName: "Open", pipelineStageLabel: "Open",
         campaignMappings: options.unmappedHubspot || options.unmappedSalesforce ? [] : selections.map(crmValue => ({ crmValue, linkedinCampaignUrn: crmValue, linkedinCampaignName: crmValue })), dateField: provider === "salesforce" ? "CloseDate" : "closedate",
         pipelineTotalToDate: 999, pipelineCurrency: "EUR", pipelineValueRevenueTotals: [{ campaignValue: "old-cache", revenue: 999 }], campaignValueRevenueTotals: selections.map(campaignValue => ({ campaignValue, revenue: confirmed[provider] / selections.length })) }) }));
+    const captureSources = () => sources().map(source => ({ sourceId: source.id, sourceType: source.sourceType, displayName: source.displayName,
+      revenue: source.completedDayRevenue, mappingConfig: JSON.parse(source.mappingConfig) }));
+    let publishedSources = publication && publication !== "published" ? [] : captureSources();
     await context.route("**/*", async route => {
       const request = route.request(), url = new URL(request.url());
       if (url.hostname === "batch5-ga4-fixture.test" && options.deletion && request.method() !== "GET") {
@@ -67,6 +71,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       if (url.pathname === "/fixture.js") { await route.fulfill({ contentType: "application/javascript", body: bundle }); return; }
       if (!url.pathname.startsWith("/api/")) { await route.fulfill({ contentType: "text/html", body: '<html><body><div id="root"></div><script src="/fixture.js"></script></body></html>' }); return; }
       requests.push(url.pathname + url.search);
+      await responseGates.get(url.pathname.endsWith("/revenue-sources") ? "sources" : url.pathname.endsWith("/financial-daily-snapshot") ? "snapshot" : "")?.wait;
       const property = { propertyId: "123", propertyName: "Synthetic fixture", isPrimary: true, lookbackDays: 30 };
       const imported = providers.reduce((sum, provider) => sum + confirmed[provider], 0);
       let data: any; let status = 200;
@@ -80,10 +85,11 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       }
       else if (url.pathname.endsWith("/ga4-daily")) data = { success: true, propertyId: "123", startDate: "2026-09-04", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8,14,20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
       else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: {
-        ...(publication ? { revenuePublication: { version: 1, reportingDate: day, sources: Object.fromEntries(providers.map(provider => [ `${provider}-source`, `${provider}:${publication === "published" ? "new" : "old"}` ])) } } : {}),
-        financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-09-04", endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: options.deletion ? publishedTotal : 100 + (publication && publication !== "published" ? 0 : imported) }, spend: { available: false }, conversions: { available: true, value: 2.75 } } } } } };
+        revenuePublication: { version: 1, reportingDate: day, sources: Object.fromEntries(publishedSources.map(source => [source.sourceId, `${source.sourceType}:${source.revenue}`])),
+          ...(options.legacySnapshot ? {} : { display: { nativeRevenue: 100, sources: publishedSources } }) },
+        financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-09-04", endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: 100 + publishedSources.reduce((sum, source) => sum + source.revenue, 0), sources: ["ga4", ...publishedSources.map(source => `revenue-source:${source.sourceId}`)] }, spend: { available: false }, conversions: { available: true, value: 2.75 } } } } } };
       else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, lastUpdated: updatedAt, totals, rows: [{ campaign: selected, campaignName: selected, ...totals }], revenueWindow: { source: "ga4", startDate: "2026-09-04", endDate: day }, meta: { currencyCode: "EUR" } };
-      else if (url.pathname.endsWith("/ga4-to-date")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals };
+      else if (url.pathname.endsWith("/ga4-to-date")) { data = nativeUnavailable ? { success: false } : { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals }; if (nativeUnavailable) status = 503; }
       else if (/\/ga4-(conversion-events|landing-pages)$/.test(url.pathname)) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, lastUpdated: updatedAt, rows: [] };
       else if (url.pathname === "/api/industry-benchmarks") data = { industries: [] };
       else if (/\/ga4-(diagnostics|geographic)$/.test(url.pathname)) data = { success: true, propertyId: "123", rows: [] };
@@ -108,8 +114,13 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     return { page, revenue, pipeline, requests, errors, mutations,
       pendingStatusChecks: () => pendingStatusChecks,
       setSourceDay: (value: string) => { sourceDay = value; },
-      completeDeletion: () => { deletionPending = false; publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0); receipt = "after-deletion"; },
-      setPublication: (value: string) => { publication = value; if (value === "published") receipt = "source-published"; }, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; }, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
+      completeDeletion: () => { deletionPending = false; publishedTotal = 100 + providers.reduce((sum, provider) => sum + confirmed[provider], 0); publishedSources = captureSources(); receipt = "after-deletion"; },
+      setAmount: (provider: string, value: number) => { confirmed[provider] = value; },
+      setSelections: (values: string[]) => { selections = values; },
+      holdResponse: (kind: string) => { let release!: () => void; const wait = new Promise<void>(resolve => { release = resolve; }); responseGates.set(kind, { wait, release }); },
+      releaseResponse: (kind: string) => { responseGates.get(kind)?.release(); responseGates.delete(kind); },
+      setNativeUnavailable: (value = true) => { nativeUnavailable = value; },
+      setPublication: (value: string) => { publication = value; if (value === "published") { publishedSources = captureSources(); receipt = "source-published"; } }, setState: (value: string) => { state = value; }, setProviders: (value: string[]) => { providers = value; publishedSources = captureSources(); }, close: async () => { responseGates.forEach(gate => gate.release()); await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
   }
 
   it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"])("the %s delete button removes only its source and updates the card after publication", async provider => {
@@ -180,15 +191,19 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
     } finally { await f.close(); }
   }, 30_000);
 
-  it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"])("automatically updates %s totals and clears its red pending status only after publication", async provider => {
+  it.each(["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"])("keeps %s source amounts with their total until publication, including a reopened page", async provider => {
     const f = await fixture({ providers: [provider], publication: "pending", emptyBreakdown: provider === "csv" });
     try {
       await browserExpect(f.revenue).toContainText("\u20ac100.00");
       await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
       const pending = f.page.getByText("Saved — waiting for Total Revenue to update.", { exact: true });
-      await browserExpect(pending).toBeVisible(); await browserExpect(pending).toHaveClass(/text-red-600/);
+      await browserExpect(pending).toHaveCount(0);
+      await browserExpect(f.page.getByRole("dialog")).not.toContainText(provider === "salesforce" ? "\u20ac30.00" : provider === "shopify" ? "\u20ac45.00" : "\u20ac25.00");
+      await f.page.reload();
+      await browserExpect(f.revenue).toContainText("\u20ac100.00");
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
       f.setPublication("published"); await f.page.clock.runFor(30_000);
-      await browserExpect(pending).toBeVisible();
+      await browserExpect(pending).toHaveCount(0);
       await browserExpect(f.revenue).toContainText("\u20ac100.00");
       await f.page.clock.runFor(31_000);
       await browserExpect(pending).toHaveCount(0);
@@ -213,7 +228,8 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       expect(f.requests.length).toBe(requestCount);
       f.setPublication("waiting-card");
       await f.page.evaluate(() => (window as any).fixtureRefetch());
-      await browserExpect(pending).toHaveCount(3);
+      await browserExpect(pending).toHaveCount(0);
+      await browserExpect(f.page.getByRole("dialog")).toContainText("\u20ac100.00");
       f.setPublication("published");
       await f.page.evaluate(() => (window as any).fixtureRefetch());
       await browserExpect(pending).toHaveCount(0);
@@ -222,14 +238,129 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       await browserExpect(f.pipeline).toContainText("\u20ac20.00");
     } finally { await f.close(); }
   }, 30_000);
-  it.each(["failed", "waiting-card"])("keeps saved source figures visible for %s publication", async publication => {
+  it.each([45, -5, 0])("retains the previous source amount during an edit to %s, including native read failures", async amount => {
+    const f = await fixture({ providers: ["google_sheets"], publication: "published" });
+    try {
+      await browserExpect(f.revenue).toContainText("\u20ac125.00");
+      f.setAmount("google_sheets", amount); f.setPublication("pending"); f.setNativeUnavailable();
+      await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      const dialog = f.page.getByRole("dialog");
+      await browserExpect(dialog).toContainText("\u20ac25.00");
+      await browserExpect(dialog).toContainText("\u20ac100.00");
+      await browserExpect(dialog.getByTitle("Edit revenue source", { exact: true })).toBeDisabled();
+      await browserExpect(dialog.getByTitle("Remove revenue source", { exact: true })).toBeDisabled();
+      await f.page.reload();
+      await browserExpect(f.revenue).toContainText("\u20ac125.00");
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      await browserExpect(dialog).toContainText("\u20ac25.00");
+      await browserExpect(dialog).toContainText("GA4 Revenue");
+      f.setPublication("published"); await f.page.clock.runFor(61_000);
+      await browserExpect(f.revenue).toContainText(`\u20ac${(100 + amount).toFixed(2)}`);
+      await browserExpect(dialog).not.toContainText("\u20ac25.00");
+      await browserExpect(dialog).toContainText("GA4 Revenue");
+      await browserExpect(dialog.getByTitle("Edit revenue source", { exact: true })).toBeEnabled();
+      expect(f.mutations).toEqual([]);
+    } finally { await f.close(); }
+  }, 30_000);
+  it.each(["sources", "snapshot"])("keeps amounts together when the %s response arrives last", async delayed => {
+    const f = await fixture({ providers: ["google_sheets"], publication: "published" });
+    try {
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      f.holdResponse(delayed); f.setAmount("google_sheets", 75); f.setPublication("published");
+      await f.page.evaluate(() => { void (window as any).fixtureRefetch(); });
+      const dialog = f.page.getByRole("dialog");
+      await browserExpect(dialog.getByTitle("Edit revenue source", { exact: true })).toBeDisabled();
+      await browserExpect(f.revenue).toContainText(delayed === "sources" ? "\u20ac175.00" : "\u20ac125.00");
+      await browserExpect(dialog).toContainText(delayed === "sources" ? "\u20ac75.00" : "\u20ac25.00");
+      await browserExpect(dialog).not.toContainText(delayed === "sources" ? "\u20ac25.00" : "\u20ac75.00");
+      await browserExpect(dialog).toContainText("\u20ac100.00");
+      f.releaseResponse(delayed);
+      await browserExpect(f.revenue).toContainText("\u20ac175.00");
+      await browserExpect(dialog).toContainText("\u20ac75.00");
+      await browserExpect(dialog.getByTitle("Edit revenue source", { exact: true })).toBeEnabled();
+      expect(f.mutations).toEqual([]);
+    } finally { await f.close(); }
+  }, 30_000);
+
+  it.each(["hubspot", "salesforce"])("disables a retained %s item that is no longer in the current mapping", async provider => {
+    const f = await fixture({ providers: [provider], publication: "published" });
+    try {
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      f.setSelections(["replacement"]); f.setPublication("pending");
+      await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(f.page.getByRole("button", { name: "Remove fixture-selected", exact: true })).toBeDisabled();
+      expect(f.mutations).toEqual([]);
+      f.setPublication("published"); await f.page.clock.runFor(61_000);
+      await browserExpect(f.page.getByRole("button", { name: "Remove fixture-selected", exact: true })).toHaveCount(0);
+      await browserExpect(f.page.getByRole("button", { name: "Remove replacement", exact: true })).toBeEnabled();
+    } finally { await f.close(); }
+  }, 30_000);
+
+  it("retains a verified legacy breakdown and never guesses missing pre-edit amounts after a reload", async () => {
+    const f = await fixture({ providers: ["google_sheets"], publication: "published", legacySnapshot: true });
+    try {
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      const dialog = f.page.getByRole("dialog");
+      await browserExpect(dialog).toContainText("\u20ac25.00");
+      f.setAmount("google_sheets", 75); f.setPublication("pending"); f.setNativeUnavailable();
+      await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(dialog).toContainText("\u20ac25.00");
+      await browserExpect(dialog).not.toContainText("\u20ac75.00");
+      await f.page.reload();
+      await browserExpect(f.revenue).toContainText("\u20ac125.00");
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      await browserExpect(dialog).toContainText("GA4 Revenue");
+      await browserExpect(dialog).not.toContainText("\u20ac75.00");
+      await browserExpect(dialog.getByText("\u2014", { exact: true })).not.toHaveCount(0);
+      f.setNativeUnavailable(false); f.setPublication("published");
+      await f.page.clock.runFor(61_000);
+      await browserExpect(f.revenue).toContainText("\u20ac175.00");
+      await browserExpect(dialog).toContainText("\u20ac75.00");
+      await browserExpect(dialog).toContainText("\u20ac100.00");
+    } finally { await f.close(); }
+  }, 30_000);
+
+  it.each(["hubspot", "salesforce"])("does not present a pending %s import as a confirmed zero", async provider => {
+    const f = await fixture({ providers: [provider], publication: "pending" });
+    try {
+      f.setAmount(provider, 0);
+      await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      const dialog = f.page.getByRole("dialog");
+      await browserExpect(dialog).not.toContainText("\u20ac0.00");
+      await browserExpect(dialog.getByText("\u2014", { exact: true })).toHaveCount(1);
+      f.setPublication("published"); await f.page.clock.runFor(61_000);
+      await browserExpect(dialog).toContainText("\u20ac0.00");
+      await browserExpect(f.revenue).toContainText("\u20ac100.00");
+    } finally { await f.close(); }
+  }, 30_000);
+
+  it("displays only the included contribution when a source also contains future sales", async () => {
+    const f = await fixture({ providers: ["google_sheets"], publication: "published", futureRevenue: 100 });
+    try {
+      await browserExpect(f.revenue).toContainText("\u20ac125.00");
+      await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      const dialog = f.page.getByRole("dialog");
+      await browserExpect(dialog).toContainText("\u20ac25.00");
+      await browserExpect(dialog).not.toContainText("\u20ac125.00");
+      const requests = f.requests.length;
+      await f.page.clock.runFor(61_000);
+      expect(f.requests.length).toBe(requests);
+      expect(f.mutations).toEqual([]);
+    } finally { await f.close(); }
+  }, 30_000);
+
+  it.each(["failed", "waiting-card"])("keeps published figures consistent for %s publication", async publication => {
     const f = await fixture({ providers: ["hubspot"], publication });
     try {
       await browserExpect(f.revenue).toContainText("\u20ac100.00");
       await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
       const dialog = f.page.getByRole("dialog");
-      await browserExpect(dialog).toContainText("\u20ac25.00");
-      await browserExpect(dialog).toContainText(publication === "failed" ? "Saved — Total Revenue update failed. Your saved data is intact." : "Saved — waiting for Total Revenue to update.");
+      await browserExpect(dialog).not.toContainText("\u20ac25.00");
+      await browserExpect(dialog).toContainText("\u20ac100.00");
+      if (publication === "failed") await browserExpect(dialog.getByRole("alert")).toContainText("Your saved changes are intact");
+      else await browserExpect(dialog.getByRole("alert")).toHaveCount(0);
     } finally { await f.close(); }
   }, 30_000);
 

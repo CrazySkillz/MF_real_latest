@@ -37,7 +37,8 @@ const devLog = (...args: any[]) => {
 
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
-export type GA4RevenuePublication = { version: 1; reportingDate: string; sources: Record<string, string>; pendingSourceIds: string[] };
+export type GA4RevenuePublication = { version: 1; reportingDate: string; sources: Record<string, string>; pendingSourceIds: string[];
+  display?: { nativeRevenue: number; sources: Array<{ sourceId: string; sourceType: string; displayName: string; revenue: number; mappingConfig: Record<string, any> }> } };
 export type GA4RevenuePublicationStatus = Record<string, { status: "published" | "pending" | "failed"; hash: string }>;
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";

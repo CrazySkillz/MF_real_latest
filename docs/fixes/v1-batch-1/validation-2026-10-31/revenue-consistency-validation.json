@@ -1,0 +1,90 @@
+{
+  "at": "2026-10-31T01:09:26.160Z",
+  "result": "PASS_BOUNDED_LOCAL_REGRESSIONS",
+  "uniquePassingChecks": 371,
+  "packets": [
+    {
+      "file": "revenue-consistency-page-final.json",
+      "passed": 48,
+      "failed": 1,
+      "excluded": 0,
+      "sha256": "10ba4b42911243505d53dd1682febdeb0a8b6143ea790aaf2aecd7abd360ab28"
+    },
+    {
+      "file": "revenue-consistency-writer-final.json",
+      "passed": 102,
+      "failed": 0,
+      "excluded": 0,
+      "sha256": "d77ef8925378b38e5c575e105807633dae79481883700554fccc9558ac019569"
+    },
+    {
+      "file": "revenue-consistency-postgres.json",
+      "passed": 88,
+      "failed": 0,
+      "excluded": 0,
+      "sha256": "75f0c7b006c5aa98d0548aab9b6b8d510f978ad8fcb44d9ec0ca1e0aa973dce8"
+    },
+    {
+      "file": "revenue-consistency-neighbors-final.json",
+      "passed": 130,
+      "failed": 0,
+      "excluded": 0,
+      "sha256": "b0e374827d885f283e0aa9fa89fdc865180ce7aebe0b3ab68ce8db72c1ee05d4"
+    },
+    {
+      "file": "revenue-consistency-report.json",
+      "passed": 1,
+      "failed": 0,
+      "excluded": 11,
+      "sha256": "543f8773ba2f6199d2980a40abfb031614cbd5953fa7eabf1a7e861ff0b56a9c"
+    },
+    {
+      "file": "revenue-consistency-order.json",
+      "passed": 2,
+      "failed": 0,
+      "excluded": 48,
+      "sha256": "9183cf624aff375873dfc85d031b2c651276eec335af1235b7d95490e948772a"
+    },
+    {
+      "file": "revenue-consistency-initial-publication.json",
+      "passed": 1,
+      "failed": 0,
+      "excluded": 0,
+      "sha256": "a1ea46e1712d95c2e8e5afab1e41aef5d973a13a1c50c6f1918ec599199fcddc"
+    },
+    {
+      "file": "revenue-consistency-verified.json",
+      "passed": 4,
+      "failed": 0,
+      "excluded": 47,
+      "sha256": "9e7ea66fc05ae1e80e4451d9318a5e8ca32aeea31bf943841842c85995e4e567"
+    }
+  ],
+  "runtime": [
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256Lf": "3857d284ac00eaaf871b48110fe9d6bb839e85e94a699169953c91c0ff2857cf"
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256Lf": "b30793f4b931f8c5a562fd902ab6e7df5ca82fa04b649d9985e674f4a178aa76"
+    },
+    {
+      "file": "server/utils/financial-daily-snapshot-writer.ts",
+      "sha256Lf": "2b9d2f643ae7c82ecb3e14acfdf89ef5a667f55ec72f96964f3b996444db8bc3"
+    }
+  ],
+  "scope": "Revenue source display and retained totals, persisted display metadata, guarded source actions, financial inputs and existing publication behavior",
+  "historicalFailure": "The page-final packet caught initial native source access before a first financial snapshot. The corrected initial-publication and verified packets supersede that failed case.",
+  "localPostgres": {
+    "endpoint": "127.0.0.1:55444/ga4_alignment_test",
+    "syntheticDataOnly": true,
+    "stopped": true
+  },
+  "productionWritesAttempted": false,
+  "limits": [
+    "No manual live re-import or personal browser access",
+    "Does not close full provider lifecycle or Batch 1 acceptance",
+    "Legacy snapshots are not backfilled; unavailable historical contributions use a dash"
+  ]
+}

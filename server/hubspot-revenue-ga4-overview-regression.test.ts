@@ -362,7 +362,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueExportBlock).not.toContain("Pipeline Proxy");
     expect(revenueSourcesDialog).toContain("isPipelineOnlyRevenueSource");
     expect(revenueSourcesDialog).toContain("Pipeline Proxy only");
-    expect(client).toContain("const totalRevenueDisplaySources = revenueDisplaySources;");
+    expect(client).toContain("const totalRevenueDisplaySources = [...(revenueSnapshotDisplay?.sources || [])");
     expect(client).not.toContain('String(source?.sourceType || "").trim().toLowerCase() !== "hubspot" || source?.revenue == null || Number(source.revenue) !== 0');
     expect(client).toContain("const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);");
     expect(client).toContain("{totalRevenueDisplaySources.map((s: any) => {");

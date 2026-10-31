@@ -2,6 +2,13 @@
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto'), assert = require('node:assert/strict');
 const commit = process.argv[2];
 assert.match(commit || '', /^[a-f0-9]{40}$/);
+const testCommit = process.argv[3] || commit;
+assert.match(testCommit, /^[a-f0-9]{40}$/);
+if (testCommit !== commit) {
+  const { execFileSync } = require('node:child_process');
+  const changed = execFileSync('git', ['diff', '--name-only', commit, testCommit], { encoding: 'utf8', windowsHide: true }).trim().split('\n').filter(Boolean);
+  assert.ok(changed.every(file => file.startsWith('docs/') || /^server\/.+\.test\.ts$/.test(file)), 'Only test/documentation changes may separate runtime and test commits');
+}
 const origin = 'https://marketforensics.onrender.com';
 const api = 'https://api.github.com/repos/CrazySkillz/MF_real_latest';
 const normalize = text => text.replace(/([\w.-]+)-[A-Za-z0-9_-]{8,}\.(js|css)(?=["'])/g, '$1-HASH.$2').replace(/pk_(test|live)_[A-Za-z0-9]+/g, 'PUBLIC_CLERK_KEY');
@@ -11,9 +18,9 @@ async function get(url, json = true) {
   return json ? r.json() : r.text();
 }
 (async () => {
-  const [health, runs] = await Promise.all([get(origin + '/api/health'), get(api + '/actions/runs?head_sha=' + commit)]);
-  const run = runs.workflow_runs.filter(r => r.head_sha === commit && r.event === 'push').sort((a,b) => b.id-a.id)[0];
-  const receipt = { at: new Date().toISOString(), commit, runtime: { commit: health.commit, healthy: health.ok, expectedCommit: health.commit === commit },
+  const [health, runs] = await Promise.all([get(origin + '/api/health'), get(api + '/actions/runs?head_sha=' + testCommit)]);
+  const run = runs.workflow_runs.filter(r => r.head_sha === testCommit && r.event === 'push').sort((a,b) => b.id-a.id)[0];
+  const receipt = { at: new Date().toISOString(), commit, testCommit, runtime: { commit: health.commit, healthy: health.ok, expectedCommit: health.commit === commit },
     hosted: run ? { id: run.id, url: run.html_url, status: run.status, conclusion: run.conclusion } : null };
   if (run) {
     const jobs = await get(api + '/actions/runs/' + run.id + '/jobs');

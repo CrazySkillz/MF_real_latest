@@ -51,7 +51,7 @@ describe("GA4 materialized revenue authority", () => {
     expect(ga4Page).toContain('latestRevenue: getDefinitionRevenue(d)');
     expect(ga4Page).toContain('revenue: getCompletedDayRevenue(d)');
     expect(ga4Page).toContain('const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";');
-    expect(ga4Page).toContain('materializedRevenueStatus: s.materializedRevenueStatus');
+    expect(ga4Page).toContain('materializedRevenueStatus: currentSource.materializedRevenueStatus');
   });
 
   it("does not pass stale GA4 configuration revenue into HubSpot edit review", () => {

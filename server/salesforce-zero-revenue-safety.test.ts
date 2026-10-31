@@ -80,7 +80,7 @@ describe("Salesforce GA4 zero-revenue safety", () => {
     expect(routes).toContain('const hasLatestRevenue = latestTotalsBySource.has(sourceId);');
     expect(routes).toContain('const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null);');
     expect(routes).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');
-    expect(ga4Page).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}');
+    expect(ga4Page).toContain('{s.materializedRevenueStatus === "updating" ? "—" : materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}');
     expect(revenueWizard).toContain('String(import.meta.env.VITE_ENABLE_SALESFORCE_REVENUE_SOURCE || "").toLowerCase() === "true"');
     expect(revenueWizard).toContain("const showSalesforceRevenueSource = ENABLE_SALESFORCE_REVENUE_SOURCE;");
   });

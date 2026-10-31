@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-31T01:16:33.353Z",
+  "before": "revenue-publication-2026-10-31T00-53-40-740Z.json",
+  "after": "revenue-publication-2026-10-31T01-16-30-171Z.json",
+  "unchanged": {
+    "campaign": true,
+    "sources": false,
+    "records": true,
+    "snapshots": true,
+    "work": false,
+    "overview": true
+  },
+  "totalRevenue": {
+    "value": "63099.32",
+    "sources": [
+      "ga4",
+      "revenue-source:59c30be2-5e98-472b-a552-f4c4ee44f47b",
+      "revenue-source:2be847ea-4842-43cb-a024-50d861272fc8",
+      "revenue-source:b1ac1292-ef65-4829-b60c-5181bc6b17a7",
+      "revenue-source:db536b7c-1b2e-40f2-9e04-af06c8e18b76"
+    ],
+    "available": true
+  },
+  "result": "REVIEW_DIFFERENCES",
+  "scope": "Exact disposable campaign only; no provider mutation or authenticated browser acceptance."
+}

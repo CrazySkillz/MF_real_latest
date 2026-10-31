@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const storageMock = vi.hoisted(() => ({
   getGA4PublicationVersion: vi.fn(async () => null),
   getGA4RevenuePublication: vi.fn(),
+  getRevenueSources: vi.fn(),
   getCampaign: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
@@ -57,6 +58,7 @@ describe("campaign current-value financial source contract", () => {
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0 });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100 });
     storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
+    storageMock.getRevenueSources.mockResolvedValue([]);
     storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
     storageMock.getCampaignKPIs.mockResolvedValue([{
       id: "campaign-revenue",
@@ -147,6 +149,8 @@ describe("campaign current-value financial source contract", () => {
     storageMock.getGA4OverviewSnapshot.mockResolvedValue(snapshot);
     ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 500.01, conversions: 25 } });
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, currency: "USD", sourceIds: ["revenue-1"] });
+    storageMock.getRevenueSources.mockResolvedValue([{ id: "revenue-1", sourceType: "csv", currency: "USD" }]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "revenue-1", revenue: 300, currency: "USD" }]);
     storageMock.getSpendSources.mockResolvedValue([]);
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [] });
     for (const stage of ["financial_sources", "ga4_daily"] as const) {
@@ -160,6 +164,7 @@ describe("campaign current-value financial source contract", () => {
     expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
     expect(saved.inputs.revenue.value).toBe("800.01");
     expect(saved.revenuePublication).toMatchObject({ reportingDate, sources: { "revenue-1": "saved-source-receipt" } });
+    expect(saved.revenuePublication.display).toMatchObject({ nativeRevenue: 500.01, sources: [{ sourceId: "revenue-1", revenue: 300 }] });
     ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 500.02, conversions: 25 } });
     expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
     expect(saved.inputs.revenue.value).toBe("800.01");
@@ -170,6 +175,7 @@ describe("campaign current-value financial source contract", () => {
     storageMock.getGA4OverviewSnapshot.mockResolvedValue({ ...snapshot, campaignBreakdown: { ...snapshot.campaignBreakdown, totals: { ...snapshot.campaignBreakdown.totals, revenue: 500.02 } } });
     expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
     expect(saved.inputs.revenue.value).toBe("800.02");
+    expect(saved.revenuePublication.display.nativeRevenue).toBe(500.02);
     expect(saved.inputs.conversions.value).toBe(25);
   });
 

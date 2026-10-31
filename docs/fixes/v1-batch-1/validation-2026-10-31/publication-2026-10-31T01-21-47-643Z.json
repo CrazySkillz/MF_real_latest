@@ -1,0 +1,100 @@
+{
+  "at": "2026-10-31T01:21:47.643Z",
+  "commit": "fa7792872539f1bd6fd75cf8174a49a9a55218ee",
+  "runtime": {
+    "commit": "fa7792872539f1bd6fd75cf8174a49a9a55218ee",
+    "healthy": true,
+    "expectedCommit": true
+  },
+  "hosted": {
+    "id": 41154267734,
+    "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41154267734",
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "jobs": [
+    {
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci --ignore-scripts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npx --no-install playwright install --with-deps chromium",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Create isolated notification fixture database",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run check:ga4-kpi-certification",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:current-version",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Retained deferred-source evidence (non-blocking)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "asset": {
+    "path": "/assets/ga4-metrics-DbAmFwK2.js",
+    "normalizedBuildMatches": true,
+    "sha256": "41e60e18cbf90bb3f44dab1d202d811ebd847c4b8ab3dafd0febf363369b81c1"
+  },
+  "published": true,
+  "result": "PENDING_OR_FAILED",
+  "boundary": "Exact deployed runtime, compiled GA4 page and hosted check metadata; authenticated customer-browser acceptance remains manual."
+}

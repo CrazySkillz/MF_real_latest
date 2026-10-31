@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-31T01:19:22.450Z",
+  "result": "PASS_LIVE_SAVED_BREAKDOWN",
+  "before": "revenue-publication-2026-10-31T00-53-40-740Z.json",
+  "after": "revenue-publication-2026-10-31T01-19-19-046Z.json",
+  "campaignAndSourceIdentityUnchanged": true,
+  "importedRecordsUnchanged": true,
+  "imported": {
+    "hubspot": 0,
+    "salesforce": 0,
+    "shopify": 785.95,
+    "google_sheets": 31000
+  },
+  "nativeRevenue": 32930.02,
+  "totalRevenue": 64715.97,
+  "nativeRevenueChange": 1616.65,
+  "displayReconcilesWithTotal": true,
+  "sourceHashesMatch": true,
+  "workId": "3e5e57d2-331f-4bb8-a226-a5bad43eeab0",
+  "workStatus": "completed",
+  "workHasError": false,
+  "explanation": "An existing background refresh advanced native GA4 data and publication bookkeeping. The complete revenue change matches the native GA4 change; imported records are unchanged.",
+  "scope": "Saved production result for the exact disposable campaign. Personal browser not operated; no manual import or provider request triggered."
+}

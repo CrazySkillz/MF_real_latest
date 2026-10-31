@@ -136,7 +136,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(sourceDialog).toContain('sourceType !== "hubspot" && sourceType !== "salesforce"');
     expect(sourceDialog).toContain("formatMoney(item.revenue)");
     expect(sourceDialog).not.toContain("cfg?.pipelineValueRevenueTotals");
-    expect(sourceDialog).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}');
+    expect(sourceDialog).toContain('{s.materializedRevenueStatus === "updating" ? "—" : materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}');
   });
 
   it("edits the Salesforce source from its provider heading and removes confirmed values individually", () => {

@@ -330,7 +330,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       await recoverInterruptedGA4Refreshes("campaign-a");
       expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledExactlyOnceWith("campaign-a", "campaign-a-owner", dueAt, reportingDate, { suppressAlerts: false, revenueChange: true });
       expect(mocks.recompute).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "campaign-a", refreshScope: scope }));
-      expect(mocks.storage.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "campaign-a", revenuePublication: { version: 1, reportingDate, sources: {}, pendingSourceIds: [] } }));
+      expect(mocks.storage.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "campaign-a", revenuePublication: { version: 1, reportingDate, sources: {}, pendingSourceIds: [], display: { nativeRevenue: 500, sources: [] } } }));
       expect(mocks.aggregate).toHaveBeenCalledWith("campaign-a", expect.objectContaining({ refreshScope: scope }));
       expect(mocks.executive).toHaveBeenCalledTimes(1);
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(true);

@@ -101,6 +101,37 @@ stopped. [TypeScript and both production builds](validation-2026-10-31/revenue-c
 pass, as does the KPI certification metadata gate. The report fixture's generated
 tracked PDF was restored and is not part of this change.
 
-Deployment verification follows the runtime commit. This is a bounded processing-display fix, not certification of all
-provider lifecycles, global scheduler health, report delivery or Batch 1. The
-agent does not operate the user's personal browser or perform a live re-import.
+## Deployment and scoped live verification
+
+Runtime commit `fa7792872539f1bd6fd75cf8174a49a9a55218ee` is pushed to `main`
+and served by Render. The public health endpoint identifies that exact commit;
+the deployed GA4 page matches the normalized, locally tested production build.
+The first [GitHub run](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41154267734)
+ran 6,794 tests: 6,789 passed and five failed. The log identifies one missing
+storage mock method, one receipt assertion without the new optional display,
+and three source-text assertions expecting the former render/edit expressions.
+The five affected test files now reflect the new contract, including explicit
+saved-native/source contribution assertions; all **266 checks** in those files
+pass in [the local rerun](validation-2026-10-31/revenue-consistency-hosted-contracts.json).
+No additional runtime change was required. The full hosted rerun remains pending.
+
+The [initial comparison](validation-2026-10-31/revenue-consistency-data-comparison.json)
+retains its `REVIEW_DIFFERENCES` result: source connection timestamps and work
+bookkeeping advanced during an existing background refresh. At that point,
+imported records and financial snapshots were unchanged. It is not presented
+as proof that every database field remained unchanged.
+
+The [completed live verification](validation-2026-10-31/revenue-consistency-live-data-verification.json)
+then proves that the exact disposable campaign's job completed without error,
+the source hashes still match, and its new persisted display reconciles to the
+same snapshot's Total Revenue. Native GA4 revenue advanced from EUR 31,313.37
+to EUR 32,930.02. The EUR 1,616.65 difference explains the entire Total Revenue
+change, from EUR 63,099.32 to EUR 64,715.97. The imported records are identical:
+HubSpot EUR 0, Salesforce EUR 0, Shopify EUR 785.95, Sheets EUR 31,000.
+The checks used enforced read-only transactions; they did not trigger a refresh
+or make provider requests. This verifies the actual saved publication result,
+not observation of the transition inside the user's authenticated browser.
+
+This is a bounded processing-display fix, not certification of all provider
+lifecycles, global scheduler health, report delivery or Batch 1. The agent does
+not operate the user's personal browser or perform a live re-import.

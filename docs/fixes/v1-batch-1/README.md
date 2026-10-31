@@ -12,6 +12,12 @@ External acceptance is not inferred from these tests; counts remain 16 CLOSED /
 
 ## Current Batch 1 status
 
+**October 31 final boundary check:** [Deployed public-secret rejection and exact
+remaining limits](FINAL_SECURITY_BOUNDARIES_2026-10-31.md) adds two rejected
+forgeries per affected provider without changing runtime code or campaign data.
+All twenty corrections are implemented; acceptance remains **16 CLOSED / 4 OPEN**.
+No completed user check needs repeating and no new manual request is issued.
+
 **October 31 provider/permission acceptance:** [Exact results and limits](PROVIDER_PERMISSION_ACCEPTANCE_2026-10-31.md)
 close V1-123. Batch 1 is **16 CLOSED / 4 OPEN**; remaining findings are V1-008,
 V1-054, V1-078 and V1-088. Deployed shared-resource denials, 21 real-database

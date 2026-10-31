@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-31T17:23:05.693Z",
+  "result": "PASS_LOCAL_ATTACK_REPRODUCTION",
+  "requests": 0,
+  "checks": [
+    {
+      "provider": "linkedin",
+      "check": "original public-secret forgery accepted by baseline and rejected by current verifier; missing production key fails closed",
+      "passed": true
+    },
+    {
+      "provider": "meta",
+      "check": "original public-secret forgery accepted by baseline and rejected by current verifier; missing production key fails closed",
+      "passed": true
+    }
+  ],
+  "cookiesUsed": false,
+  "realAuthorizationCodesUsed": false,
+  "realCampaignIdsUsed": false,
+  "providerRequestsIntended": 0,
+  "limits": "Exact public-fallback signing regression and repeated invalid-signature denial only. Does not claim real-provider authorization-code replay, single-use OAuth states, provider reconnect or whole-provider readiness."
+}

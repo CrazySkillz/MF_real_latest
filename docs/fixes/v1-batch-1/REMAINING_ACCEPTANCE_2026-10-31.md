@@ -13,6 +13,13 @@ whole-app production-readiness certification.
 
 ## New evidence
 
+- [Final security boundary check](FINAL_SECURITY_BOUNDARIES_2026-10-31.md):
+  both deployed LinkedIn/Meta callbacks reject states signed with the original
+  public fallback, including repeated use. Five bounded anonymous requests,
+  no real code or session; the initial Meta checker wording mismatch and its
+  corrected completion are retained. This is not valid-code replay evidence.
+  No further manual request is issued; all four external conditions remain OPEN.
+
 - [Callback and credential follow-up](CALLBACK_CREDENTIAL_CLOSEOUT_2026-10-31.md):
   four native Express denial failures reproduced, two callback guards correct
   them, and all 138 focused tests pass. Sixty isolated real-PostgreSQL checks

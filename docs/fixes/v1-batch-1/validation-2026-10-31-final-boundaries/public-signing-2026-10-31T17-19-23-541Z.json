@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-31T17:19:22.335Z",
+  "result": "NOT_VERIFIED",
+  "requests": 3,
+  "checks": [
+    {
+      "provider": "linkedin",
+      "check": "original public-secret forgery accepted by baseline and rejected by current verifier; missing production key fails closed",
+      "passed": true
+    },
+    {
+      "provider": "linkedin",
+      "attempt": 1,
+      "status": 200,
+      "remaining": 9,
+      "passed": true
+    },
+    {
+      "provider": "linkedin",
+      "attempt": 2,
+      "status": 200,
+      "remaining": 8,
+      "passed": true
+    },
+    {
+      "provider": "meta",
+      "check": "original public-secret forgery accepted by baseline and rejected by current verifier; missing production key fails closed",
+      "passed": true
+    },
+    {
+      "provider": "meta",
+      "attempt": 1,
+      "status": 200,
+      "remaining": 7,
+      "passed": false
+    }
+  ],
+  "cookiesUsed": false,
+  "realAuthorizationCodesUsed": false,
+  "realCampaignIdsUsed": false,
+  "providerRequestsIntended": 0,
+  "runtimeCommit": "357e950fcf03d02c93465cd602eda119f08cf7f6",
+  "code": "CHECK_FAILED"
+}

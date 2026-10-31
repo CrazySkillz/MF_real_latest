@@ -4,13 +4,22 @@ This is the current execution ledger. It supersedes pending statements in the
 October 30 acceptance record where later evidence is listed here. Historical
 receipts keep their original date, scope and result.
 
-**20 original code corrections implemented; 10 findings CLOSED and 10 OPEN for
-acceptance.** This is not 10 new code fixes. Whole-app totals are **130 findings:
-109 OPEN, 10 DEFERRED, 11 CLOSED** (V1-001/002/003/004/005/012/026/027/034/053/063).
+**20 original code corrections implemented; 12 findings CLOSED and 8 OPEN for
+acceptance.** Whole-app totals are **130 findings:
+107 OPEN, 10 DEFERRED, 13 CLOSED** (V1-001/002/003/004/005/012/026/027/034/052/053/057/063).
 Whole-app release remains NO-GO. The [conversion/file packet](INGESTION_ACCEPTANCE_2026-10-31.md)
 closes V1-001/026, including the deployed one-line download compatibility correction
 `3c304f97`. All account/source/ingestion fixtures were removed with independent
 readback. Existing campaign figures and refresh schedules were not changed.
+
+The [final consolidated API packet](FINAL_API_ACCEPTANCE_2026-10-31.md) is prepared
+for V1-006/030/075: 18 actual-handler/storage assertions and 13 cleanup guards
+pass locally. Production preflight and seed rollback pass; six exact disposable
+rows are seeded and the one second-account run has been requested. Its
+[connector save/readback follow-up](CONNECTOR_CONTEXT_FOLLOWUP_2026-10-31.md)
+is pushed and confirmed deployed as `adc5a6fe`, after all 6,935 tests, typecheck,
+build and KPI gate pass. Hosted run 41204006137 also passes. The single manual
+acceptance pass and its exact cleanup are still pending.
 
 ## Evidence already complete: do not repeat
 
@@ -26,7 +35,9 @@ and adds final-filter and altered-fixture coverage. The user confirms foreign
 report absence but did not confirm positive owner reappearance for that first
 fixture. The subsequent [source-access packet](SOURCE_ACCESS_PROCEDURE_2026-10-31.md)
 now proves actual owner report visibility plus foreign absence for its own
-fixture and closes V1-034. V1-052 still has notification/persistent-state limits.
+fixture and closes V1-034. The later [account-session close-out](ACCOUNT_SESSION_CLOSEOUT_2026-10-31.md)
+adds actual Notifications/Navigation switch, late-response and reload coverage,
+traces persistent-state readers, and closes V1-052 within its original boundary.
 Do not repeat either completed API packet.
 
 | Completed work | Evidence and boundary |
@@ -40,6 +51,7 @@ Do not repeat either completed API packet.
 | Sheets authorization, mapping and first import | [User journey](validation-2026-10-31/google-sheets-manual-journey.json), [saved import](validation-2026-10-31/google-sheets-initial-import.json): two additive dated rows, EUR 31,000. |
 | Revenue card/source-list consistency correction | [Exact trace, tests, deployed evidence and user confirmation](REVENUE_SOURCE_TRANSITION_2026-10-31.md). Full [hosted workflow 41155357151](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41155357151) passes; deployed runtime `fa779287` verified. The later total EUR 64,715.97 includes the independently observed native GA4 increase. No new live import transition is inferred from the final user confirmation. |
 | Approved obsolete plaintext cleanup | [Close-out record](CLOSEOUT_2026-10-30.md): 223 exact approved records cleared and independently checked; preserved connections unchanged. This does not settle other old ciphertext or historical logs. |
+| Approved historical ciphertext cleanup | [Completed disposition](LEGACY_CIPHERTEXT_DISPOSITION_2026-10-31.md): separate approval, 21 restored-copy checks, exact 126-record commit and independent readback. Fresh eleven-store inventory finds zero plaintext rows and zero public-fallback fields; all 361 records remain. Current campaign connections are unchanged. Historical logs and independent recovery remain separate. |
 | Backup and key custody | Existing saved key, downloaded export and same-machine restore evidence in [recovery record](../v1-batch-8/RENDER_EXPORT_RESTORE_2026-10-29.md) and [credential record](../v1-batch-8/LEGACY_CREDENTIAL_REMEDIATION.md). Independent-machine recovery is a distinct remaining requirement. |
 
 ## V1-027 closure
@@ -70,14 +82,50 @@ only dependent actions; successful evidence is retained.
 
 | Package | Consolidated work | Execution and exit condition |
 | --- | --- | --- |
-| A: account and API boundaries | Attribution restart and campaign-linked/default-model acceptance; remaining notification/persistent-state transitions; legacy Meta positive limit; connector-spend positive/downstream acceptance. Global/Trends reads, ordinary ownership checks, transfers and actual Reports owner/foreign visibility are already complete. | Trace/rehearse only the remaining paths before one grouped manual account session. Reuse passed results and do not recreate the removed account/source fixtures. No production saturation test or new legacy tables. |
+| A: account and API boundaries | Deployed attribution campaign-linked/default-model acceptance; legacy Meta positive limit; connector-spend positive/downstream acceptance. Local separate-process persistence now passes; notification/persistent-state acceptance is closed. Global/Trends reads, ordinary ownership checks, transfers and actual Reports owner/foreign visibility are already complete. | Trace/rehearse only the remaining paths before one grouped manual account session. Reuse passed results and do not recreate the removed account/source fixtures. No production saturation test or new legacy tables. |
 | B: provider and retained whitelist lifecycle | Renewal/reconnect and invalid-session/replay boundaries for configured providers; exact disposable resource-grant denial/revocation; retained whitelist edit/reload and sender boundary, with automatic email imports still disabled. Conversion and multipart/public-URL ingestion are complete. | Reuse established test mappings; do not repeat initial consent/imports. A shared provider grant must not be revoked merely because the app campaign is disposable. Prepare exact cleanup and expected outcomes before one grouped provider session. |
-| C: historical security and recovery | Historical log exposure/retention and any justified rotation; remaining incompatible-ciphertext disposition; recovery with the saved key on another machine. Startup key/verified-TLS enforcement now has deployed-code, production-health and successful-write evidence; exact orphan disposition is recorded as retained/unassigned. | Retain the completed backup/key-custody/same-machine restore results. Prepare any data change after exact inventory/rehearsal; the 223-record approval does not authorize another deletion. Independent-machine recovery cannot be replaced by another same-machine restore. Reuse the evidence for Batch 8. |
+| C: historical security and recovery | Shared independent recovery under Batch 8 V1-016. Historical-log custody/retention disposition and both approved historical credential cleanups are complete. Startup key/verified-TLS enforcement has deployed-code, production-health and successful-write evidence; exact orphan event disposition is retained/unassigned. | Retain completed backup/key-custody/same-machine restore and 223-plaintext / 126-ciphertext cleanup evidence. Do not repeat those cleanups or the completed log questions. Independent-machine recovery cannot be replaced by another same-machine restore; no paid database is authorized or required to continue Batch 1. |
 
 Order: prepare A first, reuse its fixtures in B, and perform safe read-only C work
 while awaiting the user's session results. No user action is requested on an
 untraced route or untested mutation. The API write/cleanup bundle and production
 operations bundle are not yet certified for execution merely by this plan.
+
+**Recovery scope correction, October 31:** the user has no second computer and
+questions the need for an additional paid Render database. No paid creation was
+approved or performed. Remove that proposal from the immediate Batch 1 execution
+path; do not request another computer or repeat the completed local restore.
+The original [V1-008 finding](README.md#v1-008) concerns unsafe production-key
+fallback, verified database TLS and existing ciphertext compatibility. The
+original [V1-016 finding in Batch 8](../v1-batch-8/README.md#v1-016) owns production
+backup/key recovery and application rollback. The original
+[operations matrix](../../audits/v1-2026-10-19/OPERATIONS_AND_TEMPLATE.md) also links
+key restoration to token protection: that dependency is retained, not waived.
+An additional paid database was one proposed verification method, not a required
+product purchase or a prerequisite to continuing the remaining Batch 1 checks.
+Independent recovery remains unverified and recorded once under V1-016, with
+cross-references here; no finding is closed and all counts remain unchanged.
+
+Preserve the supplied hosting settings for that later recovery work: compute
+`0.5c-1g` ($19/month, 0.5 CPU, 1 GB RAM), 5 GB storage, autoscaling enabled,
+HA disabled. Do not ask for these again or alter the live settings. The October 29
+export's local restoration of 71 tables / 5,903,996 rows and reported saved-key
+custody remain valid within their documented limits. Neither proves independent
+key retrieval or hosted recovery. No application code, production data, schedule,
+credential or hosting configuration changed during this scope correction.
+
+**Historical ciphertext completed, October 31:** the remaining 218 unreadable
+historical fields authenticated with the former public development fallback.
+Separate user approval, an encrypted backup and 21 restored-copy checks preceded
+the exact 126-record live cleanup at 11:55 UTC. Independent readback confirms that
+only those `encrypted_tokens` fields changed. The fresh eleven-store inventory
+retains all 361 records, twelve current containers and thirty other-key fields;
+zero public-fallback fields or nonempty plaintext credential rows remain. All
+three protected campaigns and their connections are unchanged. The
+[complete disposition packet](LEGACY_CIPHERTEXT_DISPOSITION_2026-10-31.md) records
+the pre-lock timing safeguard, receipts and limits. Historical logs, actual
+renewal/reconnect and independent recovery remain separate; finding counts do
+not change from completion of this sub-requirement.
 
 **Subsequent October 31 preparation:** [The executable combined account procedure](ACCOUNT_API_PROCEDURE_2026-10-31.md)
 now covers global/attribution positive and foreign-row cases, remaining Trends
@@ -111,20 +159,20 @@ foreign denial checks now pass; V1-003 is CLOSED. Do not request that test again
 | V1-003 | CLOSED | A | Remaining Trends foreign 404 / owner no-keywords 400 passed in the combined live procedure; prior campaign reads and anonymous denials are retained. Provider query/formula correctness is separate. |
 | V1-004 | CLOSED | — | Approved automatic email-import exclusion is enforced and verified; no more acceptance for this disabled feature. |
 | V1-005 | CLOSED | — | Production test-email transport disabled and denial verified. |
-| V1-006 | OPEN | A | Owned detached create/read/edit, reload/account-switch persistence and actual foreign parent/row denials now pass live. Actual process-restart persistence and broader campaign-linked/default-model acceptance remain separate. No current Attribution page is invented. |
-| V1-008 | OPEN | C | Remaining incompatible ciphertext disposition and independent-machine recovery. Explicit-key/verified-TLS startup enforcement now has deployed-code, production-health and successful-write evidence; private environment was not inspected. Existing linked-field decrypt, key custody and same-machine restore remain complete. |
+| V1-006 | OPEN | A | Owned detached create/read/edit, reload/account-switch persistence and actual foreign parent/row denials pass live. [Two separate Node processes](validation-2026-10-31-final/attribution-process-restart.json) now prove durable defaults, campaign-linked touchpoints/results and owner partitions in PostgreSQL (six checks; schema removed). This is not a Render restart; deployed campaign-linked/default-model acceptance remains. No current Attribution page is invented. |
+| V1-008 | OPEN | C | Historical public-fallback ciphertext disposition is complete and independently verified. Shared independent recovery dependency remains under Batch 8 V1-016; it does not mandate purchasing another database. Explicit-key/verified-TLS startup enforcement has deployed-code, production-health and successful-write evidence; private environment was not inspected. Existing linked-field decrypt, key custody and same-machine restore remain complete. |
 | V1-026 | CLOSED | B | Live supported multipart CSV and public HTTPS URL import pass; current local destination/DNS/redirect/size/deadline/parent controls pass. Missing client identifier corrected in deployed 3c304f97; exact fixtures removed. |
 | V1-027 | CLOSED | — | Callback rendering guards plus configured real OAuth successes meet this finding's recorded gate; exact limits above. |
 | V1-030 | OPEN | B | Deployed supported whitelist edit/save/reload and accepted/removed-sender behavior. Existing PostgreSQL clear/omission controls retained; no automatic email re-enablement. |
 | V1-034 | CLOSED | A | Actual owned draft creation, owned transfer, foreign source/destination and magic-ID denial pass. Independent stored-scope verification and exact cleanup pass. Connect remains release-disabled. Batch 4 transfer-copy correctness stays separate. |
-| V1-052 | OPEN | A | Actual owner report-card visibility and settled foreign absence pass in the second packet. The first fixture's reappearance was not confirmed. Notification transition and remaining persistent-state surfaces remain. Ordinary sign-out/Back already passed; local query/cache/toast and delayed-callback tests retained. |
+| V1-052 | CLOSED | A | Actual Clerk sign-out/switch/return and owner/foreign Reports evidence combined with real Notifications/Navigation switch, cancellation, late-response, return/reload and persistent-state trace. See account-session close-out; no repeat login test or runtime change. |
 | V1-053 | CLOSED | A | User-operated bounded requests prove caller test flags still receive configured OAuth/LinkedIn/import limits and counted requests. Original bypass is closed; distributed load/capacity is not inferred. No saturation test performed. |
 | V1-054 | OPEN | A | LinkedIn valid owned edit preserves ID/parent despite replacement payload; foreign edit denied and stored state verified. Legacy Meta positive deployed acceptance is unavailable because its tables are absent; retained local cases pass. Owner 400/foreign 404 invalid campaign edit is complete and will not be repeated. |
-| V1-057 | OPEN | C | Historical hosting/provider log access and retention disposition; rotate only if evidence and exact scope require it. Forward logging regressions pass; database cleanup does not erase logs. |
+| V1-057 | CLOSED | C | [Historical disposition](HISTORICAL_LOG_DISPOSITION_2026-10-31.md): corrected deployment October 20, user-supplied Hobby recovery screen October 29 and documented retention, user-confirmed sole access/no sharing/no stream/no saved copies. No identified unauthorized recipient or external copy requiring rotation. Not proof that old logs never contained secrets. |
 | V1-063 | CLOSED | — | Production mock-write routes disabled and denial verified. |
 | V1-075 | OPEN | A, C | Owned deployed connector-spend alias acceptance and historical orphan/downstream disposition. Local atomic owner/currency/date controls pass; current inventory has no connector-derived sources. No current frontend caller: do not invent UI steps. |
 | V1-078 | OPEN | B | Configured real callback successes are complete. Invalid session/state/replay and deferred shared signing boundaries remain; stateless nonce checks are not proof of single-use replay prevention. |
-| V1-088 | OPEN | B, C | Actual renewal/reconnect and remaining old incompatible ciphertext disposition. Ten local migration/renewal interleavings and the approved 223-record plaintext cleanup are complete. |
+| V1-088 | OPEN | B | Actual renewal/reconnect remains. Ten local migration/renewal interleavings, the approved 223-record plaintext cleanup and the separately approved 126-record historical ciphertext cleanup are complete. |
 | V1-123 | OPEN | B | Deployed exact-resource denial/revocation and worker behavior on disposable scope. Actual GA4 AND Sheets consent/imports passed; reviewed Promo grant and scheduled continuity evidence retained. |
 
 ## Scope and protection

@@ -6,6 +6,26 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 1 status
 
+**October 31 account-session and historical-log close-out:**
+[V1-052](ACCOUNT_SESSION_CLOSEOUT_2026-10-31.md) and
+[V1-057](HISTORICAL_LOG_DISPOSITION_2026-10-31.md) are CLOSED within their original
+security boundaries. Batch 1 is **12 CLOSED / 8 OPEN**. Nine focused tests pass;
+the actual Notifications page, navigation bell, late requests and return/reload
+were exercised locally, reusing completed real Clerk/Reports checks. The user
+confirmed sole Render access, no sharing, no log destination or saved copies.
+The six-case separate-process attribution persistence test also passes locally;
+remaining deployed attribution acceptance stays explicit. No runtime behavior,
+campaign figures, production credentials or refresh schedule changed.
+
+**October 31 historical credential cleanup completed:** [Exact scope and evidence](LEGACY_CIPHERTEXT_DISPOSITION_2026-10-31.md)
+record separate approval, 21 restored-copy checks, the 126-record live cleanup and
+independent verification. Only the obsolete encrypted credential column changed;
+the three current campaigns and their connections remain unchanged. All 361
+connection records remain, with zero plaintext rows or public-fallback fields.
+The earlier 223-record cleanup is preserved. Actual renewal/reconnect, historical
+logs and the shared Batch 8 recovery requirement remain unverified; Batch 1 stays
+**10 CLOSED / 10 OPEN**. No runtime deployment or schedule change was needed.
+
 **October 31 conversion/file acceptance completed:** [Live evidence, correction and exact limits](INGESTION_ACCEPTANCE_2026-10-31.md)
 close V1-001 and V1-026. Batch 1 is **10 CLOSED / 10 OPEN**. The one-line public
 download identifier correction is committed/pushed and verified live in `3c304f97`;
@@ -80,7 +100,7 @@ runtime; the later email-import exclusion is the separate deployment above.
 
 **October 27 consolidated status:** [Batches 1–5 checkpoint](../v1-batch-8/BATCHES_1_TO_5_CHECKPOINT.md) accounts for all 74 original findings, the current 6,548/6,548 regression pass, deployed/read-only data checks and remaining live/historical acceptance. Earlier dated counts are historical; release acceptance is not silently closed.
 
-**IMPLEMENTED AND DEPLOYED; RELEASE ACCEPTANCE OPEN.** All 20 code corrections are implemented and locally validated within the stated boundaries. Eight release findings are closed and 12 remain open as detailed in the [October 31 consolidated ledger](CONSOLIDATED_CLOSEOUT_2026-10-31.md). Earlier deployment revisions below retain their historical scope.
+**IMPLEMENTED AND DEPLOYED; RELEASE ACCEPTANCE OPEN.** All 20 code corrections are implemented and locally validated within the stated boundaries. Twelve release findings are closed and eight remain open as detailed in the [October 31 consolidated ledger](CONSOLIDATED_CLOSEOUT_2026-10-31.md). Earlier deployment revisions below retain their historical scope.
 
 **Ptomo visual and scheduled-refresh checks: PASSED within their stated boundaries.** The visual check is user-reported. October 21 native/financial publications through October 20 updated at 08:10/08:11 Amsterdam, before Batch 2 deployed at 09:32. The [read-only work record](../v1-batch-2/ptomo-refresh-2026-10-21.json) confirms the exact 08:00 work item completed at 08:11:52.504 on its first attempt without a recorded error. This supersedes the earlier pre-refresh uncertainty. No manual Render setup or repeat freshness wait is required. Other [release acceptance](#remaining-release-acceptance) remains open.
 
@@ -394,7 +414,10 @@ closes the original authorization defect; it does not certify Batch 4 copy logic
 
 ### V1-052
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY AND DEPLOYED. **Release acceptance:** CLOSED.
+
+Current closure: [account-session evidence and exact limits](ACCOUNT_SESSION_CLOSEOUT_2026-10-31.md).
+The checkpoint below remains historical.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -459,7 +482,10 @@ LinkedIn update28649→storage4445 permits replacement campaignId; legacy Meta K
 
 ### V1-057
 
-**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY AND DEPLOYED. **Release acceptance:** CLOSED.
+
+Current closure: [historical log custody/retention disposition](HISTORICAL_LOG_DISPOSITION_2026-10-31.md).
+The checkpoint below remains historical.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 

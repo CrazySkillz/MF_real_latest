@@ -1,0 +1,9 @@
+﻿{
+    "result":  "PASS",
+    "at":  "2026-10-31T11:42:54.6116352Z",
+    "productionAccess":  false,
+    "localClusterStoppedAndRemoved":  true,
+    "temporaryPasswordRemoved":  true,
+    "backupAndKeyPreserved":  true,
+    "exactPathsVerified":  true
+}

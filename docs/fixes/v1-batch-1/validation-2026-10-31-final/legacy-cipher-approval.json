@@ -1,0 +1,9 @@
+{
+  "date": "2026-10-31",
+  "source": "User reply in this conversation",
+  "answer": "Approve the 126-record cleanup",
+  "scope": "Clear only encrypted_tokens in the exact 126 historical connection records authenticated by the former public development fallback and backed up/rehearsed in this packet.",
+  "protectedCampaigns": ["Promo", "V1 Batch 5 Test", "Batch 1 Provider Check"],
+  "preserve": ["all records", "other columns", "campaign figures", "source mappings", "schedules", "current private encryption key"],
+  "providerGrantRevocationAuthorized": false
+}

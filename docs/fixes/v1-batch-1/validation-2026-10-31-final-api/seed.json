@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-31T13:17:37.565Z",
+  "mode": "seed",
+  "result": "PASS",
+  "secretValuesReturned": false,
+  "providerCalls": 0,
+  "run": "72859c4e-f955-48a2-b0a6-5c63f4cd387d",
+  "execution": {
+    "committed": true,
+    "rows": 6,
+    "outsideRowsUnchanged": true
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-31T12:19:19.260Z",
+  "boundary": "Local Chromium with actual app components; synthetic Clerk identities and API data. No production requests or credentials.",
+  "checks": [
+    {
+      "name": "Owner A actual notification card and bell, actor-specific client selection",
+      "result": "PASS"
+    },
+    {
+      "name": "Switch to B clears A cards, attention indicator and filter state",
+      "result": "PASS"
+    },
+    {
+      "name": "Owner A selection and notification return; stale prior cache cannot populate B",
+      "result": "PASS"
+    },
+    {
+      "name": "Sign-out hides notification data; return and reload restore only selected actor",
+      "result": "PASS"
+    }
+  ],
+  "sourceSha256": {
+    "client/src/App.tsx": "712a3d0955634d286dd546fd36a75a3caa5f2af49b897cb6c60df5022c7b1b18",
+    "client/src/pages/notifications.tsx": "7790c6ed97cd28c5c00bf307d2375d080cd55820f11e7a6cd0bc27b98ad8af91",
+    "client/src/components/layout/navigation.tsx": "cb7713539444f4c253a396954d7d959182e5f550464fb38c852df2941199e273",
+    "client/src/components/layout/sidebar.tsx": "8af246092adb74cbcea5f5bdd39fd7a18fcc0377f2c229d244cae8b051e05507",
+    "client/src/lib/clientContext.tsx": "469dc44db0115dda07bcdfaf9eea187a968c03f7683d89ccc8ccefe84e36ae52",
+    "client/src/lib/queryClient.ts": "2d5bcc47eda8f3d162f91be4486c022c67698232a61b3858bbd78be1e08ab100"
+  },
+  "result": "PASS"
+}

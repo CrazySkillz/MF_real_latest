@@ -1,0 +1,99 @@
+{
+  "startedAt": "2026-10-31T11:38:28.007Z",
+  "productionAccess": false,
+  "privateApplicationKeyUsed": false,
+  "secretValuesEmitted": false,
+  "checks": [
+    {
+      "name": "all_table_column_contracts_and_target_trigger_behavior_match_live",
+      "passed": true
+    },
+    {
+      "name": "captured_parent_connection_and_audit_rows_restore_field_exact",
+      "passed": true
+    },
+    {
+      "name": "exact_126_containers_cleared_and_every_other_captured_value_preserved",
+      "passed": true
+    },
+    {
+      "name": "all_61_other_restored_table_stores_untouched",
+      "passed": true
+    },
+    {
+      "name": "forced_rollback_restores_all_values",
+      "passed": true
+    },
+    {
+      "name": "changed_ciphertext_aborts",
+      "passed": true
+    },
+    {
+      "name": "new_plaintext_aborts",
+      "passed": true
+    },
+    {
+      "name": "connection_active_flag_change_aborts",
+      "passed": true
+    },
+    {
+      "name": "changed_historical_parent_aborts",
+      "passed": true
+    },
+    {
+      "name": "unexpected_database_trigger_aborts",
+      "passed": true
+    },
+    {
+      "name": "concurrent_connection_writer_cannot_cross_cleanup",
+      "passed": true
+    },
+    {
+      "name": "concurrent_campaign_writer_cannot_cross_cleanup",
+      "passed": true
+    },
+    {
+      "name": "concurrent_client_writer_cannot_cross_cleanup",
+      "passed": true
+    },
+    {
+      "name": "candidate_identity_drift_aborts",
+      "passed": true
+    },
+    {
+      "name": "all_three_protected_campaigns_reject_cleanup_candidates",
+      "passed": true
+    },
+    {
+      "name": "surviving_client_excludes_historical_campaign",
+      "passed": true
+    },
+    {
+      "name": "mixed_public_and_private_key_container_aborts",
+      "passed": true
+    },
+    {
+      "name": "unreviewed_container_format_aborts",
+      "passed": true
+    },
+    {
+      "name": "failure_after_first_table_update_rolls_back_every_change",
+      "passed": true
+    },
+    {
+      "name": "independent_connection_verifies_committed_local_result",
+      "passed": true
+    }
+  ],
+  "sources": {
+    "legacy-cipher-retirement.cjs": "d0cc119e04e0394d698a59a80413ee0cb9f4186e90a703ef3d68eae281ae22d0",
+    "verify-legacy-cipher-retirement.cjs": "5b43f4ebe3e26a384a90064581490ba52b58d09bc26a03787c71a6ef1c0373da"
+  },
+  "backupSha256": "1286fbb9f69b1fd121762dd8c60572bc53a21bcc25f3ff0d72c94767b1369e25",
+  "changedLocalRows": 126,
+  "retiredFields": 218,
+  "capturedRows": 433,
+  "result": "PASS",
+  "clusterStopped": true,
+  "finishedAt": "2026-10-31T11:38:43.335Z"
+}

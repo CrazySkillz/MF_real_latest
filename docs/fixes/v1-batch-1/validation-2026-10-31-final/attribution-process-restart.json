@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-31T12:23:23.104Z",
+  "boundary": "Two terminated/fresh Node processes using exact current storage bodies and an isolated loopback PostgreSQL schema; not a Render restart or whole-attribution analytics certification.",
+  "phases": [
+    {
+      "phase": "write",
+      "pid": 51712,
+      "result": "PASS",
+      "checks": [
+        "Default selection changes only the selected owner",
+        "Campaign-linked owner accepted and foreign parent rejected",
+        "Calculation respects model owner and persists exact linked result"
+      ]
+    },
+    {
+      "phase": "read",
+      "pid": 38464,
+      "result": "PASS",
+      "checks": [
+        "Fresh process retains both owner partitions and defaults",
+        "Fresh process retains linked touchpoint and denies cross-owner collection",
+        "Fresh process retains calculated value and campaign provenance"
+      ]
+    }
+  ],
+  "storageSha256": "b30793f4b931f8c5a562fd902ab6e7df5ca82fa04b649d9985e674f4a178aa76",
+  "result": "PASS",
+  "schemaRemoved": true
+}

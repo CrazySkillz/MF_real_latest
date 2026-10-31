@@ -8,9 +8,11 @@ The [combined live account checks and verified exact fixture cleanup](fixes/v1-b
 also close V1-002/003/053. The [second live packet](fixes/v1-batch-1/SOURCE_ACCESS_PROCEDURE_2026-10-31.md)
 closes V1-034 with owned/foreign transfer evidence and verified cleanup. The
 [conversion/file packet](fixes/v1-batch-1/INGESTION_ACCEPTANCE_2026-10-31.md) closes
-V1-001/026 with live import/retry/downstream checks and exact cleanup. Batch 1:
-**10 CLOSED / 10 OPEN**, all 20 original code corrections implemented. Overall:
-**109 OPEN / 10 DEFERRED / 11 CLOSED**; whole-app NO-GO remains. All temporary
+V1-001/026 with live import/retry/downstream checks and exact cleanup. The
+[account-session close-out](fixes/v1-batch-1/ACCOUNT_SESSION_CLOSEOUT_2026-10-31.md)
+and [historical-log disposition](fixes/v1-batch-1/HISTORICAL_LOG_DISPOSITION_2026-10-31.md)
+close V1-052/057. Batch 1: **12 CLOSED / 8 OPEN**, all 20 original code corrections implemented. Overall:
+**107 OPEN / 10 DEFERRED / 13 CLOSED**; whole-app NO-GO remains. All temporary
 fixtures were removed. The one-line download correction is live in `3c304f97`;
 existing campaign figures and schedules are unchanged. Earlier checkpoints retain their scope.
 

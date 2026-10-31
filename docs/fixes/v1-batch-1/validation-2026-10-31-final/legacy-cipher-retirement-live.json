@@ -1,0 +1,81 @@
+{
+  "startedAt": "2026-10-31T11:55:08.733Z",
+  "mode": "--execute-approved",
+  "databaseWritesAttempted": true,
+  "commitRequested": true,
+  "committed": true,
+  "secretValuesEmitted": false,
+  "providerCalls": false,
+  "privateApplicationKeyUsed": false,
+  "groups": [
+    {
+      "table": "ga4_connections",
+      "rows": 21,
+      "authenticatedFields": 59,
+      "rowsetSha256": "768ad3998c10ff7fbdc0b19bef48617deb1dc78df406c4728a04812bf8428b51",
+      "missingCampaign": 10
+    },
+    {
+      "table": "google_sheets_connections",
+      "rows": 19,
+      "authenticatedFields": 57,
+      "rowsetSha256": "136d528930f372a6c86420d6f7acb6cb33db2ec53e42fad942f2e6ac62727a1c",
+      "missingCampaign": 0
+    },
+    {
+      "table": "hubspot_connections",
+      "rows": 7,
+      "authenticatedFields": 21,
+      "rowsetSha256": "5e1e519ec5957422218c123a576b46130a57c69d53936fa0aacec1ba2fe90f71",
+      "missingCampaign": 1
+    },
+    {
+      "table": "salesforce_connections",
+      "rows": 2,
+      "authenticatedFields": 4,
+      "rowsetSha256": "2109d6870f09b6f0fcc9befd5ab4c6f4e4184fd282db025025d71a5d64532ee1",
+      "missingCampaign": 0
+    },
+    {
+      "table": "shopify_connections",
+      "rows": 3,
+      "authenticatedFields": 3,
+      "rowsetSha256": "bc7ad7ac4f61ea44e643c2fe79aaa75f1b15370497457036542bc8dca88e37c8",
+      "missingCampaign": 0
+    },
+    {
+      "table": "linkedin_connections",
+      "rows": 70,
+      "authenticatedFields": 70,
+      "rowsetSha256": "40aedaa3987bb83e48a4d09443cd34ac4506475aa095d50e5ec2ef359b59dc79",
+      "missingCampaign": 57
+    },
+    {
+      "table": "meta_connections",
+      "rows": 4,
+      "authenticatedFields": 4,
+      "rowsetSha256": "b97afeb54a9b627b1f052b157df33ee892a1bec00d192b4bb11b781ed3350ec9",
+      "missingCampaign": 3
+    }
+  ],
+  "deployedCommit": "3c304f9723a65e8d9ee8650c74eacf7e03b63d34",
+  "transactionIsolation": "read committed",
+  "encryptedBeforeProofSha256": "abfcdb6820fd4e4d65dc82edee20dd4b3e923c3babd3a2c32ce360f85e3f18d1",
+  "changedRows": 126,
+  "independentVerification": true,
+  "remainingPublicFallbackCandidates": 0,
+  "preservedTables": [
+    "clients",
+    "campaigns",
+    "ga4_connections",
+    "google_sheets_connections",
+    "hubspot_connections",
+    "salesforce_connections",
+    "shopify_connections",
+    "linkedin_connections",
+    "meta_connections",
+    "ga4_connection_lifecycle_events"
+  ],
+  "result": "PASS",
+  "finishedAt": "2026-10-31T11:55:28.095Z"
+}

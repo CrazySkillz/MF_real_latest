@@ -1,0 +1,477 @@
+{
+  "at": "2026-10-31T11:55:48.731Z",
+  "databaseWritesAttempted": false,
+  "providerCalls": false,
+  "applicationImports": false,
+  "privateEncryptionKeyUsed": false,
+  "secretValuesEmitted": false,
+  "tables": [
+    {
+      "table": "ga4_connections",
+      "groups": [
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "inactive",
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 1,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "matching_owner_fields",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": true,
+          "rows": 3,
+          "encryptedRows": 3,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 6,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 1
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 5,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_campaign",
+          "campaignStatus": null,
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 14,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": false,
+          "protectedCampaign": false,
+          "rows": 5,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        }
+      ],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "google_sheets_connections",
+      "groups": [
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": false,
+          "protectedCampaign": false,
+          "rows": 71,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_campaign",
+          "campaignStatus": null,
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 51,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_campaign",
+          "campaignStatus": null,
+          "connectionActive": false,
+          "protectedCampaign": false,
+          "rows": 69,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "inactive",
+          "connectionActive": false,
+          "protectedCampaign": false,
+          "rows": 1,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 17,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "matching_owner_fields",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": true,
+          "rows": 1,
+          "encryptedRows": 1,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 3,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        }
+      ],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "google_ads_connections",
+      "groups": [],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "ga4_google_ads_spend_connections",
+      "groups": [],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "hubspot_connections",
+      "groups": [
+        {
+          "parentScope": "matching_owner_fields",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": true,
+          "rows": 3,
+          "encryptedRows": 3,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 9,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 5,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "inactive",
+          "connectionActive": false,
+          "protectedCampaign": false,
+          "rows": 1,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": false,
+          "protectedCampaign": false,
+          "rows": 3,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_campaign",
+          "campaignStatus": null,
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 1,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        }
+      ],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "salesforce_connections",
+      "groups": [
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": false,
+          "protectedCampaign": false,
+          "rows": 13,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "matching_owner_fields",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": true,
+          "rows": 2,
+          "encryptedRows": 2,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 6,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 2,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        }
+      ],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "shopify_connections",
+      "groups": [
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": false,
+          "protectedCampaign": false,
+          "rows": 13,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": false,
+          "rows": 3,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "matching_owner_fields",
+          "campaignStatus": "active",
+          "connectionActive": true,
+          "protectedCampaign": true,
+          "rows": 2,
+          "encryptedRows": 2,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 4,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "matching_owner_fields",
+          "campaignStatus": "active",
+          "connectionActive": false,
+          "protectedCampaign": true,
+          "rows": 1,
+          "encryptedRows": 1,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 2,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        }
+      ],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "linkedin_connections",
+      "groups": [
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": null,
+          "protectedCampaign": false,
+          "rows": 13,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_campaign",
+          "campaignStatus": null,
+          "connectionActive": null,
+          "protectedCampaign": false,
+          "rows": 57,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        }
+      ],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "meta_connections",
+      "groups": [
+        {
+          "parentScope": "missing_client",
+          "campaignStatus": "active",
+          "connectionActive": null,
+          "protectedCampaign": false,
+          "rows": 1,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        },
+        {
+          "parentScope": "missing_campaign",
+          "campaignStatus": null,
+          "connectionActive": null,
+          "protectedCampaign": false,
+          "rows": 3,
+          "encryptedRows": 0,
+          "plaintextRows": 0,
+          "publicFallbackAuthenticatedFields": 0,
+          "otherKeyFields": 0,
+          "malformedFields": 0,
+          "malformedContainers": 0,
+          "emptyContainers": 0
+        }
+      ],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "instagram_connections",
+      "groups": [],
+      "historicalOrphanIdentityGroups": []
+    },
+    {
+      "table": "tiktok_connections",
+      "groups": [],
+      "historicalOrphanIdentityGroups": []
+    }
+  ],
+  "totals": {
+    "rows": 361,
+    "encryptedRows": 12,
+    "plaintextRows": 0,
+    "publicFallbackAuthenticatedFields": 0,
+    "otherKeyFields": 30,
+    "malformedFields": 0,
+    "malformedContainers": 0,
+    "emptyContainers": 1
+  },
+  "vaultRevisionSha256": "ffd53cd965ca441262fbf27cf9c45479e546a3038ea80581230ceb731fab0cfc",
+  "safetyChecks": {
+    "result": "PASS",
+    "controls": [
+      "documented fallback authentication",
+      "different key and tamper rejection",
+      "malformed blob",
+      "empty container",
+      "plaintext presence without value",
+      "secret-free result",
+      "wrong target rejection"
+    ]
+  },
+  "databaseReadOnly": true,
+  "protectedCampaignsVerified": 3,
+  "result": "PASS_READ_ONLY_CLASSIFICATION",
+  "limits": "Only public historical development fallback tested. Other-key fields are not proven corrupt or valid. ID equality does not prove unchanged ciphertext. No provider validity, full scheduler safety, private saved-key recovery or cleanup is claimed."
+}

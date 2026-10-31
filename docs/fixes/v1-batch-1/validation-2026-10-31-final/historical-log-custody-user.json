@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-31",
+  "finding": "V1-057",
+  "evidenceType": "user-reported dashboard observation and custody statement",
+  "workspaceDefaultLogDestinationConfigured": false,
+  "userSavedOrForwardedLogs": false,
+  "userAnswer": "No destination; no saved or forwarded logs",
+  "soleWorkspaceAccessEver": true,
+  "sharedLoginOrAdditionalMembersEver": false,
+  "accessAnswer": "Yes—only I have had access",
+  "limits": [
+    "Access and custody are user-reported; this does not establish independent Render access-log inspection.",
+    "This does not independently inspect service-specific destinations or historical provider access.",
+    "No logs, tokens, passwords or secrets were requested or copied."
+  ],
+  "productionChanges": false
+}

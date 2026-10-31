@@ -1,0 +1,146 @@
+{
+  "at": "2026-10-31T12:53:39.085Z",
+  "result": "PASS",
+  "checks": [
+    {
+      "name": "Exact seed rollback and commit preserve other owner",
+      "result": "PASS"
+    },
+    {
+      "name": "Wrong origin and wrong actor stop before requests",
+      "result": "PASS"
+    },
+    {
+      "name": "Complete manual API packet through exact current handlers/storage",
+      "result": "PASS"
+    },
+    {
+      "name": "Foreign default, whitelist and both connector aliases fail before writes",
+      "result": "PASS"
+    },
+    {
+      "name": "Exact completed cleanup rehearsal rolls back",
+      "result": "PASS"
+    },
+    {
+      "name": "Cleanup rejects changed campaign owner",
+      "result": "PASS"
+    },
+    {
+      "name": "Cleanup rejects activated draft",
+      "result": "PASS"
+    },
+    {
+      "name": "Cleanup rejects unexpected whitelist",
+      "result": "PASS"
+    },
+    {
+      "name": "Cleanup rejects changed model owner",
+      "result": "PASS"
+    },
+    {
+      "name": "Cleanup rejects nonzero attribution",
+      "result": "PASS"
+    },
+    {
+      "name": "Cleanup rejects changed spend amount",
+      "result": "PASS"
+    },
+    {
+      "name": "Unknown campaign dependent prevents cleanup",
+      "result": "PASS"
+    },
+    {
+      "name": "Final exact cleanup removes nine fixture rows and preserves outside fixture",
+      "result": "PASS"
+    }
+  ],
+  "providerCalls": 0,
+  "productionDatabase": false,
+  "sourceHashes": {
+    "fixture.cjs": "bc6aced4ec2540af4043087ce449aa14602dee610354e702b0cf9d1d811876c1",
+    "manual-template.js": "4d8bf683e13d3cb4c9560a3eff543b554d5900edc3c3e786b87eaccb9ee31b5a",
+    "rehearse.cjs": "cd73220e8c2ad55270198fa4dde312995b2a7cff2bd64de07155164a39e68598"
+  },
+  "apiChecks": [
+    {
+      "check": "exact new owned draft",
+      "passed": true
+    },
+    {
+      "check": "only the two disposable models",
+      "passed": true
+    },
+    {
+      "check": "exact fixture whitelist before edit",
+      "passed": true
+    },
+    {
+      "check": "owned whitelist save",
+      "passed": true
+    },
+    {
+      "check": "whitelist reload removes old sender",
+      "passed": true
+    },
+    {
+      "check": "owned whitelist save",
+      "passed": true
+    },
+    {
+      "check": "explicit empty whitelist persists",
+      "passed": true
+    },
+    {
+      "check": "owned whitelist save",
+      "passed": true
+    },
+    {
+      "check": "whitelist reload removes old sender",
+      "passed": true
+    },
+    {
+      "check": "owned default selection accepted",
+      "passed": true
+    },
+    {
+      "check": "default selection reload is owner scoped",
+      "passed": true
+    },
+    {
+      "check": "linked zero-value calculation persists correct parents",
+      "passed": true
+    },
+    {
+      "check": "linked touchpoint reload",
+      "passed": true
+    },
+    {
+      "check": "connectors accepts exact dated spend",
+      "passed": true
+    },
+    {
+      "check": "ad-platforms accepts exact dated spend",
+      "passed": true
+    },
+    {
+      "check": "scoped spend total and provenance",
+      "passed": true
+    },
+    {
+      "check": "source replacement leaves one exact source",
+      "passed": true
+    },
+    {
+      "check": "only fixture spend changed; currency and draft preserved",
+      "passed": true
+    }
+  ],
+  "apiRequestCount": 18,
+  "appHashes": {
+    "server/routes-oauth.ts": "792024ec69a20d13d2cbf770625b1589a43350985fe745d40553244558273dfa",
+    "server/storage.ts": "b30793f4b931f8c5a562fd902ab6e7df5ca82fa04b649d9985e674f4a178aa76",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96"
+  },
+  "schemaRemoved": true
+}

@@ -6,9 +6,10 @@ real OAuth successes. The [combined live account procedure and verified cleanup]
 also close V1-002/003/053. The [second live packet](../../fixes/v1-batch-1/SOURCE_ACCESS_PROCEDURE_2026-10-31.md)
 closes V1-034 after transfer/ownership checks and verified cleanup. The
 [conversion/file packet](../../fixes/v1-batch-1/INGESTION_ACCEPTANCE_2026-10-31.md)
-closes V1-001/026. Batch 1: **10 CLOSED / 10 OPEN**, all 20 original corrections
-implemented. Overall: **130 findings: 109 OPEN, 10 DEFERRED, 11 CLOSED**
-(V1-001/002/003/004/005/012/026/027/034/053/063). Three packages consolidate remaining
+closes V1-001/026. The account-session and historical-log evidence linked from
+the current ledger closes V1-052/057. Batch 1: **12 CLOSED / 8 OPEN**, all 20 original corrections
+implemented. Overall: **130 findings: 107 OPEN, 10 DEFERRED, 13 CLOSED**
+(V1-001/002/003/004/005/012/026/027/034/052/053/057/063). Three packages consolidate remaining
 account/API, provider and operational acceptance. Existing passed checks are reused;
 all temporary fixtures are removed. The one-line download correction is live in
 `3c304f97`; existing figures/schedules are unchanged. Earlier counts are historical.
@@ -171,12 +172,12 @@ Update this checklist, the affected batch record and the index summary in the sa
 | [V1-049](../../fixes/v1-batch-6/README.md#v1-049) | P1 | 6 | DEFERRED | DEFERRED | Deferred provider functionality; retained for future enablement, not a V1 provider implementation task |
 | [V1-050](../../fixes/v1-batch-6/README.md#v1-050) | P1 | 6 | DEFERRED | DEFERRED | Deferred provider functionality; retained for future enablement, not a V1 provider implementation task |
 | [V1-051](../../fixes/v1-batch-4/README.md#v1-051) | P1 | 4 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
-| [V1-052](../../fixes/v1-batch-1/README.md#v1-052) | P1 | 1 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
+| [V1-052](../../fixes/v1-batch-1/README.md#v1-052) | P1 | 1 | VERIFIED LOCALLY AND DEPLOYED | CLOSED | Original account/session/cache boundary; exact close-out evidence linked in Batch 1 |
 | [V1-053](../../fixes/v1-batch-1/README.md#v1-053) | P1 | 1 | CLOSED | CLOSED | Production caller-test-flag bypass closed by bounded live quota checks; no distributed load claim |
 | [V1-054](../../fixes/v1-batch-1/README.md#v1-054) | P0 | 1 | VERIFIED LOCALLY | OPEN | Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred |
 | [V1-055](../../fixes/v1-batch-6/README.md#v1-055) | P1 | 6 | OPEN | OPEN | Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred |
 | [V1-056](../../fixes/v1-batch-7/README.md#v1-056) | P1 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
-| [V1-057](../../fixes/v1-batch-1/README.md#v1-057) | P1 | 1 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
+| [V1-057](../../fixes/v1-batch-1/README.md#v1-057) | P1 | 1 | VERIFIED LOCALLY AND DEPLOYED | CLOSED | Original logging defect and historical custody/retention disposition; exact limits linked in Batch 1 |
 | [V1-058](../../fixes/v1-batch-7/README.md#v1-058) | P1 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-059](../../fixes/v1-batch-7/README.md#v1-059) | P1 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |
 | [V1-060](../../fixes/v1-batch-7/README.md#v1-060) | P1 | 7 | VERIFIED LOCALLY | OPEN | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |

@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-31T13:08:50.539Z",
+  "commit": "adc5a6fe82219699454c9c21225534450c940a9a",
+  "checks": [
+    {
+      "method": "GET",
+      "path": "/api/campaigns/b74f98af-ede9-47af-9b19-0720ebb4d2c0/spend-to-date?platformContext=custom_integration",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/campaigns/b74f98af-ede9-47af-9b19-0720ebb4d2c0/spend-sources?platformContext=custom_integration",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/b74f98af-ede9-47af-9b19-0720ebb4d2c0/spend/process/connectors",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/b74f98af-ede9-47af-9b19-0720ebb4d2c0/spend/process/ad-platforms",
+      "status": 401,
+      "passed": true
+    }
+  ],
+  "authenticated": false,
+  "providerRequests": 0,
+  "secretValuesReturned": false,
+  "runtime": {
+    "status": 200,
+    "ok": true,
+    "commit": "adc5a6fe82219699454c9c21225534450c940a9a"
+  },
+  "result": "PASS"
+}

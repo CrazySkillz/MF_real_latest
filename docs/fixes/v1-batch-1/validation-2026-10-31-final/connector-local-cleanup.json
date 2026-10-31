@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-31",
+  "result": "PASS",
+  "target": "127.0.0.1:55444",
+  "activeClientConnectionsBeforeCleanup": 0,
+  "notificationDatabaseRemainingSchemas": ["public"],
+  "databaseCreatedThisTurnAndRemoved": "notifications_test",
+  "preexistingDatabasePreserved": "ga4_alignment_test",
+  "clusterStartedThisTurnAndStopped": "audit-temp/revenue-consistency-pg-20261031",
+  "productionTouched": false,
+  "generatedPdfRestoration": "Not performed: automatic approval review rejected the proposed restore because unrelated uncommitted work could be discarded. PDFs remain unstaged."
+}

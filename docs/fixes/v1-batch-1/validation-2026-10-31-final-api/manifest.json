@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "run": "72859c4e-f955-48a2-b0a6-5c63f4cd387d",
+  "tag": "B1_FINAL_72859c4e-f955-48a2-b0a6-5c63f4cd387d",
+  "date": "2026-10-30",
+  "ids": {
+    "campaign": "5d27ee86-1c1a-4d96-864f-598dbbb0f3ca",
+    "custom": "4c176b52-cf39-4b6d-ac07-757505df5dcb",
+    "modelA": "4495d9d0-2a84-4c78-b5bc-2ec7cee69475",
+    "modelB": "bfb0d221-d334-4cfd-9cd4-818207f9f94e",
+    "journey": "c4767bea-9eaa-4af7-bfbc-422be1eb92d4",
+    "touchpoint": "e363e516-185a-45f4-a501-820c6b44fe26"
+  }
+}

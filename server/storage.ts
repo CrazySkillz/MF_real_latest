@@ -1384,7 +1384,7 @@ export class DatabaseStorage implements IStorage {
     };
     const [target] = guarded ? [] : await db.select({ campaignId: ga4Connections.campaignId }).from(ga4Connections).where(eq(ga4Connections.id, connectionId));
     const saved = guarded ? await this.writeGA4DerivedChange(options.refreshScope?.campaignId ?? options.publicationVersion?.campaignId, options, write)
-      : target ? await this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
+      : target ? await this.writeGA4RefreshInputChange(target.campaignId, write, 0, false, true, () => true) : undefined;
     return saved ? await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(saved) as any) as any : undefined;
   }
 
@@ -1513,7 +1513,7 @@ export class DatabaseStorage implements IStorage {
 
   // Serialize an ordinary input edit with owned publication. Invalidating the work
   // identity also rejects edit-then-restore; comparing current field values cannot.
-  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>, lockTimeoutMs = 0, revenueChange = false, preserveRevenueWork = true): Promise<T> {
+  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>, lockTimeoutMs = 0, revenueChange = false, preserveRevenueWork = true, credentialsOnly?: () => boolean): Promise<T> {
     const campaignIds = Array.from(new Set((Array.isArray(campaignId) ? campaignId : [campaignId]).filter((id): id is string => Boolean(id)))).sort();
     return db.transaction(async (tx: any) => {
       if (lockTimeoutMs > 0) await tx.execute(sql`SELECT set_config('lock_timeout', ${`${lockTimeoutMs}ms`}, true)`);
@@ -1522,6 +1522,9 @@ export class DatabaseStorage implements IStorage {
         if (parents.length !== campaignIds.length) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       }
       const result = await write(tx);
+      // Credential renewal keeps the same source facts. Decide after the locked
+      // connection read/write; configuration edits still invalidate normally.
+      if (credentialsOnly?.() === true) return result;
       if (campaignIds.length && result !== false && result !== undefined) {
         // Ordinary saves also run on installations where durable work has not
         // been migrated yet; no owner can exist without its work table.
@@ -4037,6 +4040,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GoogleSheetsConnection | undefined> {
     const guarded = "refreshScope" in options;
+    const credentialsOnly = Object.keys(connection).length > 0 && Object.keys(connection).every(key => ["accessToken", "refreshToken", "clientSecret", "expiresAt"].includes(key));
     const cacheWrite = (connection as any).cachedData?.complete === true;
     const write = async (db: any) => {
     if (!guarded) await db.execute(sql`SAVEPOINT sheets_connection_update`);
@@ -4243,7 +4247,7 @@ export class DatabaseStorage implements IStorage {
     };
     const [target] = guarded ? [] : await db.select({ campaignId: googleSheetsConnections.campaignId }).from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
     const saved = guarded ? await this.writeWithGA4RefreshOwnership(options.refreshScope, write)
-      : target ? await this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
+      : target ? await this.writeGA4RefreshInputChange(target.campaignId, write, 0, false, true, () => credentialsOnly) : undefined;
     return saved ? await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(saved) as any) as any : undefined;
   }
 
@@ -4446,6 +4450,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<HubspotConnection | undefined> {
     const guarded = "refreshScope" in options;
+    const credentialsOnly = Object.keys(connection).length > 0 && Object.keys(connection).every(key => ["accessToken", "refreshToken", "clientSecret", "expiresAt"].includes(key));
     const write = async (db: any) => {
     const existingQuery = db.select().from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
     const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
@@ -4487,7 +4492,7 @@ export class DatabaseStorage implements IStorage {
     };
     if (guarded) return this.writeWithGA4RefreshOwnership(options.refreshScope, write);
     const [target] = await db.select({ campaignId: hubspotConnections.campaignId }).from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
-    return target ? this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
+    return target ? this.writeGA4RefreshInputChange(target.campaignId, write, 0, false, true, () => credentialsOnly) : undefined;
   }
 
   async deleteHubspotConnection(connectionId: string): Promise<boolean> {
@@ -4588,9 +4593,13 @@ export class DatabaseStorage implements IStorage {
 
   async updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<SalesforceConnection | undefined> {
     const guarded = "refreshScope" in options;
+    let credentialsOnly = false;
     const write = async (db: any) => {
     const existingQuery = db.select().from(salesforceConnections).where(eq(salesforceConnections.id, connectionId));
     const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    credentialsOnly = Object.keys(connection).length > 0 && Object.keys(connection).every(key =>
+      ["accessToken", "refreshToken", "clientSecret", "expiresAt"].includes(key)
+      || (key === "instanceUrl" && connection.instanceUrl === existing?.instanceUrl));
     if (guarded) {
       const expected = options.expectedConnection;
       if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
@@ -4629,7 +4638,7 @@ export class DatabaseStorage implements IStorage {
     };
     if (guarded) return this.writeWithGA4RefreshOwnership(options.refreshScope, write);
     const [target] = await db.select({ campaignId: salesforceConnections.campaignId }).from(salesforceConnections).where(eq(salesforceConnections.id, connectionId));
-    return target ? this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
+    return target ? this.writeGA4RefreshInputChange(target.campaignId, write, 0, false, true, () => credentialsOnly) : undefined;
   }
 
   async deleteSalesforceConnection(connectionId: string): Promise<boolean> {
@@ -4800,10 +4809,22 @@ export class DatabaseStorage implements IStorage {
 
   async updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<ShopifyConnection | undefined> {
     const guarded = "refreshScope" in options;
+    let credentialsOnly = false;
     const write = async (db: any) => {
     assertProductionTokenEncryptionConfigured();
     const existingQuery = db.select().from(shopifyConnections).where(eq(shopifyConnections.id, connectionId));
     const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    credentialsOnly = Object.keys(connection).length > 0 && Object.keys(connection).every(key => ["accessToken", "refreshToken", "mappingConfig"].includes(key));
+    if (credentialsOnly && Object.prototype.hasOwnProperty.call(connection, "mappingConfig")) {
+      try {
+        const previous = JSON.parse(existing?.mappingConfig || "{}"), next = JSON.parse(connection.mappingConfig || "{}");
+        if (!previous || !next || Array.isArray(previous) || Array.isArray(next) || typeof previous !== "object" || typeof next !== "object") credentialsOnly = false;
+        else {
+          for (const key of ["accessTokenExpiresAt", "refreshTokenExpiresAt", "tokenUpdatedAt"]) { delete previous[key]; delete next[key]; }
+          credentialsOnly = isDeepStrictEqual(previous, next);
+        }
+      } catch { credentialsOnly = false; }
+    }
     if (guarded) {
       const expected = options.expectedConnection;
       if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
@@ -4837,7 +4858,7 @@ export class DatabaseStorage implements IStorage {
     };
     if (guarded) return this.writeWithGA4RefreshOwnership(options.refreshScope, write);
     const [target] = await db.select({ campaignId: shopifyConnections.campaignId }).from(shopifyConnections).where(eq(shopifyConnections.id, connectionId));
-    return target ? this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
+    return target ? this.writeGA4RefreshInputChange(target.campaignId, write, 0, false, true, () => credentialsOnly) : undefined;
   }
 
   async deleteShopifyConnection(connectionId: string): Promise<boolean> {

@@ -183,8 +183,8 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     const source = await save(kind); await publish(await claim());
     const before = await storage.getGA4RevenuePublication("a", day);
     const beforeOther = await storage.getGA4RevenuePublication("b", day);
-    if (kind === "hubspot") await storage.updateHubspotConnection("hubspot-a", { expiresAt: new Date(Date.now() + 3600_000) });
-    else await storage.updateSalesforceConnection("salesforce-a", { expiresAt: new Date(Date.now() + 3600_000) });
+    if (kind === "hubspot") await storage.updateHubspotConnection("hubspot-a", { clientId: "changed-client" });
+    else await storage.updateSalesforceConnection("salesforce-a", { clientId: "changed-client" });
     expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='executive_summary_daily'")).rows[0].notes).toBeNull();
     await save(kind, source.id);
     expect(await storage.getGA4RevenuePublication("a", day)).toEqual(before);

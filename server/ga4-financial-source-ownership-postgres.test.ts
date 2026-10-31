@@ -37,7 +37,7 @@ const schemaName = `ga4_source_it_${randomUUID().replace(/-/g, "")}`;
 const financialTables = [schema.spendSources, schema.spendRecords, schema.revenueSources, schema.revenueRecords,
   schema.salesforceConnections, schema.hubspotConnections, schema.shopifyConnections, schema.googleSheetsConnections,
   schema.googleAdsConnections, schema.ga4GoogleAdsSpendConnections, schema.googleAdsDailyMetrics, schema.ga4GoogleAdsSpendDailyMetrics];
-const tables = [schema.campaigns, schema.ga4Connections, schema.metricSnapshots, ...financialTables];
+const tables = [schema.campaigns, schema.ga4Connections, schema.ga4OverviewSnapshots, schema.metricSnapshots, ...financialTables];
 const kinds = ["spend", "spend records", "revenue", "salesforce", "hubspot", "shopify", "shopify state"] as const;
 type Kind = typeof kinds[number];
 const storage = new DatabaseStorage();
@@ -451,6 +451,66 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     ["Salesforce", schema.salesforceConnections, "salesforce-a", "salesforce-a"], ["Shopify", schema.shopifyConnections, "shopify-a", "shopify-a"],
     ["GoogleAds", schema.googleAdsConnections, "ads-a", "a"], ["GA4GoogleAdsSpend", schema.ga4GoogleAdsSpendConnections, "ads-a", "a"],
   ] as const;
+  const renewalConnections = [
+    ["GA4", schema.ga4Connections, "ga4-a", "updateGA4ConnectionTokens"],
+    ["GoogleSheets", schema.googleSheetsConnections, "sheet-a", "updateGoogleSheetsConnection"],
+    ["Hubspot", schema.hubspotConnections, "hubspot-a", "updateHubspotConnection"],
+    ["Salesforce", schema.salesforceConnections, "salesforce-a", "updateSalesforceConnection"],
+    ["Shopify", schema.shopifyConnections, "shopify-a", "updateShopifyConnection"],
+  ] as const;
+  for (const [name, table, id, method] of renewalConnections) {
+    it.each(["running", "completed"])(`preserves %s publication during credential-only ${name} renewal`, async status => {
+      const update = (values: any) => (storage as any)[method](id, values);
+      await update({ accessToken: "initial-access", refreshToken: "initial-refresh" });
+      const scope = await claim();
+      if (status === "completed") await pool.query("UPDATE ga4_refresh_work SET status='completed',lease_token=NULL,lease_expires_at=NULL,completed_at=clock_timestamp() WHERE id=$1", [scope.work.id]);
+      await database.current.insert(schema.metricSnapshots).values({ campaignId: "a", snapshotType: "executive_summary_daily", reportingDate: date,
+        notes: `ga4_aligned_refresh_v1:${date}:2026-10-18T06:00:00Z`, metrics: { revenue: 123.45 } });
+      const workBefore = (await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows;
+      const snapshotsBefore = (await pool.query("SELECT * FROM metric_snapshots ORDER BY id")).rows;
+      const financialBefore = await saved();
+      const renewed = await update({ accessToken: "renewed-access", refreshToken: "renewed-refresh" });
+      expect(renewed.accessToken).toBe("renewed-access"); expect(renewed.refreshToken).toBe("renewed-refresh");
+      expect((await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows).toEqual(workBefore);
+      expect((await pool.query("SELECT * FROM metric_snapshots ORDER BY id")).rows).toEqual(snapshotsBefore);
+      const financialAfter = await saved();
+      for (const key of Object.keys(financialBefore)) {
+        const preserved = (row: any) => key !== getTableName(table) || row.id !== id;
+        expect(financialAfter[key].filter(preserved)).toEqual(financialBefore[key].filter(preserved));
+      }
+    });
+    it(`still invalidates publication when ${name} connection configuration changes`, async () => {
+      const scope = await claim();
+      await database.current.insert(schema.metricSnapshots).values({ campaignId: "a", snapshotType: "executive_summary_daily", reportingDate: date,
+        notes: `ga4_aligned_refresh_v1:${date}:2026-10-18T06:00:00Z` });
+      await (storage as any)[name === "GA4" ? "updateGA4Connection" : method](id, { isActive: false });
+      expect((await pool.query("SELECT scope_hash FROM ga4_refresh_work WHERE id=$1", [scope.work.id])).rows[0].scope_hash).toMatch(/^invalidated:/);
+      expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a'")).rows[0].notes).toBeNull();
+    });
+  }
+  it.each([false, true])("Salesforce credential renewal metadata preserves publication only for the same instance (changed: %s)", async changed => {
+    await storage.updateSalesforceConnection("salesforce-a", { accessToken: "initial", refreshToken: "refresh", clientId: "fixture", clientSecret: "fixture",
+      instanceUrl: "https://old.invalid", expiresAt: new Date(0) });
+    const scope = await claim();
+    const previous = (await pool.query("SELECT * FROM ga4_refresh_work WHERE id=$1", [scope.work.id])).rows[0];
+    const fetch = vi.fn(async () => ({ ok: true, json: async () => ({ access_token: "renewed", refresh_token: "next", instance_url: changed ? "https://new.invalid" : "https://old.invalid" }) }));
+    expect(await salesforceRenewal(fetch).refresh(await storage.getSalesforceConnection("a"), true)).toBe("renewed");
+    const current = (await pool.query("SELECT * FROM ga4_refresh_work WHERE id=$1", [scope.work.id])).rows[0];
+    if (changed) expect(current.scope_hash).toMatch(/^invalidated:/); else expect(current).toEqual(previous);
+  });
+  it.each(["expiry", "selected values", "scopes", "domain", "malformed", "array", "null"])("Shopify credential renewal metadata respects %s changes", async kind => {
+    const mapping = { authType: "oauth", grantedScopes: "read_orders", grantedScopesList: ["read_orders"], selectedValues: ["old"], accessTokenExpiresAt: "2026-10-18T06:00:00Z" };
+    await storage.updateShopifyConnection("shopify-a", { accessToken: "initial", refreshToken: "refresh", mappingConfig: JSON.stringify(mapping) });
+    const scope = await claim();
+    const previous = (await pool.query("SELECT * FROM ga4_refresh_work WHERE id=$1", [scope.work.id])).rows[0];
+    const next = { ...mapping, accessTokenExpiresAt: "2026-10-19T06:00:00Z", refreshTokenExpiresAt: "2026-11-19T06:00:00Z", tokenUpdatedAt: "2026-10-18T07:00:00Z",
+      ...(kind === "selected values" ? { selectedValues: ["new"] } : {}), ...(kind === "scopes" ? { grantedScopes: "read_orders,read_all_orders" } : {}) };
+    await storage.updateShopifyConnection("shopify-a", { accessToken: "renewed", refreshToken: "next",
+      mappingConfig: kind === "malformed" ? "{" : kind === "array" ? "[]" : kind === "null" ? null : JSON.stringify(next),
+      ...(kind === "domain" ? { shopDomain: "new.myshopify.com" } : {}) } as any);
+    const current = (await pool.query("SELECT * FROM ga4_refresh_work WHERE id=$1", [scope.work.id])).rows[0];
+    if (kind === "expiry") expect(current).toEqual(previous); else expect(current.scope_hash).toMatch(/^invalidated:/);
+  });
   it("keeps Salesforce connected through successive scheduled rotations using the real renewal and status handlers", async () => {
     await storage.updateSalesforceConnection("salesforce-a", { accessToken: "access-0", refreshToken: "refresh-0",
       clientId: "fixture-client", clientSecret: "fixture-secret", instanceUrl: "https://fixture.invalid", expiresAt: new Date(0) });

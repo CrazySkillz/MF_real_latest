@@ -202,6 +202,8 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       await f.page.reload();
       await browserExpect(f.revenue).toContainText("\u20ac100.00");
       await f.revenue.getByRole("button", { name: "Sources (2)", exact: true }).click();
+      // Settle the reopened page's reads before changing the simulated server publication.
+      await browserExpect.poll(() => f.page.evaluate(() => (window as any).fixtureFetching())).toBe(0);
       f.setPublication("published"); await f.page.clock.runFor(30_000);
       await browserExpect(pending).toHaveCount(0);
       await browserExpect(f.revenue).toContainText("\u20ac100.00");

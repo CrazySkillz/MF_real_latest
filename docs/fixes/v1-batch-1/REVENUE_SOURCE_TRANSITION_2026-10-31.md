@@ -142,3 +142,11 @@ not observation of the transition inside the user's authenticated browser.
 This is a bounded processing-display fix, not certification of all provider
 lifecycles, global scheduler health, report delivery or Batch 1. The agent does
 not operate the user's personal browser or perform a live re-import.
+
+## User confirmation
+
+Recorded October 31 at 04:07 UTC: after the deployed-fix instructions, the user
+replied **"yes, confirmed"**. The live display check is now user-confirmed in
+addition to the automated browser, database and hosted evidence above. This
+confirmation does not assert that another import/edit was performed or close
+the remaining Batch 1 renewal, reconnect, revocation and operations checks.

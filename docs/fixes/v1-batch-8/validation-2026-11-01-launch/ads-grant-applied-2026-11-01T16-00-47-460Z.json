@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-01T16:00:47.460Z",
+  "mode": "apply",
+  "grant": {
+    "ownerId": "user_3LTqgGDCOcbqrzLRaynqvRWRtMl",
+    "clientId": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+    "provider": "google_ads",
+    "resourceId": "4951281615"
+  },
+  "sourceHash": "e87a51028f53efb8c9a806170f63b3338831857867bb9c1d0d91df621a7cbf45",
+  "committed": true,
+  "providerCalls": 0,
+  "analyticsWrites": 0,
+  "connectionWrites": 0,
+  "result": "PASS",
+  "grantId": "da2dbb14-b946-4d5d-889e-f30007987dec",
+  "insertedRows": 1,
+  "rolledBack": false,
+  "independentTransactionVerified": true
+}

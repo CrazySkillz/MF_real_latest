@@ -1,0 +1,57 @@
+{
+  "at": "2026-11-01T16:07:32.011Z",
+  "result": "PASS",
+  "tests": [
+    {
+      "case": "success",
+      "passed": true,
+      "requests": 15
+    },
+    {
+      "case": "empty",
+      "passed": true,
+      "requests": 15
+    },
+    {
+      "case": "wrong_origin",
+      "passed": true,
+      "requests": 0
+    },
+    {
+      "case": "wrong_owner",
+      "passed": true,
+      "requests": 0
+    },
+    {
+      "case": "unavailable",
+      "passed": true,
+      "requests": 2
+    },
+    {
+      "case": "changed_draft",
+      "passed": true,
+      "requests": 4
+    },
+    {
+      "case": "provider_denied",
+      "passed": true,
+      "requests": 7
+    },
+    {
+      "case": "foreign_preview",
+      "passed": true,
+      "requests": 9
+    },
+    {
+      "case": "refresh_skipped",
+      "passed": true,
+      "requests": 11
+    },
+    {
+      "case": "cleanup_denied",
+      "passed": true,
+      "requests": 15
+    }
+  ],
+  "liveCalls": 0
+}

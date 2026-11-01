@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-01T15:59:11.086Z",
+  "mode": "rollback_preflight",
+  "grant": {
+    "ownerId": "user_3LTqgGDCOcbqrzLRaynqvRWRtMl",
+    "clientId": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+    "provider": "google_ads",
+    "resourceId": "4951281615"
+  },
+  "sourceHash": "e87a51028f53efb8c9a806170f63b3338831857867bb9c1d0d91df621a7cbf45",
+  "committed": false,
+  "providerCalls": 0,
+  "analyticsWrites": 0,
+  "connectionWrites": 0,
+  "result": "PASS",
+  "grantId": "7ef33db5-46ec-411e-8b8e-0b0a5bd657cc",
+  "insertedRows": 1,
+  "rolledBack": true,
+  "independentTransactionVerified": true
+}

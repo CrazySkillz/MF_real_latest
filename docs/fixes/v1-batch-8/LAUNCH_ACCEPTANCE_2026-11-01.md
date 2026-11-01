@@ -203,10 +203,35 @@ uses EUR / Europe/Amsterdam; the Google account's own settings remain unverified
 Zero writes, token issuance or provider calls occurred. Local `.env` lacks the
 service-account setup and is explicitly not evidence for Render configuration.
 
-The next manual check is the existing `Overview -> Total Spend + -> Google Ads`
-panel's service-account option. Do not attempt a connection before exact resource
-permission and hosted configuration are established. No resource grant has been
-added and no existing connection has been replaced.
+The user subsequently confirmed the existing `Overview -> Total Spend + -> Google Ads`
+panel displays the service-account email, that email already has Read only access
+in Ads account `4951281615`, and Render's
+`GOOGLE_ADS_SERVICE_ACCOUNT_ALLOWED_CUSTOMER_IDS` already includes that ID.
+These are setup confirmations, not yet a successful provider API connection.
+
+The exact missing client permission was rehearsed with rollback, then applied
+under the user's authorization for this account and test client. The
+[preflight](validation-2026-11-01-launch/ads-grant-preflight.json) and
+[committed receipt](validation-2026-11-01-launch/ads-grant-applied-2026-11-01T16-00-47-460Z.json)
+prove one grant for production second account / client
+`e3ec20ad-89ea-450d-8caf-8c0ab7abd220` / `google_ads` / `4951281615`, independently
+verified after commit. No connection, analytics or provider writes occurred.
+This replaces the earlier finding of no grant. Existing connections were not changed.
+
+The [single-run browser check](validation-2026-11-01-launch/manual-ads-service-account.js)
+is prepared for disposable draft `b89ead82-29a3-4671-b281-66756051f966` only.
+It checks connection, saved preview and one explicit provider refresh, then
+cancels that exact draft on success. It never activates the draft or imports a
+Spend source. Google operations are reads; dedicated connection/daily-fact writes
+are confined to the draft. Identity, client, customer, draft state, currency and
+timezone guards remain intact. Failed runs stop without retries and retain the
+exact draft for diagnosis/cleanup; repeat pastes do not repeat writes.
+The [synthetic helper results](validation-2026-11-01-launch/ads-browser-helper-tests.json)
+cover success with/without facts, wrong origin/account, disabled configuration,
+changed draft, provider denial, foreign preview rows, skipped refresh and cleanup
+denial. These tests make zero live calls. Actual provider acceptance is pending;
+even a successful empty preview will not certify nonzero Spend calculations or
+the full financial-source lifecycle.
 
 The earlier developer-token requirement in this assessment was inaccurate:
 current [Google documentation](https://developers.google.com/google-ads/api/docs/api-policy/developer-token)
@@ -217,9 +242,10 @@ interactive OAuth verification. [Google's service-account setup](https://develop
 requires granting its email access in the Ads account. This documentation
 correction requires no application-code change or new developer-token task.
 
-All diagnostics use public GETs or verified TLS and explicit READ ONLY database
+Read-only diagnostics use public GETs or verified TLS and explicit READ ONLY database
 transactions ending in rollback. Credential values, report content and recipient
 addresses are omitted. The user-triggered test added the exact delivery audit
-above and sent one PDF. The agent's live checks were read-only; no schedules,
-campaigns, source values or provider configuration were changed. The localized
+above and sent one PDF. The exact test-client permission above is the sole new
+live write in this Google Ads setup step; no schedules, campaigns, source values
+or provider configuration were changed. The localized
 GA4 auth-component correction above is the only application-code change here.

@@ -1,6 +1,6 @@
 {
   "at": "2026-11-01T10:28:04.164Z",
-  "status": "PASS_LOCAL_EMAIL_RECIPIENT_BOUNDARY",
+  "status": "PASS_DEPLOYED_EMAIL_RECIPIENT_BOUNDARY",
   "baseCommit": "6e113a0cdcacbeca05e5cf17dad9c5edf3997b61",
   "runtimeLinesAdded": 7,
   "dependencyChanges": false,
@@ -61,6 +61,16 @@
       "sha256": "15fcac90b5a40580803b1d41f44320cd8637821919edeb1777b25a92a30920ea"
     }
   ],
-  "deployment": "PENDING",
+  "deployment": {
+    "commit": "9848ef9c997f23a3dac558080f41a6c5b09e05f1",
+    "verifiedAt": "2026-11-01T10:41:47.809Z",
+    "healthy": true,
+    "hostedCI": "PASS",
+    "workflow": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41297917427",
+    "evidence": [
+      "email-release-ci.json",
+      "email-public-release.json"
+    ]
+  },
   "limits": "Mocked transports and audit method; no live email, provider, database or malformed production requests. Does not close all dependency candidates."
 }

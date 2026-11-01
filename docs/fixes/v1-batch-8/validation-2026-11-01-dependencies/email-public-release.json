@@ -1,0 +1,15 @@
+{
+  "at": "2026-11-01T10:35:23.537Z",
+  "result": "PASS_ANONYMOUS_PRODUCTION_BOUNDARIES",
+  "base": "https://app.mimosaas.app",
+  "commit": "9848ef9c997f23a3dac558080f41a6c5b09e05f1",
+  "health": 200,
+  "root": 200,
+  "unsignedClients": 401,
+  "unsignedCampaigns": 401,
+  "requiredClerkCsp": true,
+  "hsts": true,
+  "noAuthenticatedSession": true,
+  "noMalformedTraffic": true,
+  "noEmailsSent": true
+}

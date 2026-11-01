@@ -20,6 +20,9 @@ hardening and broader certification stay outside this launch queue.
 production sign-in/account migration, and the request/upload parser correction
 are deployed. The parser release `6e113a0c` passed 127 focused tests, TypeScript,
 the production build, hosted CI and public deployment checks. Reuse this evidence.
+The [shared email recipient guard](fixes/v1-batch-8/EMAIL_RECIPIENT_BOUNDARY_2026-11-01.md)
+is also deployed as `9848ef9c`, with 80 focused tests, TypeScript/build, hosted CI
+and new-domain public checks passing. It does not close the remaining dependency review.
 
 **Before any additional check:** identify the affected production/release path,
 the concrete defect or essential evidence gap, why existing evidence is insufficient,

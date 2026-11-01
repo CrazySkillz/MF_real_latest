@@ -56,8 +56,9 @@ code reads are evidence to guide the next check, not sufficient to close them.
 
 The [shared email recipient correction](EMAIL_RECIPIENT_BOUNDARY_2026-11-01.md)
 now has a confirmed before/fixed application boundary and 80 passing local
-regressions, TypeScript and build. Deployment is pending. It does not close every
-Nodemailer condition or infer the configured live transport.
+regressions, TypeScript and build. Deployed `9848ef9c` is healthy; hosted CI and
+new-domain public checks pass. It does not close every Nodemailer condition or
+infer the configured live transport.
 
 - Axios constructors use fixed provider hosts and application-built config; the
   complete advisories/input conditions still need a supported disposition.

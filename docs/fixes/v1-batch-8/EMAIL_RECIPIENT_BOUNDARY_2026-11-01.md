@@ -1,6 +1,6 @@
 # Shared email recipient boundary — November 1
 
-Status: **verified locally; deployment pending**. This is a targeted correction
+Status: **deployed and verified**, `9848ef9c`. This is a targeted correction
 within the existing dependency launch task, not a new launch gate.
 
 ## Confirmed boundary and smallest correction
@@ -62,3 +62,14 @@ failure. No live email send or recipient-data cleanup is needed for this guard.
 Provider acceptance/delivery is not newly certified. Other dependency candidates,
 changed-domain callbacks, minimum recovery evidence and final acceptance retain
 their documented open boundaries.
+
+## Release evidence
+
+Hosted workflow [41297917427](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41297917427)
+passed, including the current-version suite and retained deferred-source checks.
+At 10:41 UTC, the exact revision was deployed and healthy. The independent
+new-domain check returned 200 for health/homepage, 401 for unsigned client/campaign
+APIs, and the expected Clerk CSP/HSTS headers. `email-release-ci.json`,
+`email-public-release.json` and the validation receipt preserve these results.
+This release has no database migration or provider configuration change. No live
+email was sent. A code rollback is schema-compatible but would remove this guard.

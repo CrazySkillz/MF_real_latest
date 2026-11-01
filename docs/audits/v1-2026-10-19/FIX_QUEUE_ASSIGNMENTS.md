@@ -2,9 +2,9 @@
 
 **Current execution order, November 1:** follow the controlling
 [production launch task list](../../V1_RELEASE_READINESS.md#current-production-launch-task-list):
-Task 1's bounded dependency review is complete for the current deployment (B8
-V1-019 launch scope). Three tasks remain: affected new-domain provider callbacks
-(V1-013), minimum recovery/rollback (V1-016), then one focused
+Tasks 1–2 are complete for the current deployment: bounded dependency review (B8
+V1-019 launch scope) and affected new-domain provider callbacks (V1-013).
+Two tasks remain: minimum recovery/rollback (V1-016), then one focused
 final acceptance using existing evidence across batches. Production sign-in,
 account migration, all 20 original Batch 1 code corrections and the parser fix
 are deployed; they are not repeat tasks. This supersedes older dated
@@ -14,8 +14,16 @@ was postponed, not excluded; establish its offered scope before launch.
 
 **Task 1 complete, November 1:** [request collection limits](../../fixes/v1-batch-8/REQUEST_COLLECTION_LIMITS_2026-11-01.md) are deployed as `0a42aac8`; 258 focused tests, TypeScript/build, hosted CI and public release checks pass. The user then confirmed both Mailgun API variables present and EMAIL_PROVIDER either mailgun or absent. The traced HTTP send branch returns without SMTP fallback, resolving the final three conditions in the [bounded dependency review](../../fixes/v1-batch-8/DEPENDENCY_EXPOSURE_2026-11-01.md). No Task 1 steps remain for this deployment; no test email, UI repeat or additional runtime change is required. Reopen only if relevant code/configuration or advisory evidence changes. Whole-app launch acceptance remains pending.
 
+**Task 2 complete, November 1:** [shared Google, HubSpot, Salesforce and Shopify
+new-domain returns passed](../../fixes/v1-batch-8/CLERK_CUTOVER_2026-11-01.md#task-2-complete--new-domain-returns-and-exact-cleanup).
+Independent saved-state checks confirm encrypted connections and unchanged
+source configurations/revenue records. The exact temporary draft and its two
+connections were removed with independent verification; the renewed Shopify
+connection remains on the existing test campaign. No runtime deployment or
+repeat provider/import check is required for this unchanged configuration.
+
 **Minimal launch scope is mandatory:** do not turn this historical finding
-inventory into a new task queue. Work must fit one of the three remaining launch gates and
+inventory into a new task queue. Work must fit one of the two remaining launch gates and
 identify its concrete launch risk, missing evidence and smallest completion
 check. Reuse applicable passes; stop when the essential gates pass. Broader
 assurance, modernization and optional hardening remain outside the launch queue.

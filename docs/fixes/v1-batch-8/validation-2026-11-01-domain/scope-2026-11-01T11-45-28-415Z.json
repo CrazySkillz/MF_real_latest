@@ -1,0 +1,31 @@
+{
+  "at": "2026-11-01T11:45:28.415Z",
+  "databaseWritesAttempted": false,
+  "credentialValuesReturned": false,
+  "databaseReadOnly": true,
+  "draftCandidates": [
+    {
+      "id": "815d0cf6-1de9-466f-a226-a66e429bf812",
+      "name": "Domain Connection Check",
+      "status": "draft",
+      "created_at": "2026-11-01T10:41:27.851Z",
+      "client_name": "Batch 1 Validation"
+    },
+    {
+      "id": "519ee09b-b509-4162-b716-3d8a5395f2dc",
+      "name": "Domain Connection Check",
+      "status": "draft",
+      "created_at": "2026-11-01T10:35:38.632Z",
+      "client_name": "Batch 1 Validation"
+    },
+    {
+      "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+      "name": "Batch 1 Provider Check",
+      "status": "active",
+      "created_at": "2026-10-30T19:48:45.285Z",
+      "client_name": "Batch 1 Validation"
+    }
+  ],
+  "result": "CHECK_REQUIRED",
+  "errorCode": "ERR_ASSERTION"
+}

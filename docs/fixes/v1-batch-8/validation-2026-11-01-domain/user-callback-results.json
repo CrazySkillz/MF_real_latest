@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-01",
+  "evidenceKind": "User supplied individual success entries from the same running checker; the final wrapper was not pasted.",
+  "google": {
+    "evidenceKind": "User confirmation of the ordinary wizard result",
+    "result": "Yes—the property list appears",
+    "scope": "Shared Google new-domain redirect/origin; no repeat Sheets import or scope certification"
+  },
+  "checks": [
+    {
+      "provider": "hubspot",
+      "callbackOrigin": "https://app.mimosaas.app",
+      "passed": true
+    },
+    {
+      "provider": "salesforce",
+      "callbackOrigin": "https://app.mimosaas.app",
+      "passed": true
+    },
+    {
+      "provider": "shopify",
+      "callbackOrigin": "https://app.mimosaas.app",
+      "passed": true,
+      "connectionId": "be4f0ab0-5fed-4b82-994c-197b3a7a9850"
+    }
+  ]
+}

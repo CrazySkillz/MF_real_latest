@@ -1,0 +1,113 @@
+{
+  "at": "2026-11-01T11:57:21.060Z",
+  "result": "PASS_LOCAL_CHECKER_SAFETY",
+  "realProviderCalls": 0,
+  "databaseWrites": 0,
+  "checks": [
+    {
+      "check": "pass",
+      "passed": true,
+      "requests": 16
+    },
+    {
+      "check": "no-wizard",
+      "passed": true,
+      "requests": 16
+    },
+    {
+      "check": "wrong-origin",
+      "passed": true,
+      "requests": 0
+    },
+    {
+      "check": "wrong-owner",
+      "passed": true,
+      "requests": 0
+    },
+    {
+      "check": "wrong-draft",
+      "passed": true,
+      "requests": 16
+    },
+    {
+      "check": "foreign-draft",
+      "passed": true,
+      "requests": 1
+    },
+    {
+      "check": "foreign-client",
+      "passed": true,
+      "requests": 1
+    },
+    {
+      "check": "deleted-draft",
+      "passed": true,
+      "requests": 1
+    },
+    {
+      "check": "active-draft",
+      "passed": true,
+      "requests": 1
+    },
+    {
+      "check": "changed-store",
+      "passed": true,
+      "requests": 3
+    },
+    {
+      "check": "popup-blocked",
+      "passed": true,
+      "requests": 3
+    },
+    {
+      "check": "http-fail",
+      "passed": true,
+      "requests": 5
+    },
+    {
+      "check": "wrong-host",
+      "passed": true,
+      "requests": 5
+    },
+    {
+      "check": "wrong-redirect",
+      "passed": true,
+      "requests": 5
+    },
+    {
+      "check": "foreign-event",
+      "passed": true,
+      "requests": 16
+    },
+    {
+      "check": "double-click",
+      "passed": true,
+      "requests": 16
+    },
+    {
+      "check": "account-switch",
+      "passed": true,
+      "requests": 5
+    },
+    {
+      "check": "provider-error",
+      "passed": true,
+      "requests": 5
+    },
+    {
+      "check": "not-saved",
+      "passed": true,
+      "requests": 7
+    },
+    {
+      "check": "stale-shopify",
+      "passed": true,
+      "requests": 14
+    },
+    {
+      "check": "timeout",
+      "passed": true,
+      "requests": 5
+    }
+  ]
+}

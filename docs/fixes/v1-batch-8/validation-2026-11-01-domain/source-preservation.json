@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-01T12:11:32.932Z",
+  "result": "PASS_SAVED_CONNECTIONS_AND_PRESERVATION",
+  "before": "scope-2026-11-01T11-56-27-838Z.json",
+  "after": "scope-2026-11-01T12-05-56-418Z.json",
+  "sourceConfigurationsUnchanged": 4,
+  "revenueRowsUnchanged": 5,
+  "shopifyMatchesBrowser": true,
+  "temporaryConnections": 2
+}

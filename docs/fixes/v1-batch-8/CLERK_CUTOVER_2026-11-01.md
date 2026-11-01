@@ -333,3 +333,143 @@ the intended visible ownership and account-switch cache separation for those
 accounts. It does not repeat every foreign mutation test.
 Actual new-domain provider consent is also not claimed verified. No optional
 audit or repeated import test has been added to the launch scope.
+
+## Task 2 — bounded new-domain authorization acceptance
+
+November 1: production sign-in/ownership and the four provider allowlist saves
+above are retained. The remaining gap is a real authorization return through the
+new origin with the ordinary production session. Older provider imports and
+reloads prove unchanged provider functionality, not this changed redirect.
+
+The next manual check uses the second account, `Batch 1 Validation`, and a new
+`Domain Connection Check` draft in the ordinary Create Campaign wizard. The user
+was asked to choose Google Analytics, complete Google authorization, and stop at
+the GA4 property list with the wizard open. No property confirmation, final Create
+Campaign action or import was requested. The user replied **Yes—the property list
+appears**. The shared Google new-domain redirect/origin check is **PASS by user
+confirmation**; this does not repeat the earlier Sheets import or scope tests.
+
+Traced boundary: `client/src/pages/campaigns.tsx` creates a draft; its
+`IntegratedGA4Auth` calls `/api/auth/ga4/connect`. Both GA4 and Sheets initiation
+use the same configured Google client and `/api/auth/google-sheets/callback` URL.
+The GA4 callback checks state and campaign ownership, exchanges the code using
+that URL, lists accessible properties and calls `stageGA4OAuthConnection`.
+Storage inserts an encrypted, inactive pending connection with no selected
+property. The wizard's next read displays properties; it does not commit the
+property or run an import. This one live exchange can establish the shared
+Google redirect/origin acceptance; it does not recertify every Sheets scope or
+save path. Keep the exact draft available until its remaining use/cleanup is
+decided; do not create a duplicate if the user already has this wizard open.
+
+HubSpot and Salesforce use distinct callback URLs and retain separate acceptance
+gaps. Their callbacks update/create credentials on the selected campaign; use
+the exact owned draft when preparing their checks. Shopify requires a different
+boundary: its callback replaces the campaign connection under a store lock, and
+the provider has one current expiring offline credential per app/store. A new
+draft does not isolate that provider credential. Do not authorize and then delete
+a temporary Shopify connection without preserving the working store credential.
+Use the existing exact-store connection only after tracing its source-preserving
+replacement boundary. This is validation planning, not a newly confirmed defect.
+
+No runtime, environment, provider setting or database change was made by this
+preparation. No personal browser was accessed. The remaining three provider returns
+remain unverified; Task 2 and launch approval stay pending.
+
+### Combined remaining check prepared
+
+The [enforced read-only scope receipt](validation-2026-11-01-domain/scope-2026-11-01T11-46-48-166Z.json)
+found two same-name drafts under the exact second production owner/client: an
+empty earlier draft and `815d0cf6-1de9-466f-a226-a66e429bf812`, holding the one
+encrypted inactive pending Google authorization. Both have zero financial sources,
+daily metrics and initial-import work. The first preflight stopped on the duplicate
+name; no mutation occurred. The first checker required the authorized draft's ID
+to match the browser's wizard session key. The user screenshot then showed
+`KEEP_AUTHORIZED_DRAFT_OPEN` with zero completed checks after the wizard closed.
+That guard stopped before any provider or API request.
+
+The [subsequent read-only receipt](validation-2026-11-01-domain/scope-2026-11-01T11-56-27-838Z.json)
+confirms the authorized draft was removed by the ordinary cancel path and only
+the exact empty earlier draft `519ee09b-b509-4162-b716-3d8a5395f2dc` survives.
+Its financial sources, metrics, initial imports and provider connections are all
+empty. Existing source mappings, revenue-record hashes and Shopify connection
+metadata exactly match the earlier receipt. The corrected checker pins this
+surviving draft and verifies its owner/client/name/status through the API;
+it no longer depends on an open wizard or stale browser session key. The Google
+authorization pass remains recorded; no repeat Google authorization is requested.
+
+[User-run checker](validation-2026-11-01-domain/manual.js) presents three sequential
+buttons: HubSpot and Salesforce on the surviving empty draft, then Shopify on the existing exact
+`Batch 1 Provider Check` campaign/store. Each generated redirect must equal the
+new app's exact callback URL before opening the provider. Account/owner/client,
+campaign state, exact store and provider hostname are checked; messages must come
+from the popup or the existing same-origin Salesforce/Shopify broadcast mechanism.
+After each success the checker reads the scoped connection status. It makes no
+import, mapping-save, campaign activation, delete or provider-setting request.
+No automatic retry is used; errors stop the check. A completed run can be printed
+again without repeating authorization. The browser results were pending at this
+preparation checkpoint; their acceptance is recorded below.
+
+Shopify's callback uses `replaceShopifyConnection` to retain the new renewable
+credential on the existing store campaign. Storage checks exact same-store
+replacement while active revenue sources exist and writes connection rows only.
+The revenue source remains the scheduler's mapping authority in
+`auto-refresh-scheduler.ts`; source IDs/configuration and financial-record hashes
+are captured for subsequent comparison. Do not delete the Shopify connection as
+fixture cleanup. Only the surviving reviewed draft is a cleanup candidate,
+after its exact content is rechecked; the other draft is already absent.
+
+[21 synthetic checker safety cases](validation-2026-11-01-domain/manual-safety.json)
+pass: scoped happy path with an open or closed wizard/stale session key, wrong
+origin/account/client, foreign/deleted/activated draft, changed store, blocked popup,
+request failure, wrong callback/provider host, unrelated messages, double clicks,
+account switch, provider error, failed persistence, stale Shopify result and timeout.
+The closed-wizard case failed before the checker correction and passes afterward.
+These are checker tests with zero real provider calls, not deployed consent proof.
+Runtime code, mappings, schedules and deployment are unchanged by preparation.
+
+### Task 2 complete — new-domain returns and exact cleanup
+
+November 1: **the bounded new-domain authorization task is complete**. The user
+provided the HubSpot, Salesforce and Shopify success entries from the same
+running checker, each with callback origin `https://app.mimosaas.app`. These
+[original result entries](validation-2026-11-01-domain/user-callback-results.json)
+are recorded as fragments, not an invented final JSON wrapper. The existing
+Google property-list confirmation covers the shared Google callback. No repeat
+consent, import, mapping save or financial drill is needed for this task.
+
+The [independent saved-state read](validation-2026-11-01-domain/scope-2026-11-01T12-05-56-418Z.json)
+verified one active encrypted HubSpot and one active encrypted Salesforce
+connection on the exact second-account draft, with no mapping, sources, daily
+metrics or initial imports. The active Shopify connection ID matches the user's
+result (`be4f0ab0-5fed-4b82-994c-197b3a7a9850`) and retains the same store on the
+existing `Batch 1 Provider Check` campaign. Comparing with the pre-authorization
+receipt proves all four revenue-source configurations and five full revenue
+records unchanged, including currency, record counts and amounts. This is
+changed-domain acceptance, not a new certification of every provider lifecycle.
+
+The [read-only cleanup preflight](validation-2026-11-01-domain/cleanup-2026-11-01T12-08-07-644Z.json)
+enumerated all 48 campaign-child tables: only the exact two temporary credential
+rows existed for draft `519ee09b-b509-4162-b716-3d8a5395f2dc`. Owner, client,
+creation time, draft state, creation request, both connection IDs, absent
+mappings, inbound foreign keys and absent custom triggers were checked. The
+operator [cleanup helper](validation-2026-11-01-domain/finish-draft.cjs) follows
+the existing fixture-cleanup convention and the ordinary cancellation semantics:
+one transaction removes only those two connection rows and that draft, marks
+its existing creation request cancelled, and checks exact row counts. It does
+not revoke provider grants or delete the current Shopify credential.
+
+[Cleanup committed](validation-2026-11-01-domain/cleanup-2026-11-01T12-08-47-070Z.json).
+A [separate read-only verification](validation-2026-11-01-domain/cleanup-2026-11-01T12-09-20-718Z.json)
+confirms the draft/connections are absent, its cancellation marker is retained,
+all 48 child tables are empty for that draft, and the existing active campaign,
+Shopify connection, four source configurations and five revenue records are
+unchanged. The earlier Google draft was already removed by normal cancellation.
+No application code, schema, environment or schedule was changed in this closeout.
+
+Validation: the existing 21 synthetic checker cases and syntax check passed;
+the exact cleanup helper passed syntax, live read-only preflight, guarded
+transactional execution and independent read-only post-check. No full app test
+rerun or runtime redeployment is needed for these evidence/helper changes.
+The active launch queue now contains only **Task 3 (minimum recovery/rollback)**
+and **Task 4 (consolidated launch decision)**. Overall launch approval remains
+pending; this result does not silently close their separate evidence gaps.

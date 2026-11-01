@@ -1,0 +1,8 @@
+{
+  "at": "2026-11-01T11:44:53.200Z",
+  "databaseWritesAttempted": false,
+  "credentialValuesReturned": false,
+  "databaseReadOnly": true,
+  "result": "CHECK_REQUIRED",
+  "errorCode": "ERR_ASSERTION"
+}

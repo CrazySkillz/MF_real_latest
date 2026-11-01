@@ -1,0 +1,103 @@
+{
+  "at": "2026-11-01T11:56:27.838Z",
+  "databaseWritesAttempted": false,
+  "credentialValuesReturned": false,
+  "databaseReadOnly": true,
+  "drafts": [
+    {
+      "id": "519ee09b-b509-4162-b716-3d8a5395f2dc",
+      "client_id": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+      "name": "Domain Connection Check",
+      "status": "draft",
+      "created_at": "2026-11-01T10:35:38.632Z",
+      "pendingGoogle": [],
+      "content": {
+        "revenue_sources": 0,
+        "spend_sources": 0,
+        "daily_metrics": 0,
+        "initial_imports": 0
+      },
+      "hubspot": [],
+      "salesforce": []
+    }
+  ],
+  "existing": {
+    "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+    "client_id": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+    "name": "Batch 1 Provider Check",
+    "status": "active",
+    "currency": "EUR"
+  },
+  "ownerSha256": "d4b19e59f3d130850f83827b53ad753bb3875b4df8c7319cf33de0e77c8fa94f",
+  "shopify": [
+    {
+      "id": "62cf9267-2348-46f2-aae0-ddf7ec021081",
+      "shop_domain": "linkedin-revenue.myshopify.com",
+      "is_active": true,
+      "encrypted": true,
+      "auth_type": "oauth",
+      "connected_at": "2026-10-30T21:44:05.196Z"
+    }
+  ],
+  "sources": [
+    {
+      "id": "2be847ea-4842-43cb-a024-50d861272fc8",
+      "source_type": "salesforce",
+      "is_active": true,
+      "platform_context": "ga4",
+      "currency": "EUR",
+      "mapping_hash": "c7c39d9559cb40ea6a99b69293e21d3c"
+    },
+    {
+      "id": "59c30be2-5e98-472b-a552-f4c4ee44f47b",
+      "source_type": "hubspot",
+      "is_active": true,
+      "platform_context": "ga4",
+      "currency": "EUR",
+      "mapping_hash": "1edc7d4e04c0d814679d4c21a9c8fe74"
+    },
+    {
+      "id": "b1ac1292-ef65-4829-b60c-5181bc6b17a7",
+      "source_type": "shopify",
+      "is_active": true,
+      "platform_context": "ga4",
+      "currency": "EUR",
+      "mapping_hash": "c2cb2aa60c1a290220458ae209659cbf"
+    },
+    {
+      "id": "db536b7c-1b2e-40f2-9e04-af06c8e18b76",
+      "source_type": "google_sheets",
+      "is_active": true,
+      "platform_context": "ga4",
+      "currency": "EUR",
+      "mapping_hash": "b3cc51fe7a38e546253cfd66135648ca"
+    }
+  ],
+  "records": [
+    {
+      "revenue_source_id": "2be847ea-4842-43cb-a024-50d861272fc8",
+      "count": 1,
+      "total": "0.00",
+      "rows_hash": "80ea46c33fbcabe41ec951306eb6c00e"
+    },
+    {
+      "revenue_source_id": "59c30be2-5e98-472b-a552-f4c4ee44f47b",
+      "count": 1,
+      "total": "0.00",
+      "rows_hash": "11e58f4fc4ee1388fbfb3d03e0627193"
+    },
+    {
+      "revenue_source_id": "b1ac1292-ef65-4829-b60c-5181bc6b17a7",
+      "count": 1,
+      "total": "785.95",
+      "rows_hash": "331da5f0e99b9377e7e35168159f6df8"
+    },
+    {
+      "revenue_source_id": "db536b7c-1b2e-40f2-9e04-af06c8e18b76",
+      "count": 2,
+      "total": "31000.00",
+      "rows_hash": "b7d6b717d601735d45393d29f0e2e34c"
+    }
+  ],
+  "result": "PASS_EXACT_DOMAIN_SCOPE"
+}

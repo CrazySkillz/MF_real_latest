@@ -1,0 +1,279 @@
+{
+  "at": "2026-10-31T23:03:05.757Z",
+  "result": "PASS_READ_ONLY_INVENTORY",
+  "databaseWritesAttempted": false,
+  "credentialValuesReturned": false,
+  "originalOwnerSha256": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60",
+  "databaseReadOnly": true,
+  "clients": [
+    {
+      "id": "4d8d826b-bb16-41b7-97a4-6de8fa20fe9c",
+      "name": "Tracker",
+      "originalOwner": true,
+      "ownerSha256": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60"
+    },
+    {
+      "id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+      "name": "ABN",
+      "originalOwner": true,
+      "ownerSha256": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60"
+    },
+    {
+      "id": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+      "name": "Batch 1 Validation",
+      "originalOwner": false,
+      "ownerSha256": "1900b95d7361b41cd41b7a23571cb4645a1511a139d4044f04b9937ab86c6096"
+    }
+  ],
+  "visibleCampaigns": [
+    {
+      "id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "name": "V1 Batch 5 Test",
+      "status": "active",
+      "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+      "parent_owner_matches": true,
+      "originalOwner": true,
+      "ownerSha256": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60"
+    },
+    {
+      "id": "36631f9f-5f32-4ae6-8d20-d8430abb364c",
+      "name": "Batch 1 Provider Check",
+      "status": "active",
+      "client_id": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+      "parent_owner_matches": true,
+      "originalOwner": false,
+      "ownerSha256": "1900b95d7361b41cd41b7a23571cb4645a1511a139d4044f04b9937ab86c6096"
+    },
+    {
+      "id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "name": "Promo",
+      "status": "active",
+      "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+      "parent_owner_matches": true,
+      "originalOwner": true,
+      "ownerSha256": "d57d0159277204eede2f1cb2ac0977958abab3f8bb21ee9a878a689aaf920a60"
+    }
+  ],
+  "unparentedCampaigns": {
+    "total": 34,
+    "original_owner_count": 0
+  },
+  "identityReferences": [
+    {
+      "table": "ab_test_events",
+      "column": "user_id",
+      "total": 0,
+      "original_owner_count": 0,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "attribution_models",
+      "column": "owner_id",
+      "total": 0,
+      "original_owner_count": 0,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "campaign_creation_requests",
+      "column": "owner_id",
+      "total": 5,
+      "original_owner_count": 4,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "campaigns",
+      "column": "owner_id",
+      "total": 37,
+      "original_owner_count": 2,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "clients",
+      "column": "owner_id",
+      "total": 3,
+      "original_owner_count": 2,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "customer_journeys",
+      "column": "owner_id",
+      "total": 0,
+      "original_owner_count": 0,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "customer_journeys",
+      "column": "user_id",
+      "total": 0,
+      "original_owner_count": 0,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "integrations",
+      "column": "owner_id",
+      "total": 5,
+      "original_owner_count": 0,
+      "production_owner_count": 0,
+      "unowned_count": 5
+    },
+    {
+      "table": "mapping_templates",
+      "column": "created_by",
+      "total": 0,
+      "original_owner_count": 0,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "metrics",
+      "column": "owner_id",
+      "total": 4,
+      "original_owner_count": 0,
+      "production_owner_count": 0,
+      "unowned_count": 4
+    },
+    {
+      "table": "mimosaas_website_connections",
+      "column": "owner_id",
+      "total": 2,
+      "original_owner_count": 2,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    },
+    {
+      "table": "performance_data",
+      "column": "owner_id",
+      "total": 7,
+      "original_owner_count": 0,
+      "production_owner_count": 0,
+      "unowned_count": 7
+    },
+    {
+      "table": "service_account_resource_grants",
+      "column": "owner_id",
+      "total": 1,
+      "original_owner_count": 1,
+      "production_owner_count": 0,
+      "unowned_count": 0
+    }
+  ],
+  "originalClientChildren": {
+    "campaign_creation_requests": [
+      {
+        "id": "09e2af8c-5ab2-435c-bffc-a8bac0b6db4f",
+        "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+        "original_owner": true,
+        "parent_owner_matches": true
+      },
+      {
+        "id": "1c29ef38-ad23-4da1-b751-220174cde643",
+        "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+        "original_owner": true,
+        "parent_owner_matches": true
+      },
+      {
+        "id": "42f48a5f-8476-4d0e-bae4-24d6f4e66169",
+        "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+        "original_owner": true,
+        "parent_owner_matches": true
+      },
+      {
+        "id": "a28a9e7a-c7b6-483a-aabc-211cd16d77f8",
+        "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+        "original_owner": true,
+        "parent_owner_matches": true
+      }
+    ],
+    "service_account_resource_grants": [
+      {
+        "id": "dd7ce6e7-8ecc-4b07-9c13-e4a4005fde21",
+        "client_id": "861d3921-1903-491c-8ec3-57c0f6d05e92",
+        "original_owner": true,
+        "parent_owner_matches": true
+      }
+    ]
+  },
+  "refreshWork": [
+    {
+      "campaign_id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "status": "completed",
+      "kind": "initial_import",
+      "original_scope_owner": true,
+      "has_lease": false,
+      "unexpired_lease": null,
+      "rows": 1
+    },
+    {
+      "campaign_id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "status": "completed",
+      "kind": "revenue_change",
+      "original_scope_owner": true,
+      "has_lease": false,
+      "unexpired_lease": null,
+      "rows": 247
+    },
+    {
+      "campaign_id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "status": "completed",
+      "kind": null,
+      "original_scope_owner": true,
+      "has_lease": false,
+      "unexpired_lease": null,
+      "rows": 25
+    },
+    {
+      "campaign_id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "status": "pending",
+      "kind": "revenue_change",
+      "original_scope_owner": true,
+      "has_lease": false,
+      "unexpired_lease": null,
+      "rows": 175
+    },
+    {
+      "campaign_id": "36493a43-accd-4360-8ff2-de62f5a19b6e",
+      "status": "pending",
+      "kind": null,
+      "original_scope_owner": true,
+      "has_lease": false,
+      "unexpired_lease": null,
+      "rows": 13
+    },
+    {
+      "campaign_id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "status": "completed",
+      "kind": "revenue_change",
+      "original_scope_owner": true,
+      "has_lease": false,
+      "unexpired_lease": null,
+      "rows": 25
+    },
+    {
+      "campaign_id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "status": "completed",
+      "kind": null,
+      "original_scope_owner": true,
+      "has_lease": false,
+      "unexpired_lease": null,
+      "rows": 43
+    },
+    {
+      "campaign_id": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+      "status": "pending",
+      "kind": "revenue_change",
+      "original_scope_owner": true,
+      "has_lease": false,
+      "unexpired_lease": null,
+      "rows": 2
+    }
+  ],
+  "rolledBack": true,
+  "limits": "No ownership migration authorized or performed by this reader. IDs identify candidate rows, not approval to change them. Serialized references, refresh-work compatibility, live environment grants and external website ownership require disposition before any write. Production user existence/email is not verified by database counts."
+}

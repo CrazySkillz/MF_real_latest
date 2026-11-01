@@ -82,7 +82,13 @@ app.use((req, res, next) => {
 if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.VITE_CLERK_PUBLISHABLE_KEY) {
   process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;
 }
-app.use(clerkMiddleware());
+const clerkAppOrigin = process.env.CLERK_PUBLISHABLE_KEY?.startsWith("pk_live_")
+  ? new URL(process.env.APP_BASE_URL || "") : undefined;
+if (clerkAppOrigin && (clerkAppOrigin.protocol !== "https:" || clerkAppOrigin.username || clerkAppOrigin.password
+  || clerkAppOrigin.pathname !== "/" || clerkAppOrigin.search || clerkAppOrigin.hash)) {
+  throw new Error("Production Clerk requires APP_BASE_URL to be an HTTPS application origin");
+}
+app.use(clerkMiddleware(clerkAppOrigin ? { authorizedParties: [clerkAppOrigin.origin] } : undefined));
 
 // Conditionally apply body parsing - skip for webhook routes that use multer
 app.use((req, res, next) => {

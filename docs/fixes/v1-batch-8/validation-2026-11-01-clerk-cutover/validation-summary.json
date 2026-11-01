@@ -1,0 +1,32 @@
+{
+  "at": "2026-11-01T04:34:33.453Z",
+  "scope": "Production Clerk origin restriction and exact two-account ownership preparation",
+  "runtimeDiff": "7-line replacement of clerkMiddleware invocation",
+  "before": {
+    "passed": 3,
+    "failed": 9
+  },
+  "focused": {
+    "passed": 60,
+    "failed": 0,
+    "files": 4
+  },
+  "operatorCli": {
+    "passed": 9,
+    "failed": 0
+  },
+  "typecheckExit": 0,
+  "serverBuildExit": 0,
+  "liveOwnershipWrites": false,
+  "liveSettingsChanged": false,
+  "providerCallbackSaves": "User confirmed Google, HubSpot, Salesforce and Shopify",
+  "productionLoginVerified": false,
+  "hashes": {
+    "server/index.ts": "be5be36c8d45634a3dada1e058d0e9cd14a3ae3779ed69f101154252b1658dde",
+    "server/clerk-production-origin.test.ts": "76f11f74f4f65065926763ecd4f432bb590623651b1922403969cdf5822d918c",
+    "server/clerk-ownership-cutover-postgres.test.ts": "3da051b4ec6c31abd8503a63b1f94c0e9f09e1bda5e90ea6d74926b23df48712",
+    "server/clerk-cutover-runner.test.ts": "4ed1deab61fbd17235403ac0591bb66f0cbfda7c2bd531284f4062609e983cd8",
+    "docs/fixes/v1-batch-8/validation-2026-11-01-clerk-cutover/ownership-transfer.cjs": "e9d506ca5ce4f9c96f6bc7f33ff01ac48642211db34e3ab807f06e506779b927",
+    "docs/fixes/v1-batch-8/validation-2026-11-01-clerk-cutover/run-ownership.cjs": "bdcb30ddf1ad4252081a1376e3d42099f9add43e8cc6fb0b310f599a565c79c3"
+  }
+}

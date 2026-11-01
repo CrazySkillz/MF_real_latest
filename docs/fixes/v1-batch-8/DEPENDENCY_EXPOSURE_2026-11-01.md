@@ -60,6 +60,13 @@ regressions, TypeScript and build. Deployed `9848ef9c` is healthy; hosted CI and
 new-domain public checks pass. It does not close every Nodemailer condition or
 infer the configured live transport.
 
+The [request collection correction](REQUEST_COLLECTION_LIMITS_2026-11-01.md)
+addresses four existing maximums that Zod v3 did not enforce before typed item
+validation. It changes four route-schema expressions, retains the existing limits
+and accepted values, and passes 258 focused tests, TypeScript and production build.
+Deployment verification is pending. This does not certify unconstrained collections
+or close the other dependency conditions.
+
 - Axios constructors use fixed provider hosts and application-built config; the
   complete advisories/input conditions still need a supported disposition.
 - Email service has a Mailgun HTTP branch and an SMTP branch. Do not infer active

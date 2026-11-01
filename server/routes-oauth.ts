@@ -3463,7 +3463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       valueSource: zValueSource.optional(),
       campaignColumn: z.string().trim().min(1).nullable().optional(),
       campaignValue: z.string().trim().min(1).nullable().optional(),
-      campaignValues: z.array(z.string().trim().min(1)).max(500).nullable().optional(),
+      campaignValues: z.array(z.unknown()).max(500).pipe(z.array(z.string().trim().min(1))).nullable().optional(),
       currency: z.string().trim().min(1).optional(),
       displayName: z.string().trim().optional(),
       mode: z.string().trim().optional(),
@@ -3482,7 +3482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
     .passthrough();
 
-  const zSelectedValues = z.array(z.string().trim().min(1)).min(1).max(MAX_SELECTED_VALUES);
+  const zSelectedValues = z.array(z.unknown()).max(MAX_SELECTED_VALUES).pipe(z.array(z.string().trim().min(1)).min(1));
 
   // --------------------------------------------------------------------------
   // Campaign-scoped authorization
@@ -6247,7 +6247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cur = currency;
       if (cur !== String(campaign.currency || "USD").toUpperCase()) return res.status(400).json({ success: false, error: "Currency must match the campaign currency" });
       const platformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]).safeParse(req.body?.platformContext);
-      const rows = z.array(z.object({ date: z.string(), spend: z.union([z.number(), z.string()]) })).min(1).max(5000).safeParse(req.body?.records);
+      const rows = z.array(z.unknown()).max(5000).pipe(z.array(z.object({ date: z.string(), spend: z.union([z.number(), z.string()]) })).min(1)).safeParse(req.body?.records);
       if (!platformContext.success || !rows.success) return res.status(400).json({ success: false, error: "A platform context and dated spend records are required" });
       const today = new Date().toISOString().slice(0, 10);
       if (rows.data.some(r => !normalizeStrictUtcDateKey(r.date) || r.date > today || String(r.spend).trim() === "" || !Number.isFinite(Number(r.spend)) || Number(r.spend) < 0)) return res.status(400).json({ success: false, error: "Invalid spend records" });
@@ -19945,7 +19945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           valueSource: zValueSource.optional(),
           revenueClassification: z.string().trim().optional(),
           days: zNumberLike.optional(),
-          stageIds: z.array(z.string().trim().min(1)).max(100).optional(),
+          stageIds: z.array(z.unknown()).max(100).pipe(z.array(z.string().trim().min(1))).optional(),
           pipelineEnabled: z.boolean().optional(),
           pipelineStageId: z.string().trim().optional().nullable(),
           pipelineStageLabel: z.string().trim().optional().nullable(),

@@ -24,6 +24,8 @@ The [shared email recipient guard](fixes/v1-batch-8/EMAIL_RECIPIENT_BOUNDARY_202
 is also deployed as `9848ef9c`, with 80 focused tests, TypeScript/build, hosted CI
 and new-domain public checks passing. It does not close the remaining dependency review.
 
+The next confirmed correction is [early rejection of oversized request collections](fixes/v1-batch-8/REQUEST_COLLECTION_LIMITS_2026-11-01.md): four route-schema expressions, unchanged maximums and valid values, 258 focused tests plus TypeScript/build passing. Deployment verification is pending; no repeat UI/import validation is required.
+
 **Before any additional check:** identify the affected production/release path,
 the concrete defect or essential evidence gap, why existing evidence is insufficient,
 and the smallest pass/fail check. Stop when that boundary is satisfied. Package

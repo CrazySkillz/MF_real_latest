@@ -124,8 +124,8 @@ Code-traced fresh-client limitations:
 - Sheets shared access similarly requires sharing plus an exact client grant;
   its conditional UI exists, but the current retained Sheets connection is OAuth.
 - Google Ads shared Spend has a conditional temporary-connection UI and requires
-  its account allowlist, exact client grant, service-account permission, developer
-  token, and compatible account currency/timezone. Real connection/import/refresh
+  its account allowlist, exact client grant, service-account permission, appropriate
+  Google Cloud project API access, and compatible account currency/timezone. Real connection/import/refresh
   acceptance remains unproven for that path.
 
 At the read-only assessment, the component, campaign page, three service-account
@@ -191,6 +191,31 @@ Per-client resource approval and GA4/Ads provider allowlists are still required;
 the button does not create either. Current live Sheets evidence is OAuth, and Ads
 service-account connection/import/refresh remains unproven. Reuse completed
 recovery/Mailgun/domain checks; final launch acceptance remains open.
+
+### Google Ads test account — read-only setup preflight
+
+The user supplied Customer ID `495-128-1615` for the live Google Ads check.
+The [15:45 read-only preflight](validation-2026-11-01-launch/ads-setup-2026-11-01T15-45-32-561Z.json)
+verifies the current second-account owner and `Batch 1 Validation` client through
+its existing reference campaign. That client has zero dedicated Ads Spend
+connections and no exact database grant for `4951281615`. Its reference campaign
+uses EUR / Europe/Amsterdam; the Google account's own settings remain unverified.
+Zero writes, token issuance or provider calls occurred. Local `.env` lacks the
+service-account setup and is explicitly not evidence for Render configuration.
+
+The next manual check is the existing `Overview -> Total Spend + -> Google Ads`
+panel's service-account option. Do not attempt a connection before exact resource
+permission and hosted configuration are established. No resource grant has been
+added and no existing connection has been replaced.
+
+The earlier developer-token requirement in this assessment was inaccurate:
+current [Google documentation](https://developers.google.com/google-ads/api/docs/api-policy/developer-token)
+says tokens were sunset September 9, 2026 and API access now belongs to the Cloud
+project; the app already omits an absent token header. The service account's
+project needs suitable API access for the target account, independently of
+interactive OAuth verification. [Google's service-account setup](https://developers.google.com/google-ads/api/docs/oauth/service-accounts)
+requires granting its email access in the Ads account. This documentation
+correction requires no application-code change or new developer-token task.
 
 All diagnostics use public GETs or verified TLS and explicit READ ONLY database
 transactions ending in rollback. Credential values, report content and recipient

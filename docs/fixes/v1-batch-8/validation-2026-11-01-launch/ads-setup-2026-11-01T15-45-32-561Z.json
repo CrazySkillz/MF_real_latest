@@ -1,0 +1,24 @@
+{
+  "at": "2026-11-01T15:45:32.561Z",
+  "customerId": "4951281615",
+  "liveWrites": 0,
+  "providerCalls": 0,
+  "credentialValuesReturned": false,
+  "localConfigurationOnly": {
+    "authoritativeForRender": false,
+    "serviceAccountConfigured": false,
+    "adsSpecificCredentials": false,
+    "customerAllowlisted": false,
+    "managerConfigured": false
+  },
+  "testClient": {
+    "id": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+    "name": "Batch 1 Validation",
+    "ownerMatches": true,
+    "referenceCampaignCurrency": "EUR",
+    "referenceCampaignTimeZone": "Europe/Amsterdam"
+  },
+  "exactDatabaseGrant": false,
+  "existingAdsSpendConnections": 0,
+  "result": "READ_ONLY_PREFLIGHT_COMPLETE"
+}

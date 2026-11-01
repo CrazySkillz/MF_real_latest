@@ -1,0 +1,48 @@
+{
+  "at": "2026-11-01T16:15:10.243Z",
+  "customerId": "4951281615",
+  "liveWrites": 0,
+  "providerCalls": 0,
+  "credentialValuesReturned": false,
+  "localConfigurationOnly": {
+    "authoritativeForRender": false,
+    "serviceAccountConfigured": false,
+    "adsSpecificCredentials": false,
+    "customerAllowlisted": false,
+    "managerConfigured": false
+  },
+  "testClient": {
+    "id": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+    "name": "Batch 1 Validation",
+    "ownerMatches": true,
+    "referenceCampaignCurrency": "EUR",
+    "referenceCampaignTimeZone": "Europe/Amsterdam"
+  },
+  "exactDatabaseGrant": true,
+  "existingAdsSpendConnections": 0,
+  "fixtureRows": {
+    "campaigns": 0,
+    "ga4_google_ads_spend_connections": 0,
+    "ga4_google_ads_spend_daily_metrics": 0,
+    "spend_sources": 0,
+    "spend_records": 0,
+    "ga4_refresh_work": 0
+  },
+  "exactCancellationRetained": true,
+  "cleanupIndependentlyVerified": true,
+  "remainingGoogleSetup": [
+    {
+      "provider": "ga4",
+      "resource_id": "542352127",
+      "method": "access_token",
+      "exact_database_grant": false
+    },
+    {
+      "provider": "google_sheets",
+      "resource_id": "1VMN6f089lsPISQ80pxT8Sq4awNU71-jQh5OgyFTXSeU",
+      "method": "access_token",
+      "exact_database_grant": false
+    }
+  ],
+  "result": "READ_ONLY_PREFLIGHT_COMPLETE"
+}

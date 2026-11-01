@@ -1,0 +1,28 @@
+{
+  "at": "2026-11-01T16:18:27.021Z",
+  "mode": "rollback_preflight",
+  "ownerId": "user_3LTqgGDCOcbqrzLRaynqvRWRtMl",
+  "clientId": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+  "sourceHash": "749684f9f5a90d644c43308099169c05dc151221d593e12c7548c568483a719c",
+  "result": "PASS",
+  "committed": false,
+  "grants": [
+    {
+      "provider": "ga4",
+      "resourceId": "542352127",
+      "grantId": "2d659f91-deea-435e-a109-518a3fb96fc5",
+      "insertedRows": 1
+    },
+    {
+      "provider": "google_sheets",
+      "resourceId": "1VMN6f089lsPISQ80pxT8Sq4awNU71-jQh5OgyFTXSeU",
+      "grantId": "b0681383-c5ea-412b-b6e1-f61ac736db0d",
+      "insertedRows": 1
+    }
+  ],
+  "providerCalls": 0,
+  "analyticsWrites": 0,
+  "connectionWrites": 0,
+  "rolledBack": true,
+  "independentTransactionVerified": true
+}

@@ -6,10 +6,12 @@ evidence; it does not certify every analytics lifecycle or restart the audit.
 
 ## Current release and reused evidence
 
-Live runtime: `0a42aac893b56e471246a75f3a4a0a5423e846e3`.
-Repository HEAD at the check: `d38e9e745c39222154f3e00dd138d081e44ac4f6`.
+Earlier checkpoint runtime: `0a42aac893b56e471246a75f3a4a0a5423e846e3`.
+Repository HEAD at that check: `d38e9e745c39222154f3e00dd138d081e44ac4f6`.
 The difference from runtime is documentation/local validation only; application
 paths have no tracked modifications. The read-only receipt checks this boundary.
+The later GA4 onboarding correction below is live as `b2bfe6cc`; its successful
+hosted CI and live publication checks supersede this earlier runtime checkpoint.
 
 | Boundary | Evidence and limit |
 | --- | --- |
@@ -125,8 +127,9 @@ Code-traced fresh-client limitations:
   its conditional UI exists, but the current retained Sheets connection is OAuth.
 - Google Ads shared Spend has a conditional temporary-connection UI and requires
   its account allowlist, exact client grant, service-account permission, appropriate
-  Google Cloud project API access, and compatible account currency/timezone. Real connection/import/refresh
-  acceptance remains unproven for that path.
+  Google Cloud project API access, and compatible account currency/timezone.
+  The exact-account connection, saved preview and explicit refresh now pass below.
+  Zero returned facts do not establish nonzero import/calculation acceptance.
 
 At the read-only assessment, the component, campaign page, three service-account
 utilities, storage and three focused test files were unchanged from full-suite
@@ -188,11 +191,12 @@ change provider scope or constitute live Google service-account acceptance.
 **Limits/remaining work:** these browser cases use synthetic HTTP and prove the
 component boundary, not a complete Google import or fresh-client live acceptance.
 Per-client resource approval and GA4/Ads provider allowlists are still required;
-the button does not create either. Current live Sheets evidence is OAuth, and Ads
-service-account connection/import/refresh remains unproven. Reuse completed
+the button does not create either. Current retained Sheets evidence is OAuth.
+The Ads service-account connection check below passes; nonzero financial import
+is not established by its empty preview. Reuse completed
 recovery/Mailgun/domain checks; final launch acceptance remains open.
 
-### Google Ads test account — read-only setup preflight
+### Google Ads test account — connection check complete
 
 The user supplied Customer ID `495-128-1615` for the live Google Ads check.
 The [15:45 read-only preflight](validation-2026-11-01-launch/ads-setup-2026-11-01T15-45-32-561Z.json)
@@ -229,9 +233,52 @@ exact draft for diagnosis/cleanup; repeat pastes do not repeat writes.
 The [synthetic helper results](validation-2026-11-01-launch/ads-browser-helper-tests.json)
 cover success with/without facts, wrong origin/account, disabled configuration,
 changed draft, provider denial, foreign preview rows, skipped refresh and cleanup
-denial. These tests make zero live calls. Actual provider acceptance is pending;
-even a successful empty preview will not certify nonzero Spend calculations or
-the full financial-source lifecycle.
+denial. These tests make zero live calls.
+
+**Actual result:** the user returned
+[PASS_ADS_SERVICE_ACCOUNT](validation-2026-11-01-launch/user-ads-service-account.json)
+at `2026-11-01T16:12:32.801Z`: exact owned draft, actual service-account connection,
+saved connection/scoped preview, explicit provider refresh without Spend-source
+materialization, and exact draft cancellation all passed. HTTP 200, zero preview
+rows. This proves access to this Ads customer and the connection/reload/refresh
+path; it does not prove nonzero Spend calculations or the full financial lifecycle.
+
+The independent [16:15 READ ONLY receipt](validation-2026-11-01-launch/ads-setup-2026-11-01T16-15-10-243Z.json)
+confirms zero rows for the exact fixture in campaigns, dedicated Ads connections
+and daily metrics, spend sources/records, and GA4 refresh work. Its exact created/
+cancelled request marker remains intentionally, preventing replay. The approved
+test-client grant remains, and no Ads Spend connection remains under that client.
+The Google Ads connection-only launch check is closed; no repeated Ads check is needed.
+
+### Combined GA4 and Sheets alternative check — prepared, awaiting browser result
+
+The same READ ONLY receipt identifies the existing test property's ID `542352127`
+and the existing B2B spreadsheet ID `1VMN6f089lsPISQ80pxT8Sq4awNU71-jQh5OgyFTXSeU`.
+Both retained connections use OAuth; neither had the exact client resource grant.
+The user requested service-account alternative setup for these sources. Using
+those already-selected test resources, the
+[fixed-scope operation](validation-2026-11-01-launch/prepare-google-test-grants.cjs)
+verified current campaign/client ownership and exact active OAuth resource IDs
+under lock, rehearsed both inserts with rollback, then committed only those two
+permissions. [Preflight](validation-2026-11-01-launch/google-test-grants-preflight.json)
+and [application receipt](validation-2026-11-01-launch/google-test-grants-applied-2026-11-01T16-18-49-499Z.json)
+record independent post-transaction verification. No connection, analytics,
+provider or schema changes occurred. No permission extends to another client or resource.
+
+The [combined browser checker](validation-2026-11-01-launch/manual-google-alternative.js)
+uses new draft `8798ff85-8850-473f-b8ff-6c6b43d5726a`, keeps it a draft, and exercises
+the actual GA4 connect -> persisted status -> wizard property selection path.
+Sheets follows shared connect -> existing single-tab selector -> connection list
+-> actual Revenue mapping preview -> list reload for `Client_ROI_Summary`.
+It stops before mappings, financial import, activation or initial GA4 import.
+Successful completion cancels only this draft. Provider-specific denial still
+allows the other independent check; identity/scope changes stop further work.
+Failures retain the draft for exact diagnosis/cleanup, and repeat pastes do not
+repeat writes. The [12 synthetic cases](validation-2026-11-01-launch/google-browser-helper-tests.json)
+pass with zero live calls, including wrong identity/origin, changed reference/draft,
+disabled availability, either provider denial, wrong tab/preview, account switch
+and cleanup denial. The actual Google provider result is pending; no claim of
+fresh-customer service-account readiness is made from synthetic evidence alone.
 
 The earlier developer-token requirement in this assessment was inaccurate:
 current [Google documentation](https://developers.google.com/google-ads/api/docs/api-policy/developer-token)
@@ -245,7 +292,8 @@ correction requires no application-code change or new developer-token task.
 Read-only diagnostics use public GETs or verified TLS and explicit READ ONLY database
 transactions ending in rollback. Credential values, report content and recipient
 addresses are omitted. The user-triggered test added the exact delivery audit
-above and sent one PDF. The exact test-client permission above is the sole new
-live write in this Google Ads setup step; no schedules, campaigns, source values
-or provider configuration were changed. The localized
+above and sent one PDF. The exact resource permissions and user-run disposable
+draft operations above are explicitly recorded live writes; existing campaign
+connections, source values, schedules and provider configuration were not changed.
+The localized
 GA4 auth-component correction above is the only application-code change here.

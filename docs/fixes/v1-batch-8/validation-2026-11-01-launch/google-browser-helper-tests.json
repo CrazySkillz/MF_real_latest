@@ -1,0 +1,67 @@
+{
+  "at": "2026-11-01T16:20:53.665Z",
+  "result": "PASS",
+  "tests": [
+    {
+      "case": "success",
+      "passed": true,
+      "requests": 22
+    },
+    {
+      "case": "wrong_origin",
+      "passed": true,
+      "requests": 0
+    },
+    {
+      "case": "wrong_owner",
+      "passed": true,
+      "requests": 0
+    },
+    {
+      "case": "reference_changed",
+      "passed": true,
+      "requests": 3
+    },
+    {
+      "case": "draft_changed",
+      "passed": true,
+      "requests": 5
+    },
+    {
+      "case": "unavailable",
+      "passed": true,
+      "requests": 10
+    },
+    {
+      "case": "ga4_denied",
+      "passed": true,
+      "requests": 17
+    },
+    {
+      "case": "sheets_denied",
+      "passed": true,
+      "requests": 16
+    },
+    {
+      "case": "wrong_tab",
+      "passed": true,
+      "requests": 18
+    },
+    {
+      "case": "foreign_preview",
+      "passed": true,
+      "requests": 20
+    },
+    {
+      "case": "account_changed",
+      "passed": true,
+      "requests": 8
+    },
+    {
+      "case": "cleanup_denied",
+      "passed": true,
+      "requests": 22
+    }
+  ],
+  "liveCalls": 0
+}

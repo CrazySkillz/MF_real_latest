@@ -1,0 +1,66 @@
+{
+  "at": "2026-11-01T10:28:04.164Z",
+  "status": "PASS_LOCAL_EMAIL_RECIPIENT_BOUNDARY",
+  "baseCommit": "6e113a0cdcacbeca05e5cf17dad9c5edf3997b61",
+  "runtimeLinesAdded": 7,
+  "dependencyChanges": false,
+  "databaseChanges": false,
+  "externalMessagesSent": false,
+  "baseline": {
+    "passed": 9,
+    "failed": 9
+  },
+  "validation": {
+    "tests": 80,
+    "passed": 80,
+    "failed": 0,
+    "files": [
+      {
+        "name": "alert-email-audit-regression.test.ts",
+        "passed": 4
+      },
+      {
+        "name": "alert-email-delivery-regression.test.ts",
+        "passed": 5
+      },
+      {
+        "name": "alert-email-immediate-route-regression.test.ts",
+        "passed": 5
+      },
+      {
+        "name": "alert-email-regression.test.ts",
+        "passed": 11
+      },
+      {
+        "name": "alert-email-retry-regression.test.ts",
+        "passed": 8
+      },
+      {
+        "name": "benchmark-alert-email-delivery-validation-regression.test.ts",
+        "passed": 1
+      },
+      {
+        "name": "email-recipient-boundary.test.ts",
+        "passed": 18
+      },
+      {
+        "name": "report-email-regression.test.ts",
+        "passed": 28
+      }
+    ],
+    "typecheck": "PASS",
+    "productionBuild": "PASS"
+  },
+  "files": [
+    {
+      "path": "server/services/email-service.ts",
+      "sha256": "2b943cea1cf8d2debae55f9f99684ec0fee18afe5366477a41da85d6f0cc03de"
+    },
+    {
+      "path": "server/email-recipient-boundary.test.ts",
+      "sha256": "15fcac90b5a40580803b1d41f44320cd8637821919edeb1777b25a92a30920ea"
+    }
+  ],
+  "deployment": "PENDING",
+  "limits": "Mocked transports and audit method; no live email, provider, database or malformed production requests. Does not close all dependency candidates."
+}

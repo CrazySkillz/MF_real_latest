@@ -1,0 +1,1852 @@
+{
+  "at": "2026-11-01T10:28:04.152Z",
+  "runtimeCommit": "6e113a0cdcacbeca05e5cf17dad9c5edf3997b61",
+  "sourceLockSha256": "829dfcd0a53c0affb6ee262c76c85ff3bc43700264452ff1f620dd4f0cce4418",
+  "fullSecurityGate": "PARTIAL",
+  "projectDependencyInventoryUploaded": false,
+  "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md",
+  "counts": {
+    "matches": 204,
+    "packages": 42,
+    "scopedDispositions": 148,
+    "partial": 56
+  },
+  "records": [
+    {
+      "name": "@babel/core",
+      "version": "7.26.0",
+      "location": "node_modules/@babel/core",
+      "id": "GHSA-4x5r-pxfx-6jf8",
+      "severity": "LOW",
+      "summary": "@babel/core: Arbitrary File Read via sourceMappingURL Comment",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@babel/helpers",
+      "version": "7.26.0",
+      "location": "node_modules/@babel/helpers",
+      "id": "GHSA-968p-4wvh-cqc8",
+      "severity": "MODERATE",
+      "summary": "Babel has inefficient RegExp complexity in generated code with .replace when transpiling named capturing groups",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@clerk/backend",
+      "version": "2.31.0",
+      "location": "node_modules/@clerk/backend",
+      "id": "GHSA-w24r-5266-9c3c",
+      "severity": "HIGH",
+      "summary": "Clerk has an authorization bypass when combining organization, billing, or reverification checks",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@clerk/clerk-react",
+      "version": "5.60.1",
+      "location": "node_modules/@clerk/clerk-react",
+      "id": "GHSA-w24r-5266-9c3c",
+      "severity": "HIGH",
+      "summary": "Clerk has an authorization bypass when combining organization, billing, or reverification checks",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@clerk/express",
+      "version": "1.7.70",
+      "location": "node_modules/@clerk/express",
+      "id": "GHSA-w24r-5266-9c3c",
+      "severity": "HIGH",
+      "summary": "Clerk has an authorization bypass when combining organization, billing, or reverification checks",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@clerk/shared",
+      "version": "3.45.0",
+      "location": "node_modules/@clerk/shared",
+      "id": "GHSA-vqx2-fgx2-5wq9",
+      "severity": "CRITICAL",
+      "summary": "Official Clerk JavaScript SDKs: Middleware-based route protection bypass",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@clerk/shared",
+      "version": "3.45.0",
+      "location": "node_modules/@clerk/shared",
+      "id": "GHSA-w24r-5266-9c3c",
+      "severity": "HIGH",
+      "summary": "Clerk has an authorization bypass when combining organization, billing, or reverification checks",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "esbuild",
+      "version": "0.18.20",
+      "location": "node_modules/@esbuild-kit/core-utils/node_modules/esbuild",
+      "id": "GHSA-67mh-4wv8-2f99",
+      "severity": "MODERATE",
+      "summary": "esbuild enables any website to send any requests to the development server and read the response",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@grpc/grpc-js",
+      "version": "1.13.4",
+      "location": "node_modules/@grpc/grpc-js",
+      "id": "GHSA-5375-pq7m-f5r2",
+      "severity": "HIGH",
+      "summary": "@grpc/grpc-js: A malformed request can cause a server crash",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@grpc/grpc-js",
+      "version": "1.13.4",
+      "location": "node_modules/@grpc/grpc-js",
+      "id": "GHSA-99f4-grh7-6pcq",
+      "severity": "HIGH",
+      "summary": "@grpc/grpc-js: An incoming malformed compressed message can cause a client or server crash",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@grpc/grpc-js",
+      "version": "1.13.4",
+      "location": "node_modules/@grpc/grpc-js",
+      "id": "GHSA-f596-whhp-79r4",
+      "severity": "LOW",
+      "summary": "@grpc/grpc-js: The server transmits some error messages thrown by method handlers to the client in status messages",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@grpc/grpc-js",
+      "version": "1.13.4",
+      "location": "node_modules/@grpc/grpc-js",
+      "id": "GHSA-m9gg-hp2v-232j",
+      "severity": "HIGH",
+      "summary": "@grpc/grpc-js: In certain configurations, getAuthContext can return unauthorized certificates as though they were authorized",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@protobufjs/utf8",
+      "version": "1.1.0",
+      "location": "node_modules/@protobufjs/utf8",
+      "id": "GHSA-q6x5-8v7m-xcrf",
+      "severity": "MODERATE",
+      "summary": "protobufjs has overlong UTF-8 decoding",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@smithy/config-resolver",
+      "version": "4.3.3",
+      "location": "node_modules/@smithy/config-resolver",
+      "id": "GHSA-6475-r3vj-m8vf",
+      "severity": "LOW",
+      "summary": "AWS SDK for JavaScript v3 adopted defense in depth enhancement for region parameter value",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "postcss-selector-parser",
+      "version": "6.0.10",
+      "location": "node_modules/@tailwindcss/typography/node_modules/postcss-selector-parser",
+      "id": "GHSA-rj75-hqrm-r3gf",
+      "severity": "MODERATE",
+      "summary": "PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@tootallnate/once",
+      "version": "2.0.0",
+      "location": "node_modules/@tootallnate/once",
+      "id": "GHSA-vpq2-c234-7xj6",
+      "severity": "LOW",
+      "summary": "@tootallnate/once vulnerable to Incorrect Control Flow Scoping",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "form-data",
+      "version": "4.0.4",
+      "location": "node_modules/@types/node-fetch/node_modules/form-data",
+      "id": "GHSA-hmw2-7cc7-3qxx",
+      "severity": "HIGH",
+      "summary": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-35jp-ww65-95wh",
+      "severity": "HIGH",
+      "summary": "axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy`",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-3g43-6gmg-66jw",
+      "severity": "HIGH",
+      "summary": "axios Vulnerable to Credential Theft and Response Hijacking via Prototype Pollution Gadget in Config Merge",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-3p68-rc4w-qgx5",
+      "severity": "MODERATE",
+      "summary": "Axios has a NO_PROXY Hostname Normalization Bypass that Leads to SSRF",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-3w6x-2g7m-8v23",
+      "severity": "MODERATE",
+      "summary": "Axios: Invisible JSON Response Tampering via Prototype Pollution Gadget in `parseReviver`",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-42h9-826w-cgv3",
+      "severity": "MODERATE",
+      "summary": "Axios: Excessive recursion in formDataToJSON can cause denial of service",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-43fc-jf86-j433",
+      "severity": "HIGH",
+      "summary": "Axios is Vulnerable to Denial of Service via __proto__ Key in mergeConfig",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-445q-vr5w-6q77",
+      "severity": "MODERATE",
+      "summary": "Axios: CRLF Injection in multipart/form-data body via unsanitized blob.type in formDataToStream",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-4hqw-qxg8-jxx2",
+      "severity": "MODERATE",
+      "summary": "Axios: Fetch Adapter Header Injection via Inherited FormData getHeaders",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-5c9x-8gcm-mpgx",
+      "severity": "MODERATE",
+      "summary": "Axios' HTTP adapter-streamed uploads bypass maxBodyLength when maxRedirects: 0",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-62hf-57xw-28j9",
+      "severity": "MODERATE",
+      "summary": "Axios: unbounded recursion in toFormData causes DoS via deeply nested request data",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-6chq-wfr3-2hj9",
+      "severity": "HIGH",
+      "summary": "Axios: Header Injection via Prototype Pollution",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-777c-7fjr-54vf",
+      "severity": "HIGH",
+      "summary": "Allocation of Resources Without Limits or Throttling in Axios",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-7q8q-rj6j-mhjq",
+      "severity": "MODERATE",
+      "summary": "Axios: Nested axios option objects can consume polluted prototype values",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-898c-q2cr-xwhg",
+      "severity": "MODERATE",
+      "summary": "axios has DoS & Header Injection via Prototype Pollution Read-Side Gadgets in axios merge functions",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-9fr6-4gfg-395g",
+      "severity": "MODERATE",
+      "summary": "Axios: Prototype-Pollution Gadget in the Default Instance Allows Inherited Object.prototype.method to Override HTTP Method",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-fvcv-3m26-pcqx",
+      "severity": "MODERATE",
+      "summary": "Axios has Unrestricted Cloud Metadata Exfiltration via Header Injection Chain",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-hfxv-24rg-xrqf",
+      "severity": "HIGH",
+      "summary": "Axios: Regular Expression Denial of Service (ReDoS) via Cookie Name Injection",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-j5f8-grm9-p9fc",
+      "severity": "HIGH",
+      "summary": "Axios: Proxy-Authorization header leaks to redirect target when proxy is re-evaluated to direct connection",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-j8rh-479h-cp32",
+      "severity": "MODERATE",
+      "summary": "Axios: Header Injection via Inherited headers After Minimal Interceptor",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-jqh4-m9w3-8hp9",
+      "severity": "MODERATE",
+      "summary": "Axios: Fetch adapter `ReadableStream` uploads bypass `maxBodyLength`",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-m7pr-hjqh-92cm",
+      "severity": "MODERATE",
+      "summary": "Axios: no_proxy bypass via IP alias allows SSRF",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-mmx7-hfxf-jppx",
+      "severity": "MODERATE",
+      "summary": "Axios: Prototype pollution gadgets can alter axios request construction",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-p92q-9vqr-4j8v",
+      "severity": "HIGH",
+      "summary": "Axios: Proxy-Authorization Credential Leak to Origin Server Across HTTP-to-HTTPS Redirect in Axios Node.js HTTP Adapter",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-pf86-5x62-jrwf",
+      "severity": "HIGH",
+      "summary": "Axios: Prototype Pollution Gadgets - Response Tampering, Data Exfiltration, and Request Hijacking",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-pmv8-rq9r-6j72",
+      "severity": "MODERATE",
+      "summary": "Axios: Deep formToJSON Key Recursion Can Cause Denial of Service",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-pmwg-cvhr-8vh7",
+      "severity": "HIGH",
+      "summary": "Axios: Incomplete Fix for CVE-2025-62718 — NO_PROXY Protection Bypassed via RFC 1122 Loopback Subnet (127.0.0.0/8) in Axios 1.15.0",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-q8qp-cvcw-x6jj",
+      "severity": "HIGH",
+      "summary": "Axios has prototype pollution read-side gadgets in HTTP adapter that allow credential injection and request hijacking",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-vf2m-468p-8v99",
+      "severity": "MODERATE",
+      "summary": "Axios: HTTP adapter streamed responses bypass maxContentLength",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-vh66-26gq-q6x8",
+      "severity": "MODERATE",
+      "summary": "Axios: Prototype pollution gadget in fetch adapter can alter outbound requests",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-w9j2-pvgh-6h63",
+      "severity": "MODERATE",
+      "summary": "Axios: Authentication Bypass via Prototype Pollution Gadget in `validateStatus` Merge Strategy",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-xhjh-pmcv-23jw",
+      "severity": "LOW",
+      "summary": "Axios: Null Byte Injection via Reverse-Encoding in AxiosURLSearchParams",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "axios",
+      "version": "1.12.2",
+      "location": "node_modules/axios",
+      "id": "GHSA-xx6v-rp6x-q39c",
+      "severity": "MODERATE",
+      "summary": "Axios: XSRF Token Cross-Origin Leakage via Prototype Pollution Gadget in `withXSRFToken` Boolean Coercion",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "form-data",
+      "version": "4.0.4",
+      "location": "node_modules/axios/node_modules/form-data",
+      "id": "GHSA-hmw2-7cc7-3qxx",
+      "severity": "HIGH",
+      "summary": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1",
+      "location": "node_modules/brace-expansion",
+      "id": "GHSA-3jxr-9vmj-r5cp",
+      "severity": "HIGH",
+      "summary": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1",
+      "location": "node_modules/brace-expansion",
+      "id": "GHSA-6j4f-fj2g-mc7p",
+      "severity": "HIGH",
+      "summary": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1",
+      "location": "node_modules/brace-expansion",
+      "id": "GHSA-f886-m6hf-6m8v",
+      "severity": "MODERATE",
+      "summary": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1",
+      "location": "node_modules/brace-expansion",
+      "id": "GHSA-mh99-v99m-4gvg",
+      "severity": "HIGH",
+      "summary": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1",
+      "location": "node_modules/brace-expansion",
+      "id": "GHSA-q2hr-2g5m-vwhr",
+      "severity": "MODERATE",
+      "summary": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1",
+      "location": "node_modules/brace-expansion",
+      "id": "GHSA-qhr7-859c-m2p7",
+      "severity": "HIGH",
+      "summary": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1",
+      "location": "node_modules/brace-expansion",
+      "id": "GHSA-rgw5-rvv9-x895",
+      "severity": "HIGH",
+      "summary": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1",
+      "location": "node_modules/brace-expansion",
+      "id": "GHSA-v6h2-p8h4-qcjw",
+      "severity": "LOW",
+      "summary": "brace-expansion Regular Expression Denial of Service vulnerability",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "browserslist",
+      "version": "4.24.2",
+      "location": "node_modules/browserslist",
+      "id": "GHSA-73wf-gq98-2v4g",
+      "severity": "HIGH",
+      "summary": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "browserslist",
+      "version": "4.24.2",
+      "location": "node_modules/browserslist",
+      "id": "GHSA-c83g-rgw3-j3cx",
+      "severity": "HIGH",
+      "summary": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "d3-color",
+      "version": "2.0.0",
+      "location": "node_modules/d3-transition/node_modules/d3-color",
+      "id": "GHSA-36jr-mh4h-2g58",
+      "severity": "HIGH",
+      "summary": "d3-color vulnerable to ReDoS",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "d3-color",
+      "version": "2.0.0",
+      "location": "node_modules/d3-zoom/node_modules/d3-color",
+      "id": "GHSA-36jr-mh4h-2g58",
+      "severity": "HIGH",
+      "summary": "d3-color vulnerable to ReDoS",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-39q2-94rc-95cp",
+      "severity": "MODERATE",
+      "summary": "DOMPurify's ADD_TAGS function form bypasses FORBID_TAGS due to short-circuit evaluation",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-55q2-fjhq-7xh7",
+      "severity": "MODERATE",
+      "summary": "DOMPurify: IN_PLACE hook removal leaves a detached subtree executable, causing XSS",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-6688-9rhm-gjv2",
+      "severity": "LOW",
+      "summary": "DOMPurify: IN_PLACE returns a force-removed rawtext root whose text carries attacker markup — pure HTML reparse executes",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-76mc-f452-cxcm",
+      "severity": "MODERATE",
+      "summary": "DOMPurify: Hook mutation of `data.allowedTags` / `data.allowedAttributes` permanently pollutes `DEFAULT_ALLOWED_TAGS` / `DEFAULT_ALLOWED_ATTR`",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-c2j3-45gr-mqc4",
+      "severity": "LOW",
+      "summary": "DOMPurify: `CUSTOM_ELEMENT_HANDLING` bypasses `afterSanitizeElements` for allowed custom elements.",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-c6gr-qvv4-5v3f",
+      "severity": "LOW",
+      "summary": "DOMPurify: SMIL attributeName=href guard is skipped when PARSER_MEDIA_TYPE is application/xhtml+xml",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-cj63-jhhr-wcxv",
+      "severity": "MODERATE",
+      "summary": "DOMPurify USE_PROFILES prototype pollution allows event handlers",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-cjmm-f4jc-qw8r",
+      "severity": "MODERATE",
+      "summary": "DOMPurify ADD_ATTR predicate skips URI validation",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-cmwh-pvxp-8882",
+      "severity": "MODERATE",
+      "summary": "DOMPurify: Permanent `ALLOWED_ATTR` pollution via `setConfig()` bypassing the hook clone-guard (incomplete fix of the 3.4.7 hook-pollution patch)",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-crv5-9vww-q3g8",
+      "severity": "MODERATE",
+      "summary": "DOMPurify has a SAFE_FOR_TEMPLATES bypass in RETURN_DOM mode",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-gvmj-g25r-r7wr",
+      "severity": "LOW",
+      "summary": "DOMPurify: SAFE_FOR_TEMPLATES bypass - template expressions survive sanitization inside <template> content when using DOM output modes",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-h7mw-gpvr-xq4m",
+      "severity": "MODERATE",
+      "summary": "DOMPurify: FORBID_TAGS bypassed by function-based ADD_TAGS predicate (asymmetry with FORBID_ATTR fix)",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-h8r8-wccr-v5f2",
+      "severity": "MODERATE",
+      "summary": "DOMPurify is vulnerable to mutation-XSS via Re-Contextualization ",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-hpcv-96wg-7vj8",
+      "severity": "MODERATE",
+      "summary": "DOMPurify: Cross-realm IN_PLACE sanitization leaves executable markup intact via realm-bound `instanceof` checks",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-mrv2-3pqr-j5jr",
+      "severity": "HIGH",
+      "summary": "DOMPurify IN_PLACE: hook that removes a parent or sibling leaves the detached subtree's event handlers armed (incomplete fix for GHSA-p98j-92pf-mc4p)",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-r47g-fvhr-h676",
+      "severity": "MODERATE",
+      "summary": "DOMPurify: IN_PLACE mode preserves attributes of a clobbered root element, allowing XSS via attacker-controlled root DOM",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-rp9w-3fw7-7cwq",
+      "severity": "MODERATE",
+      "summary": "DOMPurify IN_PLACE Sanitization Bypass via Attached Shadow Root Inside <template>.content",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-v2wj-7wpq-c8vv",
+      "severity": "MODERATE",
+      "summary": "DOMPurify contains a Cross-site Scripting vulnerability",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-v9jr-rg53-9pgp",
+      "severity": "MODERATE",
+      "summary": "DOMPurify: Prototype Pollution to XSS Bypass via CUSTOM_ELEMENT_HANDLING Fallback",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-vxr8-fq34-vvx9",
+      "severity": "LOW",
+      "summary": "DOMPurify: Trusted Types policy survives `clearConfig()` and can poison later `RETURN_TRUSTED_TYPE` output",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.2.7",
+      "location": "node_modules/dompurify",
+      "id": "GHSA-x4vx-rjvf-j5p4",
+      "severity": "LOW",
+      "summary": "DOMPurify: `IN_PLACE` mode trusts attacker-controlled `nodeName` on live non-form nodes, allowing script retention and XSS via attacker-supplied DOM objects",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "esbuild",
+      "version": "0.19.12",
+      "location": "node_modules/drizzle-kit/node_modules/esbuild",
+      "id": "GHSA-67mh-4wv8-2f99",
+      "severity": "MODERATE",
+      "summary": "esbuild enables any website to send any requests to the development server and read the response",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "drizzle-orm",
+      "version": "0.39.1",
+      "location": "node_modules/drizzle-orm",
+      "id": "GHSA-gpj5-g38j-94v9",
+      "severity": "HIGH",
+      "summary": "Drizzle ORM has SQL injection via improperly escaped SQL identifiers",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "5.2.5",
+      "location": "node_modules/fast-xml-parser",
+      "id": "GHSA-37qj-frw5-hhjh",
+      "severity": "HIGH",
+      "summary": "fast-xml-parser has RangeError DoS Numeric Entities Bug",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "5.2.5",
+      "location": "node_modules/fast-xml-parser",
+      "id": "GHSA-8gc5-j5rx-235r",
+      "severity": "HIGH",
+      "summary": "fast-xml-parser affected by numeric entity expansion bypassing all entity expansion limits (incomplete fix for CVE-2026-26278)",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "5.2.5",
+      "location": "node_modules/fast-xml-parser",
+      "id": "GHSA-fj3w-jwp8-x2g3",
+      "severity": "LOW",
+      "summary": "fast-xml-parser has stack overflow in XMLBuilder with preserveOrder",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "5.2.5",
+      "location": "node_modules/fast-xml-parser",
+      "id": "GHSA-gh4j-gqv2-49f6",
+      "severity": "MODERATE",
+      "summary": "fast-xml-parser XMLBuilder: XML Comment and CDATA Injection via Unescaped Delimiters",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "5.2.5",
+      "location": "node_modules/fast-xml-parser",
+      "id": "GHSA-jmr7-xgp7-cmfj",
+      "severity": "HIGH",
+      "summary": "fast-xml-parser affected by DoS through entity expansion in DOCTYPE (no expansion limit)",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "5.2.5",
+      "location": "node_modules/fast-xml-parser",
+      "id": "GHSA-jp2q-39xq-3w4g",
+      "severity": "MODERATE",
+      "summary": "Entity Expansion Limits Bypassed When Set to Zero Due to JavaScript Falsy Evaluation in fast-xml-parser",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "5.2.5",
+      "location": "node_modules/fast-xml-parser",
+      "id": "GHSA-m7jm-9gc2-mpf2",
+      "severity": "CRITICAL",
+      "summary": "fast-xml-parser has an entity encoding bypass via regex injection in DOCTYPE entity names",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "fflate",
+      "version": "0.8.2",
+      "location": "node_modules/fflate",
+      "id": "GHSA-px8p-9vwx-vf98",
+      "severity": "MODERATE",
+      "summary": "fflate unzipSync can enter an infinite loop when parsing malformed ZIP64 archives",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "follow-redirects",
+      "version": "1.15.11",
+      "location": "node_modules/follow-redirects",
+      "id": "GHSA-r4q5-vmmm-2653",
+      "severity": "MODERATE",
+      "summary": "follow-redirects leaks Custom Authentication Headers to Cross-Domain Redirect Targets",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "form-data",
+      "version": "2.5.5",
+      "location": "node_modules/form-data",
+      "id": "GHSA-hmw2-7cc7-3qxx",
+      "severity": "HIGH",
+      "summary": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "glob",
+      "version": "10.4.5",
+      "location": "node_modules/glob",
+      "id": "GHSA-3g3m-2fjr-6pw4",
+      "severity": "MODERATE",
+      "summary": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "glob",
+      "version": "10.4.5",
+      "location": "node_modules/glob",
+      "id": "GHSA-5j98-mcp5-4vw2",
+      "severity": "HIGH",
+      "summary": "glob CLI: Command injection via -c/--cmd executes matches with shell:true",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "js-cookie",
+      "version": "3.0.5",
+      "location": "node_modules/js-cookie",
+      "id": "GHSA-qjx8-664m-686j",
+      "severity": "HIGH",
+      "summary": "JavaScript Cookie: Per-instance prototype hijack in assign() enables cookie-attribute injection",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-67pg-wm7f-q7fj",
+      "severity": "HIGH",
+      "summary": "jsPDF Affected by Client-Side/Server-Side Denial of Service via Malicious GIF Dimensions",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-7x6v-j9x4-qf24",
+      "severity": "HIGH",
+      "summary": "jsPDF has a PDF Object Injection via FreeText color",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-95fx-jjr5-f39c",
+      "severity": "HIGH",
+      "summary": "jsPDF Vulnerable to Denial of Service (DoS) via Unvalidated BMP Dimensions in BMPDecoder",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-9vjf-qc39-jprp",
+      "severity": "HIGH",
+      "summary": "jsPDF has a PDF Object Injection via Unsanitized Input in addJS Method",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-cjw8-79x6-5cj4",
+      "severity": "MODERATE",
+      "summary": "jsPDF has Shared State Race Condition in addJS Plugin",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-f8cm-6447-x5h2",
+      "severity": "CRITICAL",
+      "summary": "jsPDF has Local File Inclusion/Path Traversal vulnerability",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-p5xg-68wr-hm3m",
+      "severity": "HIGH",
+      "summary": "jsPDF has a PDF Injection in AcroForm module allows Arbitrary JavaScript Execution (RadioButton.createOption and \"AS\" property)",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-pqxr-3g65-p328",
+      "severity": "HIGH",
+      "summary": "jsPDF has PDF Injection in AcroFormChoiceField that allows Arbitrary JavaScript Execution",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-vm32-vv63-w422",
+      "severity": "MODERATE",
+      "summary": "jsPDF Vulnerable to Stored XMP Metadata Injection (Spoofing & Integrity Violation)",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jspdf",
+      "version": "3.0.3",
+      "location": "node_modules/jspdf",
+      "id": "GHSA-wfv2-pwc8-crg5",
+      "severity": "CRITICAL",
+      "summary": "jsPDF has HTML Injection in New Window paths",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "jws",
+      "version": "4.0.0",
+      "location": "node_modules/jws",
+      "id": "GHSA-869p-cjfg-cm3x",
+      "severity": "HIGH",
+      "summary": "auth0/node-jws Improperly Verifies HMAC Signature",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "lodash",
+      "version": "4.17.21",
+      "location": "node_modules/lodash",
+      "id": "GHSA-f23m-r3pf-42rh",
+      "severity": "MODERATE",
+      "summary": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "lodash",
+      "version": "4.17.21",
+      "location": "node_modules/lodash",
+      "id": "GHSA-r5fr-rjxr-66jc",
+      "severity": "HIGH",
+      "summary": "lodash vulnerable to Code Injection via `_.template` imports key names",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "lodash",
+      "version": "4.17.21",
+      "location": "node_modules/lodash",
+      "id": "GHSA-xxjr-mmjv-4gpg",
+      "severity": "MODERATE",
+      "summary": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "minimatch",
+      "version": "9.0.5",
+      "location": "node_modules/minimatch",
+      "id": "GHSA-23c5-xmqv-rm74",
+      "severity": "HIGH",
+      "summary": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "minimatch",
+      "version": "9.0.5",
+      "location": "node_modules/minimatch",
+      "id": "GHSA-3ppc-4f35-3m26",
+      "severity": "HIGH",
+      "summary": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "minimatch",
+      "version": "9.0.5",
+      "location": "node_modules/minimatch",
+      "id": "GHSA-7r86-cg39-jmmj",
+      "severity": "HIGH",
+      "summary": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "minimatch",
+      "version": "9.0.5",
+      "location": "node_modules/minimatch",
+      "id": "GHSA-g3hv-75wg-m249",
+      "severity": "MODERATE",
+      "summary": "minimatch has potential denial of service via globparts amplification",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "nanoid",
+      "version": "5.1.5",
+      "location": "node_modules/nanoid",
+      "id": "GHSA-28wg-ghj8-5hjv",
+      "severity": "HIGH",
+      "summary": "nanoid: non-secure generators can loop indefinitely with negative size",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "nanoid",
+      "version": "5.1.5",
+      "location": "node_modules/nanoid",
+      "id": "GHSA-2v37-7h3g-55p8",
+      "severity": "HIGH",
+      "summary": "nanoid: custom generators can loop indefinitely when size is zero",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "nanoid",
+      "version": "5.1.5",
+      "location": "node_modules/nanoid",
+      "id": "GHSA-xwg4-73v4-xw9w",
+      "severity": "HIGH",
+      "summary": "nanoid: Integer Overflow or Wraparound",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-268h-hp4c-crq3",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: CRLF injection in Nodemailer List-* header comments allows arbitrary message header injection",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-2x7j-588g-ccc2",
+      "severity": "HIGH",
+      "summary": "Nodemailer: Quadratic (O(n²)) time complexity in addressparser allows remote denial of service via a crafted address list",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-39m8-27wv-hr27",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: Quadratic (O(n^2)) DKIM header unfolding lets a large folded header cause remote denial of service during signing",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-4ffr-jq9g-5ffx",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: Quadratic backtracking in SMTP AUTH mechanism detection regexes allows pre-auth remote denial of service",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-4g23-2xm8-66gc",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: Quadratic (O(n^2)) SMTP client reply parsing lets a malicious server or MITM cause a pre-auth remote denial of service",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-6vj9-mwq6-2f5v",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: Process-global DNS cache reuses TLS `servername` across transports, enabling cross-tenant SMTP credential disclosure",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-85x2-q946-cp5h",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: A \">\" inside a quoted local part ends an angle-addr early in addressparser, delivering to a domain the header does not name",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-8c8m-p3m8-cjg8",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: A nested comment ends early in addressparser, releasing the rest of the comment as a recipient",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-8m3c-c648-2xjj",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: resolveContent() on a MailMessage bypasses disableFileAccess/disableUrlAccess when called with the legacy signature",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-8vvx-rff5-p5rq",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: Nested structured recipient arrays bypass the parser depth limit and cause stack exhaustion DoS",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-c7w3-x93f-qmm8",
+      "severity": "LOW",
+      "summary": "Nodemailer has SMTP command injection due to unsanitized `envelope.size` parameter",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-cc9r-2j5m-2m83",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: Recipient-domain validation bypass via RFC 5322 comment mis-parsing leads to email delivery to an attacker-controlled domain",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-g73g-hqqh-jr95",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: RFC 5322 comment inside an angle-bracket address is never stripped",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-m943-m63m-w62w",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: A \";\" inside a quoted string or comment ends an address group early in addressparser, turning display text into a recipient",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-p6gq-j5cr-w38f",
+      "severity": "HIGH",
+      "summary": "Nodemailer: Message-level raw option bypasses disableFileAccess/disableUrlAccess, enabling arbitrary file read and full-response SSRF in the delivered message",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-r7g4-qg5f-qqm2",
+      "severity": "HIGH",
+      "summary": "Nodemailer: Improper TLS Certificate Validation in OAuth2 Token Fetch Enables Credential Interception",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-rcmh-qjqh-p98v",
+      "severity": "HIGH",
+      "summary": "Nodemailer’s addressparser is vulnerable to DoS caused by recursive calls",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-v53p-9fqp-m79j",
+      "severity": "HIGH",
+      "summary": "Nodemailer: Quadratic backtracking in the addressparser free-text fallback allows remote denial of service",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-vvjj-xcjg-gr5g",
+      "severity": "MODERATE",
+      "summary": "Nodemailer Vulnerable to SMTP Command Injection via CRLF in Transport name Option (EHLO/HELO) ",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-wmmp-3585-3rmp",
+      "severity": "MODERATE",
+      "summary": "Nodemailer: IDN/Punycode domain allow-list bypass leads to email delivery to an attacker-controlled domain",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "nodemailer",
+      "version": "7.0.9",
+      "location": "node_modules/nodemailer",
+      "id": "GHSA-wqvq-jvpq-h66f",
+      "severity": "MODERATE",
+      "summary": "Nodemailer jsonTransport bypasses disableFileAccess and disableUrlAccess during message normalization",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    },
+    {
+      "name": "picomatch",
+      "version": "2.3.1",
+      "location": "node_modules/picomatch",
+      "id": "GHSA-3v7f-55p6-f55p",
+      "severity": "MODERATE",
+      "summary": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "picomatch",
+      "version": "2.3.1",
+      "location": "node_modules/picomatch",
+      "id": "GHSA-c2c7-rcm5-vvqj",
+      "severity": "HIGH",
+      "summary": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "postcss",
+      "version": "8.5.6",
+      "location": "node_modules/postcss",
+      "id": "GHSA-6g55-p6wh-862q",
+      "severity": "HIGH",
+      "summary": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "postcss",
+      "version": "8.5.6",
+      "location": "node_modules/postcss",
+      "id": "GHSA-fxqj-rqcc-2cmp",
+      "severity": "MODERATE",
+      "summary": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "postcss",
+      "version": "8.5.6",
+      "location": "node_modules/postcss",
+      "id": "GHSA-qx2v-qp2m-jg93",
+      "severity": "MODERATE",
+      "summary": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "postcss",
+      "version": "8.5.6",
+      "location": "node_modules/postcss",
+      "id": "GHSA-r28c-9q8g-f849",
+      "severity": "HIGH",
+      "summary": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "postcss-selector-parser",
+      "version": "6.1.2",
+      "location": "node_modules/postcss-selector-parser",
+      "id": "GHSA-rj75-hqrm-r3gf",
+      "severity": "MODERATE",
+      "summary": "PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "postcss-selector-parser",
+      "version": "6.1.2",
+      "location": "node_modules/postcss-selector-parser",
+      "id": "GHSA-w9m9-85wc-3x92",
+      "severity": "LOW",
+      "summary": "postcss-selector-parser allows denial of service through uncontrolled AST recursion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "nanoid",
+      "version": "3.3.11",
+      "location": "node_modules/postcss/node_modules/nanoid",
+      "id": "GHSA-28wg-ghj8-5hjv",
+      "severity": "HIGH",
+      "summary": "nanoid: non-secure generators can loop indefinitely with negative size",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "nanoid",
+      "version": "3.3.11",
+      "location": "node_modules/postcss/node_modules/nanoid",
+      "id": "GHSA-2v37-7h3g-55p8",
+      "severity": "HIGH",
+      "summary": "nanoid: custom generators can loop indefinitely when size is zero",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "nanoid",
+      "version": "3.3.11",
+      "location": "node_modules/postcss/node_modules/nanoid",
+      "id": "GHSA-xwg4-73v4-xw9w",
+      "severity": "HIGH",
+      "summary": "nanoid: Integer Overflow or Wraparound",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-2pr8-phx7-x9h3",
+      "severity": "MODERATE",
+      "summary": "protobuf.js: Denial of service from crafted field names in generated code",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-66ff-xgx4-vchm",
+      "severity": "HIGH",
+      "summary": "protobuf.js: Code injection through bytes field defaults in generated toObject code",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-685m-2w69-288q",
+      "severity": "HIGH",
+      "summary": "protobuf.js: Denial of service through unbounded protobuf recursion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-75px-5xx7-5xc7",
+      "severity": "HIGH",
+      "summary": "protobuf.js: Code generation gadget after prototype pollution",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-f38q-mgvj-vph7",
+      "severity": "MODERATE",
+      "summary": "protobufjs : Schema-derived names can shadow runtime-significant properties",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-fx83-v9x8-x52w",
+      "severity": "MODERATE",
+      "summary": "protobuf.js: Prototype injection in generated message constructors",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-j3f2-48v5-ccww",
+      "severity": "MODERATE",
+      "summary": "protobufjs: Denial of Service via infinite loop in .proto option parsing",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-jggg-4jg4-v7c6",
+      "severity": "MODERATE",
+      "summary": "protobufjs: Denial of Service via unbounded recursive JSON descriptor expansion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-jvwf-75h9-cwgg",
+      "severity": "HIGH",
+      "summary": "protobuf.js: Process-wide denial of service through unsafe option paths",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-q6x5-8v7m-xcrf",
+      "severity": "MODERATE",
+      "summary": "protobufjs has overlong UTF-8 decoding",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-wcpc-wj8m-hjx6",
+      "severity": "HIGH",
+      "summary": "protobufjs: Denial of service through unbounded Any expansion during JSON conversion",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.5.3",
+      "location": "node_modules/protobufjs",
+      "id": "GHSA-xq3m-2v4x-88gg",
+      "severity": "CRITICAL",
+      "summary": "Arbitrary code execution in protobufjs",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "proxy-addr",
+      "version": "2.0.7",
+      "location": "node_modules/proxy-addr",
+      "id": "GHSA-jqcg-44mw-7w3h",
+      "severity": "CRITICAL",
+      "summary": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "rollup",
+      "version": "4.54.0",
+      "location": "node_modules/rollup",
+      "id": "GHSA-mw96-cpmx-2vgc",
+      "severity": "HIGH",
+      "summary": "Rollup 4 has Arbitrary File Write via Path Traversal",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "source-map-js",
+      "version": "1.2.1",
+      "location": "node_modules/source-map-js",
+      "id": "GHSA-68fv-2mgg-jv7q",
+      "severity": "HIGH",
+      "summary": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "picomatch",
+      "version": "4.0.3",
+      "location": "node_modules/tinyglobby/node_modules/picomatch",
+      "id": "GHSA-3v7f-55p6-f55p",
+      "severity": "MODERATE",
+      "summary": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "picomatch",
+      "version": "4.0.3",
+      "location": "node_modules/tinyglobby/node_modules/picomatch",
+      "id": "GHSA-c2c7-rcm5-vvqj",
+      "severity": "HIGH",
+      "summary": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "esbuild",
+      "version": "0.23.1",
+      "location": "node_modules/tsx/node_modules/esbuild",
+      "id": "GHSA-67mh-4wv8-2f99",
+      "severity": "MODERATE",
+      "summary": "esbuild enables any website to send any requests to the development server and read the response",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-4w7w-66w2-5vf9",
+      "severity": "MODERATE",
+      "summary": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-587h-7wmj-h5pm",
+      "severity": "HIGH",
+      "summary": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-698v-4r3x-3vcv",
+      "severity": "MODERATE",
+      "summary": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-93m4-6634-74q7",
+      "severity": "MODERATE",
+      "summary": "vite allows server.fs.deny bypass via backslash on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-93m4-6634-74q7",
+      "severity": "MODERATE",
+      "summary": "vite allows server.fs.deny bypass via backslash on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-93m4-6634-74q7",
+      "severity": "MODERATE",
+      "summary": "vite allows server.fs.deny bypass via backslash on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-93m4-6634-74q7",
+      "severity": "MODERATE",
+      "summary": "vite allows server.fs.deny bypass via backslash on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-9jrq-w75r-8gcw",
+      "severity": "LOW",
+      "summary": "Vite: Cross origin script execution through Vite custom middleware",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-fx2h-pf6j-xcff",
+      "severity": "MODERATE",
+      "summary": "vite: `server.fs.deny` bypass on Windows alternate paths",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-g4jq-h2w9-997c",
+      "severity": "LOW",
+      "summary": "Vite middleware may serve files starting with the same name with the public directory",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-jqfw-vq24-v9c3",
+      "severity": "LOW",
+      "summary": "Vite's `server.fs` settings were not applied to HTML files",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-r825-w8mm-5pxw",
+      "severity": "MODERATE",
+      "summary": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-rq7h-c2jc-7f22",
+      "severity": "MODERATE",
+      "summary": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "5.4.19",
+      "location": "node_modules/vite",
+      "id": "GHSA-v6wh-96g9-6wx3",
+      "severity": "MODERATE",
+      "summary": "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "esbuild",
+      "version": "0.21.5",
+      "location": "node_modules/vite/node_modules/esbuild",
+      "id": "GHSA-67mh-4wv8-2f99",
+      "severity": "MODERATE",
+      "summary": "esbuild enables any website to send any requests to the development server and read the response",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vitest",
+      "version": "4.0.16",
+      "location": "node_modules/vitest",
+      "id": "GHSA-5xrq-8626-4rwp",
+      "severity": "CRITICAL",
+      "summary": "When Vitest UI server is listening, arbitrary file can be read and executed",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vitest",
+      "version": "4.0.16",
+      "location": "node_modules/vitest",
+      "id": "GHSA-82fw-gwwq-j7x9",
+      "severity": "MODERATE",
+      "summary": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@vitest/mocker",
+      "version": "4.0.16",
+      "location": "node_modules/vitest/node_modules/@vitest/mocker",
+      "id": "GHSA-82fw-gwwq-j7x9",
+      "severity": "MODERATE",
+      "summary": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "@vitest/mocker",
+      "version": "4.0.16",
+      "location": "node_modules/vitest/node_modules/@vitest/mocker",
+      "id": "GHSA-qxg6-89mg-rqv8",
+      "severity": "MODERATE",
+      "summary": "Vitest: Code injection via unauthenticated manual mock registration",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "picomatch",
+      "version": "4.0.3",
+      "location": "node_modules/vitest/node_modules/picomatch",
+      "id": "GHSA-3v7f-55p6-f55p",
+      "severity": "MODERATE",
+      "summary": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "picomatch",
+      "version": "4.0.3",
+      "location": "node_modules/vitest/node_modules/picomatch",
+      "id": "GHSA-c2c7-rcm5-vvqj",
+      "severity": "HIGH",
+      "summary": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-4w7w-66w2-5vf9",
+      "severity": "MODERATE",
+      "summary": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-587h-7wmj-h5pm",
+      "severity": "HIGH",
+      "summary": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-698v-4r3x-3vcv",
+      "severity": "MODERATE",
+      "summary": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-9jrq-w75r-8gcw",
+      "severity": "LOW",
+      "summary": "Vite: Cross origin script execution through Vite custom middleware",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-fx2h-pf6j-xcff",
+      "severity": "MODERATE",
+      "summary": "vite: `server.fs.deny` bypass on Windows alternate paths",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-p9ff-h696-f583",
+      "severity": "HIGH",
+      "summary": "Vite Vulnerable to Arbitrary File Read via Vite Dev Server WebSocket",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-r825-w8mm-5pxw",
+      "severity": "MODERATE",
+      "summary": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-rq7h-c2jc-7f22",
+      "severity": "MODERATE",
+      "summary": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-v2wj-q39q-566r",
+      "severity": "HIGH",
+      "summary": "Vite: `server.fs.deny` bypassed with queries",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "vite",
+      "version": "7.3.0",
+      "location": "node_modules/vitest/node_modules/vite",
+      "id": "GHSA-v6wh-96g9-6wx3",
+      "severity": "MODERATE",
+      "summary": "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "ws",
+      "version": "8.18.0",
+      "location": "node_modules/ws",
+      "id": "GHSA-58qx-3vcg-4xpx",
+      "severity": "MODERATE",
+      "summary": "ws: Uninitialized memory disclosure",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "ws",
+      "version": "8.18.0",
+      "location": "node_modules/ws",
+      "id": "GHSA-96hv-2xvq-fx4p",
+      "severity": "HIGH",
+      "summary": "ws: Memory exhaustion DoS from tiny fragments and data chunks",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "yaml",
+      "version": "2.6.0",
+      "location": "node_modules/yaml",
+      "id": "GHSA-48c2-rrv3-qjmp",
+      "severity": "MODERATE",
+      "summary": "yaml is vulnerable to Stack Overflow via deeply nested YAML collections",
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH"
+    },
+    {
+      "name": "zod",
+      "version": "3.24.2",
+      "location": "node_modules/zod",
+      "id": "GHSA-mrhx-c7xc-m3w5",
+      "severity": "HIGH",
+      "summary": "Zod can exhaust memory while validating oversized constrained collections",
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+    }
+  ]
+}

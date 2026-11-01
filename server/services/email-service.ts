@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { z } from 'zod';
 import { formatConversionCredit } from "../../shared/metric-math";
 import { db } from "../db";
 import { campaigns, clients, emailAlertEvents } from "../../shared/schema.js";
@@ -174,6 +175,12 @@ class EmailService {
     const toText = recipients.join(', ');
     if (recipients.length === 0) {
       console.error('[Email Service] No valid recipients provided');
+      return false;
+    }
+    if (recipients.some(recipient => !z.string().email().safeParse(recipient).success)) {
+      const error = 'Invalid email recipient';
+      console.error(`[Email Service] ${error}`);
+      await this.logEmailAuditEvent({ options, provider: this.getConfiguredProvider(), toText, success: false, error });
       return false;
     }
     const attachmentSummary = Array.isArray(options.attachments)

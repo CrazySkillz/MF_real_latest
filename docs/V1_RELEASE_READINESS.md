@@ -2,7 +2,7 @@
 
 ## Current production launch task list
 
-**October 31 user priority: only work essential to client production launch.**
+**November 1 user priority, reaffirmed: only the minimum work essential to client production launch.**
 This execution order supersedes older dated next-step instructions below and in
 the linked batch records. Reuse completed evidence; do not restart the audit or
 repeat manual checks merely to complete every historical assurance permutation.
@@ -16,12 +16,22 @@ Reuse evidence that remains applicable; repeat checks only when a code/configura
 change, observed failure or material evidence gap makes them necessary. Optional
 hardening and broader certification stay outside this launch queue.
 
-| Order / status | Essential task and existing owner | Completion boundary |
+**Completed; no repeat task:** all 20 original Batch 1 code corrections,
+production sign-in/account migration, and the request/upload parser correction
+are deployed. The parser release `6e113a0c` passed 127 focused tests, TypeScript,
+the production build, hosted CI and public deployment checks. Reuse this evidence.
+
+**Before any additional check:** identify the affected production/release path,
+the concrete defect or essential evidence gap, why existing evidence is insufficient,
+and the smallest pass/fail check. Stop when that boundary is satisfied. Package
+advisory counts and historical OPEN labels do not independently justify changes.
+
+| Remaining order / status | Essential task and existing owner | Smallest completion boundary |
 | --- | --- | --- |
-| **1. PARTIAL — sign-in complete** | **Production sign-in on the launch domain.** Batch 8 V1-013; Batch 2 consumes the account/onboarding result. | Production Clerk works on the selected HTTPS launch domain with matching frontend/backend keys, required origins/CSP and provider callback URLs. Domain setup, production deployment, the verified 12-field ownership transfer and user-confirmed ordinary sign-in/account switching are complete. Affected new-domain callback acceptance remains; no authentication redesign, unrelated domain work or repeat import drill. |
-| **2. IN PROGRESS — targeted parser correction** | **Security exposure relevant to this deployment.** Batch 8 V1-019. | The public advisory dataset was downloaded and matched locally without uploading the dependency inventory. Confirmed request/upload parser exposure is being corrected with compatible Express/Multer updates and bounded upload field parsing. Remaining matches require deployment-relevance dispositions; counts alone are not confirmed app defects. Stop at supported dispositions for launch risks; no zero-advisory target, unrelated tooling or blanket upgrades. Preserve the advisory-request approval boundary. |
-| **3. PARTIAL** | **Usable backup/key and a rollback path.** Batch 8 V1-016, shared dependency of Batch 1 V1-008. | Reuse the completed database restore and saved-key custody; establish only the missing evidence that the retained recovery key works and a compatible prior app revision can be restored. Stop at that minimum recovery boundary. No repeat database restore, live destructive drill, new hosting purchase or second-computer exercise. Do not repeat the postponed key prompt; actual key usability remains unverified until evidenced. |
-| **4. OPEN — after final configuration** | **One consolidated final launch check.** Batches 2–7; Batch 8 V1-010/012/014/016 consumes existing results. | Confirm the final deployed revision is healthy, sign-up/sign-in and tenant isolation work, and the core client → campaign → connected data → figures → report journey and scheduled jobs have applicable passing evidence. Re-run only checks affected by final code/domain/configuration changes or a concrete failure; reuse unchanged provider/import, financial, report and email-receipt results. Existing health/log facilities suffice if they expose failures. Stop when essential gates pass; record the launch decision without expanding into a new full-app audit. |
+| **1. PARTIAL — next** | **Remaining dependency exposure relevant to this deployment.** Batch 8 V1-019. | Finish the remaining input/transport/build dispositions in the [bounded exposure review](fixes/v1-batch-8/DEPENDENCY_EXPOSURE_2026-11-01.md). Fix only confirmed reachable issues affecting production or release integrity, with focused regression checks. The [parser correction](fixes/v1-batch-8/HTTP_PARSER_SECURITY_2026-11-01.md) is complete. Stop at supported dispositions; no zero-advisory target, unrelated tooling or blanket upgrades. Preserve the advisory-request approval boundary. |
+| **2. PARTIAL — callback acceptance only** | **Provider authorization on the new app domain.** Batch 8 V1-013. | Establish successful authorization for the offered provider paths affected by the changed callback/origin. Saved allowlists alone do not prove success. Reuse shared-path evidence where applicable; stop at the changed authorization boundary. Production sign-in, account switching and ownership transfer are complete. No repeat import/financial drill or unrelated reconnect permutations. |
+| **3. PARTIAL — retained key unverified** | **Minimum recovery and compatible rollback.** Batch 8 V1-016; shared with Batch 1 V1-008. | Reuse the completed database restore and saved-key custody. Establish only missing retained-key usability and compatible prior-revision rollback evidence. Do not repeat the postponed key prompt or call it passed. No repeat database restore, live destructive drill, new hosting purchase or second-computer exercise. |
+| **4. OPEN — final acceptance** | **One consolidated launch decision.** Batches 2–7; Batch 8 V1-010/012/014/016 consumes existing results. | Reconcile existing health, sign-up/sign-in, tenant-isolation, core client → campaign → connected data → figures → report and scheduler evidence against the final release. Execute only checks invalidated by changes or required by a concrete unresolved gap. Resolve Google Ads offered/excluded scope and require acceptance only if offered; do not silently change scope. Reuse unchanged imports, financial comparisons and report/email results. Existing health/log facilities suffice. Stop at the launch decision; no new full-app audit. |
 
 **October 31 domain setup progress (manual dashboard evidence):** the user created
 the Clerk production instance for `app.mimosaas.app` as the primary application.

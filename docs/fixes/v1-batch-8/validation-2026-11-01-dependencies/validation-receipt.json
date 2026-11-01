@@ -1,6 +1,6 @@
 {
   "at": "2026-11-01T09:43:14.290Z",
-  "status": "PASS_LOCAL_HTTP_PARSER_CORRECTION",
+  "status": "PASS_DEPLOYED_HTTP_PARSER_CORRECTION",
   "projectDependencyInventoryUploaded": false,
   "upstreamDataset": {
     "at": "2026-11-01T09:09:35.766Z",
@@ -84,7 +84,18 @@
     "unsupportedRanges": 0,
     "otherMatches": "Not yet fully dispositioned; not proof of exploitation"
   },
-  "deployment": "Pending CI and exact-revision public health verification",
+  "deployment": {
+    "commit": "6e113a0cdcacbeca05e5cf17dad9c5edf3997b61",
+    "verifiedAt": "2026-11-01T09:55:06.817Z",
+    "healthy": true,
+    "hostedCI": "PASS",
+    "workflow": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41294426006",
+    "publicNewDomain": "PASS_ANONYMOUS_PRODUCTION_BOUNDARIES",
+    "evidence": [
+      "release-ci.json",
+      "public-release.json"
+    ]
+  },
   "remainingLaunchGates": [
     "Other dependency reachability dispositions",
     "Affected new-domain provider callbacks",

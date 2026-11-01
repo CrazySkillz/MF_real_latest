@@ -1,6 +1,6 @@
 # HTTP parser security correction — November 1
 
-Status: local correction validated; deployment verification pending. This closes
+Status: **correction deployed and verified**, `6e113a0c`. This closes
 only the confirmed HTTP parser defects below, not the entire dependency gate.
 
 ## Root causes and traced boundary
@@ -92,9 +92,16 @@ Primary sources:
 
 ## Release and rollback boundary
 
+The release passed hosted workflow
+[41294426006](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41294426006),
+including the current-version suite and retained deferred-source checks. At
+09:55 UTC, anonymous health confirmed the exact deployed commit and healthy state.
+The separate `public-release.json` confirms `app.mimosaas.app` serves that revision,
+the production Clerk frontend and required CSP/HSTS, with unsigned client/campaign
+APIs returning 401. `release-ci.json` and `validation-receipt.json` retain results.
+
 The code and lockfile must ship together. No database migration is involved.
-Record hosted CI and anonymous production health/revision checks after release;
-do not replay malformed requests against the live app. A prior app revision can
+No malformed requests were replayed against the live app. A prior app revision can
 restore the prior runtime behavior with the same database/schema and production
 Clerk configuration, but would reintroduce the documented parser exposure.
 The independent retained recovery-key check remains unverified and postponed;

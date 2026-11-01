@@ -1,10 +1,12 @@
 # Finding-by-finding fix queue
 
-**Current execution order, October 31:** follow the controlling
+**Current execution order, November 1:** follow the controlling
 [production launch task list](../../V1_RELEASE_READINESS.md#current-production-launch-task-list):
-production Clerk/domain setup (B8 V1-013), deployment-relevant dependency security
-(V1-019), minimum recovery/rollback (V1-016), then one focused final production
-acceptance using existing evidence across batches. This supersedes older dated
+remaining deployment-relevant dependency exposure (B8 V1-019), affected new-domain
+provider callbacks (V1-013), minimum recovery/rollback (V1-016), then one focused
+final acceptance using existing evidence across batches. Production sign-in,
+account migration, all 20 original Batch 1 code corrections and the parser fix
+are deployed; they are not repeat tasks. This supersedes older dated
 next-step instructions. Extra HubSpot reconnect/replay and absent legacy Meta
 positive-path exercises are not in the immediate queue. Google Ads acceptance
 was postponed, not excluded; establish its offered scope before launch.

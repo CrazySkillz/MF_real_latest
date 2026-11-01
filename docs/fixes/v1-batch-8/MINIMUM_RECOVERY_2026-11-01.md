@@ -77,10 +77,24 @@ passes eleven synthetic controls; a failed attempt's boolean diagnostic identifi
 control characters in the hidden input. Right-click Paste resolved the failure.
 No key was read by the agent, normalized to force a pass, rotated or saved by the helper.
 
+### Later launch baseline — November 1, 17:32 Amsterdam
+
+The final launch runtime is `b2bfe6cc5bd5151d42ad000a153620ec984d7360`.
+The [final reconciliation](validation-2026-11-01-launch/minimum-launch-reconciliation-2026-11-01T16-32-56-808Z.json)
+verifies its healthy deployment and passing exact-commit CI. Relative to the
+`0a42aac8` baseline above, the only runtime change is the GA4 auth component's
+explicit service-account choice; the other changed code file is its isolated
+browser test. Storage, schema, migrations, token handling, dependencies and
+hosting configuration are unchanged. Retain `b2bfe6cc` as the current recovery
+baseline for future changes. Returning to `0a42aac8` would remove that visible
+alternative, so it is not an equivalent onboarding release. No rollback or
+new restore was run, and the existing evidence is not reopened.
+
 No Task 3 steps remain for the minimum launch scope. The pass covers these archived
 credentials, not current provider validity, every historical credential, a rebuilt
 host, independent-machine recovery or a full disaster-recovery exercise. The
 October 29 snapshot still predates the production ownership cutover; the incident
-procedure above preserves newer live writes. Task 4's consolidated launch decision
-remains open and must reuse the completed evidence without reopening Tasks 1–3
-or adding speculative code changes. Broader formal finding counts are unchanged.
+procedure above preserves newer live writes. Task 4's minimum assisted-onboarding
+decision is now complete in the linked launch reconciliation and reuses this
+evidence without reopening Tasks 1–3 or adding speculative code changes.
+Broader formal finding counts are unchanged.

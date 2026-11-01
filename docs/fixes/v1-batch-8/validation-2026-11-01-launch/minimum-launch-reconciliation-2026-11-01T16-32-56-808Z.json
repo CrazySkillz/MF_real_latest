@@ -1,0 +1,52 @@
+{
+  "at": "2026-11-01T16:32:56.808Z",
+  "result": "PASS_MINIMUM_LAUNCH_RECONCILIATION",
+  "scope": "assisted GA4-first onboarding with explicitly approved Google resources",
+  "runtime": "b2bfe6cc5bd5151d42ad000a153620ec984d7360",
+  "head": "efa926d73b74582a0fffdcc5f7399a6e0a9b52f7",
+  "health": {
+    "status": 200,
+    "ok": true,
+    "nodeEnv": "production"
+  },
+  "applicationUnchangedSinceHostedCI": true,
+  "priorRecoveryDelta": [
+    "client/src/components/IntegratedGA4Auth.tsx",
+    "server/ga4-service-account-onboarding-browser.test.ts"
+  ],
+  "allThreeGoogleConnectionChecksPassed": true,
+  "disposableDraftCleanupIndependentlyVerified": true,
+  "retainedOAuthResourceBindingsUnchanged": true,
+  "adsPreviewRows": 0,
+  "sheetsPreviewRows": 8,
+  "liveWrites": 0,
+  "providerCalls": 0,
+  "evidence": [
+    {
+      "file": "user-ads-service-account.json",
+      "sha256": "87d320a0fdc33613d08dca6e3f6249e16caa38f652733a365cef51b5f9f6199a"
+    },
+    {
+      "file": "user-google-alternative.json",
+      "sha256": "f066f94dc833076b1b019f65b3f82669d1281728876b9b873fa5ddc9d6bcc561"
+    },
+    {
+      "file": "ads-setup-2026-11-01T16-15-10-243Z.json",
+      "sha256": "591ee58b1fabe0878a1df416002b227f23172de4190328566497830116150f92"
+    },
+    {
+      "file": "ads-setup-2026-11-01T16-31-27-332Z.json",
+      "sha256": "fcd795e22ba5d70219bc4b08cd7013a7ef3cf7f2ace1dc092cc6e2eb5aebab01"
+    },
+    {
+      "file": "onboarding-hosted-ci.json",
+      "sha256": "3091c4b520919c1f1ddbf283c7368fc1a59aaa768314957f07a251d5790871f8"
+    }
+  ],
+  "limits": [
+    "Not full analytics lifecycle certification",
+    "Google Ads nonzero spend not live-validated",
+    "New clients require exact resource permission and applicable allowlists",
+    "No off-machine recovery claim"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "googleAlternative": "PASS_GOOGLE_ALTERNATIVE",
+  "at": "2026-11-01T16:28:27.760Z",
+  "campaignId": "8798ff85-8850-473f-b8ff-6c6b43d5726a",
+  "phase": "complete",
+  "checks": [
+    {
+      "provider": "ga4",
+      "passed": true,
+      "checks": ["Google data-read permission", "saved property reload", "wizard property selection"]
+    },
+    {
+      "provider": "google_sheets",
+      "passed": true,
+      "checks": ["shared spreadsheet permission", "exact tab selection and reload", "Google data preview"],
+      "previewRows": 8
+    }
+  ],
+  "cleanup": true,
+  "sheetConnectionId": "0908ed63-3dad-4865-88a9-3517b278b47a"
+}

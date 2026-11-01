@@ -48,6 +48,27 @@ let db;
     // Only resource identifiers/methods for the next already-authorized alternative-path check.
     receipt.remainingGoogleSetup = (await db.query(`SELECT 'ga4' AS provider,g.property_id AS resource_id,g.method,EXISTS(SELECT 1 FROM service_account_resource_grants p WHERE p.owner_id=c.owner_id AND p.client_id=c.client_id AND p.provider='ga4' AND p.resource_id=g.property_id) AS exact_database_grant FROM ga4_connections g JOIN campaigns c ON c.id=g.campaign_id WHERE c.id=$1 AND g.is_active=true UNION ALL SELECT 'google_sheets',g.spreadsheet_id,g.method,EXISTS(SELECT 1 FROM service_account_resource_grants p WHERE p.owner_id=c.owner_id AND p.client_id=c.client_id AND p.provider='google_sheets' AND p.resource_id=g.spreadsheet_id) FROM google_sheets_connections g JOIN campaigns c ON c.id=g.campaign_id WHERE c.id=$1 AND g.is_active=true`, [campaignId])).rows;
   }
+  if (process.argv.includes('--after-google-check')) {
+    const fixtureId = '8798ff85-8850-473f-b8ff-6c6b43d5726a';
+    const result = JSON.parse(fs.readFileSync(path.join(__dirname, 'user-google-alternative.json'), 'utf8'));
+    assert.equal(result.googleAlternative, 'PASS_GOOGLE_ALTERNATIVE'); assert.equal(result.campaignId, fixtureId); assert.equal(result.cleanup, true);
+    receipt.googleFixtureRows = {};
+    for (const table of ['campaigns', 'ga4_connections', 'google_sheets_connections', 'ga4_refresh_work', 'ga4_daily_metrics', 'ga4_overview_snapshots', 'revenue_sources', 'revenue_records', 'spend_sources', 'spend_records']) {
+      const count = (await db.query(`SELECT count(*)::int n FROM ${table} WHERE ${table === 'campaigns' ? 'id' : 'campaign_id'}=$1`, [fixtureId])).rows[0].n;
+      receipt.googleFixtureRows[table] = count; assert.equal(count, 0);
+    }
+    assert.equal((await db.query('SELECT count(*)::int n FROM google_sheets_connections WHERE id=$1', [result.sheetConnectionId])).rows[0].n, 0);
+    assert.deepEqual((await db.query('SELECT created,cancelled FROM campaign_creation_requests WHERE owner_id=$1 AND client_id=$2 AND request_id=$3', [ownerId, c.client_id, fixtureId])).rows, [{ created: true, cancelled: true }]);
+    receipt.exactGoogleCancellationRetained = true;
+    const setup = (await db.query(`SELECT 'ga4' AS provider,g.property_id AS resource_id,g.method FROM ga4_connections g WHERE g.campaign_id=$1 AND g.is_active=true UNION ALL SELECT 'google_sheets',g.spreadsheet_id,g.method FROM google_sheets_connections g WHERE g.campaign_id=$1 AND g.is_active=true ORDER BY provider`, [campaignId])).rows;
+    assert.deepEqual(setup, [
+      { provider: 'ga4', resource_id: '542352127', method: 'access_token' },
+      { provider: 'google_sheets', resource_id: '1VMN6f089lsPISQ80pxT8Sq4awNU71-jQh5OgyFTXSeU', method: 'access_token' },
+    ]);
+    for (const item of setup) assert.equal((await db.query('SELECT count(*)::int n FROM service_account_resource_grants WHERE owner_id=$1 AND client_id=$2 AND provider=$3 AND resource_id=$4', [ownerId, c.client_id, item.provider, item.resource_id])).rows[0].n, 1);
+    receipt.retainedOAuthResourceBindingsUnchanged = true; receipt.exactGoogleClientPermissionsRetained = true;
+    receipt.googleCleanupIndependentlyVerified = true;
+  }
   receipt.result = 'READ_ONLY_PREFLIGHT_COMPLETE';
 })().catch(error => { receipt.result = 'CHECK_REQUIRED'; receipt.errorCode = /^[A-Z0-9_]+$/.test(String(error.code || '')) ? error.code : error.name; process.exitCode = 1; })
 .finally(async () => {

@@ -1,0 +1,40 @@
+{
+  "at": "2026-11-01T16:31:27.332Z",
+  "customerId": "4951281615",
+  "liveWrites": 0,
+  "providerCalls": 0,
+  "credentialValuesReturned": false,
+  "localConfigurationOnly": {
+    "authoritativeForRender": false,
+    "serviceAccountConfigured": false,
+    "adsSpecificCredentials": false,
+    "customerAllowlisted": false,
+    "managerConfigured": false
+  },
+  "testClient": {
+    "id": "e3ec20ad-89ea-450d-8caf-8c0ab7abd220",
+    "name": "Batch 1 Validation",
+    "ownerMatches": true,
+    "referenceCampaignCurrency": "EUR",
+    "referenceCampaignTimeZone": "Europe/Amsterdam"
+  },
+  "exactDatabaseGrant": true,
+  "existingAdsSpendConnections": 0,
+  "googleFixtureRows": {
+    "campaigns": 0,
+    "ga4_connections": 0,
+    "google_sheets_connections": 0,
+    "ga4_refresh_work": 0,
+    "ga4_daily_metrics": 0,
+    "ga4_overview_snapshots": 0,
+    "revenue_sources": 0,
+    "revenue_records": 0,
+    "spend_sources": 0,
+    "spend_records": 0
+  },
+  "exactGoogleCancellationRetained": true,
+  "retainedOAuthResourceBindingsUnchanged": true,
+  "exactGoogleClientPermissionsRetained": true,
+  "googleCleanupIndependentlyVerified": true,
+  "result": "READ_ONLY_PREFLIGHT_COMPLETE"
+}

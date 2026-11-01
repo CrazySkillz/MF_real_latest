@@ -138,7 +138,7 @@ now confirmed: service accounts for all three Google sources. Address only the
 concrete missing entry/setup boundaries and verify the fresh-client path for each
 source in one consolidated acceptance check, preserving exact client permissions.
 
-### GA4 onboarding entry correction — locally validated, deployment pending
+### GA4 onboarding entry correction — deployed as `b2bfe6cc`
 
 **Root cause:** the current creation page passes no connection-mode override;
 the component only fetched availability and rendered shared access in explicit
@@ -172,6 +172,19 @@ also pass. `npm run check` and `npm run build` exit 0; the build retains existin
 Browserslist/chunk warnings. Initial test/build startup hit sandbox `spawn EPERM`;
 the authorized process-capable reruns passed. No runtime workaround was added.
 
+**Deployment:** commit `b2bfe6cc5bd5151d42ad000a153620ec984d7360` is pushed to main.
+The [anonymous new-domain check](validation-2026-11-01-launch/onboarding-deployed-2026-11-01T15-28-38-297Z.json)
+at 15:28:38 UTC confirms that exact production revision, HTTP 200 / `ok:true`,
+the new choice/return/approval text in the published JavaScript, and HTTP 401 for
+all three service-account status endpoints without a login. This is static
+publication/access evidence, not an authenticated Google connection attempt.
+The [exact-commit GitHub workflow](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41321181273/job/124891551287)
+completed successfully, independently read at 15:36:09 UTC. Its current-version
+tests, certification check and retained deferred-source evidence steps all passed;
+the [saved CI receipt](validation-2026-11-01-launch/onboarding-hosted-ci.json)
+also reconfirms the exact healthy live revision. Deferred test success does not
+change provider scope or constitute live Google service-account acceptance.
+
 **Limits/remaining work:** these browser cases use synthetic HTTP and prove the
 component boundary, not a complete Google import or fresh-client live acceptance.
 Per-client resource approval and GA4/Ads provider allowlists are still required;
@@ -182,5 +195,6 @@ recovery/Mailgun/domain checks; final launch acceptance remains open.
 All diagnostics use public GETs or verified TLS and explicit READ ONLY database
 transactions ending in rollback. Credential values, report content and recipient
 addresses are omitted. The user-triggered test added the exact delivery audit
-above and sent one PDF. The agent's checks were read-only; no schedules, campaigns,
-source values, application code or provider configuration were changed.
+above and sent one PDF. The agent's live checks were read-only; no schedules,
+campaigns, source values or provider configuration were changed. The localized
+GA4 auth-component correction above is the only application-code change here.

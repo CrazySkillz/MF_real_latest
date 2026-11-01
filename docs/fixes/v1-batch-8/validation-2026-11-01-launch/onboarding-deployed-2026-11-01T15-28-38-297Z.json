@@ -1,0 +1,31 @@
+{
+  "at": "2026-11-01T15:28:38.297Z",
+  "expected": "b2bfe6cc5bd5151d42ad000a153620ec984d7360",
+  "health": {
+    "status": 200,
+    "commit": "b2bfe6cc5bd5151d42ad000a153620ec984d7360",
+    "ok": true,
+    "nodeEnv": "production"
+  },
+  "complete": true,
+  "client": {
+    "asset": "/assets/index-B6J9MBNS.js",
+    "serviceAccountChoice": true,
+    "oauthReturn": true,
+    "clientApprovalCopy": true
+  },
+  "anonymousDenials": [
+    {
+      "provider": "ga4",
+      "status": 401
+    },
+    {
+      "provider": "google-sheets",
+      "status": 401
+    },
+    {
+      "provider": "google-ads",
+      "status": 401
+    }
+  ]
+}

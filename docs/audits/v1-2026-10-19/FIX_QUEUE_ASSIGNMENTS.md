@@ -41,8 +41,9 @@ recipient and no error. No repeat send or runtime correction is required.
 The user now defers Google user-consent setup until verification and confirms
 service-account onboarding for GA4, Google Sheets and Google Ads; CSV remains a
 separate import path. Existing Promo GA4 service-account operation is verified;
-the GA4 alternative entry correction passes 172 focused checks plus TypeScript
-and build locally; deployment pending. The fresh-client approval paths remain open. Verify those paths in one
+the GA4 alternative entry correction is deployed at `b2bfe6cc` with 172 focused
+checks, TypeScript, build, hosted CI and live publication/access checks passing.
+The fresh-client approval paths remain open. Verify those paths in one
 consolidated acceptance check rather than repeat the blocked OAuth check.
 Google Ads service-account acceptance is not proven, and no blanket exclusion is
 implied. The global warning is consistent with five credential-empty historical

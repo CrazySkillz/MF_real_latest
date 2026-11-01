@@ -1,0 +1,87 @@
+{
+  "at": "2026-11-01T15:36:09.451Z",
+  "expected": "b2bfe6cc5bd5151d42ad000a153620ec984d7360",
+  "deployed": "b2bfe6cc5bd5151d42ad000a153620ec984d7360",
+  "healthy": true,
+  "checks": [
+    {
+      "name": "unit-tests",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41321181273/job/124891551287"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Initialize containers",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/checkout@v4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/setup-node@v4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run npm ci --ignore-scripts",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run npx --no-install playwright install --with-deps chromium",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Create isolated notification fixture database",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run npm run check:ga4-kpi-certification",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run npm run test:current-version",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Retained deferred-source evidence (non-blocking)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Run actions/setup-node@v4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Run actions/checkout@v4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Stop containers",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "complete": true
+}

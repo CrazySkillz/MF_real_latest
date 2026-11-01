@@ -1,0 +1,106 @@
+# Minimum launch acceptance — November 1, 2026
+
+**Status: Task 4 in progress; launch approval remains pending.** Tasks 1–3 remain
+complete for their documented minimum scope. This record reconciles existing
+evidence; it does not certify every analytics lifecycle or restart the audit.
+
+## Current release and reused evidence
+
+Live runtime: `0a42aac893b56e471246a75f3a4a0a5423e846e3`.
+Repository HEAD at the check: `d38e9e745c39222154f3e00dd138d081e44ac4f6`.
+The difference from runtime is documentation/local validation only; application
+paths have no tracked modifications. The read-only receipt checks this boundary.
+
+| Boundary | Evidence and limit |
+| --- | --- |
+| Dependency/input exposure | [Task 1](DEPENDENCY_EXPOSURE_2026-11-01.md), [collection correction](REQUEST_COLLECTION_LIMITS_2026-11-01.md), and successful hosted run `41300057713` on the live revision. No repeat UI or full-suite run is justified by this review. |
+| Production identity and new domain | [Task 2](CLERK_CUTOVER_2026-11-01.md#task-2-complete--new-domain-returns-and-exact-cleanup): both user-confirmed account scopes, four callback families, independent preservation/cleanup receipts. |
+| Minimum recovery | [Task 3](MINIMUM_RECOVERY_2026-11-01.md): restored-copy evidence, compatible code/schema baseline and actual saved key authenticating 16/16 encrypted fields. No repeat key prompt or restore. |
+| Current deployment/access | Public health 200 with the exact production SHA; clients and campaigns deny unsigned requests with 401. This is not authenticated whole-app coverage. |
+| Retained campaign refresh | All three current campaigns completed the ordinary November 1 13:00 UTC scheduled work, through October 31, without work-record errors. Earlier morning completions also remain applicable. |
+| Report delivery before suspension | October 30's exact report send has a delivered Mailgun audit and a matching campaign/platform snapshot. October 31 and November 1 failed with Mailgun HTTP 401 `Forbidden`; neither failed send has a sent timestamp or snapshot. |
+| Mailgun recovery | User-triggered exact report test returned HTTP 200 / `delivered`; the independent saved audit confirms success, no error and the exact saved recipient. This provider-recovery blocker is closed; it is not a new natural scheduler run. |
+
+Current metadata receipt:
+[`read-2026-11-01T14-39-31-503Z.json`](validation-2026-11-01-launch/read-2026-11-01T14-39-31-503Z.json).
+The [14:33 pre-send receipt](validation-2026-11-01-launch/read-2026-11-01T14-33-58-052Z.json)
+provides the comparison. Delivery count increased from two to three; failed count
+remained two, and the report's schedule-enabled/status/last-sent fields and
+scheduled send-event records remained unchanged.
+
+## Mailgun restoration: COMPLETE
+
+The user confirmed that their Mailgun account was disabled, then confirmed it
+restored on November 1. This is consistent with the failed sends; no application
+code defect has been established. The pre-send read contained no report attempt
+after that morning's failure, so one actual delivery check was necessary.
+
+The existing Promo GA4 Overview report is
+`670f24df-9886-4332-b1c6-34c16b955331`, campaign
+`b74f98af-ede9-47af-9b19-0720ebb4d2c0`, active, scheduled, with one saved recipient.
+The exact existing `/api/platforms/google_analytics/reports/:reportId/send-test`
+route checks report/campaign access and platform, then uses `sendTestReport`.
+The helper validates the campaign, renders the PDF, creates an email audit,
+sends to the saved recipient and checks Mailgun delivery. It does not change the
+schedule or mark the scheduled run sent. Overview does not enter KPI/Benchmark
+recompute in `preflightGA4ReportKPIConsumers`.
+
+There is no GA4 test-send button in the current UI; do not invent one. The
+[manual helper](validation-2026-11-01-launch/manual-mailgun-check.js) uses the
+existing guarded API and shows a temporary button in the owner's browser. It
+first displays the saved recipient. Only the user's explicit click sends one
+test PDF. Wrong origin/account/report, recipient changes, duplicate clicks and
+repeat attempts are guarded. It emits a redacted result and accepts only actual
+`delivered` status as a pass. A pending or interrupted request must be inspected
+before another send. The recipient/token is not copied into the evidence output.
+
+Validation: `node --check` passes; the
+[offline controls](validation-2026-11-01-launch/check-mailgun-helper.cjs) pass nine
+cases with no network or real email. The user explicitly clicked the send button
+and returned [PASS_MAILGUN_DELIVERY](validation-2026-11-01-launch/user-mailgun-delivery.json)
+at `2026-11-01T14:37:32.213Z`, HTTP 200, `delivered`, one recipient.
+
+Independent READ ONLY verification identifies exact audit
+`c97157ec-614b-4392-ae1b-f7fcc5c90d7c` for the same report and campaign:
+`mailgun-api`, `success=true`, `delivery_status=delivered`, no error, provider
+response present and `matches_saved_recipients=true`. Database timestamp text is
+`2026-11-01 14:37:23.227716` created and `2026-11-01 14:37:29.515` delivered.
+The exact-audit query casts timestamp-without-time-zone columns to text to avoid
+the local PostgreSQL driver's timezone conversion; older aggregate receipt times
+must not be used as absolute UTC chronology. **Mailgun recovery is closed.** No
+repeat send, code deployment or key change is required. This test delivery does
+not constitute a new natural scheduler run or whole-Reports certification.
+
+## Global scheduler warning: bounded disposition
+
+The global 13:00 UTC run ended with five single-campaign refresh failures at
+13:10:30 UTC. All three current campaigns independently have completed work at
+13:07–13:10 UTC. No current eligible recovery work is stranded; the 193 historical
+pending rows have `invalidated:` scope hashes and are excluded by the recovery
+predicate, not missing customer refreshes.
+
+The metadata-only inventory finds exactly five additional active GA4 targets.
+All are historical campaigns with null client IDs, no matching client, owners
+outside the two production identities and no saved GA4 credentials. The existing
+scheduler eligibility utility filters status only, so these remain global-run
+candidates. This is consistent with the five-failure warning; the public error
+does not identify individual failures, so exact per-campaign error attribution
+is not proven. Do not claim global scheduler health is green or change/delete
+these historical records as part of Mailgun recovery. No failure of the three
+current scheduled campaign runs is present in this evidence.
+
+## Remaining launch decision
+
+1. Resolve the already-postponed Google Ads Spend acceptance. It remains offered;
+   postponement was not approval to remove it. The smallest product setup is the
+   current GA4-first journey with Google Ads optional and existing Sheets/CSV
+   Spend alternatives. That recommendation requires no architecture change, but
+   does not replace live acceptance of an offered connector.
+2. Use that result with the applicable evidence above for the Task 4 decision.
+   Do not add a new general audit, recovery drill or repeat provider imports.
+
+All diagnostics use public GETs or verified TLS and explicit READ ONLY database
+transactions ending in rollback. Credential values, report content and recipient
+addresses are omitted. The user-triggered test added the exact delivery audit
+above and sent one PDF. The agent's checks were read-only; no schedules, campaigns,
+source values, application code or provider configuration were changed.

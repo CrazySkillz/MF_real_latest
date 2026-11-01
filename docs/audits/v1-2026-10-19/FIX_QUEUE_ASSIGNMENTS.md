@@ -32,6 +32,17 @@ passes eleven dummy-input checks. No real key was read by the agent, and no Rend
 setting or application code was changed. No Task 3 repeat is required; broader
 disaster-recovery limits remain documented. Task 4's launch decision remains open.
 
+**Task 4 in progress, November 1:** [current launch acceptance](../../fixes/v1-batch-8/LAUNCH_ACCEPTANCE_2026-11-01.md)
+reuses the completed gates and confirms all three current campaigns completed
+their afternoon scheduled work. Mailgun recovery is closed after the user restored
+the account and sent one exact test report: HTTP 200 / delivered, independently
+confirmed in audit `c97157ec-614b-4392-ae1b-f7fcc5c90d7c` with the correct saved
+recipient and no error. No repeat send or runtime correction is required.
+Google Ads Spend remains offered with postponed live acceptance and no approved
+exclusion. The global warning is consistent with five credential-empty historical
+campaigns outside the current clients; exact error attribution remains limited.
+No runtime change, live cleanup or new general audit is part of this review.
+
 **Minimal launch scope is mandatory:** do not turn this historical finding
 inventory into a new task queue. Work must fit the remaining final launch decision and
 identify its concrete launch risk, missing evidence and smallest completion

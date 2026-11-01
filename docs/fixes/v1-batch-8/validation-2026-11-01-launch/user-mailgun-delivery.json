@@ -1,0 +1,10 @@
+{
+  "evidenceSource": "User-returned result from the reviewed manual browser helper",
+  "mailgunRecovery": "PASS_MAILGUN_DELIVERY",
+  "at": "2026-11-01T14:37:32.213Z",
+  "reportId": "670f24df-9886-4332-b1c6-34c16b955331",
+  "campaignId": "b74f98af-ede9-47af-9b19-0720ebb4d2c0",
+  "httpStatus": 200,
+  "deliveryStatus": "delivered",
+  "recipientCount": 1
+}

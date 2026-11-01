@@ -38,8 +38,14 @@ their afternoon scheduled work. Mailgun recovery is closed after the user restor
 the account and sent one exact test report: HTTP 200 / delivered, independently
 confirmed in audit `c97157ec-614b-4392-ae1b-f7fcc5c90d7c` with the correct saved
 recipient and no error. No repeat send or runtime correction is required.
-Google Ads Spend remains offered with postponed live acceptance and no approved
-exclusion. The global warning is consistent with five credential-empty historical
+The user now defers Google user-consent setup until verification and confirms
+service-account onboarding for GA4, Google Sheets and Google Ads; CSV remains a
+separate import path. Existing Promo GA4 service-account operation is verified;
+the GA4 alternative entry correction passes 172 focused checks plus TypeScript
+and build locally; deployment pending. The fresh-client approval paths remain open. Verify those paths in one
+consolidated acceptance check rather than repeat the blocked OAuth check.
+Google Ads service-account acceptance is not proven, and no blanket exclusion is
+implied. The global warning is consistent with five credential-empty historical
 campaigns outside the current clients; exact error attribution remains limited.
 No runtime change, live cleanup or new general audit is part of this review.
 

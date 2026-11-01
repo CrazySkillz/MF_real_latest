@@ -91,13 +91,93 @@ current scheduled campaign runs is present in this evidence.
 
 ## Remaining launch decision
 
-1. Resolve the already-postponed Google Ads Spend acceptance. It remains offered;
-   postponement was not approval to remove it. The smallest product setup is the
-   current GA4-first journey with Google Ads optional and existing Sheets/CSV
-   Spend alternatives. That recommendation requires no architecture change, but
-   does not replace live acceptance of an offered connector.
-2. Use that result with the applicable evidence above for the Task 4 decision.
+1. **November 1 user direction:** Google verification is still pending. Clients
+   will use the alternative setup route until verification; do not keep requiring
+   Google user-consent acceptance as the immediate launch task. The user confirmed
+   service-account setup for GA4, Google Sheets and Google Ads; CSV is a separate
+   import path, not the intended substitute for these connections. This does not
+   authorize removing all Google Ads support or weakening resource permissions.
+2. Verify the chosen alternative's actual new-client journey, then use that
+   result with the applicable evidence above for the Task 4 decision.
    Do not add a new general audit, recovery drill or repeat provider imports.
+
+### Alternative setup: current bounded findings
+
+The [14:51 read-only receipt](validation-2026-11-01-launch/read-2026-11-01T14-51-43-753Z.json)
+confirms Promo uses GA4 `service_account` with a matching database permission.
+Its ordinary afternoon refresh completed. V1 Batch 5 Test and Batch 1 Provider
+Check currently use GA4 `access_token`; the latter's Sheets connection also uses
+`access_token`. No current Google Ads Spend connection exists. Do not represent
+those OAuth passes as proof of fresh service-account setup for every provider.
+
+Code-traced fresh-client limitations:
+
+- Before the correction below, `campaigns.tsx` mounts `IntegratedGA4Auth` without
+  a mode override and its `oauth` default hides the service-account form. The
+  explicit-only form was unreachable from normal creation. OAuth was deliberately
+  made the default in the earlier [onboarding correction](../v1-batch-1/ONBOARDING_IMPACT.md).
+- GA4 shared access requires Google Viewer permission, the property allowlist
+  and an exact owner/client/provider/resource grant. Sharing the property alone
+  does not grant an arbitrary app client access. Missing approval is deliberately
+  rejected. The internal database grant avoids a Render grant entry; it does not
+  automatically approve a fresh client. There is no customer grant-writing API.
+- Sheets shared access similarly requires sharing plus an exact client grant;
+  its conditional UI exists, but the current retained Sheets connection is OAuth.
+- Google Ads shared Spend has a conditional temporary-connection UI and requires
+  its account allowlist, exact client grant, service-account permission, developer
+  token, and compatible account currency/timezone. Real connection/import/refresh
+  acceptance remains unproven for that path.
+
+At the read-only assessment, the component, campaign page, three service-account
+utilities, storage and three focused test files were unchanged from full-suite
+revision `357e950f`. No new grants or imports were made. The UI correction and
+current focused evidence are recorded below. Existing Promo operation is proven within the
+observed scope; efficient fresh-customer alternative onboarding and a general
+"no connection errors" claim are **not established**. The intended alternative is
+now confirmed: service accounts for all three Google sources. Address only the
+concrete missing entry/setup boundaries and verify the fresh-client path for each
+source in one consolidated acceptance check, preserving exact client permissions.
+
+### GA4 onboarding entry correction — locally validated, deployment pending
+
+**Root cause:** the current creation page passes no connection-mode override;
+the component only fetched availability and rendered shared access in explicit
+service-account mode. Backend support alone therefore did not provide a usable
+new-customer entry point.
+
+**Minimal correction:** `client/src/components/IntegratedGA4Auth.tsx` now silently
+reads the existing campaign-guarded availability endpoint and offers an explicit
+`Use service-account access` button. OAuth remains the default and stays usable
+if shared configuration is absent or its status request fails. Switching back is
+explicit, and switching methods is disabled during a connection attempt. Stale
+availability responses are ignored after the campaign changes. The form explains
+both Google Viewer permission and the existing MimoSaaS client approval.
+
+**Traced continuation:** component POST -> existing `ga4-service-account/connect`
+owner/allowlist/client-grant/provider checks -> existing storage connection ->
+`onSuccess` -> `loadWizardGA4Properties` -> `ga4-connection-status` returns only the
+saved service-account property -> existing `selectGA4Property` accepts that exact
+saved property -> existing campaign-scope/Confirm/initial-import path. No route,
+storage, schema, provider utility, import, scheduler or calculation code changed.
+No permissions, connections or campaign data were changed for validation.
+
+**Evidence:** [focused results](validation-2026-11-01-launch/service-account-onboarding-tests.json)
+record 172/172 passing tests in eight files, zero failures/skips. Nine isolated
+Chromium cases execute the real auth component: slow discovery without automatic
+connection, exact property submission and success continuation, permission and
+provider denial without advancement, unavailable/403/503 status with working
+OAuth, stale campaign response rejection, and retained explicit service mode.
+Existing route/access, initial-import, service-account and fetch-credential tests
+also pass. `npm run check` and `npm run build` exit 0; the build retains existing
+Browserslist/chunk warnings. Initial test/build startup hit sandbox `spawn EPERM`;
+the authorized process-capable reruns passed. No runtime workaround was added.
+
+**Limits/remaining work:** these browser cases use synthetic HTTP and prove the
+component boundary, not a complete Google import or fresh-client live acceptance.
+Per-client resource approval and GA4/Ads provider allowlists are still required;
+the button does not create either. Current live Sheets evidence is OAuth, and Ads
+service-account connection/import/refresh remains unproven. Reuse completed
+recovery/Mailgun/domain checks; final launch acceptance remains open.
 
 All diagnostics use public GETs or verified TLS and explicit READ ONLY database
 transactions ending in rollback. Credential values, report content and recipient

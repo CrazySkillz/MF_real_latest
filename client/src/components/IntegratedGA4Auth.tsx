@@ -52,14 +52,18 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
   }, [campaignId, onSuccess, connectionMode]);
 
   useEffect(() => {
-    if (!campaignId || connectionMode !== "service-account") return;
+    let cancelled = false;
     setServiceAccountStatusLoaded(false);
+    setServiceAccountStatus({ enabled: false, email: null });
     setShowServiceAccountFlow(false);
+    setServiceAccountPropertyId("");
+    if (!campaignId) return;
     fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4-service-account/status`, { credentials: "include" })
       .then(async (response) => response.ok ? response.json() : null)
-      .then((data) => setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null }))
-      .catch(() => setServiceAccountStatus({ enabled: false, email: null }))
-      .finally(() => setServiceAccountStatusLoaded(true));
+      .then((data) => { if (!cancelled) setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null }); })
+      .catch(() => { if (!cancelled) setServiceAccountStatus({ enabled: false, email: null }); })
+      .finally(() => { if (!cancelled) setServiceAccountStatusLoaded(true); });
+    return () => { cancelled = true; };
   }, [campaignId, connectionMode]);
 
   useEffect(() => {
@@ -167,13 +171,13 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
           <SiGoogleanalytics className="w-5 h-5 text-orange-500" />
           Connect Google Analytics
         </CardTitle>
-        {connectionMode === "oauth" && (
+        {connectionMode === "oauth" && !showServiceAccountFlow && (
           <CardDescription>Sign in with Google to connect your GA4 property.</CardDescription>
         )}
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {connectionMode === "oauth" && (<>
+        {connectionMode === "oauth" && !showServiceAccountFlow && (<>
         <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -222,7 +226,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
         </div>
         </>)}
 
-        {connectionMode === "service-account" && (!showServiceAccountFlow ? (
+        {(connectionMode === "service-account" || showServiceAccountFlow) && (!showServiceAccountFlow ? (
           <Button
             type="button"
             className="w-full"
@@ -243,6 +247,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               Add {serviceAccountStatus.email} as a Viewer in Google Analytics, then enter the numeric GA4 Property ID.
+              {" "}The property must also be approved for this client by MimoSaaS.
             </p>
             <div className="space-y-2">
               <Label htmlFor="ga4-service-account-property">GA4 Property ID</Label>
@@ -266,6 +271,17 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
             </Button>
           </div>
         ))}
+        {connectionMode === "oauth" && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={isConnecting || isServiceAccountConnecting || !serviceAccountStatusLoaded || !serviceAccountStatus.enabled}
+            onClick={() => setShowServiceAccountFlow((show) => !show)}
+          >
+            {showServiceAccountFlow ? "Use Google sign-in" : "Use service-account access"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

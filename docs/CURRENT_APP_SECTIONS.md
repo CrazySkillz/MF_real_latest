@@ -129,11 +129,14 @@ all selected properties. Accepted imports appear in All Campaigns with their
 status; clicking reopens Confirm. Users may close the wizard and return, retry
 a failed import, or use Back to review configuration/reconnect Google.
 
-The local Batch 1 onboarding correction uses customer Google sign-in at `Auth`.
-Customers authorize their own Google account; normal creation does not require
-per-customer Render resource-grant entries. Existing shared-service-account
-connections retain separate access controls. App-wide Google configuration and
-deployed onboarding acceptance remain pending in the [V1 audit](V1_RELEASE_READINESS.md).
+Google sign-in remains the default at `Auth`. The November 1 correction adds
+`Use service-account access` when the server reports that configuration is
+available, with `Use Google sign-in` to return. This uses the existing property-ID
+form and then the same Configure/Confirm flow. Service-account properties need
+Google Viewer access, the existing allowlist and exact owner/client permission;
+the UI does not grant access. OAuth does not require those shared-resource grants.
+The [current launch assessment](fixes/v1-batch-8/LAUNCH_ACCEPTANCE_2026-11-01.md)
+distinguishes local UI validation from deployment and fresh-client acceptance.
 
 Closing before final Create may clean up only the unsubmitted persisted draft.
 Once Create is accepted, closing preserves the import. The server rejects stale

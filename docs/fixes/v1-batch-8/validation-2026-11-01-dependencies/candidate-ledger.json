@@ -1,15 +1,15 @@
 {
-  "at": "2026-11-01T11:11:46.524Z",
+  "at": "2026-11-01T11:20:20.117Z",
   "runtimeCommit": "0a42aac893b56e471246a75f3a4a0a5423e846e3",
   "sourceLockSha256": "829dfcd0a53c0affb6ee262c76c85ff3bc43700264452ff1f620dd4f0cce4418",
-  "fullSecurityGate": "PARTIAL",
+  "fullSecurityGate": "COMPLETE_FOR_BOUNDED_CURRENT_DEPLOYMENT_REVIEW",
   "projectDependencyInventoryUploaded": false,
   "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md",
   "counts": {
     "matches": 204,
     "packages": 42,
-    "scopedDispositions": 201,
-    "partial": 3,
+    "scopedDispositions": 204,
+    "partial": 0,
     "awaitingDeployment": 0
   },
   "records": [
@@ -1170,8 +1170,8 @@
       "id": "GHSA-2x7j-588g-ccc2",
       "severity": "HIGH",
       "summary": "Nodemailer: Quadratic (O(n²)) time complexity in addressparser allows remote denial of service via a crafted address list",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION",
-      "reason": "Valid flat recipient-list scaling is not eliminated by email syntax validation. Mailgun HTTP bypasses this parser, but active production transport is not established here. Request-size bounds alone are not a complete disposition.",
+      "disposition": "NOT_REACHED_IN_CONFIRMED_MAILGUN_HTTP_DEPLOYMENT",
+      "reason": "On 2026-11-01 the user confirmed production MAILGUN_API_KEY and MAILGUN_DOMAIN present and EMAIL_PROVIDER mailgun or absent. The deployed sendEmail branch uses the Mailgun HTTP helper and returns on success or failure without SMTP fallback. This SMTP condition is not reached; reassess before enabling SMTP or removing the API configuration.",
       "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
@@ -1192,8 +1192,8 @@
       "id": "GHSA-4ffr-jq9g-5ffx",
       "severity": "MODERATE",
       "summary": "Nodemailer: Quadratic backtracking in SMTP AUTH mechanism detection regexes allows pre-auth remote denial of service",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION",
-      "reason": "Requires malicious SMTP peer/pre-auth response; Mailgun HTTP bypasses SMTP. Active production transport and relevant peer boundary have not been established here.",
+      "disposition": "NOT_REACHED_IN_CONFIRMED_MAILGUN_HTTP_DEPLOYMENT",
+      "reason": "On 2026-11-01 the user confirmed production MAILGUN_API_KEY and MAILGUN_DOMAIN present and EMAIL_PROVIDER mailgun or absent. The deployed sendEmail branch uses the Mailgun HTTP helper and returns on success or failure without SMTP fallback. This SMTP condition is not reached; reassess before enabling SMTP or removing the API configuration.",
       "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
@@ -1203,8 +1203,8 @@
       "id": "GHSA-4g23-2xm8-66gc",
       "severity": "MODERATE",
       "summary": "Nodemailer: Quadratic (O(n^2)) SMTP client reply parsing lets a malicious server or MITM cause a pre-auth remote denial of service",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION",
-      "reason": "Requires malicious SMTP peer/pre-auth response; Mailgun HTTP bypasses SMTP. Active production transport and relevant peer boundary have not been established here.",
+      "disposition": "NOT_REACHED_IN_CONFIRMED_MAILGUN_HTTP_DEPLOYMENT",
+      "reason": "On 2026-11-01 the user confirmed production MAILGUN_API_KEY and MAILGUN_DOMAIN present and EMAIL_PROVIDER mailgun or absent. The deployed sendEmail branch uses the Mailgun HTTP helper and returns on success or failure without SMTP fallback. This SMTP condition is not reached; reassess before enabling SMTP or removing the API configuration.",
       "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
@@ -1962,5 +1962,16 @@
       "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     }
   ],
-  "distinctLocationAdvisoryPairs": 201
+  "distinctLocationAdvisoryPairs": 201,
+  "productionTransportEvidence": {
+    "date": "2026-11-01",
+    "method": "User confirmation after manual Render Environment check",
+    "confirmedCondition": "MAILGUN_API_KEY and MAILGUN_DOMAIN both present; EMAIL_PROVIDER mailgun or absent",
+    "userAnswer": "Yes—all three conditions match",
+    "source": "server/services/email-service.ts:getConfiguredProvider/sendEmail/sendViaMailgunAPI",
+    "result": "Mailgun HTTP selected; no SMTP fallback on HTTP failure",
+    "secretValuesCollected": false,
+    "testEmailSent": false,
+    "scope": "Bounded installed-version dependency launch gate only; not whole-app security clearance or delivery proof"
+  }
 }

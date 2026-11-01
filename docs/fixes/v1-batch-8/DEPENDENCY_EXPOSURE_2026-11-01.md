@@ -1,6 +1,7 @@
 # Dependency exposure — bounded launch review
 
-Status: **PARTIAL**, not a whole-app security clearance. The confirmed HTTP
+Status: **COMPLETE for the current deployment's bounded dependency launch gate**,
+not a whole-app security clearance or a claim of zero vulnerable package versions. The confirmed HTTP
 parser correction is deployed as `6e113a0c`; its dedicated record holds tests
 and release evidence. This review does not reopen historical audit items.
 
@@ -53,35 +54,46 @@ These are condition-specific dispositions, not assertions that those libraries
 have no defects. They must be revisited if their inputs, APIs or deployment mode
 change. No future/deferred source is enabled by this review.
 
-## Remaining bounded work
+## Completed bounded gate — November 1
 
-The ledger now holds 201 supported scoped dispositions/mitigations and three
-**PARTIAL** Nodemailer conditions.
-These counts describe advisory candidates and are not three confirmed app defects.
+The ledger now holds 204 supported scoped dispositions/mitigations, zero partial
+conditions and zero awaiting deployment (201 distinct installed-location/advisory
+pairs). These counts describe advisory candidates, not confirmed app defects.
 
 The [shared email recipient correction](EMAIL_RECIPIENT_BOUNDARY_2026-11-01.md)
 now has a confirmed before/fixed application boundary and 80 passing local
 regressions, TypeScript and build. Deployed `9848ef9c` is healthy; hosted CI and
-new-domain public checks pass. It does not close every Nodemailer condition or
-infer the configured live transport.
+new-domain public checks pass. Its syntax guard alone does not close every
+Nodemailer condition; the separate configuration evidence below closes the final three.
 
 The [request collection correction](REQUEST_COLLECTION_LIMITS_2026-11-01.md)
 addresses four existing maximums that Zod v3 did not enforce before typed item
 validation. It changes four route-schema expressions, retains the existing limits
 and accepted values, and passes 258 focused tests, TypeScript and production build.
-Deployed `0a42aac8` passes hosted CI and public new-domain checks. This does not certify unconstrained collections
-or close the other dependency conditions.
+Deployed `0a42aac8` passes hosted CI and public new-domain checks. This does not
+certify unconstrained collections or independently close the other dependency conditions.
 
-- `GHSA-2x7j-588g-ccc2`: a long list of individually valid recipients can still
-  reach quadratic SMTP address-list handling. Syntax validation does not resolve
-  this condition; existing request-size bounds are not a complete disposition.
-- `GHSA-4ffr-jq9g-5ffx` and `GHSA-4g23-2xm8-66gc`: require a malicious SMTP
-  peer/pre-auth response. The active production transport and relevant peer
-  boundary are not established in this record. Mailgun HTTP bypasses all three
-  SMTP conditions, but do not assume that private configuration.
-- The next smallest check is the active email transport against existing
-  configuration/delivery evidence. Do not send a test email, request secrets,
-  repeat the UI journey or upgrade Nodemailer solely because a version matches.
+**Manual production configuration evidence:** on November 1, the user answered
+"Yes—all three conditions match" after checking Render → marketforensics →
+Environment for `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` both present, with
+`EMAIL_PROVIDER` either `mailgun` or absent. This records the confirmed condition,
+not secret values, an independent dashboard inspection or a new delivery test.
+
+The unchanged deployed `server/services/email-service.ts` selects `mailgun` for
+either confirmed provider setting and calls `sendViaMailgunAPI` before SMTP.
+The HTTP helper uses built-in fetch/FormData/URLSearchParams. Both HTTP success
+and failure return directly; failure does not fall through to SMTP. Constructing
+the SMTP transporter does not send a message or start a peer exchange.
+Consequently `GHSA-2x7j-588g-ccc2` (valid address-list scaling),
+`GHSA-4ffr-jq9g-5ffx` (SMTP AUTH response handling), and `GHSA-4g23-2xm8-66gc`
+(SMTP reply reassembly) are not reached in the confirmed deployment.
+
+**Stopping point:** Task 1 has no remaining steps. No code/configuration change,
+test email, repeated UI check or dependency upgrade is required for this closure.
+This is a configuration-specific disposition, not an SMTP fix. Reassess the three
+conditions before enabling SMTP or removing the Mailgun API configuration, and
+revisit other dispositions if their relevant inputs/APIs/deployment mode change.
+
 - Package `dev` flags alone are not reachability evidence. Trace build inputs and
   generated-code effects before excluding a tooling advisory.
 - Do not introduce blanket upgrades. Add another runtime correction only if an

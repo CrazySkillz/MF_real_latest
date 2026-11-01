@@ -7,8 +7,9 @@ This execution order supersedes older dated next-step instructions below and in
 the linked batch records. Reuse completed evidence; do not restart the audit or
 repeat manual checks merely to complete every historical assurance permutation.
 
-**Strict scope limit for every batch:** the four gates below are the active launch
-queue. Add work only for a concrete unresolved launch defect or missing essential
+**Strict scope limit for every batch:** Task 1 is complete; only Tasks 2–4 below
+remain in the active launch queue. Add work only for a concrete unresolved launch
+defect or missing essential
 configuration/security/recovery evidence for an enabled production path. Record
 the specific launch risk, existing evidence and smallest completion check before
 adding it. A historical OPEN label alone is not a reason to start more work.
@@ -22,7 +23,8 @@ are deployed. The parser release `6e113a0c` passed 127 focused tests, TypeScript
 the production build, hosted CI and public deployment checks. Reuse this evidence.
 The [shared email recipient guard](fixes/v1-batch-8/EMAIL_RECIPIENT_BOUNDARY_2026-11-01.md)
 is also deployed as `9848ef9c`, with 80 focused tests, TypeScript/build, hosted CI
-and new-domain public checks passing. It does not close the remaining dependency review.
+and new-domain public checks passing. The bounded dependency review is now complete
+for the current deployment, including the user-confirmed Mailgun HTTP configuration.
 
 The [early rejection of oversized request collections](fixes/v1-batch-8/REQUEST_COLLECTION_LIMITS_2026-11-01.md) is deployed and verified as `0a42aac8`: four route-schema expressions, unchanged maximums and valid values, 258 focused tests, TypeScript/build, hosted CI and public release checks pass. No repeat UI/import validation is required.
 
@@ -31,10 +33,10 @@ the concrete defect or essential evidence gap, why existing evidence is insuffic
 and the smallest pass/fail check. Stop when that boundary is satisfied. Package
 advisory counts and historical OPEN labels do not independently justify changes.
 
-| Remaining order / status | Essential task and existing owner | Smallest completion boundary |
+| Task / status | Essential task and existing owner | Smallest completion boundary |
 | --- | --- | --- |
-| **1. PARTIAL — next** | **Active email transport evidence for the remaining three dependency conditions.** Batch 8 V1-019. | The [bounded exposure review](fixes/v1-batch-8/DEPENDENCY_EXPOSURE_2026-11-01.md) has disposed of the other installed-version candidates and verified the parser, email-address and collection corrections. Establish the actual send branch using existing configuration/delivery evidence, then resolve only the three SMTP conditions if applicable. No test email, secrets request, repeated UI check, zero-advisory target or blanket upgrade. Preserve the advisory-request approval boundary. |
-| **2. PARTIAL — callback acceptance only** | **Provider authorization on the new app domain.** Batch 8 V1-013. | Establish successful authorization for the offered provider paths affected by the changed callback/origin. Saved allowlists alone do not prove success. Reuse shared-path evidence where applicable; stop at the changed authorization boundary. Production sign-in, account switching and ownership transfer are complete. No repeat import/financial drill or unrelated reconnect permutations. |
+| **1. COMPLETE — no steps left** | **Bounded dependency exposure for the current deployment.** Batch 8 V1-019 launch scope. | The [bounded exposure review](fixes/v1-batch-8/DEPENDENCY_EXPOSURE_2026-11-01.md) records all 204 raw candidates with scoped dispositions/mitigations. On November 1 the user confirmed both Mailgun API variables present and EMAIL_PROVIDER either mailgun or absent. Source trace selects HTTP and returns on success or failure without SMTP fallback, disposing of the final three SMTP conditions. No further code change, test email or UI check is required. Reopen only if relevant code/configuration or advisory evidence changes; this is not a whole-app security clearance. |
+| **2. PARTIAL — next; callback acceptance only** | **Provider authorization on the new app domain.** Batch 8 V1-013. | Establish successful authorization for the offered provider paths affected by the changed callback/origin. Saved allowlists alone do not prove success. Reuse shared-path evidence where applicable; stop at the changed authorization boundary. Production sign-in, account switching and ownership transfer are complete. No repeat import/financial drill or unrelated reconnect permutations. |
 | **3. PARTIAL — retained key unverified** | **Minimum recovery and compatible rollback.** Batch 8 V1-016; shared with Batch 1 V1-008. | Reuse the completed database restore and saved-key custody. Establish only missing retained-key usability and compatible prior-revision rollback evidence. Do not repeat the postponed key prompt or call it passed. No repeat database restore, live destructive drill, new hosting purchase or second-computer exercise. |
 | **4. OPEN — final acceptance** | **One consolidated launch decision.** Batches 2–7; Batch 8 V1-010/012/014/016 consumes existing results. | Reconcile existing health, sign-up/sign-in, tenant-isolation, core client → campaign → connected data → figures → report and scheduler evidence against the final release. Execute only checks invalidated by changes or required by a concrete unresolved gap. Resolve Google Ads offered/excluded scope and require acceptance only if offered; do not silently change scope. Reuse unchanged imports, financial comparisons and report/email results. Existing health/log facilities suffice. Stop at the launch decision; no new full-app audit. |
 

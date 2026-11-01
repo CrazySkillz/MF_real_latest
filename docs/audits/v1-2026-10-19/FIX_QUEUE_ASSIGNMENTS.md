@@ -2,8 +2,9 @@
 
 **Current execution order, November 1:** follow the controlling
 [production launch task list](../../V1_RELEASE_READINESS.md#current-production-launch-task-list):
-remaining deployment-relevant dependency exposure (B8 V1-019), affected new-domain
-provider callbacks (V1-013), minimum recovery/rollback (V1-016), then one focused
+Task 1's bounded dependency review is complete for the current deployment (B8
+V1-019 launch scope). Three tasks remain: affected new-domain provider callbacks
+(V1-013), minimum recovery/rollback (V1-016), then one focused
 final acceptance using existing evidence across batches. Production sign-in,
 account migration, all 20 original Batch 1 code corrections and the parser fix
 are deployed; they are not repeat tasks. This supersedes older dated
@@ -11,10 +12,10 @@ next-step instructions. Extra HubSpot reconnect/replay and absent legacy Meta
 positive-path exercises are not in the immediate queue. Google Ads acceptance
 was postponed, not excluded; establish its offered scope before launch.
 
-**Current bounded correction:** [request collection limits](../../fixes/v1-batch-8/REQUEST_COLLECTION_LIMITS_2026-11-01.md) reject oversized inputs before typed-item validation while retaining the four existing maximums and valid-input behavior. The four-line runtime change is deployed as `0a42aac8`; 258 focused tests, TypeScript/build, hosted CI and public release checks pass. The dependency gate now needs only active email-transport evidence for three SMTP conditions. No manual UI/import repeat or test email is added.
+**Task 1 complete, November 1:** [request collection limits](../../fixes/v1-batch-8/REQUEST_COLLECTION_LIMITS_2026-11-01.md) are deployed as `0a42aac8`; 258 focused tests, TypeScript/build, hosted CI and public release checks pass. The user then confirmed both Mailgun API variables present and EMAIL_PROVIDER either mailgun or absent. The traced HTTP send branch returns without SMTP fallback, resolving the final three conditions in the [bounded dependency review](../../fixes/v1-batch-8/DEPENDENCY_EXPOSURE_2026-11-01.md). No Task 1 steps remain for this deployment; no test email, UI repeat or additional runtime change is required. Reopen only if relevant code/configuration or advisory evidence changes. Whole-app launch acceptance remains pending.
 
 **Minimal launch scope is mandatory:** do not turn this historical finding
-inventory into a new task queue. Work must fit one of the four launch gates and
+inventory into a new task queue. Work must fit one of the three remaining launch gates and
 identify its concrete launch risk, missing evidence and smallest completion
 check. Reuse applicable passes; stop when the essential gates pass. Broader
 assurance, modernization and optional hardening remain outside the launch queue.

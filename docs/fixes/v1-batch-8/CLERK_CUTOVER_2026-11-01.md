@@ -214,7 +214,7 @@ confirmation supersedes the earlier uncertainty. All four callback additions are
 recorded. No new provider app, token rotation, import or settings unrelated to the
 callback was requested. Render URL/Clerk keys and live ownership remain unchanged.
 
-## Production token-origin safeguard (local, deployment pending)
+## Production token-origin safeguard
 
 Confirmed cause: `server/index.ts` called `clerkMiddleware()` without
 `authorizedParties`. The installed SDK skips its signed `azp` claim comparison
@@ -269,3 +269,64 @@ has SHA-256 `189ee6bbbeb78e1058e3270ebfa8d1e081f994903cb227ddcbb5f4459ebd68c6`.
 Running the CLI in its default mode against that packet returned
 `PASS_REVIEWED_READ_ONLY_SCOPE`; no production update was attempted.
 The public new-domain check still finds the original development Clerk frontend.
+
+## Safeguard deployment and next environment change
+
+At 04:38 UTC on November 1, anonymous health reports deployed
+`d7e698e4dea2467516978b57b49cfdf67cf80828` healthy. The new-domain compiled
+frontend still identifies `frank-peacock-20.clerk.accounts.dev` in test mode.
+No live owner or environment value changed. At 04:46 UTC, hosted checks passed in
+[run 41273671035](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41273671035),
+including the current-version suite and deferred evidence step. The
+[release receipt](validation-2026-10-31-clerk-csp/release-2026-11-01T04-46-39-137Z.json)
+confirms the deployed revision, health and successful check. The coordinated
+manual environment change can proceed; actual production login remains unverified.
+
+The next manual Render change is one coordinated rebuild: set `APP_BASE_URL`
+to `https://app.mimosaas.app`, the Vite and any explicit backend publishable keys
+to the same production instance, and the matching production secret key.
+The installed Clerk SDK also reads optional `CLERK_JWT_KEY`; if present, its
+old-instance override must be removed when switching so normal verification uses
+the matching production instance. Preserve the current values privately for
+rollback and preserve the token-encryption key and provider settings. Render's
+[Save, rebuild, and deploy](https://render.com/docs/configure-environment-variables)
+is required because the frontend publishable key is compiled into the build.
+This records the prepared next action, not a completed settings change.
+
+## Production deployment and exact ownership transfer completed
+
+The user replied **Live** after the grouped Render environment/rebuild instruction.
+At 08:46 UTC on November 1, the anonymous new-domain check confirmed healthy
+`d7e698e4dea2467516978b57b49cfdf67cf80828` and compiled production Clerk host
+`clerk.mimosaas.app`. CSP includes that exact host, HSTS is present, and unsigned
+client/campaign requests return 401. Private backend key values were not read.
+
+The earlier packet stopped read-only with `Reviewed scope changed`. Comparing
+the newly captured packet proved that mappings, all 12 target rows, all their
+non-owner fields, all outside rows in the four tables, exclusions and external
+website ownership were identical. Only three additional refresh-work records
+were present; prior work hashes were unchanged and no runnable work remained.
+No write was attempted using the stale packet.
+
+The refreshed [exact plan](validation-2026-11-01-clerk-cutover/ownership-plan-2026-11-01T08-46-36-071Z.json)
+has SHA-256 `a6e5a96299655902fa7bda8d6b560f6ef639bd33314b22fca3a98c7fd70ebf30`.
+The guarded transaction then returned **COMMITTED, 12 owner fields**, using the
+two user-supplied production IDs. The immediately subsequent, separate READ ONLY
+check against the post-transfer packet returned `PASS_REVIEWED_READ_ONLY_SCOPE`.
+This verifies the new owners, preserved non-owner/outside records and refresh
+history against the committed boundary. The transfer issues no provider calls
+and updates no provider connection, metric, amount or schedule field.
+
+[Execution record](validation-2026-11-01-clerk-cutover/ownership-execution-2026-11-01.json).
+The durable [rollback packet](validation-2026-11-01-clerk-cutover/ownership-rollback-2026-11-01T08-47-16-148Z.json)
+has SHA-256 `6a259066af0d88b440cee5cafa573a9e46d53910a40b03e6bf0a886f7885cddc`.
+Its `commitAttemptPending` marker intentionally records that it was fsynced before
+COMMIT; the execution result and independent check above establish completion.
+Rollback remains guarded against subsequent changes and requires restoration of
+the original frontend instance first. Do not apply the forward packet again.
+
+The user has been asked for one combined ordinary-production sign-in/account-switch
+check: original account opens ABN / Promo, then second account opens Batch 1
+Validation / Batch 1 Provider Check and does not see ABN. That result is pending.
+Actual new-domain provider consent is also not claimed verified. No optional
+audit or repeated import test has been added to the launch scope.

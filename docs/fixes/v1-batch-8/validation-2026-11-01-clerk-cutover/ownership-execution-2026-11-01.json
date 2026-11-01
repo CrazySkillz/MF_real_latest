@@ -1,0 +1,40 @@
+{
+  "recordedAt": "2026-11-01T08:48:57.487Z",
+  "result": "COMMITTED",
+  "rows": 12,
+  "deployedCommit": "d7e698e4dea2467516978b57b49cfdf67cf80828",
+  "productionFrontend": {
+    "mode": "live",
+    "host": "clerk.mimosaas.app"
+  },
+  "userConfirmedEnvironmentDeploy": "Live",
+  "plan": {
+    "filename": "ownership-plan-2026-11-01T08-46-36-071Z.json",
+    "sha256": "a6e5a96299655902fa7bda8d6b560f6ef639bd33314b22fca3a98c7fd70ebf30"
+  },
+  "rollback": {
+    "filename": "ownership-rollback-2026-11-01T08-47-16-148Z.json",
+    "sha256": "6a259066af0d88b440cee5cafa573a9e46d53910a40b03e6bf0a886f7885cddc"
+  },
+  "independentReadBack": {
+    "result": "PASS_REVIEWED_READ_ONLY_SCOPE",
+    "rows": 12,
+    "databaseWritesAttempted": false
+  },
+  "earlierPlanDrift": {
+    "ownershipOrNonOwnerDataChanged": false,
+    "priorRefreshHistoryChanged": false,
+    "additionalRefreshWorkRows": 3,
+    "runnableWork": 0
+  },
+  "publicChecks": {
+    "health": 200,
+    "healthy": true,
+    "anonymousClients": 401,
+    "anonymousCampaigns": 401,
+    "productionClerkCsp": true,
+    "hsts": true
+  },
+  "ordinaryProductionSignIn": "awaiting user check",
+  "providerConsentOnNewDomain": "not yet verified"
+}

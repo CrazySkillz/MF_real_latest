@@ -18,7 +18,7 @@ hardening and broader certification stay outside this launch queue.
 
 | Order / status | Essential task and existing owner | Completion boundary |
 | --- | --- | --- |
-| **1. IN PROGRESS — OPEN** | **Production sign-in on the launch domain.** Batch 8 V1-013; Batch 2 consumes the account/onboarding result. | Production Clerk works on the selected HTTPS launch domain with matching frontend/backend keys, required origins/CSP and provider callback URLs. Verify existing account ownership before the key switch and affected sign-in/callback behavior afterward. Stop when that configuration works; no authentication redesign or unrelated domain work. Domain setup is complete as recorded below; the production-key/account cutover remains. |
+| **1. IN PROGRESS — OPEN** | **Production sign-in on the launch domain.** Batch 8 V1-013; Batch 2 consumes the account/onboarding result. | Production Clerk works on the selected HTTPS launch domain with matching frontend/backend keys, required origins/CSP and provider callback URLs. Verify existing account ownership before the key switch and affected sign-in/callback behavior afterward. Stop when that configuration works; no authentication redesign or unrelated domain work. Domain setup, production deployment and the verified 12-field ownership transfer are complete; ordinary sign-in/account switching and affected callback acceptance remain. |
 | **2. OPEN — assessment missing** | **Security exposure relevant to this deployment.** Batch 8 V1-019. | Assess the installed dependencies used by the deployed app or release process, then resolve confirmed release-blocking exposure with minimal compatible fixes and relevant tests. Stop when those risks have a supported disposition; do not pursue a zero-advisory count, unrelated development tooling or blanket upgrades. Historical all-dependency counts are not proof of production exposure. Preserve the advisory-request approval boundary. |
 | **3. PARTIAL** | **Usable backup/key and a rollback path.** Batch 8 V1-016, shared dependency of Batch 1 V1-008. | Reuse the completed database restore and saved-key custody; establish only the missing evidence that the retained recovery key works and a compatible prior app revision can be restored. Stop at that minimum recovery boundary. No repeat database restore, live destructive drill, new hosting purchase or second-computer exercise. Do not repeat the postponed key prompt; actual key usability remains unverified until evidenced. |
 | **4. OPEN — after final configuration** | **One consolidated final launch check.** Batches 2–7; Batch 8 V1-010/012/014/016 consumes existing results. | Confirm the final deployed revision is healthy, sign-up/sign-in and tenant isolation work, and the core client → campaign → connected data → figures → report journey and scheduled jobs have applicable passing evidence. Re-run only checks affected by final code/domain/configuration changes or a concrete failure; reuse unchanged provider/import, financial, report and email-receipt results. Existing health/log facilities suffice if they expose failures. Stop when essential gates pass; record the launch decision without expanding into a new full-app audit. |
@@ -46,19 +46,26 @@ are unused in the app; no runnable unfinished work was present for these campaig
 Fourteen isolated PostgreSQL checks pass for the transfer, exact rollback, account
 separation, preserved non-owner data, failure handling and subsequent scheduler
 ownership. Historical unparented campaigns and the separate website remain excluded.
-No live ownership migration, Render key switch or runtime change has occurred.
+No live ownership migration or Render key switch has occurred.
 The user confirmed Render's `APP_BASE_URL` still points to the existing onrender
 address, with no Shopify redirect override or environment resource grants.
 The user confirmed saving the new shared GA4/Sheets Google callback and the Shopify
 callback (the latter also shown with its retained old URL in a screenshot).
 HubSpot/Salesforce saves are also user-confirmed, including the final explicit
 HubSpot save after navigation guidance. All four additions are recorded. The
-production-only signed-token origin check now passes 60 focused local checks;
-its deployment is pending. The exact transfer CLI passes nine additional local
+production-only signed-token origin check passes 60 focused local checks and is
+deployed healthy as `d7e698e4`; hosted run 41273671035 passed on November 1.
+The exact transfer CLI passes nine additional local
 boundary checks and an enforced read-only live scope check (12 rows, no writes).
-Next: deploy that minimal safeguard, then coordinate the URL/matching-key deployment
-and reviewed ownership transfer. Leave old callback entries in place during the
-switch; a saved allowlist entry is not yet a successful new-domain consent test.
+**November 1, 08:47 UTC cutover:** the user confirmed the Render rebuild Live;
+public checks show production Clerk `clerk.mimosaas.app` on healthy `d7e698e4`,
+the required CSP origin and unsigned API denial. The guarded 12-field owner
+transfer committed and a separate READ ONLY comparison passed. All other fields
+in the affected tables and recorded refresh history matched the reviewed state.
+The exact plan, execution result and rollback packet are linked in the cutover
+record. Ordinary production sign-in/account switching is now awaiting one combined
+user check. Leave old callback entries in place; saved allowlists do not yet prove
+new-domain provider consent. No additional import drill is required.
 
 [Earlier public production-entry observation](fixes/v1-batch-8/validation-2026-10-31-launch/production-entry-read.json):
 the Render app was healthy on `357e950fcf03d02c93465cd602eda119f08cf7f6` at

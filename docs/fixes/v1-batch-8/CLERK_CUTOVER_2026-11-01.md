@@ -325,8 +325,11 @@ COMMIT; the execution result and independent check above establish completion.
 Rollback remains guarded against subsequent changes and requires restoration of
 the original frontend instance first. Do not apply the forward packet again.
 
-The user has been asked for one combined ordinary-production sign-in/account-switch
-check: original account opens ABN / Promo, then second account opens Batch 1
-Validation / Batch 1 Provider Check and does not see ABN. That result is pending.
+The user replied **Both pass** to the combined ordinary-production sign-in and
+account-switch check: the original account opens ABN / Promo; after sign-out,
+the second account opens Batch 1 Validation / Batch 1 Provider Check in the same
+browser and ABN is absent. This confirms ordinary production authentication,
+the intended visible ownership and account-switch cache separation for those
+accounts. It does not repeat every foreign mutation test.
 Actual new-domain provider consent is also not claimed verified. No optional
 audit or repeated import test has been added to the launch scope.

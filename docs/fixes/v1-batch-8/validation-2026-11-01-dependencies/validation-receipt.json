@@ -1,0 +1,93 @@
+{
+  "at": "2026-11-01T09:43:14.290Z",
+  "status": "PASS_LOCAL_HTTP_PARSER_CORRECTION",
+  "projectDependencyInventoryUploaded": false,
+  "upstreamDataset": {
+    "at": "2026-11-01T09:09:35.766Z",
+    "url": "https://osv-vulnerabilities.storage.googleapis.com/npm/all.zip",
+    "status": 200,
+    "bytes": 219697992,
+    "lastModified": "Sun, 01 Nov 2026 08:33:39 GMT",
+    "sha256": "1b6e2af7b66b05bb56b4e0994477c17f3bb1ca4dd544e7361775cc39d67dac88",
+    "projectDataSent": false
+  },
+  "installed": [
+    {
+      "name": "express",
+      "version": "4.22.3"
+    },
+    {
+      "name": "body-parser",
+      "version": "1.20.9"
+    },
+    {
+      "name": "multer",
+      "version": "2.5.0"
+    },
+    {
+      "name": "qs",
+      "version": "6.16.2"
+    },
+    {
+      "name": "path-to-regexp",
+      "version": "0.1.13"
+    }
+  ],
+  "lockSha256": "829dfcd0a53c0affb6ee262c76c85ff3bc43700264452ff1f620dd4f0cce4418",
+  "changes": [
+    "Compatible Express and Multer updates with their required dependency tree",
+    "Bound multipart field index and depth in both existing configurations",
+    "Disable automatic npm audit uploads"
+  ],
+  "validation": {
+    "tests": 127,
+    "passed": 127,
+    "failed": 0,
+    "files": [
+      {
+        "name": "clerk-production-origin.test.ts",
+        "passed": 12
+      },
+      {
+        "name": "ga4-insights-auth-scope-regression.test.ts",
+        "passed": 16
+      },
+      {
+        "name": "request-parser-security.test.ts",
+        "passed": 19
+      },
+      {
+        "name": "security-headers-regression.test.ts",
+        "passed": 18
+      },
+      {
+        "name": "v1-batch4-csv-input-contract.test.ts",
+        "passed": 24
+      },
+      {
+        "name": "v1-batch4-custom-import.test.ts",
+        "passed": 35
+      },
+      {
+        "name": "v1-batch4-import-rate-limit.test.ts",
+        "passed": 3
+      }
+    ],
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "network": "Malformed HTTP fixtures use disposable loopback-only processes; no production requests"
+  },
+  "advisoryComparison": {
+    "beforeVersionMatches": 221,
+    "afterVersionMatches": 204,
+    "remainingTargetMatches": 0,
+    "unsupportedRanges": 0,
+    "otherMatches": "Not yet fully dispositioned; not proof of exploitation"
+  },
+  "deployment": "Pending CI and exact-revision public health verification",
+  "remainingLaunchGates": [
+    "Other dependency reachability dispositions",
+    "Affected new-domain provider callbacks",
+    "Previously postponed retained recovery-key proof and final acceptance"
+  ]
+}

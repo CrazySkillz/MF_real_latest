@@ -35,6 +35,6 @@
     "productionClerkCsp": true,
     "hsts": true
   },
-  "ordinaryProductionSignIn": "awaiting user check",
+  "ordinaryProductionSignIn": "User confirmed Both pass: original account opens ABN/Promo; after sign-out, second account opens Batch 1 Validation/Batch 1 Provider Check in the same browser with ABN absent",
   "providerConsentOnNewDomain": "not yet verified"
 }

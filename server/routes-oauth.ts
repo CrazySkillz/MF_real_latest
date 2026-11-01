@@ -799,6 +799,8 @@ const upload = multer({
     fields: 40,
     parts: 45,
     fieldSize: 128 * 1024,
+    // Multer 2.5 options are not yet declared by @types/multer.
+    ...{ fieldNestingDepth: 10, fieldArrayIndexLimit: 1000 },
   },
   fileFilter: (req, file, cb) => {
     if (isSupportedCustomIntegrationFile(file.originalname, file.mimetype)) {
@@ -1554,7 +1556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   const uploadCsv = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    limits: { fileSize: 10 * 1024 * 1024, ...{ fieldNestingDepth: 10, fieldArrayIndexLimit: 1000 } }, // 10MB
     fileFilter: (_req, file, cb) => {
       const ok =
         file.mimetype === "text/csv" ||

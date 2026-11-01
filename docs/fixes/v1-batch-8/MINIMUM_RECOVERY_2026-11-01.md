@@ -1,7 +1,7 @@
 # Task 3: minimum recovery and compatible rollback
 
-**Status: PARTIAL — compatibility review complete; retained application-key
-retrieval/decryption remains unverified.** This is the minimum launch recovery
+**Status: COMPLETE for minimum launch scope — compatibility and actual saved-key
+retrieval/decryption pass.** This is the minimum launch recovery
 review, not a full disaster-recovery certification. No runtime fix was required.
 No database, secret store, provider account or private hosting dashboard was
 accessed; no deploy, restore, key change or live write was performed.
@@ -17,7 +17,7 @@ and its [checker](validation-2026-11-01-recovery/check-evidence.cjs) establish:
 | Protected backup copy | Existing authenticated archive recovery is proven under the same Windows profile. Its DPAPI-protected archive key is distinct from the application's provider-token encryption key. Off-machine/profile-loss recovery is not claimed. |
 | Current runtime | Anonymous `/api/health` returns 200, production mode and `0a42aac893b56e471246a75f3a4a0a5423e846e3`. Later commits change documentation only. Existing 258 focused checks, type/build results and hosted CI are reused; recorded source hashes match exactly. |
 | Prior revision compatibility | `9848ef9c997f23a3dac558080f41a6c5b09e05f1` has identical Git objects for startup, storage, token vault, all shared contracts, all migrations, client, package/lock files and Render configuration. Both revisions have successful deployment/CI receipts. The only runtime difference is four request-array validation expressions; no database down-migration or data conversion is required. |
-| Application-key custody | User confirmed a separate recovery copy on October 29. Actual retrieval and decryption with that retained copy remain unverified. No prompt was repeated and no running/local key was substituted as proof of the saved copy. |
+| Application-key custody | The actual saved copy authenticated all 16 populated fields in seven archived containers at 12:51:54 UTC on November 1. One intentionally empty container is not counted as authentication evidence. Earlier hidden-input control characters were resolved using right-click Paste. No running/local key was substituted as proof of the saved copy. [Actual redacted result](../v1-batch-1/validation-2026-10-31-remaining/saved-key-recovery-2026-11-01T12-51-54-212Z.json). |
 
 The first checker attempt stopped locally because it normalized CRLF before
 comparing hashes originally recorded from raw bytes. Comparing the original
@@ -63,17 +63,24 @@ For a future incident, the operator procedure is:
    Resume automatic deployment after the offending code/configuration is corrected.
 
 A hosted rollback drill, future artifact retention, rebuilt-host recovery and
-independent key recovery are not claimed by the local comparison. No live drill,
+independent-machine key recovery are not claimed by the local comparison. No live drill,
 hosting purchase, second computer or repeated database restoration is added to
 the immediate queue. The minimum code/schema compatibility evidence is now
-recorded; the existing saved-key gap is the remaining Task 3 dependency.
+recorded, and the actual saved-copy check below completes the final Task 3 dependency.
 
-## Remaining boundary
+## Saved-key completion and remaining scope limits
 
-The [prepared saved-key check](../v1-batch-1/SAVED_KEY_CHECK_2026-10-31.md) remains
-postponed under the user's direction. Its synthetic tests and running-provider
-successes cannot prove that the separate recovery copy is usable. Do not report
-Task 3 fully passed, repeat the prompt, search private files for the key, or treat
-this documentation update as a waiver. Carry the gap into the consolidated
-Task 4 launch decision. That review can reuse all completed evidence without
-reopening Tasks 1–2 or adding speculative code changes.
+The user completed the [offline saved-key check](../v1-batch-1/SAVED_KEY_CHECK_2026-10-31.md).
+The final result authenticates all sixteen fields from the unchanged, hash-verified
+archive using the retained recovery copy. The missing-console-output correction
+passes eleven synthetic controls; a failed attempt's boolean diagnostic identified
+control characters in the hidden input. Right-click Paste resolved the failure.
+No key was read by the agent, normalized to force a pass, rotated or saved by the helper.
+
+No Task 3 steps remain for the minimum launch scope. The pass covers these archived
+credentials, not current provider validity, every historical credential, a rebuilt
+host, independent-machine recovery or a full disaster-recovery exercise. The
+October 29 snapshot still predates the production ownership cutover; the incident
+procedure above preserves newer live writes. Task 4's consolidated launch decision
+remains open and must reuse the completed evidence without reopening Tasks 1–3
+or adding speculative code changes. Broader formal finding counts are unchanged.

@@ -1,0 +1,24 @@
+{
+  "result": "KEY_NOT_VERIFIED",
+  "containers": 7,
+  "encryptedFields": 16,
+  "authenticatedFields": 0,
+  "failedFields": 16,
+  "emptyContainers": 1,
+  "inputChecks": {
+    "containsControlCharacters": true,
+    "containsAssignment": false,
+    "containsCommand": false,
+    "hasOuterQuotes": false
+  },
+  "at": "2026-11-01T12:50:09.817Z",
+  "archiveSha256": "aeadd0ca9ff0caaa81960c00f5a81aa8739671e8f72f8ea74f3d6bc2ca8a3ae9",
+  "vaultRevisionSha256": "ffd53cd965ca441262fbf27cf9c45479e546a3038ea80581230ceb731fab0cfc",
+  "databaseAccess": false,
+  "providerCalls": 0,
+  "applicationStartup": false,
+  "secretValuesEmitted": false,
+  "keyPersisted": false,
+  "sourceModified": false,
+  "scope": "Archived credentials of Promo and V1 Batch 5 Test only. No provider validity, key rotation, independently rebuilt hosted application or full disaster recovery is claimed."
+}

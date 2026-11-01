@@ -1,0 +1,55 @@
+{
+  "result": "PASS_HELPER_OUTPUT_CONTROLS",
+  "at": "2026-11-01T12:47:15.446Z",
+  "checks": [
+    {
+      "check": "base64: correct synthetic input and visible redacted result",
+      "passed": true
+    },
+    {
+      "check": "base64: wrong synthetic input and visible redacted result",
+      "passed": true
+    },
+    {
+      "check": "hex: correct synthetic input and visible redacted result",
+      "passed": true
+    },
+    {
+      "check": "hex: wrong synthetic input and visible redacted result",
+      "passed": true
+    },
+    {
+      "check": "text: correct synthetic input and visible redacted result",
+      "passed": true
+    },
+    {
+      "check": "text: wrong synthetic input and visible redacted result",
+      "passed": true
+    },
+    {
+      "check": "reports control character without printing input",
+      "passed": true
+    },
+    {
+      "check": "reports assignment without printing input",
+      "passed": true
+    },
+    {
+      "check": "reports copied command without printing input",
+      "passed": true
+    },
+    {
+      "check": "reports outer quotes without printing input",
+      "passed": true
+    },
+    {
+      "check": "ordinary synthetic key has no paste-format flags",
+      "passed": true
+    }
+  ],
+  "syntheticKeysOnly": true,
+  "realKeyRead": false,
+  "databaseAccess": false,
+  "providerCalls": 0,
+  "applicationSourceChanged": false
+}

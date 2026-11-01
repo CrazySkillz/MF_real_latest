@@ -34,6 +34,14 @@ function verify(rows, key) {
   const encrypted = groups.reduce((sum, g) => sum + g.encryptedFields, 0);
   return { result: encrypted > 0 && failed === 0 && authenticated === encrypted ? 'PASS_SAVED_KEY_RECOVERY' : 'KEY_NOT_VERIFIED', containers: rows.length, encryptedFields: encrypted, authenticatedFields: authenticated, failedFields: failed, emptyContainers: groups.filter(g => !g.encryptedFields).length };
 }
+function inputChecks(key) {
+  return {
+    containsControlCharacters: /[\u0000-\u001f\u007f]/.test(key),
+    containsAssignment: /^\s*(?:\$env:)?TOKEN_ENCRYPTION_KEY\s*=/i.test(key),
+    containsCommand: /check-saved-key\.ps1|verify-saved-key\.cjs|^\s*&\s*['"]/i.test(key),
+    hasOuterQuotes: /^\s*["'\u201c\u201d].*["'\u201c\u201d]\s*$/s.test(key),
+  };
+}
 function readArchive() {
   const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => /^(PATH|SYSTEMROOT|WINDIR|TEMP|TMP|USERPROFILE|LOCALAPPDATA|APPDATA|COMSPEC|PATHEXT)$/i.test(k)));
   const child = spawnSync('python', [path.join(__dirname, 'read-backup-key-containers.py'), '--private-pipe'], { cwd: root, env: clean, windowsHide: true, encoding: 'utf8', timeout: 180000, maxBuffer: 128 * 1024 });
@@ -54,6 +62,7 @@ async function main() {
     }
     const data = readArchive(), groups = shape(data.rows);
     receipt = mode === '--preflight' ? { result: 'PASS_BACKUP_KEY_PREFLIGHT', containers: data.rows.length, encryptedFields: groups.reduce((s, g) => s + g.encryptedFields, 0), emptyContainers: groups.filter(g => !g.encryptedFields).length } : verify(data.rows, key);
+    if (mode === '--verify' && receipt.result !== 'PASS_SAVED_KEY_RECOVERY') receipt.inputChecks = inputChecks(key);
     key = ''; data.rows = [];
     Object.assign(receipt, { at: new Date().toISOString(), archiveSha256: data.archiveSha256, vaultRevisionSha256: vaultHash, databaseAccess: false, providerCalls: 0, applicationStartup: false, secretValuesEmitted: false, keyPersisted: false, sourceModified: false, scope: 'Archived credentials of Promo and V1 Batch 5 Test only. No provider validity, key rotation, independently rebuilt hosted application or full disaster recovery is claimed.' });
   } catch { receipt = { result: 'NOT_VERIFIED', code: 'LOCAL_KEY_CHECK_FAILED', secretValuesEmitted: false, keyPersisted: false }; }
@@ -62,5 +71,5 @@ async function main() {
   console.log(JSON.stringify(receipt, null, 2));
   if (!receipt.result.startsWith('PASS_')) process.exitCode = 1;
 }
-module.exports = { verify, vault, shape };
+module.exports = { verify, vault, shape, inputChecks };
 if (require.main === module) main();

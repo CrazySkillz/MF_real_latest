@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $taskNode = (Get-Command node -ErrorAction Stop).Source
 $taskScript = Join-Path $PSScriptRoot 'verify-saved-key.cjs'
-$taskSecureKey = Read-Host 'Paste the TOKEN_ENCRYPTION_KEY from your saved recovery copy (hidden), then press Enter' -AsSecureString
+$taskSecureKey = Read-Host 'Right-click to paste your saved TOKEN_ENCRYPTION_KEY (hidden; do not use Ctrl+V), then press Enter' -AsSecureString
 $taskPointer = [IntPtr]::Zero
 $taskProcess = $null
 $taskKeyBytes = $null
@@ -13,7 +13,9 @@ try {
   $taskInfo.CreateNoWindow = $true
   $taskInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
   $taskInfo.RedirectStandardInput = $true
+  $taskInfo.RedirectStandardOutput = $true
   $taskProcess = [System.Diagnostics.Process]::Start($taskInfo)
+  $taskOutput = $taskProcess.StandardOutput.ReadToEndAsync()
   $taskPointer = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($taskSecureKey)
   $taskKeyBytes = [System.Text.Encoding]::UTF8.GetBytes([System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($taskPointer))
   $taskProcess.StandardInput.BaseStream.Write($taskKeyBytes, 0, $taskKeyBytes.Length)
@@ -24,6 +26,7 @@ try {
   $taskPointer = [IntPtr]::Zero
   $taskSecureKey.Dispose()
   $taskProcess.WaitForExit()
+  Write-Output $taskOutput.GetAwaiter().GetResult()
 } finally {
   if ($null -ne $taskKeyBytes) { [Array]::Clear($taskKeyBytes, 0, $taskKeyBytes.Length) }
   if ($taskPointer -ne [IntPtr]::Zero) { [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($taskPointer) }

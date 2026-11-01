@@ -2,10 +2,10 @@
 
 **Current execution order, November 1:** follow the controlling
 [production launch task list](../../V1_RELEASE_READINESS.md#current-production-launch-task-list):
-Tasks 1–2 are complete for the current deployment: bounded dependency review (B8
-V1-019 launch scope) and affected new-domain provider callbacks (V1-013).
-Two tasks remain: minimum recovery/rollback (V1-016), then one focused
-final acceptance using existing evidence across batches. Production sign-in,
+Tasks 1–3 are complete for the current deployment: bounded dependency review (B8
+V1-019 launch scope), affected new-domain provider callbacks (V1-013), and minimum
+recovery/rollback (V1-016). One task remains: focused final acceptance using
+existing evidence across batches. Production sign-in,
 account migration, all 20 original Batch 1 code corrections and the parser fix
 are deployed; they are not repeat tasks. This supersedes older dated
 next-step instructions. Extra HubSpot reconnect/replay and absent legacy Meta
@@ -22,15 +22,18 @@ connections were removed with independent verification; the renewed Shopify
 connection remains on the existing test campaign. No runtime deployment or
 repeat provider/import check is required for this unchanged configuration.
 
-**Task 3 progress, November 1:** [minimum recovery review](../../fixes/v1-batch-8/MINIMUM_RECOVERY_2026-11-01.md)
+**Task 3 complete for minimum launch scope, November 1:** [minimum recovery review](../../fixes/v1-batch-8/MINIMUM_RECOVERY_2026-11-01.md)
 reuses the verified 71-table restore, checks current/prior code-schema compatibility,
 and records the healthy current revision as the future recovery baseline. No live
-restore, rollback, key access or runtime change occurred. Retained application-key
-retrieval/decryption is still unverified; the postponed prompt is not repeated.
-Task 3 remains partial and Task 4's consolidated launch decision remains open.
+restore, rollback or runtime change occurred. Actual saved-key verification now
+passes all 16 encrypted fields with zero failures. A hidden-input control-character
+problem was resolved using right-click Paste; the helper's result-output correction
+passes eleven dummy-input checks. No real key was read by the agent, and no Render
+setting or application code was changed. No Task 3 repeat is required; broader
+disaster-recovery limits remain documented. Task 4's launch decision remains open.
 
 **Minimal launch scope is mandatory:** do not turn this historical finding
-inventory into a new task queue. Work must fit one of the two remaining launch gates and
+inventory into a new task queue. Work must fit the remaining final launch decision and
 identify its concrete launch risk, missing evidence and smallest completion
 check. Reuse applicable passes; stop when the essential gates pass. Broader
 assurance, modernization and optional hardening remain outside the launch queue.

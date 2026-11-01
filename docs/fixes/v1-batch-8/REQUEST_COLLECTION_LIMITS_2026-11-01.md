@@ -1,6 +1,6 @@
 # Request collection limits — early typed-validation boundary
 
-Status: locally validated; deployment verification pending. This is a narrow
+Status: **DEPLOYED AND VERIFIED** at `0a42aac893b56e471246a75f3a4a0a5423e846e3`. This is a narrow
 availability correction, not whole-app production certification.
 
 ## Confirmed cause and smallest correction
@@ -66,7 +66,17 @@ the same maximums; no data repair or automatic truncation is introduced.
 Manual UI validation, repeat imports and test emails are unnecessary for this
 server-side rejection boundary. Existing manual valid-source evidence remains
 applicable. No malformed requests are sent to the live service. Hosted CI and
-anonymous public release checks are the deployment gate.
+anonymous public release checks are the deployment gate; both pass.
+
+Release evidence at 11:10 UTC on November 1:
+
+- [Hosted CI](https://github.com/CrazySkillz/MF_real_latest/actions/runs/41300057713)
+  passed every step, including current-version and retained deferred-source checks.
+- `app.mimosaas.app` reports the exact commit and healthy status. Root responds
+  200; anonymous clients/campaigns requests return 401. Clerk CSP and HSTS remain.
+- `collection-validation-receipt.json`, `collection-release-ci.json` and
+  `collection-public-release.json` retain the bounded release evidence beside
+  the focused test results. No manual UI exercise is required.
 
 ## Scope limits and rollback
 

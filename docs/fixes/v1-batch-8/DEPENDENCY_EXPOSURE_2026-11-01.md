@@ -9,7 +9,8 @@ and release evidence. This review does not reopen historical audit items.
 The public OSV npm dataset was downloaded on November 1 and compared locally to
 the exact lockfile. No dependency-inventory upload or npm audit was performed.
 The initial comparison found 221 installed-location/advisory matches; the parser
-correction leaves 204. Duplicate installed locations can share one advisory.
+correction leaves 204 raw matches (201 distinct installed-location/advisory pairs).
+Duplicate installed locations or affected-range entries can share one advisory.
 These are version candidates, not a count of exploitable application defects.
 
 The local `validation-2026-11-01-dependencies/` directory retains the full public
@@ -43,6 +44,10 @@ ledger preserves every remaining match and the scope of its current disposition.
 | lodash | Only Recharts depends on this package. Its `omit` calls use the fixed keys `width` and `children`; no `unset` or `template` call occurs there. Application `.omit()` calls belong to Zod schemas. No customer-controlled Lodash path or template-import object reaches the affected methods. |
 | d3-color | The vulnerable nested copies belong to D3 zoom/transition; there is no application import or customer-supplied color parser. `InteractiveWorldMap.tsx` uses fixed hex color ranges/styles and numeric metrics; the directly resolved d3-color is already 3.1.0. No customer CSS/color configuration enters these calls. |
 | form-data | Runtime app callers of Axios send fixed-shape JSON or URLSearchParams, never npm form-data multipart with customer field names/filenames. Other installed references are type declarations. Mailgun attachments use Node's built-in FormData/Blob, not this package. |
+| Axios | The only application imports are `googleAdsClient.ts`, `linkedinClient.ts` and `services/meta-graph-api.ts`. Their explicit get/post/create calls use the Node HTTP adapter, fixed HTTPS provider origins, JSON/URLSearchParams and application-built parameter structures. No browser XSRF, fetch adapter, streamed upload/response, FormData-to-JSON, custom URL encoder or user-supplied top-level config is used. Scalar IDs are path/query values, not a forwarded request configuration; protocol-relative initial paths fail Node's URL construction. The remaining read-side prototype conditions require a separate pollution primitive not established in this trace. This is a scoped disposition, not proof that arbitrary same-process prototype pollution or compromised providers are safe. Exact per-advisory reasons are in the ledger. |
+| follow-redirects | Only the Axios consumer is present. Google Ads does use custom credential headers, but initial URLs belong to fixed HTTPS providers and no attacker-controlled provider redirect is established. This does not prove that an arbitrary cross-domain redirect would strip every custom header. Reopen if caller-controlled destinations or a provider redirect is introduced. |
+| js-cookie | Installed only through `@clerk/shared`. Its cookie helper imports the package, but the installed Clerk React/Express/backend entrypoints and app source do not call/import that helper; the built app assets contain neither the helper nor this package. No customer JSON cookie attributes are passed to it. The hosted Clerk JavaScript service is outside this installed-lockfile disposition; existing production sign-in evidence remains applicable. |
+| Nodemailer, supported input/option dispositions | The deployed shared recipient guard accepts plain ASCII email strings, excluding the affected group/comment/quoted/free-text/Unicode-domain inputs. Report arrays are schema-validated strings and alerts use text recipients; SMTP receives normalized text, not nested structured addresses. Explicit message/transport fields exclude raw messages, List headers, DKIM, JSON transport, legacy content resolution, OAuth2 token fetching, custom envelope size and a customer-controlled EHLO name. Attachments remain application-generated buffers. The single operator-configured transport does not expose per-tenant TLS servername settings. Three remaining SMTP conditions are listed below. |
 
 These are condition-specific dispositions, not assertions that those libraries
 have no defects. They must be revisited if their inputs, APIs or deployment mode
@@ -50,9 +55,9 @@ change. No future/deferred source is enabled by this review.
 
 ## Remaining bounded work
 
-The ledger marks candidates not fully traced as **PARTIAL**: Axios,
-follow-redirects, Nodemailer, Zod constrained collections and js-cookie. Initial
-code reads are evidence to guide the next check, not sufficient to close them.
+The ledger now holds 201 supported scoped dispositions/mitigations and three
+**PARTIAL** Nodemailer conditions.
+These counts describe advisory candidates and are not three confirmed app defects.
 
 The [shared email recipient correction](EMAIL_RECIPIENT_BOUNDARY_2026-11-01.md)
 now has a confirmed before/fixed application boundary and 80 passing local
@@ -64,13 +69,19 @@ The [request collection correction](REQUEST_COLLECTION_LIMITS_2026-11-01.md)
 addresses four existing maximums that Zod v3 did not enforce before typed item
 validation. It changes four route-schema expressions, retains the existing limits
 and accepted values, and passes 258 focused tests, TypeScript and production build.
-Deployment verification is pending. This does not certify unconstrained collections
+Deployed `0a42aac8` passes hosted CI and public new-domain checks. This does not certify unconstrained collections
 or close the other dependency conditions.
 
-- Axios constructors use fixed provider hosts and application-built config; the
-  complete advisories/input conditions still need a supported disposition.
-- Email service has a Mailgun HTTP branch and an SMTP branch. Do not infer active
-  production transport or universal recipient validation from one caller.
+- `GHSA-2x7j-588g-ccc2`: a long list of individually valid recipients can still
+  reach quadratic SMTP address-list handling. Syntax validation does not resolve
+  this condition; existing request-size bounds are not a complete disposition.
+- `GHSA-4ffr-jq9g-5ffx` and `GHSA-4g23-2xm8-66gc`: require a malicious SMTP
+  peer/pre-auth response. The active production transport and relevant peer
+  boundary are not established in this record. Mailgun HTTP bypasses all three
+  SMTP conditions, but do not assume that private configuration.
+- The next smallest check is the active email transport against existing
+  configuration/delivery evidence. Do not send a test email, request secrets,
+  repeat the UI journey or upgrade Nodemailer solely because a version matches.
 - Package `dev` flags alone are not reachability evidence. Trace build inputs and
   generated-code effects before excluding a tooling advisory.
 - Do not introduce blanket upgrades. Add another runtime correction only if an

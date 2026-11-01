@@ -1,6 +1,6 @@
 {
-  "at": "2026-11-01T10:28:04.152Z",
-  "runtimeCommit": "6e113a0cdcacbeca05e5cf17dad9c5edf3997b61",
+  "at": "2026-11-01T11:11:46.524Z",
+  "runtimeCommit": "0a42aac893b56e471246a75f3a4a0a5423e846e3",
   "sourceLockSha256": "829dfcd0a53c0affb6ee262c76c85ff3bc43700264452ff1f620dd4f0cce4418",
   "fullSecurityGate": "PARTIAL",
   "projectDependencyInventoryUploaded": false,
@@ -8,8 +8,9 @@
   "counts": {
     "matches": 204,
     "packages": 42,
-    "scopedDispositions": 148,
-    "partial": 56
+    "scopedDispositions": 201,
+    "partial": 3,
+    "awaitingDeployment": 0
   },
   "records": [
     {
@@ -172,7 +173,9 @@
       "id": "GHSA-35jp-ww65-95wh",
       "severity": "HIGH",
       "summary": "axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy`",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -181,7 +184,9 @@
       "id": "GHSA-3g43-6gmg-66jw",
       "severity": "HIGH",
       "summary": "axios Vulnerable to Credential Theft and Response Hijacking via Prototype Pollution Gadget in Config Merge",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -190,7 +195,9 @@
       "id": "GHSA-3p68-rc4w-qgx5",
       "severity": "MODERATE",
       "summary": "Axios has a NO_PROXY Hostname Normalization Bypass that Leads to SSRF",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Initial origins are fixed HTTPS provider endpoints; no caller-selected proxy or loopback URL. No attacker-controlled provider redirect was identified. This does not assert private proxy configuration or compromised-provider safety.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -199,7 +206,9 @@
       "id": "GHSA-3w6x-2g7m-8v23",
       "severity": "MODERATE",
       "summary": "Axios: Invisible JSON Response Tampering via Prototype Pollution Gadget in `parseReviver`",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -208,7 +217,9 @@
       "id": "GHSA-42h9-826w-cgv3",
       "severity": "MODERATE",
       "summary": "Axios: Excessive recursion in formDataToJSON can cause denial of service",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Application Axios data/config is built explicitly: JSON or URLSearchParams and bounded-depth scalar query structures; no arbitrary FormData names, blob MIME, formToJSON or client-supplied object tree.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -217,7 +228,9 @@
       "id": "GHSA-43fc-jf86-j433",
       "severity": "HIGH",
       "summary": "Axios is Vulnerable to Denial of Service via __proto__ Key in mergeConfig",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "No JSON-derived/user-supplied top-level Axios config; all create/get/post configurations are application-built.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -226,7 +239,9 @@
       "id": "GHSA-445q-vr5w-6q77",
       "severity": "MODERATE",
       "summary": "Axios: CRLF Injection in multipart/form-data body via unsanitized blob.type in formDataToStream",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Application Axios data/config is built explicitly: JSON or URLSearchParams and bounded-depth scalar query structures; no arbitrary FormData names, blob MIME, formToJSON or client-supplied object tree.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -235,7 +250,9 @@
       "id": "GHSA-4hqw-qxg8-jxx2",
       "severity": "MODERATE",
       "summary": "Axios: Fetch Adapter Header Injection via Inherited FormData getHeaders",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Only Node HTTP adapter is used by the three application Axios clients; no browser cookie or fetch-adapter path.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -244,7 +261,9 @@
       "id": "GHSA-5c9x-8gcm-mpgx",
       "severity": "MODERATE",
       "summary": "Axios' HTTP adapter-streamed uploads bypass maxBodyLength when maxRedirects: 0",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "No Axios streamed request or response configuration; no configured stream-size boundary relies on these paths.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -253,7 +272,9 @@
       "id": "GHSA-62hf-57xw-28j9",
       "severity": "MODERATE",
       "summary": "Axios: unbounded recursion in toFormData causes DoS via deeply nested request data",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Application Axios data/config is built explicitly: JSON or URLSearchParams and bounded-depth scalar query structures; no arbitrary FormData names, blob MIME, formToJSON or client-supplied object tree.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -262,7 +283,9 @@
       "id": "GHSA-6chq-wfr3-2hj9",
       "severity": "HIGH",
       "summary": "Axios: Header Injection via Prototype Pollution",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -271,7 +294,9 @@
       "id": "GHSA-777c-7fjr-54vf",
       "severity": "HIGH",
       "summary": "Allocation of Resources Without Limits or Throttling in Axios",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Only Node HTTP adapter is used by the three application Axios clients; no browser cookie or fetch-adapter path.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -280,7 +305,9 @@
       "id": "GHSA-7q8q-rj6j-mhjq",
       "severity": "MODERATE",
       "summary": "Axios: Nested axios option objects can consume polluted prototype values",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -289,7 +316,9 @@
       "id": "GHSA-898c-q2cr-xwhg",
       "severity": "MODERATE",
       "summary": "axios has DoS & Header Injection via Prototype Pollution Read-Side Gadgets in axios merge functions",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -298,7 +327,9 @@
       "id": "GHSA-9fr6-4gfg-395g",
       "severity": "MODERATE",
       "summary": "Axios: Prototype-Pollution Gadget in the Default Instance Allows Inherited Object.prototype.method to Override HTTP Method",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -307,7 +338,9 @@
       "id": "GHSA-fvcv-3m26-pcqx",
       "severity": "MODERATE",
       "summary": "Axios has Unrestricted Cloud Metadata Exfiltration via Header Injection Chain",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -316,7 +349,9 @@
       "id": "GHSA-hfxv-24rg-xrqf",
       "severity": "HIGH",
       "summary": "Axios: Regular Expression Denial of Service (ReDoS) via Cookie Name Injection",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Only Node HTTP adapter is used by the three application Axios clients; no browser cookie or fetch-adapter path.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -325,7 +360,9 @@
       "id": "GHSA-j5f8-grm9-p9fc",
       "severity": "HIGH",
       "summary": "Axios: Proxy-Authorization header leaks to redirect target when proxy is re-evaluated to direct connection",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Initial origins are fixed HTTPS provider endpoints; no caller-selected proxy or loopback URL. No attacker-controlled provider redirect was identified. This does not assert private proxy configuration or compromised-provider safety.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -334,7 +371,9 @@
       "id": "GHSA-j8rh-479h-cp32",
       "severity": "MODERATE",
       "summary": "Axios: Header Injection via Inherited headers After Minimal Interceptor",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -343,7 +382,9 @@
       "id": "GHSA-jqh4-m9w3-8hp9",
       "severity": "MODERATE",
       "summary": "Axios: Fetch adapter `ReadableStream` uploads bypass `maxBodyLength`",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Only Node HTTP adapter is used by the three application Axios clients; no browser cookie or fetch-adapter path.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -352,7 +393,9 @@
       "id": "GHSA-m7pr-hjqh-92cm",
       "severity": "MODERATE",
       "summary": "Axios: no_proxy bypass via IP alias allows SSRF",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Initial origins are fixed HTTPS provider endpoints; no caller-selected proxy or loopback URL. No attacker-controlled provider redirect was identified. This does not assert private proxy configuration or compromised-provider safety.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -361,7 +404,9 @@
       "id": "GHSA-mmx7-hfxf-jppx",
       "severity": "MODERATE",
       "summary": "Axios: Prototype pollution gadgets can alter axios request construction",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -370,7 +415,9 @@
       "id": "GHSA-p92q-9vqr-4j8v",
       "severity": "HIGH",
       "summary": "Axios: Proxy-Authorization Credential Leak to Origin Server Across HTTP-to-HTTPS Redirect in Axios Node.js HTTP Adapter",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Initial origins are fixed HTTPS provider endpoints; no caller-selected proxy or loopback URL. No attacker-controlled provider redirect was identified. This does not assert private proxy configuration or compromised-provider safety.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -379,7 +426,9 @@
       "id": "GHSA-pf86-5x62-jrwf",
       "severity": "HIGH",
       "summary": "Axios: Prototype Pollution Gadgets - Response Tampering, Data Exfiltration, and Request Hijacking",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -388,7 +437,9 @@
       "id": "GHSA-pmv8-rq9r-6j72",
       "severity": "MODERATE",
       "summary": "Axios: Deep formToJSON Key Recursion Can Cause Denial of Service",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Application Axios data/config is built explicitly: JSON or URLSearchParams and bounded-depth scalar query structures; no arbitrary FormData names, blob MIME, formToJSON or client-supplied object tree.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -397,7 +448,9 @@
       "id": "GHSA-pmwg-cvhr-8vh7",
       "severity": "HIGH",
       "summary": "Axios: Incomplete Fix for CVE-2025-62718 — NO_PROXY Protection Bypassed via RFC 1122 Loopback Subnet (127.0.0.0/8) in Axios 1.15.0",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Initial origins are fixed HTTPS provider endpoints; no caller-selected proxy or loopback URL. No attacker-controlled provider redirect was identified. This does not assert private proxy configuration or compromised-provider safety.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -406,7 +459,9 @@
       "id": "GHSA-q8qp-cvcw-x6jj",
       "severity": "HIGH",
       "summary": "Axios has prototype pollution read-side gadgets in HTTP adapter that allow credential injection and request hijacking",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -415,7 +470,9 @@
       "id": "GHSA-vf2m-468p-8v99",
       "severity": "MODERATE",
       "summary": "Axios: HTTP adapter streamed responses bypass maxContentLength",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "No Axios streamed request or response configuration; no configured stream-size boundary relies on these paths.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -424,7 +481,9 @@
       "id": "GHSA-vh66-26gq-q6x8",
       "severity": "MODERATE",
       "summary": "Axios: Prototype pollution gadget in fetch adapter can alter outbound requests",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Only Node HTTP adapter is used by the three application Axios clients; no browser cookie or fetch-adapter path.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -433,7 +492,9 @@
       "id": "GHSA-w9j2-pvgh-6h63",
       "severity": "MODERATE",
       "summary": "Axios: Authentication Bypass via Prototype Pollution Gadget in `validateStatus` Merge Strategy",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Read-side inherited-property condition requires an independent same-process prototype-pollution primitive; none is established by this dependency/input trace. App supplies explicit methods/config and no arbitrary request interceptor. Not a universal absence proof for prototype pollution.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -442,7 +503,9 @@
       "id": "GHSA-xhjh-pmcv-23jw",
       "severity": "LOW",
       "summary": "Axios: Null Byte Injection via Reverse-Encoding in AxiosURLSearchParams",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "No direct AxiosURLSearchParams or custom paramsSerializer; default buildURL encoder is used.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "axios",
@@ -451,7 +514,9 @@
       "id": "GHSA-xx6v-rp6x-q39c",
       "severity": "MODERATE",
       "summary": "Axios: XSRF Token Cross-Origin Leakage via Prototype Pollution Gadget in `withXSRFToken` Boolean Coercion",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Only Node HTTP adapter is used by the three application Axios clients; no browser cookie or fetch-adapter path.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "form-data",
@@ -856,7 +921,9 @@
       "id": "GHSA-r4q5-vmmm-2653",
       "severity": "MODERATE",
       "summary": "follow-redirects leaks Custom Authentication Headers to Cross-Domain Redirect Targets",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "SCOPED_NO_CONFIRMED_APPLICATION_TRIGGER",
+      "reason": "Only Axios consumer; fixed HTTPS provider origins. Google Ads has custom credentials, but no attacker-controlled initial host or provider redirect is established. Reopen if caller-controlled hosts/redirects are added.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "form-data",
@@ -892,7 +959,9 @@
       "id": "GHSA-qjx8-664m-686j",
       "severity": "HIGH",
       "summary": "JavaScript Cookie: Per-instance prototype hijack in assign() enables cookie-attribute injection",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Only @clerk/shared runtime/cookie helper imports the installed package; no caller in installed Clerk React/Express/backend entrypoints, app source, or built app assets. No customer JSON cookie attributes are passed to this helper. Vendor-hosted Clerk JS is outside this installed-lockfile conclusion.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "jspdf",
@@ -1090,7 +1159,9 @@
       "id": "GHSA-268h-hp4c-crq3",
       "severity": "MODERATE",
       "summary": "Nodemailer: CRLF injection in Nodemailer List-* header comments allows arbitrary message header injection",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Explicit mail/transport option allowlists exclude the affected List headers, DKIM, raw message, jsonTransport, legacy resolveContent, OAuth2 token fetch, envelope size and transport name inputs. Attachments are application-produced buffers.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1099,7 +1170,9 @@
       "id": "GHSA-2x7j-588g-ccc2",
       "severity": "HIGH",
       "summary": "Nodemailer: Quadratic (O(n²)) time complexity in addressparser allows remote denial of service via a crafted address list",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION",
+      "reason": "Valid flat recipient-list scaling is not eliminated by email syntax validation. Mailgun HTTP bypasses this parser, but active production transport is not established here. Request-size bounds alone are not a complete disposition.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1108,7 +1181,9 @@
       "id": "GHSA-39m8-27wv-hr27",
       "severity": "MODERATE",
       "summary": "Nodemailer: Quadratic (O(n^2)) DKIM header unfolding lets a large folded header cause remote denial of service during signing",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Explicit mail/transport option allowlists exclude the affected List headers, DKIM, raw message, jsonTransport, legacy resolveContent, OAuth2 token fetch, envelope size and transport name inputs. Attachments are application-produced buffers.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1117,7 +1192,9 @@
       "id": "GHSA-4ffr-jq9g-5ffx",
       "severity": "MODERATE",
       "summary": "Nodemailer: Quadratic backtracking in SMTP AUTH mechanism detection regexes allows pre-auth remote denial of service",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION",
+      "reason": "Requires malicious SMTP peer/pre-auth response; Mailgun HTTP bypasses SMTP. Active production transport and relevant peer boundary have not been established here.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1126,7 +1203,9 @@
       "id": "GHSA-4g23-2xm8-66gc",
       "severity": "MODERATE",
       "summary": "Nodemailer: Quadratic (O(n^2)) SMTP client reply parsing lets a malicious server or MITM cause a pre-auth remote denial of service",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION",
+      "reason": "Requires malicious SMTP peer/pre-auth response; Mailgun HTTP bypasses SMTP. Active production transport and relevant peer boundary have not been established here.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1135,7 +1214,9 @@
       "id": "GHSA-6vj9-mwq6-2f5v",
       "severity": "MODERATE",
       "summary": "Nodemailer: Process-global DNS cache reuses TLS `servername` across transports, enabling cross-tenant SMTP credential disclosure",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "One operator-configured transport; no tenant-controlled TLS servername or shared-host multi-transport configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1144,7 +1225,9 @@
       "id": "GHSA-85x2-q946-cp5h",
       "severity": "MODERATE",
       "summary": "Nodemailer: A \">\" inside a quoted local part ends an angle-addr early in addressparser, delivering to a domain the header does not name",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BY_DEPLOYED_RECIPIENT_CONTRACT",
+      "reason": "Shared deployed send boundary requires plain ASCII email strings; malformed group/comment/quote/free-text/Unicode domain shapes cannot reach the address parser. Sender comes from operator configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1153,7 +1236,9 @@
       "id": "GHSA-8c8m-p3m8-cjg8",
       "severity": "MODERATE",
       "summary": "Nodemailer: A nested comment ends early in addressparser, releasing the rest of the comment as a recipient",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BY_DEPLOYED_RECIPIENT_CONTRACT",
+      "reason": "Shared deployed send boundary requires plain ASCII email strings; malformed group/comment/quote/free-text/Unicode domain shapes cannot reach the address parser. Sender comes from operator configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1162,7 +1247,9 @@
       "id": "GHSA-8m3c-c648-2xjj",
       "severity": "MODERATE",
       "summary": "Nodemailer: resolveContent() on a MailMessage bypasses disableFileAccess/disableUrlAccess when called with the legacy signature",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Explicit mail/transport option allowlists exclude the affected List headers, DKIM, raw message, jsonTransport, legacy resolveContent, OAuth2 token fetch, envelope size and transport name inputs. Attachments are application-produced buffers.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1171,7 +1258,9 @@
       "id": "GHSA-8vvx-rff5-p5rq",
       "severity": "MODERATE",
       "summary": "Nodemailer: Nested structured recipient arrays bypass the parser depth limit and cause stack exhaustion DoS",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Persisted report recipient arrays have string item validation and alert recipients are text; SMTP receives a normalized string, not structured arrays. No caller-supplied nested array enters the production send contract.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1180,7 +1269,9 @@
       "id": "GHSA-c7w3-x93f-qmm8",
       "severity": "LOW",
       "summary": "Nodemailer has SMTP command injection due to unsanitized `envelope.size` parameter",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Explicit mail/transport option allowlists exclude the affected List headers, DKIM, raw message, jsonTransport, legacy resolveContent, OAuth2 token fetch, envelope size and transport name inputs. Attachments are application-produced buffers.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1189,7 +1280,9 @@
       "id": "GHSA-cc9r-2j5m-2m83",
       "severity": "MODERATE",
       "summary": "Nodemailer: Recipient-domain validation bypass via RFC 5322 comment mis-parsing leads to email delivery to an attacker-controlled domain",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BY_DEPLOYED_RECIPIENT_CONTRACT",
+      "reason": "Shared deployed send boundary requires plain ASCII email strings; malformed group/comment/quote/free-text/Unicode domain shapes cannot reach the address parser. Sender comes from operator configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1198,7 +1291,9 @@
       "id": "GHSA-g73g-hqqh-jr95",
       "severity": "MODERATE",
       "summary": "Nodemailer: RFC 5322 comment inside an angle-bracket address is never stripped",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BY_DEPLOYED_RECIPIENT_CONTRACT",
+      "reason": "Shared deployed send boundary requires plain ASCII email strings; malformed group/comment/quote/free-text/Unicode domain shapes cannot reach the address parser. Sender comes from operator configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1207,7 +1302,9 @@
       "id": "GHSA-m943-m63m-w62w",
       "severity": "MODERATE",
       "summary": "Nodemailer: A \";\" inside a quoted string or comment ends an address group early in addressparser, turning display text into a recipient",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BY_DEPLOYED_RECIPIENT_CONTRACT",
+      "reason": "Shared deployed send boundary requires plain ASCII email strings; malformed group/comment/quote/free-text/Unicode domain shapes cannot reach the address parser. Sender comes from operator configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1216,7 +1313,9 @@
       "id": "GHSA-p6gq-j5cr-w38f",
       "severity": "HIGH",
       "summary": "Nodemailer: Message-level raw option bypasses disableFileAccess/disableUrlAccess, enabling arbitrary file read and full-response SSRF in the delivered message",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Explicit mail/transport option allowlists exclude the affected List headers, DKIM, raw message, jsonTransport, legacy resolveContent, OAuth2 token fetch, envelope size and transport name inputs. Attachments are application-produced buffers.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1225,7 +1324,9 @@
       "id": "GHSA-r7g4-qg5f-qqm2",
       "severity": "HIGH",
       "summary": "Nodemailer: Improper TLS Certificate Validation in OAuth2 Token Fetch Enables Credential Interception",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Explicit mail/transport option allowlists exclude the affected List headers, DKIM, raw message, jsonTransport, legacy resolveContent, OAuth2 token fetch, envelope size and transport name inputs. Attachments are application-produced buffers.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1234,7 +1335,9 @@
       "id": "GHSA-rcmh-qjqh-p98v",
       "severity": "HIGH",
       "summary": "Nodemailer’s addressparser is vulnerable to DoS caused by recursive calls",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BY_DEPLOYED_RECIPIENT_CONTRACT",
+      "reason": "Shared deployed send boundary requires plain ASCII email strings; malformed group/comment/quote/free-text/Unicode domain shapes cannot reach the address parser. Sender comes from operator configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1243,7 +1346,9 @@
       "id": "GHSA-v53p-9fqp-m79j",
       "severity": "HIGH",
       "summary": "Nodemailer: Quadratic backtracking in the addressparser free-text fallback allows remote denial of service",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BY_DEPLOYED_RECIPIENT_CONTRACT",
+      "reason": "Shared deployed send boundary requires plain ASCII email strings; malformed group/comment/quote/free-text/Unicode domain shapes cannot reach the address parser. Sender comes from operator configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1252,7 +1357,9 @@
       "id": "GHSA-vvjj-xcjg-gr5g",
       "severity": "MODERATE",
       "summary": "Nodemailer Vulnerable to SMTP Command Injection via CRLF in Transport name Option (EHLO/HELO) ",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Explicit mail/transport option allowlists exclude the affected List headers, DKIM, raw message, jsonTransport, legacy resolveContent, OAuth2 token fetch, envelope size and transport name inputs. Attachments are application-produced buffers.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1261,7 +1368,9 @@
       "id": "GHSA-wmmp-3585-3rmp",
       "severity": "MODERATE",
       "summary": "Nodemailer: IDN/Punycode domain allow-list bypass leads to email delivery to an attacker-controlled domain",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BY_DEPLOYED_RECIPIENT_CONTRACT",
+      "reason": "Shared deployed send boundary requires plain ASCII email strings; malformed group/comment/quote/free-text/Unicode domain shapes cannot reach the address parser. Sender comes from operator configuration.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "nodemailer",
@@ -1270,7 +1379,9 @@
       "id": "GHSA-wqvq-jvpq-h66f",
       "severity": "MODERATE",
       "summary": "Nodemailer jsonTransport bypasses disableFileAccess and disableUrlAccess during message normalization",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "TRACED_ADVISORY_CONDITION_ABSENT_IN_CURRENT_PATH",
+      "reason": "Explicit mail/transport option allowlists exclude the affected List headers, DKIM, raw message, jsonTransport, legacy resolveContent, OAuth2 token fetch, envelope size and transport name inputs. Attachments are application-produced buffers.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     },
     {
       "name": "picomatch",
@@ -1846,7 +1957,10 @@
       "id": "GHSA-mrhx-c7xc-m3w5",
       "severity": "HIGH",
       "summary": "Zod can exhaust memory while validating oversized constrained collections",
-      "disposition": "PARTIAL_REQUIRES_REACHABILITY_DISPOSITION"
+      "disposition": "MITIGATED_BOUNDED_REQUEST_COLLECTIONS",
+      "reason": "Four existing bounded request collections check maximum size before typed item validation. Deployed 0a42aac8; 258 focused checks, TypeScript/build, hosted CI and public release checks pass. Existing unconstrained collections retain their ingress boundary; this is not general memory certification.",
+      "evidence": "../DEPENDENCY_EXPOSURE_2026-11-01.md"
     }
-  ]
+  ],
+  "distinctLocationAdvisoryPairs": 201
 }

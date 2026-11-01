@@ -1,6 +1,6 @@
 {
-  "at": "2026-11-01T11:01:22.482Z",
-  "status": "PASS_LOCAL_REQUEST_COLLECTION_LIMITS",
+  "at": "2026-11-01T11:11:46.516Z",
+  "status": "PASS_DEPLOYED_REQUEST_COLLECTION_LIMITS",
   "baseline": {
     "passed": 19,
     "failedAsExpected": 4
@@ -15,7 +15,7 @@
   "diffCheck": "PASS",
   "runtimeExpressionsChanged": 4,
   "uiCheckRequired": false,
-  "liveRequestsSent": 0,
+  "liveRequestsSent": 4,
   "providerRequestsSent": 0,
   "databaseMutations": 0,
   "files": [
@@ -36,5 +36,10 @@
       "sha256": "829dfcd0a53c0affb6ee262c76c85ff3bc43700264452ff1f620dd4f0cce4418"
     }
   ],
-  "deployment": "PENDING"
+  "deployment": "VERIFIED",
+  "runtimeCommit": "0a42aac893b56e471246a75f3a4a0a5423e846e3",
+  "hostedCi": "PASS",
+  "hostedCiUrl": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/41300057713/job/124828943663",
+  "publicChecks": "PASS",
+  "liveRequestsWereAnonymousOrdinaryReads": true
 }

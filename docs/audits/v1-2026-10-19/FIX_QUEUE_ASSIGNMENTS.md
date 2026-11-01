@@ -11,7 +11,7 @@ next-step instructions. Extra HubSpot reconnect/replay and absent legacy Meta
 positive-path exercises are not in the immediate queue. Google Ads acceptance
 was postponed, not excluded; establish its offered scope before launch.
 
-**Current bounded correction:** [request collection limits](../../fixes/v1-batch-8/REQUEST_COLLECTION_LIMITS_2026-11-01.md) reject oversized inputs before typed-item validation while retaining the four existing maximums and valid-input behavior. The four-line runtime change passes 258 focused tests and TypeScript/build; deployment verification is pending. It belongs to the existing dependency gate and adds no manual UI/import task.
+**Current bounded correction:** [request collection limits](../../fixes/v1-batch-8/REQUEST_COLLECTION_LIMITS_2026-11-01.md) reject oversized inputs before typed-item validation while retaining the four existing maximums and valid-input behavior. The four-line runtime change is deployed as `0a42aac8`; 258 focused tests, TypeScript/build, hosted CI and public release checks pass. The dependency gate now needs only active email-transport evidence for three SMTP conditions. No manual UI/import repeat or test email is added.
 
 **Minimal launch scope is mandatory:** do not turn this historical finding
 inventory into a new task queue. Work must fit one of the four launch gates and

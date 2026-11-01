@@ -22,6 +22,13 @@ connections were removed with independent verification; the renewed Shopify
 connection remains on the existing test campaign. No runtime deployment or
 repeat provider/import check is required for this unchanged configuration.
 
+**Task 3 progress, November 1:** [minimum recovery review](../../fixes/v1-batch-8/MINIMUM_RECOVERY_2026-11-01.md)
+reuses the verified 71-table restore, checks current/prior code-schema compatibility,
+and records the healthy current revision as the future recovery baseline. No live
+restore, rollback, key access or runtime change occurred. Retained application-key
+retrieval/decryption is still unverified; the postponed prompt is not repeated.
+Task 3 remains partial and Task 4's consolidated launch decision remains open.
+
 **Minimal launch scope is mandatory:** do not turn this historical finding
 inventory into a new task queue. Work must fit one of the two remaining launch gates and
 identify its concrete launch risk, missing evidence and smallest completion

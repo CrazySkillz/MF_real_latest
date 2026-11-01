@@ -1,0 +1,72 @@
+{
+  "at": "2026-11-01T12:19:10.737Z",
+  "runtime": "0a42aac893b56e471246a75f3a4a0a5423e846e3",
+  "prior": "9848ef9c997f23a3dac558080f41a6c5b09e05f1",
+  "databaseAccess": false,
+  "secretAccess": false,
+  "providerCalls": 0,
+  "deployments": 0,
+  "liveWrites": 0,
+  "restoredDatabaseAgain": false,
+  "head": "0c0b7a7ab0ced63dcc7b45d59c07f0a0fbf9a699",
+  "sinceRuntime": {
+    "changedFiles": 26,
+    "documentationOnly": true
+  },
+  "priorCompatibility": {
+    "paths": [
+      "server/index.ts",
+      "server/storage.ts",
+      "server/utils/tokenVault.ts",
+      "shared",
+      "migrations",
+      "package.json",
+      "package-lock.json",
+      "client",
+      "render.yaml"
+    ],
+    "identicalGitObjects": true,
+    "objects": [
+      "040000 tree 09635bad16065f9d09ab9aed7f021e8a8c955b7f\tclient",
+      "040000 tree d09c62b5e6c253f239843965f3615a04ab4e59eb\tmigrations",
+      "100644 blob 4945b409e9e7677907d419bf4ccb6ba3e47fdca9\tpackage-lock.json",
+      "100644 blob cb125aa966c877ffffbf68c19acbeb9c826cd0af\tpackage.json",
+      "100644 blob cc6c55ef4ccd6cc7f64ab99ce0f0bd5e0d5b05c3\trender.yaml",
+      "100644 blob 602881a4357c3118cc31b7fc421afc6b66678d47\tserver/index.ts",
+      "100644 blob d7d43558ebe1211aed3f07b9542174f47527b702\tserver/storage.ts",
+      "100644 blob d2e51a7b694a9a882fe592f92468d8f43020af6a\tserver/utils/tokenVault.ts",
+      "040000 tree 6d004ea3649089909fde1e1572e02b90d2cd5716\tshared"
+    ]
+  },
+  "priorRuntimeDifference": [
+    "server/request-collection-boundary.test.ts",
+    "server/routes-oauth.ts"
+  ],
+  "validationReuse": {
+    "currentFocused": 258,
+    "currentBuildAndTypes": "PASS",
+    "currentAndPriorHostedCi": "PASS",
+    "currentSourceHashesMatch": true
+  },
+  "restoreReuse": {
+    "tables": 71,
+    "rows": 5903996,
+    "everyTableMatched": true,
+    "archiveSha256": "aeadd0ca9ff0caaa81960c00f5a81aa8739671e8f72f8ea74f3d6bc2ca8a3ae9",
+    "scope": "Historical snapshot restored locally; no current live restore or hosted permissions claim"
+  },
+  "savedKey": {
+    "custody": "USER_CONFIRMED",
+    "retrievalAndDecryption": "UNVERIFIED",
+    "keyPromptRepeated": false
+  },
+  "publicRuntime": {
+    "status": 200,
+    "ok": true,
+    "commit": "0a42aac893b56e471246a75f3a4a0a5423e846e3",
+    "nodeEnv": "production"
+  },
+  "result": "PASS_REUSED_RESTORE_AND_ROLLBACK_COMPATIBILITY",
+  "task3": "PARTIAL_SAVED_KEY_UNVERIFIED",
+  "hostedRollbackExecuted": false
+}

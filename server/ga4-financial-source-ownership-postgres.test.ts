@@ -386,7 +386,7 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     const before = await saved(); const res = await fixture.invoke(); expect(res.statusCode).toBe(200); expect(res.body.success).toBe(true);
     expect(res.body.spendToDate).toBe(20); expect(fixture.recalc).toHaveBeenCalledWith("a", {}); expect(fixture.recompute).toHaveBeenCalledWith("a");
     const after = await saved(); expect(after.spend_sources.length).toBe(before.spend_sources.length + (mode === "new" ? 1 : 0));
-    expect(after.spend_records.filter(row => row.spend_source_id === res.body.sourceId).map(row => row.spend)).toEqual(["20.00"]);
+    expect(after.spend_records.filter(row => row.spend_source_id === res.body.sourceId).map(row => row.spend)).toEqual(["20"]);
     expect(after.spend_records.filter(row => row.campaign_id === "b")).toEqual(before.spend_records.filter(row => row.campaign_id === "b"));
     expect(JSON.parse(after.spend_sources.find(row => row.id === res.body.sourceId)!.mapping_config)).not.toHaveProperty("expectedSourceMappingConfig");
   });

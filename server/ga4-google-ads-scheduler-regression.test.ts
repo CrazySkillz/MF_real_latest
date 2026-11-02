@@ -85,7 +85,7 @@ describe("GA4 Google Ads scheduler materialization", () => {
       "source-1",
       "ad_platforms",
       "ga4",
-      [expect.objectContaining({ date: "2026-08-04", spend: "12.34", currency: "USD" })],
+      [expect.objectContaining({ date: "2026-08-04", spend: "12.340000", currency: "USD" })],
     );
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-08-05", "ga4");
     expect(storageMock.updateCampaign).toHaveBeenCalledWith(campaign.id, { spend: "12.34" }, {});

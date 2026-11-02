@@ -106,7 +106,7 @@ describe.skipIf(!testUrl)('Google Ads revenue query and storage boundary with Po
     await database.current.insert(schema.googleAdsDailyMetrics).values({ campaignId: 'b', googleCampaignId: 'foreign', date: '2026-10-01', ga4Revenue: '999' });
     const rows = await storage.getGoogleAdsDailyMetrics('a', '2026-10-01', '2026-10-24');
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ spend: '10.00', conversionValue: '25.00', ga4Revenue: null, ga4UtmName: null });
+    expect(rows[0]).toMatchObject({ spend: '10.000000', conversionValue: '25.00', ga4Revenue: null, ga4UtmName: null });
     expect((await pool.query("SELECT ga4_revenue, ga4_utm_name FROM google_ads_daily_metrics WHERE campaign_id='a'")).rows[0]).toEqual({ ga4_revenue: '100.00', ga4_utm_name: 'launch' });
   });
   it('blocks direct unverified enrichment writes and keeps the existing row intact', async () => {
@@ -125,7 +125,7 @@ describe.skipIf(!testUrl)('Google Ads revenue query and storage boundary with Po
     await storage.replaceSpendSourceWithRecords('a', 'spend-a', 'tiktok_api', 'tiktok', source, [record], source.mappingConfig);
     expect((await storage.getSpendTotalForRange('a', '2026-10-01', '2026-10-24', 'tiktok')).totalSpend).toBe(10);
     expect((await pool.query("SELECT spend_source_id, spend FROM spend_records ORDER BY spend_source_id")).rows).toEqual([
-      { spend_source_id: 'spend-a', spend: '10.00' }, { spend_source_id: 'spend-b', spend: '70.00' }, { spend_source_id: 'spend-ga4', spend: '70.00' },
+      { spend_source_id: 'spend-a', spend: '10' }, { spend_source_id: 'spend-b', spend: '70' }, { spend_source_id: 'spend-ga4', spend: '70' },
     ]);
   });
   it('rolls back both source metadata and deleted facts if replacement insertion fails', async () => {
@@ -134,7 +134,7 @@ describe.skipIf(!testUrl)('Google Ads revenue query and storage boundary with Po
     await database.current.insert(schema.spendRecords).values({ campaignId: 'a', spendSourceId: 'spend-a', sourceType: 'tiktok_api', currency: 'EUR', date: '2026-10-01', spend: '70' });
     await expect(storage.replaceSpendSourceWithRecords('a', 'spend-a', 'tiktok_api', 'tiktok', { ...source, displayName: 'changed' }, [{ campaignId: 'a', date: '2026-10-02', spend: 'not-a-number', currency: 'EUR', sourceType: 'tiktok_api' }], source.mappingConfig)).rejects.toThrow();
     expect((await pool.query("SELECT display_name FROM spend_sources WHERE id='spend-a'")).rows[0].display_name).toBe('original');
-    expect((await pool.query("SELECT spend FROM spend_records WHERE spend_source_id='spend-a'")).rows).toEqual([{ spend: '70.00' }]);
+    expect((await pool.query("SELECT spend FROM spend_records WHERE spend_source_id='spend-a'")).rows).toEqual([{ spend: '70' }]);
     await expect(storage.replaceSpendSourceWithRecords('a', null, 'tiktok_api', 'tiktok', source, [{ campaignId: 'a', date: '2026-10-02', spend: 'not-a-number', currency: 'EUR', sourceType: 'tiktok_api' }])).rejects.toThrow();
     expect((await pool.query('SELECT count(*)::int AS count FROM spend_sources')).rows[0].count).toBe(1);
   });
@@ -145,6 +145,6 @@ describe.skipIf(!testUrl)('Google Ads revenue query and storage boundary with Po
     for (const [campaignId, context, mapping] of [['a', 'tiktok', '{"revision":1}'], ['b', 'tiktok', source.mappingConfig], ['a', 'google_ads', source.mappingConfig]]) {
       await expect(storage.replaceSpendSourceWithRecords(campaignId, 'spend-a', 'tiktok_api', context as any, source, [], mapping)).rejects.toThrow();
     }
-    expect((await pool.query("SELECT spend FROM spend_records WHERE spend_source_id='spend-a'")).rows).toEqual([{ spend: '70.00' }]);
+    expect((await pool.query("SELECT spend FROM spend_records WHERE spend_source_id='spend-a'")).rows).toEqual([{ spend: '70' }]);
   });
 });

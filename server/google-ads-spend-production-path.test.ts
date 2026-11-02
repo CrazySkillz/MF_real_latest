@@ -145,7 +145,7 @@ describe("Google Ads GA4 Overview spend production path", () => {
         googleCampaignId: "google-campaign-1",
         googleCampaignName: "Brand Search",
         date: "2026-07-01",
-        spend: "123.45",
+        spend: "123.450000",
         conversions: "2",
       }),
       ],
@@ -153,7 +153,7 @@ describe("Google Ads GA4 Overview spend production path", () => {
     );
     expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledWith(
       "campaign-1", "source-1", "ad_platforms", "ga4",
-      [expect.objectContaining({ date: "2026-07-01", spend: "123.45", currency: "USD" })],
+      [expect.objectContaining({ date: "2026-07-01", spend: "123.450000", currency: "USD" })],
       expect.any(String), expect.objectContaining({ googleAdsRefresh: expect.any(Object) }),
     );
     expect(mocks.storage.updateGoogleAdsConnection).toHaveBeenCalledWith(

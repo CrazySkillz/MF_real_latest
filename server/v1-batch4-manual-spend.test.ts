@@ -154,12 +154,23 @@ describe("V1-068 Manual Spend validation and truthful outcomes", () => {
     f.recompute.mockRejectedValue(new Error("isolated derived failure"));
     const r = await f.invoke({ platformContext: "ga4", sourceType: "ad_platforms", mappingConfig: { platform: "google_ads", selectedCampaignIds: ["ad-a"] } });
     expect(r.statusCode).toBe(200); expect(r.body).toMatchObject({ success: true, spendToDate: 0, derivedValuesUpdated: false });
-    expect(f.replace.mock.calls[0][5][0].spend).toBe("0.00");
+    expect(f.replace.mock.calls[0][5][0].spend).toBe("0.000000");
   });
   it("does not report a failed Google Ads source save as a partial success", async () => {
     const f = manualFixture(); f.replace.mockRejectedValue(new Error("isolated write failure"));
     const r = await f.invoke({ platformContext: "ga4", sourceType: "ad_platforms", mappingConfig: { platform: "google_ads", selectedCampaignIds: ["ad-a"] } });
     expect(r.statusCode).toBe(500); expect(r.body.success).toBe(false); expect(f.recalc).not.toHaveBeenCalled(); expect(f.recompute).not.toHaveBeenCalled();
+  });
+  it.each([
+    { amounts: ["1.234567", "2.234567"], expected: 3.47 },
+    { amounts: ["1.004999", "0.000001"], expected: 1.01 },
+  ])("derives precise Google Ads totals from saved facts, ignoring client amount: $expected", async ({ amounts, expected }) => {
+    const f = manualFixture();
+    f.storage.getGA4GoogleAdsSpendDailyMetrics.mockResolvedValue(amounts.map((spend, i) => ({ googleCampaignId: "ad-a", date: `2026-10-${20 + i}`, spend })));
+    const r = await f.invoke({ amount: 9999, platformContext: "ga4", sourceType: "ad_platforms", mappingConfig: { platform: "google_ads", selectedCampaignIds: ["ad-a"] } });
+    expect(r.statusCode).toBe(200); expect(r.body.spendToDate).toBe(expected);
+    expect(f.replace.mock.calls[0][5].map((row: any) => row.spend)).toEqual(amounts);
+    expect(JSON.parse(f.replace.mock.calls[0][4].mappingConfig).amount).toBe(expected);
   });
 });
 

@@ -102,8 +102,8 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       if (change === 'credentials') await pool.query(`UPDATE "${table}" SET encrypted_tokens = NULL, access_token = 'different' WHERE campaign_id = 'a'`);
       if (change === 'lastRefresh') await pool.query(`UPDATE "${table}" SET last_refresh_at = '2026-10-25' WHERE campaign_id = 'a'`);
       await expect(replace(dedicated, scope)).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.000000' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.000000' }]);
     });
     it('allows unchanged inputs, renewal and metadata updates without touching the other connection or campaign', async () => {
       const scope = await capture(dedicated);
@@ -113,8 +113,8 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       await expect(replace(dedicated, scope)).resolves.toEqual({ replaced: 1 });
       const saved = await update(dedicated, { lastRefreshAt: new Date('2026-10-25T12:00:00Z') }, scope);
       expect(saved?.lastRefreshAt).toEqual(new Date('2026-10-25T12:00:00Z'));
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" ORDER BY campaign_id`)).rows).toEqual([{ spend: '25.00' }, { spend: '10.00' }]);
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" ORDER BY campaign_id`)).rows).toEqual([{ spend: '10.00' }, { spend: '10.00' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" ORDER BY campaign_id`)).rows).toEqual([{ spend: '25.000000' }, { spend: '10.000000' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" ORDER BY campaign_id`)).rows).toEqual([{ spend: '10.000000' }, { spend: '10.000000' }]);
     });
     it.each(['token', 'timestamp', 'cache'])('blocks stale %s writes after reconnect', async kind => {
       const scope = await capture(dedicated);
@@ -153,7 +153,7 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       const scope = await capture(dedicated);
       const write = dedicated ? storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow.bind(storage) : storage.replaceGoogleAdsDailyMetricsForWindow.bind(storage);
       await expect(write('a', day, day, [{ ...fact, spend: 'invalid-number' }], scope)).rejects.toThrow();
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.000000' }]);
     });
     it('publishes facts and freshness together so an overlapping old response cannot overwrite the winner', async () => {
       const winner = await capture(dedicated), stale = await capture(dedicated);
@@ -164,7 +164,7 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       const persisted = dedicated ? await storage.getGA4GoogleAdsSpendConnection('a') : await storage.getGoogleAdsConnection('a');
       expect(persisted!.lastRefreshAt!.getTime()).toBeGreaterThan(originalRefresh.getTime());
       expect(winner.googleAdsRefresh.connection.lastRefreshAt).toEqual(persisted!.lastRefreshAt);
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.00' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.000000' }]);
     });
     it.each(['throw', 'suppress'])('rolls back facts if the matching success timestamp cannot be saved (%s)', async failure => {
       const scope = await capture(dedicated), before = scope.googleAdsRefresh.connection.lastRefreshAt;
@@ -174,7 +174,7 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       try {
         await expect(replace(dedicated, scope)).rejects.toThrow();
         expect(scope.googleAdsRefresh.connection.lastRefreshAt).toEqual(before);
-        expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+        expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.000000' }]);
       } finally {
         await pool.query(`DROP TRIGGER deny_freshness ON "${table}"`); await pool.query('DROP FUNCTION deny_fixture_freshness()');
       }
@@ -195,7 +195,7 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       await expect(write('a', day, day, [], winner)).resolves.toEqual({ replaced: 0 });
       await expect(replace(dedicated, stale)).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
       expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([]);
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'b'`)).rows).toEqual([{ spend: '10.00' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'b'`)).rows).toEqual([{ spend: '10.000000' }]);
     });
   });
 
@@ -213,7 +213,7 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
     if (change === 'recreated') await pool.query("UPDATE spend_sources SET id = 'new-source' WHERE id = 'source-a'");
     await expect(replace(true, scope)).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
     await expect(storage.replaceSpendRecordsForSource('a', 'source-a', 'ad_platforms', 'ga4', [], scope.googleAdsRefresh.source.mappingConfig, scope)).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
-    expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '10.00' }]);
+    expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '10' }]);
   });
   it('accepts only the explicit same-campaign Spend draft preview exception', async () => {
     await pool.query("UPDATE campaigns SET status = 'draft' WHERE id = 'a'");
@@ -282,13 +282,28 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
     });
     await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: dedicated })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
     expect(provider.jobs).not.toHaveBeenCalled();
-    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.000000' }]);
   });
   it.each([false, true])('actual scheduler completes an unchanged refresh (dedicated=%s)', async dedicated => {
     const result = await refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: dedicated, deferDownstream: true });
     expect(result.providerRefreshed).toBe(true);
-    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.00' }]);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.000000' }]);
     if (dedicated) expect(result.spendMaterialization).toMatchObject({ sourceId: 'source-a', updated: true, totalSpend: 25 });
+  });
+  it.each([false, true])('actual refresh retains sub-cent facts through reload and materialization (dedicated=%s)', async dedicated => {
+    const row = (costMicros: number, date: string) => ({ campaignId: 'selected', campaignName: 'Selected', date,
+      costMicros, impressions: 100, clicks: 10, conversions: 1, conversionsValue: 0, ctr: 0.1,
+      averageCpc: 0, averageCpm: 0, interactionRate: 0, videoViews: 0, searchImpressionShare: 0 });
+    provider.daily.mockResolvedValue([row(1234567, '2026-10-23'), row(2234567, day)]);
+    const result = await refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: dedicated, deferDownstream: true });
+    expect(result.providerRefreshed).toBe(true);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id='a' ORDER BY date`)).rows).toEqual([{ spend: '1.234567' }, { spend: '2.234567' }]);
+    if (dedicated) {
+      expect(result.spendMaterialization).toMatchObject({ sourceId: 'source-a', totalSpend: 3.47 });
+      expect((await storage.getSpendTotalForRange('a', '2026-10-23', day, 'ga4')).totalSpend).toBe(3.47);
+      expect((await storage.getCampaign('a'))?.spend).toBe('3.47');
+    }
+    expect((await storage.getCampaign('b'))?.spend).toBe('10.00');
   });
   it.each([false, true])('actual overlapping schedulers preserve the committed newer response (dedicated=%s)', async dedicated => {
     let startOlder!: () => void, releaseOlder!: () => void, commitWinner!: () => void, releaseWinner!: () => void;
@@ -320,8 +335,8 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       const winnerResult = await winner;
       expect(winnerResult.error).toBeUndefined(); expect(winnerResult.value?.providerRefreshed).toBe(true);
       if (dedicated) expect(winnerResult.value?.spendMaterialization).toMatchObject({ updated: true, totalSpend: 25 });
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.00' }]);
-      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '25.000000' }]);
+      expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.000000' }]);
     } finally { releaseOlder(); releaseWinner(); await older; await winner; spy.mockRestore(); }
   });
   it.each([false, true])('actual disconnect during provider I/O cannot resurrect facts (dedicated=%s)', async dedicated => {
@@ -333,8 +348,8 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
     });
     await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: dedicated })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
     expect((await pool.query(`SELECT * FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([]);
-    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
-    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'b'`)).rows).toEqual([{ spend: '10.00' }]);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(!dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.000000' }]);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'b'`)).rows).toEqual([{ spend: '10.000000' }]);
     expect(provider.jobs).not.toHaveBeenCalled();
   });
   it.each([false, true])('actual reconnect with identical settings invalidates the old request (dedicated=%s)', async dedicated => {
@@ -347,7 +362,7 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
       return response;
     });
     await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: dedicated })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
-    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '70.00' }]);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '70.000000' }]);
     expect(provider.jobs).not.toHaveBeenCalled();
   });
   it.each([false, true])('connection replacement rolls back all prior facts on insertion failure (dedicated=%s)', async dedicated => {
@@ -356,7 +371,7 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
     const save = dedicated ? storage.replaceGA4GoogleAdsSpendConnection.bind(storage) : storage.replaceGoogleAdsConnection.bind(storage);
     await expect(save({ ...previous, id: 'replacement' }, [{ ...fact, spend: 'invalid' }])).rejects.toThrow();
     expect((await pool.query(`SELECT * FROM "${getTableName(connectionTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual(persistedBefore);
-    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.00' }]);
+    expect((await pool.query(`SELECT spend FROM "${getTableName(dailyTable(dedicated))}" WHERE campaign_id = 'a'`)).rows).toEqual([{ spend: '10.000000' }]);
   });
   it('actual source edit during provider I/O preserves the edited records and source identity', async () => {
     const response = await provider.daily();
@@ -370,8 +385,8 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
     });
     await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: true })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
     expect((await storage.getSpendSources('a', 'ga4')).map(row => row.id)).toEqual(['source-a']);
-    expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '70.00' }]);
-    expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'b'")).rows).toEqual([{ spend: '10.00' }]);
+    expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '70' }]);
+    expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'b'")).rows).toEqual([{ spend: '10' }]);
     expect(provider.jobs).not.toHaveBeenCalled();
   });
   it.each(['materialization', 'cache'])('a newer refresh prevents stale later-stage %s writes', async boundary => {
@@ -388,7 +403,7 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
     });
     try {
       await expect(refreshGoogleAdsForCampaign('a', undefined, { ga4SpendConnection: true })).rejects.toThrow('GOOGLE_ADS_REFRESH_INPUTS_CHANGED');
-      expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '70.00' }]);
+      expect((await pool.query("SELECT spend FROM spend_records WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '70.000000' }]);
       expect((await storage.getCampaign('a'))?.spend).toBe('70.00');
       expect((await storage.getCampaign('b'))?.spend).toBe('10.00');
       expect(provider.jobs).not.toHaveBeenCalled();
@@ -448,6 +463,6 @@ describe.skipIf(!testUrl)('Google Ads ordinary refresh transaction ownership', (
     const scope = await capture();
     await pool.query("DELETE FROM google_ads_connections WHERE campaign_id = 'a'");
     await new Old().replaceGoogleAdsDailyMetricsForWindow('a', day, day, [fact], scope);
-    expect((await pool.query("SELECT spend FROM google_ads_daily_metrics WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '25.00' }]);
+    expect((await pool.query("SELECT spend FROM google_ads_daily_metrics WHERE campaign_id = 'a'")).rows).toEqual([{ spend: '25.000000' }]);
   });
 });

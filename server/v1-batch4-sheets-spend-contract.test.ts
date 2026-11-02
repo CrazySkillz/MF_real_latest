@@ -271,7 +271,7 @@ describe.skipIf(!testUrl)("Sheets Spend handler-to-PostgreSQL and cleanup safety
     }
     f.setData([["Date", "Spend"], [date, "20"]], 50001); expect((await f.refresh()).success).toBe(false); expect(await snapshot()).toEqual(before);
     f.setData([["Date", "Spend"], [date, "0"]]); expect((await f.refresh()).success).toBe(true);
-    expect((await pool.query("SELECT spend FROM spend_records")).rows).toEqual([{ spend: "0.00" }]);
+    expect((await pool.query("SELECT spend FROM spend_records")).rows).toEqual([{ spend: "0" }]);
   });
   it("requires inspection and confirmation, removes only identical scoped records, and purges only inspected empty inactive matches", async () => {
     await seed("keep"); await seed("remove", { createdAt: new Date("2026-10-02") });

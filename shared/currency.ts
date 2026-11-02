@@ -145,6 +145,22 @@ export function getCurrencyConfig(currencyCode: string): CurrencyConfig {
   return SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES['USD'];
 }
 
+// Spend facts can contain provider micros. Sum their decimal strings exactly;
+// round only the requested result, never each contributing campaign/day.
+export function sumSpendAmounts(amounts: Array<string | number>, decimals: 2 | 6 = 2): string {
+  const micros = amounts.reduce((total, amount) => {
+    const text = typeof amount === 'number' && Number.isFinite(amount) ? amount.toFixed(6) : String(amount);
+    const match = /^(-?)(\d+)(?:\.(\d{1,6}))?$/.exec(text);
+    if (!match) throw new Error('Invalid spend amount');
+    const value = BigInt(match[2]) * BigInt(1_000_000) + BigInt((match[3] || '').padEnd(6, '0'));
+    return total + (match[1] ? -value : value);
+  }, BigInt(0));
+  const absolute = micros < BigInt(0) ? -micros : micros;
+  const units = decimals === 2 ? (absolute + BigInt(5_000)) / BigInt(10_000) : absolute;
+  const scale = BigInt(decimals === 2 ? 100 : 1_000_000);
+  return `${micros < BigInt(0) && units !== BigInt(0) ? '-' : ''}${units / scale}.${String(units % scale).padStart(decimals, '0')}`;
+}
+
 /**
  * Format a number as currency
  */

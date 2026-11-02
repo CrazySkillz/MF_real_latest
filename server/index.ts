@@ -1136,7 +1136,7 @@ process.on('uncaughtException', (error: Error) => {
         }
 
         // Explicit additive manifest: historical backfill and cleanup scripts are excluded.
-        for (const migration of ['0022_v1_entrypoint_ownership.sql', '0023_service_account_resource_grants.sql', '0024_v1_schema_integrity.sql', '0025_ga4_fractional_conversions.sql', '0026_goal_observed_value_precision.sql']) {
+        for (const migration of ['0022_v1_entrypoint_ownership.sql', '0023_service_account_resource_grants.sql', '0024_v1_schema_integrity.sql', '0025_ga4_fractional_conversions.sql', '0026_goal_observed_value_precision.sql', '0027_google_ads_spend_precision.sql']) {
           const statement = readFileSync(resolve(process.cwd(), 'migrations', migration), 'utf8')
             .replace(/^(?:BEGIN|COMMIT);[ \t]*\r?$/gm, ''); // The enclosing transaction owns commit/rollback.
           await db.execute(sql.raw(statement));

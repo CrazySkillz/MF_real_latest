@@ -2,6 +2,7 @@ import { type Client, type InsertClient, type Campaign, type InsertCampaign, typ
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
 import { randomUUID, createHash } from "crypto";
+import { sumSpendAmounts } from "../shared/currency";
 import { ga4RefreshWork, ga4ConnectionLifecycleEvents, type GA4RefreshWork, type GA4InitialImportStatus } from "@shared/schema";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { db, pool } from "./db";
@@ -2636,12 +2637,12 @@ export class DatabaseStorage implements IStorage {
         sql`${spendRecords.date} <= ${endDate}`
       ));
 
-    let total = 0;
+    const total: string[] = [];
     const sourceIds = new Set<string>();
     const currencies = new Set<string>();
     for (const r of rows as any[]) {
       const v = parseFloat(String((r as any).spendRecords?.spend ?? (r as any).spend ?? "0"));
-      if (!Number.isNaN(v)) total += v;
+      if (!Number.isNaN(v)) total.push(String((r as any).spendRecords?.spend ?? (r as any).spend ?? "0"));
       const sid = String((r as any).spendRecords?.spendSourceId ?? (r as any).spendSourceId);
       if (sid) sourceIds.add(sid);
       for (const cur of [(r as any).spendRecords?.currency ?? (r as any).currency, (r as any).sourceCurrency]) {
@@ -2651,7 +2652,7 @@ export class DatabaseStorage implements IStorage {
     }
     if (currencies.size > 1) throw new Error("Spend source currencies do not match");
     const currency = Array.from(currencies)[0];
-    return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
+    return { totalSpend: Number(sumSpendAmounts(total)), currency, sourceIds: Array.from(sourceIds) };
   }
 
   async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>> {
@@ -2675,7 +2676,7 @@ export class DatabaseStorage implements IStorage {
         sql`${spendRecords.date} <= ${endDate}`
       ));
 
-    const totals = new Map<string, { displayName: string; sourceType: string; spend: number; currency?: string }>();
+    const totals = new Map<string, { displayName: string; sourceType: string; spend: string[]; currency?: string }>();
     const currencies = new Set<string>();
     for (const r of rows as any[]) {
       const sid = String(r.spendSourceId ?? r.spendRecords?.spendSourceId);
@@ -2684,10 +2685,10 @@ export class DatabaseStorage implements IStorage {
       const existing = totals.get(sid) || {
         displayName: String(r.displayName ?? r.spendSources?.displayName ?? 'Unknown'),
         sourceType: String(r.sourceType ?? r.spendSources?.sourceType ?? 'unknown'),
-        spend: 0,
+        spend: [] as string[],
         currency: r.currency ?? r.spendRecords?.currency,
       };
-      existing.spend += v;
+      existing.spend.push(String(r.spend ?? r.spendRecords?.spend ?? "0"));
       totals.set(sid, existing);
       for (const cur of [r.currency ?? r.spendRecords?.currency, r.sourceCurrency]) {
         const normalized = String(cur || "").trim().toUpperCase();
@@ -2698,7 +2699,7 @@ export class DatabaseStorage implements IStorage {
 
     return Array.from(totals.entries()).map(([sourceId, data]) => ({
       sourceId, displayName: data.displayName, sourceType: data.sourceType,
-      spend: Number(data.spend.toFixed(2)), currency: data.currency,
+      spend: Number(sumSpendAmounts(data.spend)), currency: data.currency,
     }));
   }
 

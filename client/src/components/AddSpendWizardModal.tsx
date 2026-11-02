@@ -1313,7 +1313,7 @@ export function AddSpendWizardModal(props: {
       const campaigns = Array.from(grouped.entries()).map(([id, data]) => ({
         id,
         name: data.name,
-        spend: Number(data.spend.toFixed(2)),
+        spend: platform === "google_ads" ? data.spend : Number(data.spend.toFixed(2)),
         impressions: data.impressions,
         clicks: data.clicks,
       }));

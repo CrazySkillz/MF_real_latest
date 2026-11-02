@@ -295,14 +295,17 @@ export class GoogleAdsClient {
 }
 
 export function mapGoogleAdsDailyInsights(campaignId: string, insights: GoogleAdsDailyInsight[]) {
-  return insights.map((insight) => ({
+  return insights.map((insight) => {
+    if (!Number.isSafeInteger(insight.costMicros) || insight.costMicros < 0) throw new Error('Google Ads returned invalid cost micros');
+    const micros = BigInt(insight.costMicros);
+    return ({
     campaignId,
     googleCampaignId: insight.campaignId,
     googleCampaignName: insight.campaignName,
     date: insight.date,
     impressions: insight.impressions,
     clicks: insight.clicks,
-    spend: String(GoogleAdsClient.microsToAmount(insight.costMicros).toFixed(2)),
+    spend: `${micros / BigInt(1_000_000)}.${String(micros % BigInt(1_000_000)).padStart(6, '0')}`,
     conversions: String(insight.conversions),
     conversionValue: String(insight.conversionsValue.toFixed(2)),
     ctr: String((insight.ctr * 100).toFixed(4)),
@@ -317,5 +320,6 @@ export function mapGoogleAdsDailyInsights(campaignId: string, insights: GoogleAd
     conversionRate: insight.clicks > 0
       ? String(((insight.conversions / insight.clicks) * 100).toFixed(2))
       : null,
-  }));
+    });
+  });
 }

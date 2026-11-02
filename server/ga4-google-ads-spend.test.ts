@@ -17,8 +17,8 @@ describe("GA4 Insights Google Ads spend production materialization", () => {
     });
     expect(result.amount).toBe(18);
     expect(result.records).toEqual([
-      { campaignId: "campaign", date: "2026-08-01", spend: "18.00", currency: "EUR", sourceType: "ad_platforms", subCampaignUrn: null },
-      { campaignId: "campaign", date: "2026-08-02", spend: "0.00", currency: "EUR", sourceType: "ad_platforms", subCampaignUrn: null },
+      { campaignId: "campaign", date: "2026-08-01", spend: "18.000000", currency: "EUR", sourceType: "ad_platforms", subCampaignUrn: null },
+      { campaignId: "campaign", date: "2026-08-02", spend: "0.000000", currency: "EUR", sourceType: "ad_platforms", subCampaignUrn: null },
     ]);
     expect(result.mappingConfig.selectedCampaignIds).toEqual(["a", "b"]);
     expect(result.mappingConfig.breakdown.map((row) => row.spend)).toEqual([10.25, 7.75]);
@@ -34,7 +34,7 @@ describe("GA4 Insights Google Ads spend production materialization", () => {
     }]);
     expect(row).toMatchObject({
       campaignId: "campaign", googleCampaignId: "123", date: "2026-08-01",
-      spend: "12.35", cpc: "2.47", cpm: "123.46", costPerConversion: "6.17",
+      spend: "12.345678", cpc: "2.47", cpm: "123.46", costPerConversion: "6.17",
       conversionValue: "42.50", ctr: "5.0000", interactionRate: "5.00",
       searchImpressionShare: "25.00",
     });

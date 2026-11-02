@@ -230,12 +230,14 @@ export const spendRecords = pgTable("spend_records", {
   campaignId: text("campaign_id").notNull(),
   spendSourceId: text("spend_source_id").notNull(),
   date: text("date").notNull(), // YYYY-MM-DD
-  spend: decimal("spend", { precision: 12, scale: 2 }).notNull(),
+  spend: decimal("spend").notNull(),
   currency: text("currency"),
   sourceType: varchar("source_type", { length: 50 }), // 'google_sheets', 'csv', 'paste', 'google_ads_api', 'meta_api', 'linkedin_api', 'instagram_api', 'legacy_cumulative'
   subCampaignUrn: text("sub_campaign_urn"), // Platform campaign ID/URN for per-campaign spend attribution
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => ({
+  spendMicros: check("spend_records_spend_micros", sql`${table.spend} > -10000000000 AND ${table.spend} < 10000000000 AND ${table.spend} = round(${table.spend}, 6)`),
+}));
 
 // Revenue sources (manual, csv, google_sheets, shopify, hubspot, salesforce, etc.)
 export const revenueSources = pgTable("revenue_sources", {
@@ -528,7 +530,7 @@ export const googleAdsDailyMetrics = pgTable("google_ads_daily_metrics", {
   date: text("date").notNull(), // YYYY-MM-DD (UTC)
   impressions: integer("impressions").notNull().default(0),
   clicks: integer("clicks").notNull().default(0),
-  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  spend: decimal("spend", { precision: 14, scale: 6 }).notNull().default(sql`0`),
   conversions: decimal("conversions", { precision: 10, scale: 2 }).notNull().default(sql`0`),
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }).notNull().default(sql`0`),
   ctr: decimal("ctr", { precision: 8, scale: 4 }),
@@ -1135,7 +1137,7 @@ export const ga4GoogleAdsSpendDailyMetrics = pgTable("ga4_google_ads_spend_daily
   date: text("date").notNull(),
   impressions: integer("impressions").notNull().default(0),
   clicks: integer("clicks").notNull().default(0),
-  spend: decimal("spend", { precision: 12, scale: 2 }).notNull().default(sql`0`),
+  spend: decimal("spend", { precision: 16, scale: 6 }).notNull().default(sql`0`),
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   campaignDateUnique: uniqueIndex("ga4_google_ads_spend_daily_metrics_campaign_day_unique").on(table.campaignId, table.googleCampaignId, table.date),

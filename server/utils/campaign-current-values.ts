@@ -1,4 +1,5 @@
 import { conversionCreditsMatch } from "../../shared/metric-math";
+import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { storage, type GA4RefreshWriteInput } from "../storage";
 import { ga4Service } from "../analytics";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
@@ -194,20 +195,13 @@ async function getCampaignMetricTotalsForEndDate(
     if (!rows) return null;
     ga4Available = !isBeforeGA4ImportStart;
     ga4RevenueAvailable = true;
-    let engagementSum = 0;
-    let engagementRows = 0;
     for (const row of rows || []) {
       sessions += parseNum((row as any)?.sessions);
       users += parseNum((row as any)?.users);
       conversions += parseNum((row as any)?.conversions);
       ga4Revenue += parseNum((row as any)?.revenue);
-      const rawRate = parseNum((row as any)?.engagementRate);
-      if (rawRate > 0) {
-        engagementSum += rawRate > 0 && rawRate <= 1 ? rawRate * 100 : rawRate;
-        engagementRows += 1;
-      }
     }
-    if (engagementRows > 0) engagementRate = engagementSum / engagementRows;
+    engagementRate = summarizeGA4TrafficRows(rows).engagementRate * 100;
     if (isYesopMockProperty(propertyId)) {
       const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter);
       sessions += baseline.sessions;

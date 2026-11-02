@@ -1,4 +1,5 @@
 import { formatConversionCredit } from "@shared/metric-math";
+import { summarizeGA4TrafficRows } from "@shared/ga4-traffic-window";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRoute, useSearch } from "wouter";
@@ -2611,11 +2612,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
       users: acc.users + (Number(row?.users || 0) || 0),
       revenue: acc.revenue + (Number(row?.revenue || 0) || 0),
-      engagementRateSum: acc.engagementRateSum + (Number(row?.engagementRate || 0) || 0),
-      engagementRateRows: acc.engagementRateRows + (Number(row?.engagementRate || 0) > 0 ? 1 : 0),
-    }), { sessions: 0, conversions: 0, users: 0, revenue: 0, engagementRateSum: 0, engagementRateRows: 0 });
+    }), { sessions: 0, conversions: 0, users: 0, revenue: 0 });
     const totals = (benchGA4ToDate as any)?.totals || {};
-    const rawEngagementRate = Number(totals?.engagementRate || 0) || (daily.engagementRateRows > 0 ? daily.engagementRateSum / daily.engagementRateRows : 0);
+    const rawEngagementRate = totals?.engagementRate != null && String(totals.engagementRate).trim() !== "" && Number.isFinite(Number(totals.engagementRate))
+      ? Number(totals.engagementRate) : summarizeGA4TrafficRows(rows).engagementRate;
     const engagementRate = rawEngagementRate > 0 && rawEngagementRate <= 1 ? rawEngagementRate * 100 : rawEngagementRate;
     return {
       sessions: Math.max(Number(totals?.sessions || 0), daily.sessions),

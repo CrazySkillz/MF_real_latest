@@ -1583,7 +1583,7 @@ export class GoogleAnalytics4Service {
 
     const isEmptyTotals = (result: Awaited<ReturnType<typeof run>>) => {
       const totals = result?.totals || {};
-      return (Number(totals.sessions || 0) + Number(totals.users || 0) + Number(totals.conversions || 0) + Number(totals.pageviews || 0) + Number(totals.revenue || 0)) <= 0;
+      return [totals.sessions, totals.users, totals.conversions, totals.pageviews, totals.revenue].every(value => Number(value || 0) === 0);
     };
 
     const hasTrafficTotals = (result: Awaited<ReturnType<typeof run>>) => {
@@ -1597,7 +1597,7 @@ export class GoogleAnalytics4Service {
 
     const hasConversionRevenueTotals = (result: Awaited<ReturnType<typeof run>>) => {
       const totals = result?.totals || {};
-      return Number(totals.conversions || 0) > 0 || Number(totals.revenue || 0) > 0;
+      return Number(totals.conversions || 0) > 0 || Number(totals.revenue || 0) !== 0;
     };
 
     const supplementConversionRevenueTotals = async (result: Awaited<ReturnType<typeof run>>, scopeFilter: any) => {
@@ -1619,7 +1619,7 @@ export class GoogleAnalytics4Service {
       }
 
       const supplement = await runConversionRevenueTotalsWithFallback(campaignNameFilter).catch(ignoreNonCurrencyFailure);
-      if (!supplement || (Number(supplement.totals.conversions || 0) <= 0 && Number(supplement.totals.revenue || 0) <= 0)) return result;
+      if (!supplement || (Number(supplement.totals.conversions || 0) <= 0 && Number(supplement.totals.revenue || 0) === 0)) return result;
 
       return {
         ...result,

@@ -71,14 +71,19 @@ describe.skipIf(!testUrl)('ACCURACY-001 real PostgreSQL spend precision', () => 
     await pool.query('ALTER TABLE spend_records ALTER COLUMN spend TYPE NUMERIC(12,2)');
     await pool.query(migration);
   });
-  it('preserves the shared table and index files while enforcing micro precision and amount limits', async () => {
+  it('preserves the shared heap, unrelated indexes and dependent index definition while enforcing micro precision and amount limits', async () => {
     await pool.query('ALTER TABLE spend_records DROP CONSTRAINT spend_records_spend_micros');
     await pool.query('ALTER TABLE spend_records ALTER COLUMN spend TYPE NUMERIC(12,2)');
     await pool.query("INSERT INTO spend_records(id,campaign_id,spend_source_id,date,spend) VALUES('old','a','fixture',$1,10.25)", [day]);
-    const files = () => pool.query("SELECT oid,relfilenode FROM pg_class WHERE oid='spend_records'::regclass OR oid IN (SELECT indexrelid FROM pg_index WHERE indrelid='spend_records'::regclass) ORDER BY oid");
+    await pool.query('CREATE INDEX idx_spend_records_date_range ON spend_records(campaign_id,date DESC) WHERE (spend::numeric(15,2)>0)');
+    const files = () => pool.query("SELECT oid,relfilenode FROM pg_class WHERE (oid='spend_records'::regclass OR oid IN (SELECT indexrelid FROM pg_index WHERE indrelid='spend_records'::regclass)) AND relname<>'idx_spend_records_date_range' ORDER BY oid");
+    const dependentIndex = () => pool.query("SELECT pg_get_indexdef(indexrelid) definition,indisvalid,indisready FROM pg_index WHERE indexrelid='idx_spend_records_date_range'::regclass");
     const before = (await files()).rows;
+    const indexBefore = (await dependentIndex()).rows;
     await pool.query(migration);
     expect((await files()).rows).toEqual(before);
+    expect((await dependentIndex()).rows).toEqual(indexBefore);
+    expect(indexBefore).toEqual([expect.objectContaining({ indisvalid: true, indisready: true })]);
     expect((await pool.query('SELECT spend FROM spend_records')).rows[0].spend).toBe('10.25');
     for (const value of ['0.0000001','10000000000','-10000000000','NaN','Infinity']) {
       await expect(pool.query('UPDATE spend_records SET spend=$1', [value])).rejects.toThrow('spend_records_spend_micros');

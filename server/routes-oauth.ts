@@ -4843,6 +4843,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New-import identity survives a lost response. The existing source primary key
+  // makes concurrent retries atomic without merging separately requested imports.
+  const replayGa4FinancialImport = async (req: any, res: any, error?: any): Promise<boolean> => {
+    const request = req._ga4FinancialImport;
+    if (!request || (error && error?.code !== "23505" && error?.cause?.code !== "23505")) return false;
+    let source: any;
+    try {
+      source = request.kind === "revenue"
+        ? await storage.getRevenueSource(request.campaignId, request.id)
+        : await storage.getSpendSource(request.campaignId, request.id, "ga4");
+      if (!source) {
+        const inactive = request.kind === "revenue"
+          ? await storage.getInactiveRevenueSources(request.campaignId)
+          : await storage.getInactiveSpendSources(request.campaignId);
+        source = inactive.find((candidate: any) => candidate.id === request.id);
+      }
+    } catch (lookupError) {
+      if (!error) throw lookupError;
+      res.status(503).json({ success: false, error: "Import status could not be checked. Please retry." });
+      return true;
+    }
+    if (source && source.isActive !== false && source.sourceType === request.sourceType
+      && String(source.platformContext || "ga4") === "ga4") {
+      res.json({ success: true, alreadySaved: true, sourceId: source.id });
+      return true;
+    }
+    if (source || error) {
+      const retired = !!source || /^(revenue|spend)_sources_pkey$/.test(String(error?.constraint || error?.cause?.constraint || ""));
+      res.status(409).json({ success: false, ...(retired ? { code: "FINANCIAL_IMPORT_RETIRED" } : {}), error: "This import is no longer available. Refresh Sources before importing again." });
+      return true;
+    }
+    return false;
+  };
+  const prepareGa4FinancialImport = async (req: any, res: any, kind: "revenue" | "spend", sourceType: string, platformContext: string | null, sourceId?: string | null): Promise<boolean> => {
+    if (platformContext !== "ga4" || sourceId) return false;
+    const parsed = z.string().uuid().safeParse(req.headers?.["x-import-request-id"]);
+    if (!parsed.success) { res.status(400).json({ success: false, error: "Invalid import request ID" }); return true; }
+    req._ga4FinancialImport = { id: parsed.data, campaignId: req.params.id, kind, sourceType };
+    return replayGa4FinancialImport(req, res);
+  };
   const inFlightGa4CsvRevenueAdds = new Set<string>();
 
   app.post(
@@ -4897,6 +4937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const file = (req as any).file as any;
         const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : "";
         if (!file && !existingSourceId) return res.status(400).json({ success: false, error: "No CSV file provided" });
+        if (req.headers?.["x-import-request-id"] !== undefined && await prepareGa4FinancialImport(req, res, "revenue", "csv", platformContext, existingSourceId)) return;
         if (platformContext === "ga4" && !existingSourceId && file) {
           addRequestKey = createHash("sha256")
             .update(campaignId)
@@ -5231,6 +5272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             campaignId,
             existingSourceIdOrNull ? String(existingSourceIdOrNull) : null,
             {
+              ...((req as any)._ga4FinancialImport ? { id: (req as any)._ga4FinancialImport.id } : {}),
               campaignId,
               sourceType: "csv",
               platformContext: "ga4",
@@ -5335,6 +5377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } catch (e: any) {
+        if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, e)) return;
         const status = e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : (e?.code === "CSV_REVENUE_SOURCE_CHANGED" || e?.code === "REVENUE_SOURCE_CHANGED") ? 409 : 500;
         res.status(status).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
       } finally {
@@ -5543,6 +5586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
       if (platformContext === "ga4" && !existingSourceId) {
+        if (req.headers?.["x-import-request-id"] !== undefined && await prepareGa4FinancialImport(req, res, "revenue", "google_sheets", platformContext, existingSourceId)) return;
         addRequestKey = createHash("sha256").update(JSON.stringify(normalizeOverviewInventoryConfigValue({ campaignId, connectionId, platformContext, mapping }))).digest("hex");
         if (inFlightGoogleSheetsRevenueAdds.has(addRequestKey)) {
           return res.status(409).json({ success: false, error: "This Google Sheets revenue import is already processing." });
@@ -5846,6 +5890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (date && subCampaignUrn && rev > 0) records.push({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2) as any, currency, subCampaignUrn });
         }
         const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
+          ...((req as any)._ga4FinancialImport ? { id: (req as any)._ga4FinancialImport.id } : {}),
           campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : 'Google Sheets revenue'), currency, mappingConfig: nextMappingConfig, isActive: true,
         } as any, records, existingSourceId ? String(existingSheetsSource?.mappingConfig || "") : undefined);
         try {
@@ -5991,6 +6036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRevenue,
       });
     } catch (e: any) {
+      if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, e)) return;
       res.status(e?.code === "REVENUE_SOURCE_CHANGED" ? 409 : 500).json({ success: false, error: e?.message || "Failed to process Sheets revenue" });
     } finally {
       if (addRequestKey) inFlightGoogleSheetsRevenueAdds.delete(addRequestKey);
@@ -6123,6 +6169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (String(clientMappingConfig?.platform || "").trim().toLowerCase() !== "google_ads") {
           return res.status(400).json({ success: false, error: "Google Ads is the only enabled GA4 ad-platform spend source" });
         }
+        if (req.headers?.["x-import-request-id"] !== undefined && await prepareGa4FinancialImport(req, res, "spend", "ad_platforms", platformContext, existingSourceId)) return;
         if (!existingSourceId) {
           const sources = await storage.getSpendSources(campaignId, "ga4");
           const existingGoogleAdsSource = sources.some((source: any) => {
@@ -6195,6 +6242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const today = new Date().toISOString().split('T')[0];
         const records = ga4GoogleAdsSpendRecords || [{ campaignId, date: today, spend: amount.toFixed(2), currency: cur, sourceType: effectiveSourceType, subCampaignUrn: subCampaignUrn || null } as any];
         const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, effectiveSourceType, 'ga4', {
+          ...((req as any)._ga4FinancialImport ? { id: (req as any)._ga4FinancialImport.id } : {}),
           campaignId, sourceType: effectiveSourceType, platformContext: 'ga4', displayName: resolvedDisplayName, currency: cur, mappingConfig: finalMappingConfig, isActive: true,
         } as any, records);
         await recalcCampaignSpend(campaignId);
@@ -6239,6 +6287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext: platformContext || null });
     } catch (e: any) {
+      if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, e)) return;
       res.status(e?.code === "SPEND_SOURCE_NOT_FOUND" ? 404 : e?.code === "SPEND_SOURCE_CHANGED" ? 409 : 500).json({ success: false, error: e?.message || "Failed to process manual spend" });
     }
   });
@@ -6598,6 +6647,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      if (req.headers?.["x-import-request-id"] !== undefined && await prepareGa4FinancialImport(req, res, "spend", "csv", platformContext, mapping?.sourceId)) return;
+
       const file = (req as any).file as any;
       let parsedRows: Array<Record<string, any>> = [];
       let parsedHeaders: string[] = [];
@@ -6800,6 +6851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId,
         existingSourceId ? String(existingSourceId) : null,
         {
+          ...((req as any)._ga4FinancialImport ? { id: (req as any)._ga4FinancialImport.id } : {}),
           campaignId,
           sourceType: "csv",
           displayName: mapping.displayName || "CSV",
@@ -6824,6 +6876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         importedRowsTotalSpend: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
+      if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, e)) return;
       const status = e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : 500;
       if (e?.code === "CSV_TOO_LARGE") return res.status(status).json({ success: false, error: e.message, code: "CSV_TOO_LARGE" });
       res.status(status).json({ success: false, error: e?.message || "Failed to process CSV spend" });
@@ -6997,6 +7050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           || !Object.prototype.hasOwnProperty.call(req.body || {}, "expectedSourceMappingConfig")) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
         await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
       }
+      if (req.headers?.["x-import-request-id"] !== undefined && await prepareGa4FinancialImport(req, res, "spend", "google_sheets", platformContext, mapping?.sourceId)) return;
       const expectedSourceMappingSupplied = Object.prototype.hasOwnProperty.call(req.body || {}, "expectedSourceMappingConfig");
       let expectedSourceMappingConfig: string | null | undefined;
       if (platformContext === 'ga4' && mapping?.sourceId) {
@@ -7247,6 +7301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : [{ campaignId, date: completedDate, spend: totalSpend.toFixed(2), currency, sourceType: 'google_sheets' }];
         const visibleSpendToDate = Number(records.filter((record: any) => String(record.date) <= completedDate).reduce((sum: number, record: any) => sum + Number(record.spend || 0), 0).toFixed(2));
         const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
+          ...((req as any)._ga4FinancialImport ? { id: (req as any)._ga4FinancialImport.id } : {}),
           campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || 'Google Sheets', currency, mappingConfig: nextSpendMappingConfig, isActive: true,
         } as any, records as any, expectedSourceMappingConfig, refreshWriteInput);
         await recalcCampaignSpend(campaignId, refreshWriteInput);
@@ -7318,6 +7373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spendToDate: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
+      if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, e)) return;
       if (e?.code === "SPEND_SOURCE_CHANGED") return res.status(409).json({ success: false, code: e.code, error: e.message });
       res.status(500).json({ success: false, error: e?.message || "Failed to process sheet spend" });
     }
@@ -18530,6 +18586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
       const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : platformContextRaw === "custom_integration" ? "custom_integration" : "ga4";
+      if (req.headers?.["x-import-request-id"] !== undefined && await prepareGa4FinancialImport(req, res, "revenue", "salesforce", platformCtx, existingSourceIdOrNull)) return;
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"
@@ -19086,6 +19143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!sfConn || !salesforceConnectionMappingConfig) return res.status(404).json({ error: 'Salesforce connection not found.' });
         if (refreshWriteInput.refreshScope && sfConn.id !== refreshConnection?.id) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
         source = await storage.replaceGa4SalesforceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull, String(sfConn.id), salesforceConnectionMappingConfig, {
+          ...((req as any)._ga4FinancialImport ? { id: (req as any)._ga4FinancialImport.id } : {}),
           campaignId, sourceType: 'salesforce', platformContext: 'ga4', displayName: 'Salesforce (Opportunities)', currency: cur, mappingConfig: JSON.stringify(normalizedMapping), isActive: true,
         } as any, revenueRecordsToInsert, expectedSourceMappingConfig, { ...refreshWriteInput, ...(refreshWriteInput.refreshScope ? { expectedConnectionMappingConfig: refreshConnection?.mappingConfig ?? null } : {}) });
         materializedRecordCount = revenueRecordsToInsert.length;
@@ -19139,6 +19197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionId: latestSession?.id || null,
       });
     } catch (error: any) {
+      if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, error)) return;
       console.error('[Salesforce Save Mappings] Error:', error);
       res.status(error?.code === 'SALESFORCE_REVENUE_SOURCE_CHANGED' ? 409 : 500).json({ error: error.message || 'Failed to save Salesforce mappings' });
     }
@@ -20001,6 +20060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : new Set<string>();
       const requestedSourceId = String((body.data as any).sourceId || "").trim();
       const expectedSourceMappingConfig = body.data.expectedSourceMappingConfig;
+      if (!previewOnly && req.headers?.["x-import-request-id"] !== undefined && await prepareGa4FinancialImport(req, res, "revenue", "hubspot", platformCtx, requestedSourceId)) return;
       if (refreshWriteInput.refreshScope) {
         if (refreshWriteInput.refreshScope.campaignId !== campaignId || platformCtx !== "ga4" || !requestedSourceId || !expectedSourceMappingConfig) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
         await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
@@ -20478,6 +20538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw new Error('Active HubSpot connection not found');
           }
           const sourceValues = {
+            ...((req as any)._ga4FinancialImport && !existingHubspot ? { id: (req as any)._ga4FinancialImport.id } : {}),
             campaignId,
             sourceType: 'hubspot',
             platformContext: platformCtx,
@@ -20630,6 +20691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await clearLatestLinkedInImportSessionConversionValue(campaignId);
         }
       } catch (e) {
+        if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, e)) return;
         console.warn("[HubSpot Save Mappings] Failed to materialize revenue records:", e);
         if (platformCtx === "ga4") {
           if ((e as any)?.code === 'HUBSPOT_REVENUE_SOURCE_CHANGED') throw e;
@@ -20646,6 +20708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: hubspotRevenueCurrency || null,
       });
     } catch (error: any) {
+      if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, error)) return;
       console.error('[HubSpot Save Mappings] Error:', error);
       const paginationIncomplete = error?.code === HUBSPOT_PAGINATION_ERROR_CODE;
       const sourceChanged = error?.code === 'HUBSPOT_REVENUE_SOURCE_CHANGED';
@@ -35147,6 +35210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           || typeof body.data.expectedSourceMappingConfig !== "string") throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
         await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
       }
+      if (!isDryRun && req.headers?.["x-import-request-id"] !== undefined && await prepareGa4FinancialImport(req, res, "revenue", "shopify", platformCtx, requestedSourceId)) return;
       let requestedSource: any = null;
       let requestedSourceMapping: Record<string, any> = {};
       let expectedRefreshSourceMapping: string | null = null;
@@ -35525,6 +35589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }, existingSourceMapping, refreshSuccessEvent));
 
         const sourceValues = {
+          ...((req as any)._ga4FinancialImport && !existingShopify ? { id: (req as any)._ga4FinancialImport.id } : {}),
           campaignId,
           sourceType: 'shopify',
           platformContext: platformCtx,
@@ -35673,6 +35738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } catch (e: any) {
+        if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, e)) return;
         console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);
         if (repairConfirmation && String(e?.message || '').includes('changed since preview')) {
           return res.status(409).json({ code: 'SHOPIFY_REPAIR_PREVIEW_CHANGED', error: e.message });
@@ -35705,6 +35771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         presentmentCurrency,
       });
     } catch (error: any) {
+      if ((req as any)._ga4FinancialImport && await replayGa4FinancialImport(req, res, error)) return;
       console.error("[Shopify Save Mappings] Error:", error);
       await persistRefreshFailure(error);
       const encryptionNotConfigured = error?.code === 'TOKEN_ENCRYPTION_KEY_NOT_CONFIGURED';

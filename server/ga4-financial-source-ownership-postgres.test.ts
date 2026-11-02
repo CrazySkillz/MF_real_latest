@@ -163,12 +163,15 @@ function revenueRoute(provider: "salesforce" | "hubspot" | "shopify", scope?: an
     SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE: "SHOPIFY_CAMPAIGN_WINDOW_EXCEEDED", SALESFORCE_PAGINATION_ERROR_CODE: "PAGINATION", SALESFORCE_RESULT_LIMIT_ERROR_CODE: "LIMIT",
   };
   const amountHelper = source.slice(source.indexOf("  function parseCrmRevenueAmount("), source.indexOf("  async function hubspotSearchDeals("));
-  new Function(...Object.keys(dependencies), ts.transpileModule(amountHelper + source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(dependencies));
+  const importHelpers = source.slice(source.indexOf("  const replayGa4FinancialImport ="), source.indexOf("  const inFlightGa4CsvRevenueAdds ="));
+  new Function(...Object.keys(dependencies), ts.transpileModule(amountHelper + importHelpers + source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(dependencies));
   const body: any = { sourceId: `${provider}-a`, platformContext: "ga4", selectedValues: ["old"], days: 90,
     expectedSourceMappingConfig: initialMapping, campaignField: provider === "shopify" ? "tags" : "Campaign", campaignProperty: "Campaign", revenueField: "Amount", revenueProperty: "amount" };
-  return { body, providerRead, recompute, invoke: async () => {
+  const headers: Record<string, string> = {};
+  return { body, headers, providerRead, recompute, invoke: async () => {
     const res: any = { statusCode: 200, status(code: number) { this.statusCode = code; return this; }, json(payload: any) { this.body = payload; return this; } };
-    await handler({ params: { id: "a" }, body, ...internalRequest(scope) }, res); return res;
+    const internal = internalRequest(scope);
+    await handler({ params: { id: "a" }, body, ...internal, headers: { ...internal.headers, ...headers } }, res); return res;
   } };
 }
 
@@ -223,6 +226,45 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     const result: any = await write(kind);
     if (kind === "spend records") expect(result).toBeUndefined();
     else expect(result.id).toBe(sourceId(kind));
+  });
+  for (const provider of ["salesforce", "hubspot", "shopify"] as const) {
+    it(`${provider} persists the new request ID, replays a lost response and rejects a deleted request without changing another source`, async () => {
+      await storage.deleteRevenueSourceWithRecords("a", `${provider}-a`, "ga4");
+      const route = revenueRoute(provider), id = randomUUID();
+      delete route.body.sourceId; delete route.body.expectedSourceMappingConfig;
+      route.headers["x-import-request-id"] = id;
+      const first = await route.invoke(); expect(first.statusCode, JSON.stringify(first.body)).toBe(200);
+      expect(await storage.getRevenueSource("a", id)).toMatchObject({ id, sourceType: provider });
+      expect((await route.invoke()).body).toEqual({ success: true, alreadySaved: true, sourceId: id });
+      expect(route.providerRead).toHaveBeenCalledTimes(1);
+      await storage.deleteRevenueSourceWithRecords("a", id, "ga4");
+      const other = await storage.createRevenueSource({ campaignId: "a", sourceType: provider, platformContext: "ga4", currency: "EUR", mappingConfig: "{}" });
+      await storage.createRevenueRecords([{ campaignId: "a", revenueSourceId: other.id, date, revenue: "567.00", currency: "EUR" }]);
+      const before = await saved(), retired = await route.invoke();
+      expect(retired.statusCode, JSON.stringify(retired.body)).toBe(409);
+      expect(retired.body.code).toBe("FINANCIAL_IMPORT_RETIRED"); expect(await saved()).toEqual(before);
+    });
+    it(`${provider} keeps one new source across simultaneous import requests`, async () => {
+      await storage.deleteRevenueSourceWithRecords("a", `${provider}-a`, "ga4");
+      const route = revenueRoute(provider), id = randomUUID();
+      delete route.body.sourceId; delete route.body.expectedSourceMappingConfig;
+      route.headers["x-import-request-id"] = id;
+      const results = await Promise.all([route.invoke(), route.invoke()]);
+      expect(results.map(r => ({ code: r.statusCode, error: r.body.error }))).toEqual([{ code: 200, error: undefined }, { code: 200, error: undefined }]);
+      const sources = (await storage.getRevenueSources("a", "ga4")).filter(s => s.sourceType === provider);
+      expect(sources.map(s => s.id)).toEqual([id]);
+      expect((await storage.getRevenueBreakdownBySource("a", "1900-01-01", "2999-01-01", "ga4")).find(s => s.sourceId === id)?.revenue).toBe(20);
+    });
+  }
+  it.each(["hubspot", "shopify"] as const)("preserves %s automatic reuse of an existing source without changing its ID", async provider => {
+    await pool.query("UPDATE revenue_sources SET mapping_config=$1 WHERE id=$2", [JSON.stringify({ campaignProperty: "Campaign", selectedValues: ["old"], revenueProperty: "amount", dateField: "closedate", pipelineEnabled: false }), `${provider}-a`]);
+    const route = revenueRoute(provider), id = randomUUID();
+    delete route.body.sourceId; delete route.body.expectedSourceMappingConfig; route.headers["x-import-request-id"] = id;
+    const result = await route.invoke(); expect(result.statusCode, JSON.stringify(result.body)).toBe(200);
+    expect(await storage.getRevenueSource("a", `${provider}-a`)).toBeDefined();
+    expect(await storage.getRevenueSource("a", id)).toBeUndefined();
+    const sources = (await storage.getRevenueSources("a", "ga4")).filter(s => s.sourceType === provider);
+    expect(sources.map(s => s.id)).toEqual([`${provider}-a`]);
   });
   for (const provider of ["salesforce", "hubspot"] as const) {
     it.each([false, true])(`${provider} item removal preserves remaining revenue and rejects stale selection (stale: %s)`, async stale => {

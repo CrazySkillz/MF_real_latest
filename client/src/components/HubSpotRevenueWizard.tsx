@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getFinancialImportRequestId, completeFinancialImportRequest } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -651,10 +652,11 @@ export function HubSpotRevenueWizard(props: {
     if (reviewPreviewStatus !== "success" || !isConnected || isSaving || (mode === "edit" && !hasEditChanges)) return;
     setIsSaving(true);
     try {
+      const importRequestId = platformContext === "ga4" && !sourceId ? getFinancialImportRequestId(campaignId, "revenue:hubspot") : undefined;
       const resp = await fetch(`/api/campaigns/${campaignId}/hubspot/save-mappings`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(importRequestId ? { "X-Import-Request-Id": importRequestId } : {}) },
         body: JSON.stringify({
           campaignProperty,
           selectedValues,
@@ -674,15 +676,17 @@ export function HubSpotRevenueWizard(props: {
         }),
       });
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.error || "Failed to save mappings");
+      if (json?.code === "FINANCIAL_IMPORT_RETIRED") completeFinancialImportRequest(campaignId, "revenue:hubspot", importRequestId);
+      if (!resp.ok || (importRequestId && json?.success !== true)) throw new Error(json?.error || "Failed to save mappings");
 
       toast({
-        title: "HubSpot Mappings Saved",
-        description: `Revenue connected: ${formatReviewCurrency(Number(json?.totalRevenue || 0))}.`,
+        title: json.alreadySaved ? "Import already saved" : "HubSpot Mappings Saved",
+        description: json.alreadySaved ? "The previous import was saved. Review its current values in Revenue Sources." : `Revenue connected: ${formatReviewCurrency(Number(json?.totalRevenue || 0))}.`,
       });
       setLastSaveResult(json);
       onSuccess?.(json);
       setStep("complete");
+      completeFinancialImportRequest(campaignId, "revenue:hubspot", importRequestId);
     } catch (err: any) {
       toast({
         title: "Failed to Save HubSpot Mappings",
@@ -1426,12 +1430,12 @@ export function HubSpotRevenueWizard(props: {
 
             {step === "complete" && (
               <div className="space-y-3">
-                <div className="text-sm text-foreground/80">
+                {lastSaveResult?.alreadySaved ? <div className="text-sm text-foreground/80">The previous import was saved. Review its current values in Revenue Sources.</div> : <div className="text-sm text-foreground/80">
                   Revenue connected:{" "}
                   <strong>
                     {formatReviewCurrency(Number(lastSaveResult?.totalRevenue || 0))}
                   </strong>
-                </div>
+                </div>}
                 <div className="flex items-center gap-2">
                   <Button
                     onClick={() => {

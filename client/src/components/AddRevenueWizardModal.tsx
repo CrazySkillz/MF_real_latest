@@ -16,6 +16,7 @@ import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import { getFinancialImportRequestId, completeFinancialImportRequest } from "@/lib/utils";
 
 type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
@@ -1605,16 +1606,19 @@ export function AddRevenueWizardModal(props: {
       if (csvFile) fd.append("file", csvFile);
       fd.append("mapping", JSON.stringify(mapping));
       if (platformContext !== "ga4") fd.append("platformContext", platformContext);
-      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", credentials: "include", body: fd });
+      const importRequestId = platformContext === "ga4" && !isEditing ? getFinancialImportRequestId(campaignId, "revenue:csv") : undefined;
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", credentials: "include", body: fd, headers: importRequestId ? { "X-Import-Request-Id": importRequestId } : undefined });
       const json = await resp.json().catch(() => ({}));
+      if (json?.code === "FINANCIAL_IMPORT_RETIRED") completeFinancialImportRequest(campaignId, "revenue:csv", importRequestId);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process CSV");
       toast({
-        title: "Revenue imported",
-        description: `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.`,
+        title: json.alreadySaved ? "Import already saved" : "Revenue imported",
+        description: json.alreadySaved ? "The previous import was saved. Review its current values in Revenue Sources." : `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.`,
       });
       invalidateAfterRevenueChange();
       onSuccess?.();
       onOpenChange(false);
+      completeFinancialImportRequest(campaignId, "revenue:csv", importRequestId);
     } catch (e: any) {
       toast({ title: "CSV import failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -1807,22 +1811,25 @@ export function AddRevenueWizardModal(props: {
         ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
       };
+      const importRequestId = platformContext === "ga4" && !isEditing ? getFinancialImportRequestId(campaignId, "revenue:google_sheets") : undefined;
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/process`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(importRequestId ? { "X-Import-Request-Id": importRequestId } : {}) },
         body: JSON.stringify({ connectionId: sheetsConnectionId, mapping, platformContext }),
       });
       const json = await resp.json().catch(() => ({}));
+      if (json?.code === "FINANCIAL_IMPORT_RETIRED") completeFinancialImportRequest(campaignId, "revenue:google_sheets", importRequestId);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process sheet");
 
       toast({
-        title: "Revenue imported",
-        description: `Imported ${Number(json?.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.`,
+        title: json.alreadySaved ? "Import already saved" : "Revenue imported",
+        description: json.alreadySaved ? "The previous import was saved. Review its current values in Revenue Sources." : `Imported ${Number(json?.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.`,
       });
       invalidateAfterRevenueChange();
       onSuccess?.();
       onOpenChange(false);
+      completeFinancialImportRequest(campaignId, "revenue:google_sheets", importRequestId);
     } catch (e: any) {
       toast({ title: "Import failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {

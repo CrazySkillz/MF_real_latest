@@ -13,6 +13,7 @@ import * as sfQuery from "./utils/salesforce-query";
 import * as sfCurrency from "./utils/salesforceCurrency";
 import * as hubCurrency from "./utils/hubspot-currency";
 import * as hubPagination from "./utils/hubspot-pagination";
+import * as csv from "./utils/csv";
 
 const database = vi.hoisted(() => ({ current: null as any }));
 vi.mock("./db", () => ({ get db() { return database.current; }, pool: null }));
@@ -35,8 +36,80 @@ const nextDay = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10);
 const families = ["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"] as const;
 let admin: Pool, pool: Pool, created = false;
 const rows = (amount = "250.00", date = "2026-09-30") => [{ campaignId: "a", date, currency: "EUR", revenue: amount, externalId: "sale-1" }];
-async function save(kind: typeof families[number], id: string | null = null, records = rows(), options: any = {}) {
-  const source = { campaignId: "a", sourceType: kind, platformContext: "ga4", currency: "EUR", mappingConfig: "{}" };
+function csvImportHandler(kind: "revenue" | "spend") {
+  const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
+  const ast = ts.createSourceFile("routes-oauth.ts", source, ts.ScriptTarget.Latest, true);
+  let registration = "", handler: any;
+  function visit(node: ts.Node) {
+    if (ts.isCallExpression(node) && node.expression.getText(ast) === "app.post" && ts.isStringLiteral(node.arguments[0])
+      && node.arguments[0].text === `/api/campaigns/:id/${kind}/csv/process`) registration = node.getText(ast);
+    ts.forEachChild(node, visit);
+  }
+  visit(ast); if (!registration) throw new Error("CSV route missing");
+  const dependencies: any = {
+    ...csv, Buffer, createHash, storage, z,
+    app: { post: (_path: string, ...callbacks: any[]) => { handler = callbacks.at(-1); } },
+    importRateLimiter: () => {}, requireCampaignAccessParamId: () => {}, uploadCsv: { single: () => () => {} }, uploadRevenueCsv: () => {},
+    MAX_CSV_ROWS_PREVIEW: 50_000, MAX_CSV_ROWS_PROCESS: 50_000, countLinesUpTo: (text: string) => text.split("\n").length,
+    isSupportedScopedSpendPlatformContext: (context: string) => ["ga4", "linkedin"].includes(context),
+    spendSourceMatchesPlatformContext: (value: any, context: string) => value.platformContext === context,
+    parseCsvRevenuePlatformContext: (value: string, fallback: string) => value || fallback,
+    zRevenueMapping: { safeParse: (data: any) => ({ success: true, data }) },
+    normalizeOverviewInventoryConfigValue: (value: any) => value, inFlightGa4CsvRevenueAdds: new Set(),
+    sendBadRequest: (res: any, error: string) => res.status(400).json({ success: false, error }),
+    parseNum: (value: unknown) => Number.parseFloat(String(value).replace(/[$,]/g, "")),
+    getReportingDateWindow: () => ({ endDate: day }), yesterdayUTC: () => day, googleAdsCampaignIdFromValueOrMapping: () => null,
+    recalcCampaignSpend: vi.fn(), recomputeGA4SpendBeforeResponse: vi.fn(), recomputeCampaignDerivedValues: vi.fn(), devLog: () => {},
+  };
+  const importHelpers = source.slice(source.indexOf("  const replayGa4FinancialImport ="), source.indexOf("  const inFlightGa4CsvRevenueAdds ="));
+  new Function(...Object.keys(dependencies), ts.transpileModule(importHelpers + registration, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(dependencies));
+  return async (requestId?: string, options: { campaignId?: string; sourceId?: string; amount?: string } = {}) => {
+    const campaignId = options.campaignId || "a";
+    const column = kind === "revenue" ? "Revenue" : "Spend";
+    const res: any = { statusCode: 200, status(code: number) { this.statusCode = code; return this; }, json(body: any) { this.body = body; return this; } };
+    await handler({ params: { id: campaignId }, headers: { "x-import-request-id": requestId }, _campaign: await storage.getCampaign(campaignId),
+      body: { platformContext: "ga4", mapping: JSON.stringify({ [kind === "revenue" ? "revenueColumn" : "spendColumn"]: column, dateColumn: "Date", platformContext: "ga4", currency: "EUR", ...(options.sourceId ? { sourceId: options.sourceId } : {}) }) },
+      file: { buffer: Buffer.from(`Date,${column}\n2026-09-30,${options.amount ?? "250"}`), originalname: "fixture.csv" } }, res);
+    return res;
+  };
+}
+function financialReplayHandler(kind: "revenue" | "spend", sourceType: string) {
+  const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
+  const ast = ts.createSourceFile("routes-oauth.ts", source, ts.ScriptTarget.Latest, true);
+  const endpoint = sourceType === "ad_platforms" ? "spend/process/manual" : sourceType === "google_sheets" ? `${kind}/sheets/process` : `${sourceType}/save-mappings`;
+  let registration = "", handler: any;
+  function visit(node: ts.Node) {
+    if (ts.isCallExpression(node) && node.expression.getText(ast) === "app.post" && ts.isStringLiteral(node.arguments[0])
+      && node.arguments[0].text === `/api/campaigns/:id/${endpoint}`) registration = node.getText(ast);
+    ts.forEachChild(node, visit);
+  }
+  visit(ast); if (!registration) throw new Error("Financial route missing");
+  const access = vi.fn(async (req: any, res: any) => req.denied ? (res.status(403).json({ error: "Denied" }), null) : storage.getCampaign("a"));
+  const dependencies: any = { storage, z, randomUUID, createHash, ...sfQuery,
+    app: { post: (_path: string, ...callbacks: any[]) => { handler = callbacks.at(-1); } },
+    ensureCampaignAccess: access, requireCampaignAccessParamId: () => {}, importRateLimiter: () => {}, googleSheetsRateLimiter: () => {},
+    zSelectedValues: z.array(z.string()), zNumberLike: z.number(), zValueSource: z.enum(["revenue", "conversion_value"]),
+    zSheetsRevenuePlatformContext: z.string(), zSalesforceRevenuePlatformContext: z.string(), zHubSpotRevenuePlatformContext: z.string(), zShopifyRevenuePlatformContext: z.string(),
+    zRevenueMapping: z.object({ revenueColumn: z.string() }).passthrough(),
+    parseNum: (value: unknown) => Number(value || 0),
+    spendSourceTypeForPlatformContext: (_context: string, type: string) => type || "manual",
+    getInternalGA4RefreshWriteInput: () => ({}), assertProductionTokenEncryptionConfigured: () => {}, isInternalAutoRefreshRequest: () => false,
+    isSupportedScopedSpendPlatformContext: (v: string) => ["ga4", "linkedin"].includes(v),
+    sendBadRequest: (res: any, error: string) => res.status(400).json({ error }), inFlightGoogleSheetsRevenueAdds: new Set(),
+    console: { error: () => {} },
+  };
+  const helpers = source.slice(source.indexOf("  const replayGa4FinancialImport ="), source.indexOf("  const inFlightGa4CsvRevenueAdds ="));
+  new Function(...Object.keys(dependencies), ts.transpileModule(helpers + registration, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(dependencies));
+  return async (id: string, overrides: any = {}) => {
+    const req: any = { params: { id: "a" }, headers: { "x-import-request-id": id }, body: { platformContext: "ga4", connectionId: "fixture",
+      mapping: { revenueColumn: "Revenue", spendColumn: "Spend" }, campaignField: "Campaign", campaignProperty: "campaign", selectedValues: ["sale"],
+      sourceType: "ad_platforms", mappingConfig: { platform: "google_ads" }, ...overrides } };
+    const res: any = { statusCode: 200, status(code: number) { this.statusCode = code; return this; }, json(body: any) { this.body = body; return this; } };
+    await handler(req, res); return { ...res, request: req };
+  };
+}
+async function save(kind: typeof families[number], id: string | null = null, records = rows(), options: any = {}, sourceOverrides: any = {}) {
+  const source = { campaignId: "a", sourceType: kind, platformContext: "ga4", currency: "EUR", mappingConfig: "{}", ...sourceOverrides };
   if (kind === "hubspot") return storage.replaceGa4HubspotRevenueSourceWithRecords("a", id, "hubspot-a", "{}", source, records, undefined, options);
   if (kind === "salesforce") return storage.replaceGa4SalesforceRevenueSourceWithRecords("a", id, "salesforce-a", "{}", source, records, undefined, options);
   if (kind === "shopify") return storage.replaceGa4ShopifyRevenueSourceWithRecords("a", id, "shopify-a", "{}", source, records, undefined, options);
@@ -162,6 +235,85 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     expect(pending).toHaveLength(1); expect(pending[0]).toMatchObject({ campaignId: "a", reportingDate: day, status: "pending" });
     expect((await storage.getGA4RevenuePublicationStatus("a", day))[source.id].status).toBe("pending");
     expect((await storage.getRevenueTotalForRange("a", "1900-01-01", nextDay)).totalRevenue).toBe(350);
+  });
+  it.each(["revenue", "spend"] as const)("does not add a second CSV %s source when the saved import response is lost and retried", async kind => {
+    const invoke = csvImportHandler(kind), requestId = randomUUID();
+    const first = await invoke(requestId); // Commit happened, but its HTTP response did not reach the browser.
+    const retry = await invoke(requestId);
+    expect(first.statusCode, first.body?.error).toBe(200);
+    expect(retry.statusCode, retry.body?.error).toBe(200);
+    expect(retry.body.sourceId).toBe(first.body.sourceId);
+    const sources = kind === "revenue" ? await storage.getRevenueSources("a", "ga4") : await storage.getSpendSources("a", "ga4");
+    expect(sources).toHaveLength(1);
+    const total = kind === "revenue" ? (await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue : (await storage.getSpendTotalForRange("a", "1900-01-01", day, "ga4")).totalSpend;
+    expect(total).toBe(250);
+  });
+  it.each([
+    ["revenue", "google_sheets"], ["revenue", "hubspot"], ["revenue", "salesforce"], ["revenue", "shopify"],
+    ["spend", "google_sheets"], ["spend", "ad_platforms"],
+  ] as const)("acknowledges a committed %s %s source through its actual route without contacting a provider", async (kind, family) => {
+    const id = randomUUID();
+    const persist = () => kind === "revenue" ? save(family as typeof families[number], null, rows(), {}, { id })
+      : storage.replaceSpendSourceWithRecords("a", null, family, "ga4", { id, campaignId: "a", sourceType: family, platformContext: "ga4", currency: "EUR", mappingConfig: "{}" }, [{ campaignId: "a", date: "2026-09-30", spend: "250.00", currency: "EUR", sourceType: family }]);
+    await persist();
+    // A concurrent second transaction cannot alter records, connection mappings or publication work.
+    const workBefore = await storage.getRecoverableGA4RefreshWork();
+    await expect(persist()).rejects.toThrow();
+    expect(await storage.getRecoverableGA4RefreshWork()).toEqual(workBefore);
+    const replay = await financialReplayHandler(kind, family)(id);
+    expect(replay.statusCode, JSON.stringify(replay.body)).toBe(200);
+    expect(replay.body).toEqual({ success: true, alreadySaved: true, sourceId: id });
+    const total = kind === "revenue" ? (await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue : (await storage.getSpendTotalForRange("a", "1900-01-01", day, "ga4")).totalSpend;
+    expect(total).toBe(250);
+    expect(await storage.getRecoverableGA4RefreshWork()).toEqual(workBefore);
+  });
+  it.each(["revenue", "spend"] as const)("keeps separate intended CSV %s imports additive, including headerless retained callers", async kind => {
+    const invoke = csvImportHandler(kind);
+    for (const id of [randomUUID(), randomUUID(), undefined, undefined]) expect((await invoke(id)).statusCode).toBe(200);
+    const sources = kind === "revenue" ? await storage.getRevenueSources("a", "ga4") : await storage.getSpendSources("a", "ga4");
+    expect(sources).toHaveLength(4);
+    const total = kind === "revenue" ? (await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue : (await storage.getSpendTotalForRange("a", "1900-01-01", day, "ga4")).totalSpend;
+    expect(total).toBe(1000);
+  });
+  it.each(["revenue", "spend"] as const)("protects CSV %s creation against simultaneous retries", async kind => {
+    const invoke = csvImportHandler(kind), id = randomUUID();
+    const attempts = await Promise.all([invoke(id), invoke(id)]);
+    expect(attempts.some(result => result.statusCode === 200)).toBe(true);
+    expect(attempts.every(result => [200, 409].includes(result.statusCode))).toBe(true);
+    expect((await invoke(id)).body).toMatchObject({ alreadySaved: true, sourceId: id });
+    const sources = kind === "revenue" ? await storage.getRevenueSources("a", "ga4") : await storage.getSpendSources("a", "ga4");
+    expect(sources.map(source => source.id)).toEqual([id]);
+  });
+  it.each(["revenue", "spend"] as const)("does not overwrite a later CSV %s edit when an old create request is retried", async kind => {
+    const invoke = csvImportHandler(kind), id = randomUUID();
+    expect((await invoke(id)).statusCode).toBe(200);
+    expect((await invoke(undefined, { sourceId: id, amount: "400" })).statusCode).toBe(200);
+    expect((await invoke(id)).body).toMatchObject({ alreadySaved: true, sourceId: id });
+    const total = kind === "revenue" ? (await storage.getRevenueTotalForRange("a", "1900-01-01", day)).totalRevenue : (await storage.getSpendTotalForRange("a", "1900-01-01", day, "ga4")).totalSpend;
+    expect(total).toBe(400);
+  });
+  it.each(["revenue", "spend"] as const)("cannot restore deleted CSV %s or reuse another campaign's request identity", async kind => {
+    const invoke = csvImportHandler(kind), id = randomUUID();
+    await invoke(id);
+    const foreign = await invoke(id, { campaignId: "b" });
+    expect(foreign.statusCode).toBe(409); expect(foreign.body.sourceId).toBeUndefined();
+    const other = kind === "revenue" ? await storage.getRevenueSources("b", "ga4") : await storage.getSpendSources("b", "ga4");
+    expect(other).toHaveLength(0);
+    if (kind === "revenue") await storage.deleteRevenueSourceWithRecords("a", id, "ga4");
+    else await storage.deleteSpendSourceWithRecords("a", id, "ga4");
+    const retired = await invoke(id);
+    expect(retired.statusCode).toBe(409); expect(retired.body.code).toBe("FINANCIAL_IMPORT_RETIRED");
+    const active = kind === "revenue" ? await storage.getRevenueSources("a", "ga4") : await storage.getSpendSources("a", "ga4");
+    expect(active).toHaveLength(0);
+  });
+  it.each(["revenue", "spend"] as const)("rejects malformed CSV %s request identities and can retry a validation failure safely", async kind => {
+    const invoke = csvImportHandler(kind), id = randomUUID();
+    expect((await invoke("not-a-uuid")).statusCode).toBe(400);
+    expect((await invoke(id, { amount: "invalid" })).statusCode).not.toBe(200);
+    const active = kind === "revenue" ? await storage.getRevenueSources("a", "ga4") : await storage.getSpendSources("a", "ga4");
+    expect(active).toHaveLength(0);
+    const valid = await invoke(id);
+    expect(valid.statusCode).toBe(200); expect(valid.body.sourceId).toBe(id);
   });
   it.each(families)("publishes %s old-sale edits and does not requeue identical provider data", async kind => {
     const source = await save(kind); const scope = await claim();

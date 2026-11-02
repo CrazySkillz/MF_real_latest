@@ -30,12 +30,12 @@ describe("HubSpot review currency browser regression", () => {
   }, 60_000);
   afterAll(async () => { await browser?.close(); });
 
-  async function fixture(currency: string, totalRevenue: number, options: { direct?: boolean; failSave?: boolean; edit?: boolean; revenueOnly?: boolean; connected?: boolean;
+  async function fixture(currency: string, totalRevenue: number, options: { direct?: boolean; failSave?: boolean; edit?: boolean; revenueOnly?: boolean; connected?: boolean; lostSave?: "network" | "invalid-json" | "missing-success";
     previews?: Array<{ status?: number; data?: any; raw?: string; abort?: boolean; wait?: Promise<void> }> } = {}) {
     const context = await browser.newContext({ viewport: { width: 1400, height: 1100 }, locale: "en-US", serviceWorkers: "block" });
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
-    const errors: string[] = [], posts: any[] = [], completedPreviews: any[] = [];
+    const errors: string[] = [], posts: any[] = [], completedPreviews: any[] = [], saveIds: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     await context.route("**/*", async route => {
       const req = route.request(), url = new URL(req.url());
@@ -47,6 +47,15 @@ describe("HubSpot review currency browser regression", () => {
       let data: any; let status = 200;
       if (req.method() === "POST" && url.pathname === "/api/campaigns/a/hubspot/save-mappings") {
         const body = req.postDataJSON(); posts.push(body);
+        if (!body.previewOnly) {
+          saveIds.push(req.headers()["x-import-request-id"]);
+          if (options.lostSave && saveIds.length === 1) {
+            if (options.lostSave === "network") await route.abort("failed");
+            else await route.fulfill({ contentType: "application/json", body: options.lostSave === "invalid-json" ? '{"success":' : '{}' });
+            return;
+          }
+          if (options.lostSave) { await route.fulfill({ json: { success: true, alreadySaved: true, sourceId: saveIds[0] } }); return; }
+        }
         const preview = body.previewOnly ? options.previews?.[posts.filter(item => item.previewOnly).length - 1] : undefined;
         if (preview?.wait) await preview.wait;
         if (preview?.abort) { await route.abort("failed"); return; }
@@ -68,7 +77,7 @@ describe("HubSpot review currency browser regression", () => {
       await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
       if (req.method() === "POST" && req.postDataJSON()?.previewOnly) completedPreviews.push(req.postDataJSON());
     });
-    await page.goto("http://hubspot-currency-fixture.test/");
+    await page.goto("https://hubspot-currency-fixture.test/");
     const next = page.getByRole("button", { name: "Continue", exact: true });
     if (options.revenueOnly) await page.getByRole("radio", { name: /^Total Revenue only/ }).check();
     await next.click();
@@ -89,8 +98,25 @@ describe("HubSpot review currency browser regression", () => {
     await next.click();
     await browserExpect(page.getByText("Review Settings", { exact: true })).toBeVisible();
     if (options.connected !== false) await expect.poll(() => posts.some(body => body.previewOnly)).toBe(true);
-    return { page, posts, completedPreviews, errors, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
+    return { page, posts, saveIds, completedPreviews, errors, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
   }
+
+  it.each(["network", "invalid-json", "missing-success"] as const)("keeps one import identity after a %s response and never displays an invented zero", async lostSave => {
+    const f = await fixture("EUR", 125.75, { direct: true, lostSave });
+    try {
+      const submit = f.page.getByRole("button", { name: "Import revenue", exact: true });
+      await submit.click();
+      await browserExpect(submit).toBeEnabled();
+      await browserExpect(f.page.getByText("Review Settings", { exact: true })).toBeVisible();
+      expect(f.saveIds).toHaveLength(1);
+      await submit.click();
+      await browserExpect(f.page.getByText("Import already saved", { exact: true })).toBeVisible();
+      expect(f.saveIds).toEqual([f.saveIds[0], f.saveIds[0]]);
+      expect(f.saveIds[0]).toMatch(/^[a-f0-9-]{36}$/);
+      await browserExpect(f.page.getByText("Revenue connected:", { exact: false })).toHaveCount(0);
+      expect(await f.page.evaluate(() => sessionStorage.getItem("financial-import-request:a:revenue:hubspot"))).toBeNull();
+    } finally { await f.close(); }
+  }, 30_000);
 
   it.each([
     ["EUR", 0, "€0.00", "€3,200.00"],

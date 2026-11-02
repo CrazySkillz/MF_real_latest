@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
+import { getFinancialImportRequestId, completeFinancialImportRequest } from "@/lib/utils";
 import {
   Loader2, AlertCircle, Clock,
   ArrowLeft, Upload, FileSpreadsheet, Trash2, Zap,
@@ -1036,16 +1037,19 @@ export function AddSpendWizardModal(props: {
       const fd = new FormData();
       if (csvFile) fd.append("file", csvFile);
       fd.append("mapping", JSON.stringify(mapping));
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/csv/process`, { method: "POST", credentials: "include", body: fd });
+      const importRequestId = props.platformContext === "ga4" && !isEditing ? getFinancialImportRequestId(props.campaignId, "spend:csv") : undefined;
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/csv/process`, { method: "POST", credentials: "include", body: fd, headers: importRequestId ? { "X-Import-Request-Id": importRequestId } : undefined });
       const json = await resp.json().catch(() => null);
+      if (json?.code === "FINANCIAL_IMPORT_RETIRED") completeFinancialImportRequest(props.campaignId, "spend:csv", importRequestId);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
 
       toast({
-        title: isEditing ? "Spend updated" : "Spend imported",
-        description: `Imported ${json.keptRows} row(s), total ${props.currency || "USD"} ${json.spendToDate}.`,
+        title: json.alreadySaved ? "Import already saved" : isEditing ? "Spend updated" : "Spend imported",
+        description: json.alreadySaved ? "The previous import was saved. Review its current values in Spend Sources." : `Imported ${json.keptRows} row(s), total ${props.currency || "USD"} ${json.spendToDate}.`,
       });
       props.onProcessed?.();
       props.onOpenChange(false);
+      completeFinancialImportRequest(props.campaignId, "spend:csv", importRequestId);
     } catch (e: any) {
       toast({ title: "Processing failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -1090,19 +1094,22 @@ export function AddSpendWizardModal(props: {
         platformContext: props.platformContext,
         ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
       };
+      const importRequestId = props.platformContext === "ga4" && !isEditing ? getFinancialImportRequestId(props.campaignId, "spend:google_sheets") : undefined;
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/process`, {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(importRequestId ? { "X-Import-Request-Id": importRequestId } : {}) },
         body: JSON.stringify({ connectionId: selectedSheetConnectionId, mapping, platformContext: props.platformContext }),
       });
       const json = await resp.json().catch(() => null);
+      if (json?.code === "FINANCIAL_IMPORT_RETIRED") completeFinancialImportRequest(props.campaignId, "spend:google_sheets", importRequestId);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
       toast({
-        title: isEditing ? "Spend updated" : "Spend imported",
-        description: `Imported ${json.keptRows} row(s), total ${props.currency || "USD"} ${json.spendToDate}.`,
+        title: json.alreadySaved ? "Import already saved" : isEditing ? "Spend updated" : "Spend imported",
+        description: json.alreadySaved ? "The previous import was saved. Review its current values in Spend Sources." : `Imported ${json.keptRows} row(s), total ${props.currency || "USD"} ${json.spendToDate}.`,
       });
       props.onProcessed?.();
       props.onOpenChange(false);
+      completeFinancialImportRequest(props.campaignId, "spend:google_sheets", importRequestId);
     } catch (e: any) {
       toast({ title: "Processing failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -1352,9 +1359,10 @@ export function AddSpendWizardModal(props: {
     const platformLabel = selectedPlatform === "google_ads" ? "Google Ads" : "Meta Ads";
     setIsProcessing(true);
     try {
+      const importRequestId = props.platformContext === "ga4" && selectedPlatform === "google_ads" && !isEditing ? getFinancialImportRequestId(props.campaignId, "spend:google_ads") : undefined;
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(importRequestId ? { "X-Import-Request-Id": importRequestId } : {}) },
         body: JSON.stringify({
           amount: Number(selectedSpend.toFixed(2)),
           currency: props.currency || "USD",
@@ -1379,6 +1387,7 @@ export function AddSpendWizardModal(props: {
         }),
       });
       const json = await resp.json().catch(() => null);
+      if (json?.code === "FINANCIAL_IMPORT_RETIRED") completeFinancialImportRequest(props.campaignId, "spend:google_ads", importRequestId);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to import spend");
       const importedSpend = Number(json?.spendToDate);
       const importedCurrency = String(json?.currency || props.currency || "USD").trim().toUpperCase();
@@ -1386,13 +1395,14 @@ export function AddSpendWizardModal(props: {
         ? new Intl.NumberFormat(undefined, { style: "currency", currency: importedCurrency }).format(importedSpend)
         : "the verified server total";
       toast({
-        title: "Spend imported",
-        description: json?.derivedValuesUpdated === false
+        title: json.alreadySaved ? "Import already saved" : "Spend imported",
+        description: json.alreadySaved ? "The previous import was saved. Review its current values in Spend Sources." : json?.derivedValuesUpdated === false
           ? `Imported ${importedSpendLabel}. Total Spend is updated, but some KPI/Benchmark values could not be refreshed.`
           : `Imported ${importedSpendLabel} from ${selectedCampaigns.length} ${platformLabel} campaign(s).`,
       });
       props.onProcessed?.();
       props.onOpenChange(false);
+      completeFinancialImportRequest(props.campaignId, "spend:google_ads", importRequestId);
     } catch (e: any) {
       toast({ title: "Import failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {

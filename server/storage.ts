@@ -294,6 +294,7 @@ export interface IStorage {
 
   // Revenue (generic; platform-scoped to avoid GA4/LinkedIn leakage)
   getRevenueSources(campaignId: string, platformContext?: RevenuePlatformContext): Promise<RevenueSource[]>;
+  getInactiveRevenueSources(campaignId: string): Promise<RevenueSource[]>;
   getGA4RevenuePublication(campaignId: string, reportingDate: string): Promise<GA4RevenuePublication>;
   getGA4RevenuePublicationStatus(campaignId: string, reportingDate: string): Promise<GA4RevenuePublicationStatus>;
   getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined>;
@@ -2771,6 +2772,12 @@ export class DatabaseStorage implements IStorage {
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
           : eq(revenueSources.platformContext, ctx as any)
       ))
+      .orderBy(desc(revenueSources.connectedAt));
+  }
+
+  async getInactiveRevenueSources(campaignId: string): Promise<RevenueSource[]> {
+    return db.select().from(revenueSources)
+      .where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.isActive, false)))
       .orderBy(desc(revenueSources.connectedAt));
   }
 

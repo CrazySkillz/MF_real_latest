@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getFinancialImportRequestId, completeFinancialImportRequest } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -561,10 +562,11 @@ export function ShopifyRevenueWizard(props: {
       if (isRepair && !preview?.repairConfirmation) return;
       setIsSaving(true);
       try {
+        const importRequestId = isGA4 && !editSourceId ? getFinancialImportRequestId(campaignId, "revenue:shopify") : undefined;
         const resp = await fetch(`/api/campaigns/${campaignId}/shopify/save-mappings`, {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(importRequestId ? { "X-Import-Request-Id": importRequestId } : {}) },
           body: JSON.stringify({
             ...(editSourceId ? { sourceId: editSourceId } : {}),
             campaignField,
@@ -580,7 +582,8 @@ export function ShopifyRevenueWizard(props: {
           }),
         });
         const json = await resp.json().catch(() => ({}));
-        if (!resp.ok) {
+        if (json?.code === "FINANCIAL_IMPORT_RETIRED") completeFinancialImportRequest(campaignId, "revenue:shopify", importRequestId);
+        if (!resp.ok || (importRequestId && json?.success !== true)) {
           if (json?.code === "SHOPIFY_REPAIR_PREVIEW_CHANGED") await fetchPreview();
           throw new Error(json?.error || "Failed to import revenue");
         }
@@ -605,11 +608,12 @@ export function ShopifyRevenueWizard(props: {
             : "Shopify revenue refreshed, but the follow-up integrity check could not be completed.",
           ...(!repairPass ? { variant: "destructive" as const } : {}),
         } : {
-          title: "Revenue imported",
-          description: `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+          title: json.alreadySaved ? "Import already saved" : "Revenue imported",
+          description: json.alreadySaved ? "The previous import was saved. Review its current values in Revenue Sources." : `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
         });
         onSuccess?.({ ...json, ...(isRepair ? { repairInventory } : {}) });
         setStep("complete");
+        completeFinancialImportRequest(campaignId, "revenue:shopify", importRequestId);
       } catch (err: any) {
         toast({
           title: "Failed to import revenue",

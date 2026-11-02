@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getFinancialImportRequestId, completeFinancialImportRequest } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -924,10 +925,11 @@ export function SalesforceRevenueWizard(props: {
     setIsSaving(true);
     setSaveError(null);
     try {
+      const importRequestId = platformContext === "ga4" && !(mode === "edit" && sourceId) ? getFinancialImportRequestId(campaignId, "revenue:salesforce") : undefined;
       const resp = await fetch(`/api/campaigns/${campaignId}/salesforce/save-mappings`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(importRequestId ? { "X-Import-Request-Id": importRequestId } : {}) },
         body: JSON.stringify({
           ...(mode === "edit" && sourceId ? { sourceId } : {}),
           campaignField,
@@ -947,14 +949,16 @@ export function SalesforceRevenueWizard(props: {
         }),
       });
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.error || "Failed to save mappings");
+      if (json?.code === "FINANCIAL_IMPORT_RETIRED") completeFinancialImportRequest(campaignId, "revenue:salesforce", importRequestId);
+      if (!resp.ok || (importRequestId && json?.success !== true)) throw new Error(json?.error || "Failed to save mappings");
       setLastSaveResult(json);
       toast({
-        title: "Revenue Metrics Processed",
-        description: `Total Revenue processed: ${formatReviewCurrency(Number(json?.totalRevenue || 0), json?.currency || effectiveSalesforceCurrency)}.`,
+        title: json.alreadySaved ? "Import already saved" : "Revenue Metrics Processed",
+        description: json.alreadySaved ? "The previous import was saved. Review its current values in Revenue Sources." : `Total Revenue processed: ${formatReviewCurrency(Number(json?.totalRevenue || 0), json?.currency || effectiveSalesforceCurrency)}.`,
       });
       onSuccess?.(json);
       setStep("complete");
+      completeFinancialImportRequest(campaignId, "revenue:salesforce", importRequestId);
     } catch (err: any) {
       setSaveError(err?.message || "Please try again.");
       toast({

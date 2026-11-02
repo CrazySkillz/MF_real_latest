@@ -5,6 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Keep an unconfirmed import's identity across retries, modal closes and reloads.
+export function getFinancialImportRequestId(campaignId: string, source: string): string {
+  const key = `financial-import-request:${campaignId}:${source}`;
+  const id = sessionStorage.getItem(key) || crypto.randomUUID();
+  sessionStorage.setItem(key, id);
+  return id;
+}
+
+export function completeFinancialImportRequest(campaignId: string, source: string, id?: string): void {
+  const key = `financial-import-request:${campaignId}:${source}`;
+  if (id && sessionStorage.getItem(key) === id) sessionStorage.removeItem(key);
+}
+
 export function formatTimeAgo(date: string | Date): string {
   const now = new Date();
   const past = new Date(date);

@@ -301,7 +301,8 @@ export const resolveCompatibleTrendFinancialDaily = (args: {
     return actual?.available === true && expected?.available === true
       && Array.isArray(actual.sources) && actual.sources.length > 0
       && Array.isArray(expected.sources) && expected.sources.length > 0
-      && hasNonNegativeMetric(actual.value) && hasNonNegativeMetric(expected.value)
+      && (hasNonNegativeMetric(actual.value) || (metricName === "revenue" && Number.isFinite(Number(actual.value)) && Number(actual.value) < 0))
+      && (hasNonNegativeMetric(expected.value) || (metricName === "revenue" && Number.isFinite(Number(expected.value)) && Number(expected.value) < 0))
       && Math.abs(Number(actual.value) - Number(expected.value)) < 0.005;
   });
   return reconciles ? financialDaily : null;

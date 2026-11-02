@@ -1455,7 +1455,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     } else if (key === "cpa" && performancePageTotals.spendAvailable === true && performanceFinancialConversionsAvailable && performanceFinancialConversions > 0) {
       value = financialValue("spend") / performanceFinancialConversions;
     } else return aggregateMetric;
-    const resolvedAvailable = value !== null && available(value);
+    const resolvedAvailable = value !== null && Number.isFinite(value) && (["revenue", "roas", "roi"].includes(key) || available(value));
     return { ...aggregateMetric, available: resolvedAvailable, value: resolvedAvailable ? value : null, unavailableReasons: resolvedAvailable ? [] : ["Executive Summary UI value unavailable"] };
   };
   const trendReportDays = 30;
@@ -1531,7 +1531,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const historicalTrendFinancialValue = (key: "spend" | "revenue" | "conversions") => {
     const input = compatibleTrendFinancialDaily?.inputs?.[key];
     const value = Number(input?.value);
-    return input?.available === true && Array.isArray(input?.sources) && input.sources.length > 0 && Number.isFinite(value) && value >= 0
+    return input?.available === true && Array.isArray(input?.sources) && input.sources.length > 0 && Number.isFinite(value) && (key === "revenue" || value >= 0)
       ? value
       : null;
   };
@@ -2080,7 +2080,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText("Revenue", { bold: true, indent: 8 });
       const importedRevenue = (financialRevenueInputRows as any[]).reduce((sum, row) => sum + (Number(row?.revenue) || 0), 0);
       const ga4RevenueAvailable = aggregateSources.some((source: any) => source?.id === "ga4" && Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("revenue"));
-      const ga4NativeRevenue = ga4RevenueAvailable && revenue !== null ? Math.max(0, revenue - importedRevenue) : null;
+      const ga4NativeRevenue = ga4RevenueAvailable && revenue !== null ? revenue - importedRevenue : null;
       if (ga4NativeRevenue !== null) addText(`- GA4 Revenue: ${money(ga4NativeRevenue)}`, { indent: 12 });
       (financialRevenueInputRows as any[]).forEach((row) => addText(`- ${row?.displayName || row?.sourceType || "Revenue input"}: ${money(Number(row?.revenue) || 0)}`, { indent: 12 }));
       if (ga4NativeRevenue === null && financialRevenueInputRows.length === 0) addText("- No detailed revenue inputs are available.", { indent: 12 });
@@ -2721,7 +2721,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       sectionHeading("Allocation & Sources", 32);
       const importedRevenue = (financialRevenueInputRows as any[]).reduce((sum, row) => sum + (Number(row?.revenue) || 0), 0);
       const ga4RevenueAvailable = aggregateSources.some((source: any) => source?.id === "ga4" && Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("revenue"));
-      const ga4NativeRevenue = ga4RevenueAvailable && revenue !== null ? Math.max(0, revenue - importedRevenue) : null;
+      const ga4NativeRevenue = ga4RevenueAvailable && revenue !== null ? revenue - importedRevenue : null;
       const revenueRows = [
         ...(ga4NativeRevenue !== null ? [["GA4 Revenue", money(ga4NativeRevenue)]] : []),
         ...(financialRevenueInputRows as any[]).map((row) => [String(row?.displayName || row?.sourceType || "Revenue input"), money(Number(row?.revenue) || 0)]),

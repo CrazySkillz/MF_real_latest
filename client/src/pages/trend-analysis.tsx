@@ -487,7 +487,7 @@ export default function TrendAnalysis() {
     const metric = performanceSummary?.totals?.[metricName];
     if (metric?.value === null || typeof metric?.value === "undefined" || metric?.value === "") return null;
     const value = Number(metric?.value);
-    const validValue = Number.isFinite(value) && (metricName === "roi" || value >= 0);
+    const validValue = Number.isFinite(value) && (["revenue", "roas", "roi"].includes(metricName) || value >= 0);
     return metric?.available === true && Array.isArray(metric?.sources) && metric.sources.length > 0 && validValue ? value : null;
   };
   const hasAuthoritativeHeadlineWindow = performanceSummary?.campaignId === campaignId
@@ -543,7 +543,7 @@ export default function TrendAnalysis() {
     if (input?.value === null || typeof input?.value === "undefined" || input?.value === "") return null;
     const value = Number(input?.value);
     return input?.available === true && Array.isArray(input?.sources) && input.sources.length > 0
-      && Number.isFinite(value) && value >= 0 ? value : null;
+      && Number.isFinite(value) && (metricName === "revenue" || value >= 0) ? value : null;
   };
   const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue")
     ?? aggregateMetricValue("revenue");

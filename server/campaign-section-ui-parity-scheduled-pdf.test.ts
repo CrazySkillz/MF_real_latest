@@ -15,6 +15,7 @@ const storageMock = vi.hoisted(() => ({
   getPrimaryGA4Connection: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   getFinancialDailyComparisonData: vi.fn(),
+  getComparisonData: vi.fn(),
   getExecutiveSummaryDailyComparisonData: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(),
   getSpendBreakdownBySource: vi.fn(),
@@ -173,6 +174,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     pdfDrawCalls.drawColors.length = 0;
     pdfDrawCalls.lineWidths.length = 0;
     vi.clearAllMocks();
+    storageMock.getComparisonData.mockResolvedValue({ current: null, previous: null });
     resolveFinancialDailyComparisonPreviousMock.mockResolvedValue(null);
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
@@ -260,6 +262,38 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
   });
 
   afterEach(() => vi.useRealTimers());
+
+  it.each(["performance-summary", "financial-analysis", "trend-analysis", "executive-summary"].flatMap(type => [-25, 0, 5, 105].map(revenue => ({ type, revenue }))))("preserves signed and zero current Revenue $revenue in $type PDF", async ({ type, revenue }) => {
+    const original = await getCampaignMetricTotalsMock();
+    getCampaignMetricTotalsMock.mockResolvedValue({ ...original, revenue, ga4Revenue: revenue - 30, spend: 20, financialConversions: 3,
+      revenueBySource: new Map([["revenue-1", 30]]), spendBySource: new Map([["spend-1", 20]]) });
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "revenue-1", displayName: "Imported Revenue", sourceType: "csv", revenue: 30 }]);
+    storageMock.getSpendBreakdownBySource.mockResolvedValue([{ sourceId: "spend-1", displayName: "Imported Spend", sourceType: "csv", spend: 20 }]);
+    const aggregate = await aggregateCampaignMetricsMock();
+    aggregateCampaignMetricsMock.mockResolvedValue({ ...aggregate, detailedMetrics: { ...aggregate.detailedMetrics,
+      performanceSummary: { ...performanceSummary, totals: { ...performanceSummary.totals,
+        revenue: metric(revenue), spend: metric(20), roas: metric(revenue / 20), roi: metric((revenue - 20) / 20 * 100), cpa: metric(20 / 3) } },
+      financialInputs: { revenue: [{ ...financialInputs.revenue[0], value: revenue - 30 }, { ...financialInputs.revenue[1], value: 30 }], spend: [{ ...financialInputs.spend[0], value: 20 }] },
+      budgetPacing: { ...budgetPacing, spend: metric(20, ["spend-1"]) },
+      financialDecisionContext: { ...financialDecisionContext, roas: revenue / 20 },
+    } });
+    await buildPdfAttachmentForReport({ report: report(type, [`${type}:overview`]), windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "Signed fixture" });
+    const label = type === "performance-summary" || type === "financial-analysis" ? "TOTAL REVENUE" : "REVENUE";
+    const index = pdfTextCalls.indexOf(label);
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(pdfTextCalls[index + 1]).toBe(new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(revenue));
+    if (type === "financial-analysis") {
+      const nativeIndex = pdfTextCalls.indexOf("GA4 Revenue");
+      expect(nativeIndex).toBeGreaterThanOrEqual(0);
+      expect(pdfTextCalls[nativeIndex + 1]).toBe(new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(revenue - 30));
+      expect(pdfTextCalls[pdfTextCalls.indexOf("Imported Revenue") + 1]).toBe("$30.00");
+      expect(pdfTextCalls[pdfTextCalls.indexOf("Imported Spend") + 1]).toBe("$20.00");
+      pdfTextCalls.length = 0;
+      await buildPdfAttachmentForReport({ report: { ...report("financial-analysis", ["financial-analysis:overview"]), reportType: "overview" }, windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "Signed fixture" });
+      expect(pdfTextCalls).toContain(`- GA4 Revenue: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(revenue - 30)}`);
+      expect(pdfTextCalls).toContain("- Imported Revenue: $30.00");
+    }
+  });
 
   it("fails closed before loading report data when no sections are selected", async () => {
     const pdf = await buildPdfAttachmentForReport({

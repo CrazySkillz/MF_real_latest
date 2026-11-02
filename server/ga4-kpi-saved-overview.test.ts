@@ -142,6 +142,37 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-CPA", { currentValue: "4", publicationVersion });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { daily: [100, -25], native: 75, revenue: "105", roas: "5.25", roi: "425" },
+    { daily: [10, -40], native: -30, revenue: "0", roas: "0", roi: "-100" },
+    { daily: [0, -55], native: -55, revenue: "-25", roas: "-1.25", roi: "-225" },
+  ])("preserves signed saved revenue $native through goals, history, report preflight and alerts", async fixture => {
+    const daily = rows().map((row, index) => ({ ...row, revenue: String(fixture.daily[index]) }));
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => daily.filter(row => row.date >= start && row.date <= end));
+    storageMock.getLatestGA4DailyMetric.mockResolvedValue(daily[1]);
+    const saved = overview(); saved.campaignBreakdown.totals.revenue = fixture.native;
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    const financial = financialSnapshot(); financial.metrics.financialDaily.inputs.revenue.value = Number(fixture.revenue).toFixed(2);
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+    const result = await run();
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(result.kpiIdsSkipped).toEqual([]);
+    expect(result.benchmarkIdsSkipped).toEqual([]);
+    for (const [metric, value] of Object.entries({ Revenue: fixture.revenue, ROAS: fixture.roas, ROI: fixture.roi, CPA: "4" })) {
+      expect(storageMock.updateKPI).toHaveBeenCalledWith(`kpi-${metric}`, { currentValue: value, publicationVersion });
+      expect(storageMock.updateBenchmark).toHaveBeenCalledWith(`benchmark-${metric}`, { currentValue: value, publicationVersion });
+      expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({ kpiId: `kpi-${metric}`, value }));
+      expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledWith(expect.objectContaining({ benchmarkId: `benchmark-${metric}`, currentValue: value }));
+      const decision = await resolveAlertCurrentValueForDecision({ campaignId, platformType: "google_analytics", metric, currentValue: "777" }, undefined, { useSavedOverview: true });
+      expect(decision).toMatchObject({ currentValue: value, __alertDecisionEligible: true });
+    }
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: fixture.revenue, publicationVersion });
+    expect((await preflightGA4ReportKPIConsumers({ campaignId, platformType: "google_analytics", reportType: "kpis" }, date, { suppressAlerts: true })).ok).toBe(true);
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+    expect(alerts.kpi).not.toHaveBeenCalled(); expect(alerts.benchmark).not.toHaveBeenCalled();
+  });
   it("carries supplied ownership to platform and campaign current values and daily history", async () => {
     const refreshScope = { campaignId, ownerId: "owner-1", reportingDate: date, work: { id: "work", leaseToken: "lease" } };
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, suppressAlerts: true, useSavedOverview: true, refreshScope });
@@ -157,6 +188,23 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
     expect(alerts.kpi).not.toHaveBeenCalled(); expect(alerts.benchmark).not.toHaveBeenCalled();
   });
+
+  it.each(["negative sessions", "negative conversions", "nonfinite revenue", "unreconciled revenue"])(
+    "still withholds financial updates for invalid saved daily inputs: %s", async condition => {
+      const daily = rows();
+      if (condition === "negative sessions") daily[0].sessions = -1;
+      if (condition === "negative conversions") daily[0].conversions = -1;
+      if (condition === "nonfinite revenue") daily[0].revenue = "NaN";
+      if (condition === "unreconciled revenue") daily[0].revenue = "-25";
+      storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => daily.filter(row => row.date >= start && row.date <= end));
+      const result = await run();
+      expect(result.kpiIdsSkipped).toContain("kpi-Revenue");
+      expect(result.benchmarkIdsSkipped).toContain("benchmark-Revenue");
+      expect(storageMock.updateKPI.mock.calls.some(([id]) => id === "kpi-Revenue")).toBe(false);
+      expect(storageMock.updateBenchmark.mock.calls.some(([id]) => id === "benchmark-Revenue")).toBe(false);
+      expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    },
+  );
   it("fails closed if a guarded recompute would emit unguarded alerts", async () => {
     const refreshScope = { campaignId, ownerId: "owner-1", reportingDate: date, work: { id: "work", leaseToken: "lease" } };
     await expect(runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true, refreshScope })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");

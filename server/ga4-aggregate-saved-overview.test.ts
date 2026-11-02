@@ -184,6 +184,26 @@ describe("ordered GA4 campaign snapshot saved financial inputs", () => {
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { daily: [100, -25], native: 75, revenue: 105, roas: 5.25, roi: 425 },
+    { daily: [10, -40], native: -30, revenue: 0, roas: 0, roi: -100 },
+    { daily: [0, -55], native: -55, revenue: -25, roas: -1.25, roi: -225 },
+  ])("publishes signed saved revenue $native without replacing it with newer provider totals", async fixture => {
+    const rows = dailyRows().map((row, index) => ({ ...row, revenue: String(fixture.daily[index]) }));
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => rows.filter(row => row.date >= start && row.date <= end));
+    const saved = overview(); saved.campaignBreakdown.totals.revenue = fixture.native;
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    expect(await record()).toBe(true);
+    const snapshot = storageMock.createMetricSnapshot.mock.calls[0][0];
+    const totals = snapshot.metrics.performanceSummary.totals;
+    for (const [metric, value] of Object.entries({ revenue: fixture.revenue, roas: fixture.roas, roi: fixture.roi, cpa: 4 })) {
+      expect(totals[metric]).toMatchObject({ value, available: true });
+    }
+    expect(snapshot.metrics.ga4.revenue).toBe(fixture.native);
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+
   it.each(["unfiltered", "simulation"])("preserves the existing %s aggregate path", async (scope) => {
     if (scope === "unfiltered") storageMock.getCampaign.mockResolvedValue({ ...await storageMock.getCampaign(campaignId), ga4CampaignFilter: "" });
     else {

@@ -79,6 +79,29 @@ describe("gated financial daily snapshot writer", () => {
     beginFinancialDailySnapshotRefreshObservation("financial_sources");
     beginFinancialDailySnapshotRefreshObservation("ga4_daily");
   });
+  it.each(["valid", "wrong total", "wrong currency", "foreign source", "negative", "duplicate"])("keeps Spend provenance with its published total: %s", async condition => {
+    successfulEvidence();
+    const row = { sourceId: condition === "foreign source" ? "foreign" : "spend-1", currency: condition === "wrong currency" ? "EUR" : "USD",
+      spend: condition === "wrong total" ? 1 : condition === "negative" ? -1 : 2699.75 };
+    const deps = dependencies({
+      getGA4RevenuePublication: vi.fn().mockResolvedValue({ version: 1, reportingDate, sources: { "revenue-1": "hash" }, pendingSourceIds: [] }),
+      getRevenueSources: vi.fn().mockResolvedValue([{ id: "revenue-1", sourceType: "csv", currency: "USD", mappingConfig: "{}" }]),
+      getRevenueBreakdownBySource: vi.fn().mockResolvedValue([{ sourceId: "revenue-1", revenue: 16799.99, currency: "USD" }]),
+      getSpendSources: vi.fn().mockResolvedValue([{ id: "spend-1", sourceType: "google_sheets", displayName: "Costs", currency: "USD", isActive: true,
+        mappingConfig: JSON.stringify({ sheetName: "Spend", connectionId: "private", accessToken: "not-for-display" }) }]),
+      getSpendBreakdownBySource: vi.fn().mockResolvedValue(condition === "duplicate" ? [row, row] : [row]),
+    });
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+    if (condition === "valid") {
+      expect(result.status).toBe("written");
+      expect(deps.upsertFinancialDailySnapshot.mock.calls[0][0].revenuePublication.display.spendSources).toEqual([
+        { sourceId: "spend-1", sourceType: "google_sheets", displayName: "Costs", spend: 2699.75, mappingConfig: { sheetName: "Spend" } },
+      ]);
+    } else {
+      expect(result).toMatchObject({ status: "blocked", reasons: ["spend_publication_mismatch"] });
+      expect(deps.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+    }
+  });
   it("saves the exact completed-day revenue breakdown with the financial snapshot", async () => {
     successfulEvidence();
     const receipt = { version: 1, reportingDate, sources: { "revenue-1": "hash-1", "future-source": "hash-2" }, pendingSourceIds: ["future-source"] };

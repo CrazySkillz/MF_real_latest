@@ -70,7 +70,14 @@ const mocks = vi.hoisted(() => {
     const recordsBefore = state.records.map((record) => ({ ...record }));
     const targetBefore = state.targetSourceId;
     try {
-      return await callback(tx);
+      return await callback({ ...tx,
+        execute: async () => ({ rows: [{ name: "ga4_refresh_work" }] }),
+        select: () => ({ from: (table: any) => table[Symbol.for("drizzle:Name")] === "ga4_refresh_work"
+          ? { where: async () => [] }
+          : { where: () => ({ then: (resolve: any) => resolve([{ id: "campaign-1" }]), orderBy: () => ({ for: async () => [{ id: "campaign-1" }] }) }) } }),
+        update: (table: any) => table[Symbol.for("drizzle:Name")] === "ga4_refresh_work"
+          ? { set: () => ({ where: () => ({ returning: async () => [] }) }) } : tx.update(),
+      });
     } catch (error) {
       state.sources = sourcesBefore;
       state.records = recordsBefore;

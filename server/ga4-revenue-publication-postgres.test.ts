@@ -509,4 +509,48 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     ]);
     expect(await storage.getSpendTotalForRange("a", "1900-01-01", day, "ga4")).toEqual({ totalSpend: 99, currency: "EUR", sourceIds: ["spend"] });
   });
+  it.each(["csv", "google_sheets", "ad_platforms"])("queues publication after %s Spend is saved beside an unchanged published Revenue source", async sourceType => {
+    await save("csv");
+    await publish(await claim());
+    const source = { campaignId: "a", sourceType, platformContext: "ga4" as const, currency: "EUR", mappingConfig: "{}" };
+    const records = [{ campaignId: "a", date: day, spend: "20.00", currency: "EUR", sourceType }];
+    if (sourceType === "csv") await storage.replaceCsvSpendSourceWithRecords("a", null, source, records);
+    else await storage.replaceSpendSourceWithRecords("a", null, sourceType, "ga4", source, records);
+    expect((await storage.getSpendTotalForRange("a", day, day, "ga4")).totalSpend).toBe(20);
+    // The source commit must carry recoverable publication work; a UI response or
+    // a later scheduled provider refresh cannot be required to repair the card.
+    expect((await storage.getRecoverableGA4RefreshWork()).filter(work => work.campaignId === "a")).toHaveLength(1);
+    expect((await storage.getRecoverableGA4RefreshWork()).some(work => work.campaignId === "b")).toBe(false);
+  });
+  it.each(["csv", "google_sheets", "ad_platforms"])("publishes %s Spend edits/deletion and rejects a late pre-edit worker", async sourceType => {
+    const source = { campaignId: "a", sourceType, platformContext: "ga4" as const, currency: "EUR", mappingConfig: "{}" };
+    const records = (spend: string) => [{ campaignId: "a", date: day, spend, currency: "EUR", sourceType }];
+    const replace = (id: string | null, amount: string) => sourceType === "csv"
+      ? storage.replaceCsvSpendSourceWithRecords("a", id, source, records(amount))
+      : storage.replaceSpendSourceWithRecords("a", id, sourceType, "ga4", source, records(amount));
+    const created = await replace(null, "20.00"); const firstWorker = await claim();
+    const edited = await replace(created.id, "40.00");
+    expect(edited.id).toBe(created.id);
+    await expect(publish(firstWorker)).rejects.toThrow();
+    expect((await storage.getSpendTotalForRange("a", day, day, "ga4")).totalSpend).toBe(40);
+    const secondWorker = await claim(); await publish(secondWorker);
+    expect(await storage.deleteSpendSourceWithRecords("a", created.id, "ga4")).toBe(true);
+    expect(await storage.deleteSpendSourceWithRecords("a", created.id, "ga4")).toBe(false);
+    await expect(publish(secondWorker)).rejects.toThrow();
+    expect((await storage.getSpendTotalForRange("a", day, day, "ga4")).sourceIds).toEqual([]);
+    expect((await storage.getRecoverableGA4RefreshWork()).filter(work => work.campaignId === "a")).toHaveLength(1);
+    await publish(await claim());
+    expect(await storage.getRecoverableGA4RefreshWork()).toEqual([]);
+  });
+  it("rolls back a Spend save when durable publication is disabled", async () => {
+    vi.stubEnv("GA4_DURABLE_RECOVERY_ENABLED", "false");
+    try {
+      await expect(storage.replaceCsvSpendSourceWithRecords("a", null,
+        { campaignId: "a", sourceType: "csv", platformContext: "ga4", currency: "EUR" },
+        [{ campaignId: "a", date: day, spend: "20.00", currency: "EUR", sourceType: "csv" }])).rejects.toThrow("GA4_REVENUE_PUBLICATION_UNAVAILABLE");
+      expect(await storage.getSpendSources("a", "ga4")).toEqual([]);
+      expect((await pool.query("SELECT * FROM spend_records")).rows).toEqual([]);
+      expect(await storage.getRecoverableGA4RefreshWork()).toEqual([]);
+    } finally { vi.unstubAllEnvs(); }
+  });
 });

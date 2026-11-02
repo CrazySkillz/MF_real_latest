@@ -230,7 +230,7 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
 
     expect(methodStart).toBeGreaterThanOrEqual(0);
     expect(methodEnd).toBeGreaterThan(methodStart);
-    expect(method).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId) : db.transaction.bind(db)");
+    expect(method).toContain("this.writeGA4RefreshInputChange(campaignId, write, 0, false, true, undefined, true) : db.transaction.bind(db)");
     expect(method).toContain("return await transaction(async (tx: any) => {");
     const parentWrite = storageSource.slice(storageSource.indexOf("private async writeGA4RefreshInputChange"), storageSource.indexOf("private async readGA4PublicationVersion"));
     expect(parentWrite).toContain("return db.transaction(async (tx: any) => {");

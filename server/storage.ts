@@ -39,7 +39,8 @@ const devLog = (...args: any[]) => {
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
 export type GA4RevenuePublication = { version: 1; reportingDate: string; sources: Record<string, string>; pendingSourceIds: string[];
-  display?: { nativeRevenue: number; sources: Array<{ sourceId: string; sourceType: string; displayName: string; revenue: number; mappingConfig: Record<string, any> }> } };
+  display?: { nativeRevenue: number; sources: Array<{ sourceId: string; sourceType: string; displayName: string; revenue: number; mappingConfig: Record<string, any> }>;
+    spendSources?: Array<{ sourceId: string; sourceType: string; displayName: string; spend: number; mappingConfig: Record<string, any> }> } };
 export type GA4RevenuePublicationStatus = Record<string, { status: "published" | "pending" | "failed"; hash: string }>;
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";
@@ -1514,7 +1515,7 @@ export class DatabaseStorage implements IStorage {
 
   // Serialize an ordinary input edit with owned publication. Invalidating the work
   // identity also rejects edit-then-restore; comparing current field values cannot.
-  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>, lockTimeoutMs = 0, revenueChange = false, preserveRevenueWork = true, credentialsOnly?: () => boolean): Promise<T> {
+  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>, lockTimeoutMs = 0, revenueChange = false, preserveRevenueWork = true, credentialsOnly?: () => boolean, forceFinancialPublication = false): Promise<T> {
     const campaignIds = Array.from(new Set((Array.isArray(campaignId) ? campaignId : [campaignId]).filter((id): id is string => Boolean(id)))).sort();
     return db.transaction(async (tx: any) => {
       if (lockTimeoutMs > 0) await tx.execute(sql`SELECT set_config('lock_timeout', ${`${lockTimeoutMs}ms`}, true)`);
@@ -1531,7 +1532,7 @@ export class DatabaseStorage implements IStorage {
         // been migrated yet; no owner can exist without its work table.
         const workTable = await tx.execute(sql`SELECT to_regclass('ga4_refresh_work') AS name`);
         if (!workTable.rows[0]?.name) {
-          if (revenueChange) throw new Error('GA4_REVENUE_PUBLICATION_UNAVAILABLE');
+          if (revenueChange || forceFinancialPublication) throw new Error('GA4_REVENUE_PUBLICATION_UNAVAILABLE');
           return result;
         }
         const unfinished = await tx.select({ campaignId: ga4RefreshWork.campaignId, scope: ga4RefreshWork.scope }).from(ga4RefreshWork)
@@ -1547,7 +1548,7 @@ export class DatabaseStorage implements IStorage {
         // not strand a successful import. Unchanged provider rows need no new total.
         for (const id of campaignIds) {
           const unfinishedRevenue = preserveRevenueWork && unfinished.some((work: any) => work.campaignId === id && work.scope?.kind === 'revenue_change');
-          if (!revenueChange && !unfinishedRevenue) continue;
+          if (!revenueChange && !forceFinancialPublication && !unfinishedRevenue) continue;
           const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, id));
           if (!campaign?.ownerId || !campaign.ga4CampaignFilter?.trim()) continue;
           const scope = await this.readGA4RefreshWorkScope(tx, id, campaign.ownerId, { revenueChange: true });
@@ -1568,7 +1569,7 @@ export class DatabaseStorage implements IStorage {
           )).limit(1);
           const alignedPrefix = `ga4_aligned_refresh_v1:${reportingDate}:`;
           const alignedAt = aligned?.notes?.startsWith(alignedPrefix) ? new Date(aligned.notes.slice(alignedPrefix.length)) : null;
-          if (receipt?.version === 1 && published.reportingDate === reportingDate
+          if (!forceFinancialPublication && receipt?.version === 1 && published.reportingDate === reportingDate
             && alignedAt && Number.isFinite(alignedAt.getTime()) && alignedAt.getTime() <= Date.now()
             && (!receipt.workId || receiptWork?.status === 'completed')
             && Object.keys(receipt.sources || {}).length === Object.keys(current.sources).length
@@ -2268,7 +2269,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteSpendSourceWithRecords(campaignId: string, sourceId: string, platformContext: SpendPlatformContext): Promise<boolean> {
-    const transaction = platformContext === 'ga4' ? this.writeGA4RefreshInputChange.bind(this, campaignId) : db.transaction.bind(db);
+    const transaction = platformContext === 'ga4' ? (write: (tx: any) => Promise<boolean>) => this.writeGA4RefreshInputChange(campaignId, write, 0, false, true, undefined, true) : db.transaction.bind(db);
     return await transaction(async (tx: any) => {
       const contextCondition = platformContext === "ga4"
         ? or(eq(spendSources.platformContext, "ga4" as any), isNull(spendSources.platformContext))
@@ -2544,7 +2545,7 @@ export class DatabaseStorage implements IStorage {
       if (records.length) await tx.insert(spendRecords).values(records.map((record) => ({ ...record, campaignId, spendSourceId: sourceId, sourceType })) as any);
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : platformContext === 'ga4' ? this.writeGA4RefreshInputChange(campaignId, save) : db.transaction(save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : platformContext === 'ga4' ? this.writeGA4RefreshInputChange(campaignId, save, 0, false, true, undefined, true) : db.transaction(save);
   }
 
   async replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput = {}): Promise<void> {
@@ -2577,7 +2578,7 @@ export class DatabaseStorage implements IStorage {
     source: InsertSpendSource,
     records: Array<Omit<InsertSpendRecord, "spendSourceId">>,
   ): Promise<SpendSource> {
-    const transaction = !source.platformContext || source.platformContext === 'ga4' ? this.writeGA4RefreshInputChange.bind(this, campaignId) : db.transaction.bind(db);
+    const transaction = !source.platformContext || source.platformContext === 'ga4' ? (write: (tx: any) => Promise<SpendSource>) => this.writeGA4RefreshInputChange(campaignId, write, 0, false, true, undefined, true) : db.transaction.bind(db);
     return await transaction(async (tx: any) => {
       const platformContext = String((source as any)?.platformContext || "").trim() as SpendPlatformContext;
       let savedSource: SpendSource | undefined;

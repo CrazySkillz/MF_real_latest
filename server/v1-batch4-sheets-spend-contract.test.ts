@@ -218,9 +218,10 @@ describe.skipIf(!testUrl)("Sheets Spend handler-to-PostgreSQL and cleanup safety
       });
       await pool.query(`CREATE TABLE "${getTableName(table)}" (${columns.join(", ")})`);
     }
+    for (const file of ["0020_add_ga4_refresh_work.sql", "0021_add_ga4_refresh_recovery.sql"]) await pool.query(readFileSync(new URL(`../migrations/${file}`, import.meta.url), "utf8"));
   });
   beforeEach(async () => {
-    await pool.query("TRUNCATE campaigns,spend_sources,spend_records");
+    await pool.query("TRUNCATE campaigns,spend_sources,spend_records,ga4_refresh_work");
     await db.insert(schema.campaigns).values(["a", "b"].map(id => ({ id, ownerId: `owner-${id}`, name: id, currency: "EUR", reportingTimeZone: "Europe/Amsterdam", status: "active" })));
   });
   afterAll(async () => {

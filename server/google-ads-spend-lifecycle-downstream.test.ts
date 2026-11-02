@@ -193,7 +193,7 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(deleteRoute).not.toContain("await storage.deleteSpendSource(sourceId);");
     expect(deleteRoute).not.toContain("await storage.deleteSpendRecordsBySource(sourceId);");
     expect(deleteRoute).toContain("await recalcCampaignSpend(campaignId);");
-    expect(deleteRoute).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");');
+    expect(deleteRoute).toContain('await recomputeGA4SpendBeforeResponse(campaignId);');
     expect(spendStorage).toContain("eq(spendSources.campaignId, campaignId)");
     expect(spendStorage).toContain("eq(spendSources.isActive, true)");
     expect(spendSourceStorage).toContain("eq(spendSources.campaignId, campaignId)");

@@ -68,7 +68,7 @@ describe("GA4 Spend source edit entry", () => {
     );
     const sourceList = sliceBetween(
       overview,
-      "{spendDisplaySources.map((s: any) => {",
+      "{totalSpendDisplaySources.map((s: any) => {",
       "<Dialog open={showPipelineProxySourcesDialog}",
     );
 

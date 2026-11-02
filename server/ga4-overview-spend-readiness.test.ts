@@ -104,17 +104,17 @@ describe("GA4 Overview Spend readiness contract", () => {
     const sheetsReplacement = slice(storage, "async replaceSpendSourceWithRecords(", "async replaceSpendRecordsForSource");
     const deletion = slice(storage, "async deleteSpendSourceWithRecords(", "async hardDeleteInactiveSpendSource");
 
-    expect(csvReplacement).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId)");
+    expect(csvReplacement).toContain("this.writeGA4RefreshInputChange(campaignId, write, 0, false, true, undefined, true)");
     expect(csvReplacement).toContain("return await transaction");
     expect(csvReplacement).toContain("spendPlatformContextPredicate(platformContext)");
     expect(csvReplacement).toContain("eq(spendSources.campaignId, campaignId)");
     expect(csvReplacement).toContain("eq(spendSources.sourceType, \"csv\")");
     expect(csvReplacement).toContain("eq(spendRecords.campaignId, campaignId)");
     expect(sheetsReplacement).toContain("return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save)");
-    expect(sheetsReplacement).toContain("this.writeGA4RefreshInputChange(campaignId, save) : db.transaction(save)");
+    expect(sheetsReplacement).toContain("this.writeGA4RefreshInputChange(campaignId, save, 0, false, true, undefined, true) : db.transaction(save)");
     expect(sheetsReplacement).toContain("contextCondition");
     expect(sheetsReplacement).toContain("eq(spendSources.campaignId, campaignId)");
-    expect(deletion).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId)");
+    expect(deletion).toContain("this.writeGA4RefreshInputChange(campaignId, write, 0, false, true, undefined, true)");
     expect(deletion).toContain("return await transaction");
     expect(deletion).toContain("eq(spendRecords.campaignId, campaignId)");
   });
@@ -141,11 +141,11 @@ describe("GA4 Overview Spend readiness contract", () => {
     expect(overview).toContain('queryKey: [`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`]');
     expect(overview).toContain('queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`]');
     expect(overview).toContain('queryKey: [`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`]');
-    expect(overview).toContain("const spendSourcesCount = spendDisplaySources.length;");
+    expect(overview).toContain("const spendSourcesCount = totalSpendDisplaySources.length;");
     expect(storage).not.toContain("lte(spendSources.createdAt, sourceCreatedThrough)");
     expect(routes).toContain("latestTotalSpend:");
     expect(routes).toContain("completedDaySpend:");
-    expect(overview).toContain("Latest imported source values. Total Spend uses completed data through");
+    expect(overview).toContain("Source amounts included in Total Spend through");
   });
 
   it("checks live source availability while rendering Spend and Performance from the saved publication", () => {

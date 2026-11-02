@@ -18,6 +18,20 @@ const sliceBetween = (source: string, start: string, end: string) => {
 };
 
 describe("GA4 source lifecycle recompute route guards", () => {
+  it.each(["pending", "background failure", "ordinary", "read failure"])("handles a committed Spend save with %s", async condition => {
+    const storage = { getGA4PublicationVersion: vi.fn().mockResolvedValue(null) };
+    if (condition !== "ordinary") storage.getGA4PublicationVersion.mockRejectedValue(new Error(condition === "read failure" ? "database unavailable" : "GA4_REFRESH_PUBLICATION_BUSY"));
+    const recovery = condition === "background failure" ? vi.fn().mockRejectedValue(new Error("provider unavailable")) : vi.fn().mockResolvedValue(undefined);
+    const recompute = vi.fn().mockResolvedValue(true), warning = vi.fn();
+    const body = sliceBetween(routes, "const recomputeGA4SpendBeforeResponse =", "const scheduleGA4KpiCreatePostResponseProcessing =");
+    const fn = new Function("storage", "recoverInterruptedGA4Refreshes", "recomputeGA4KPIAndBenchmarkValues", "console",
+      ts.transpileModule(body + "return recomputeGA4SpendBeforeResponse;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(storage, recovery, recompute, { warn: warning });
+    if (condition === "read failure") await expect(fn("a")).rejects.toThrow("database unavailable");
+    else await expect(fn("a")).resolves.toBeUndefined();
+    expect(recompute).toHaveBeenCalledTimes(condition === "ordinary" ? 1 : 0);
+    expect(recovery).toHaveBeenCalledTimes(["pending", "background failure"].includes(condition) ? 1 : 0);
+    expect(warning).toHaveBeenCalledTimes(condition === "background failure" ? 1 : 0);
+  });
   it("does not misreport a saved source as a failed import when background publication fails", async () => {
     const body = sliceBetween(routes, "const recomputeCampaignDerivedValues =", "// When \"revenue to date\"");
     const recovery = vi.fn().mockRejectedValue(new Error("fixture processing failure"));
@@ -56,7 +70,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(jobs).not.toHaveBeenCalled();
     if (condition !== "changed") expect(storage.invalidateExecutiveSummaryDailySnapshotAlignment).not.toHaveBeenCalled();
   });
-  it("keeps Spend recompute synchronous and starts durable coordinated revenue publication after saving", () => {
+  it("retains unqueued Spend recompute and starts durable coordinated financial publication after saving", () => {
     expect(routes).toContain('import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";');
     expect(routes).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
 
@@ -158,7 +172,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
       'app.get("/api/campaigns/:id/revenue-totals"',
     );
     expect(singleDeleteRoute.indexOf("await recalcCampaignSpend(campaignId);")).toBeLessThan(
-      singleDeleteRoute.indexOf('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");'),
+      singleDeleteRoute.indexOf('await recomputeGA4SpendBeforeResponse(campaignId);'),
     );
 
     const bulkSpendDeleteRoute = sliceBetween(
@@ -249,7 +263,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(revenueSourcesModal).toContain('title="Remove revenue source"');
 
     const spendSourcesModal = sliceBetween(ga4Page, '>Spend Sources</DialogTitle>', '>Pipeline Proxy Sources</DialogTitle>');
-    expect(spendSourcesModal).toContain('{ga4ConnectionUsable && s.sourceType !== "manual" && (');
+    expect(spendSourcesModal).toContain('{ga4ConnectionUsable && currentSource && s.sourceType !== "manual" && (');
     expect(spendSourcesModal).toContain('setDeletingSpendSourceId(s.sourceId);');
     expect(spendSourcesModal).toContain('title="Remove spend source"');
   });

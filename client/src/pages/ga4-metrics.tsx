@@ -3056,7 +3056,6 @@ export default function GA4Metrics() {
   }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp]);
   const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
-  const spendSourcesCount = spendDisplaySources.length;
   const hasPipelineProxy = !!pipelineProxyData?.success;
   const pipelineProxyConfigured = configuredPipelineSourceTypes.size > 0;
   const pipelineProxyLoading =
@@ -3120,6 +3119,27 @@ export default function GA4Metrics() {
   const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);
   const revenuePublicationFailed = revenueDisplaySources.some((source: any) => source.publicationStatus === "failed");
   const overviewFinancialSpend = Number(overviewFinancialInputs?.spend?.value || 0);
+  const retainedSpendDisplay = useRef<{ key: string; sources: any[] } | null>(null);
+  const spendSnapshotDisplay = useMemo(() => {
+    const key = JSON.stringify([campaignId, campaignCurrency, overviewFinancialSnapshot?.reportingDate,
+      overviewFinancialSnapshot?.recordedAt, overviewFinancialInputs?.spend]);
+    const saved = overviewFinancialSnapshot?.metrics?.revenuePublication?.display?.spendSources;
+    const rows = saved || spendDisplaySources.map((source: any) => ({ ...source, spend: source.completedDaySpend ?? source.spend }));
+    const valid = overviewFinancialSnapshot?.campaignId === campaignId && Array.isArray(rows)
+      && new Set(rows.map((source: any) => source.sourceId)).size === rows.length
+      && rows.every((source: any) => typeof source.spend === "number" && Number.isFinite(source.spend) && source.spend >= 0)
+      && (overviewFinancialSpendAvailable ? Math.abs(rows.reduce((sum: number, source: any) => sum + source.spend, 0) - overviewFinancialSpend) < 0.005 : rows.length === 0)
+      && (saved || (!spendSourcesError && !spendBreakdownError && !spendToDateError));
+    if (valid) retainedSpendDisplay.current = { key, sources: rows.map((source: any) => ({ ...source, latestSpend: source.spend })) };
+    if (retainedSpendDisplay.current?.key === key) return retainedSpendDisplay.current.sources;
+    retainedSpendDisplay.current = null;
+    return [];
+  }, [campaignId, campaignCurrency, overviewFinancialSnapshot, overviewFinancialInputs?.spend, overviewFinancialSpendAvailable,
+    overviewFinancialSpend, spendDisplaySources, spendSourcesError, spendBreakdownError, spendToDateError]);
+  const totalSpendDisplaySources = [...spendSnapshotDisplay, ...spendDisplaySources
+    .filter((source: any) => !spendSnapshotDisplay.some((published: any) => published.sourceId === source.sourceId))
+    .map((source: any) => ({ ...source, spend: null, latestSpend: null, publicationPending: true }))];
+  const spendSourcesCount = totalSpendDisplaySources.length;
   const overviewFinancialConversions = Number(overviewFinancialInputs?.conversions?.value || 0);
   const overviewFinancialROAS = overviewFinancialSpend > 0 ? overviewFinancialRevenue / overviewFinancialSpend : 0;
   const overviewFinancialROI = computeRoiPercent(overviewFinancialRevenue, overviewFinancialSpend);
@@ -7705,14 +7725,15 @@ export default function GA4Metrics() {
                       <DialogHeader>
                         <DialogTitle className="text-foreground">Spend Sources</DialogTitle>
                         <DialogDescription className="text-muted-foreground/70">
-                          Latest imported source values. Total Spend uses completed data through {formatReportingDateLabel((spendToDateResp as any)?.endDate)}.
+                          Source amounts included in Total Spend through {formatReportingDateLabel(overviewFinancialReportingDate)}.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
                         {spendSourcesUnavailable && (
                           <div className="text-sm text-destructive">Spend sources are unavailable. Refresh the page to try again.</div>
                         )}
-                        {spendDisplaySources.map((s: any) => {
+                        {totalSpendDisplaySources.map((s: any) => {
+                          const currentSource = spendDisplaySources.find((source: any) => source.sourceId === s.sourceId);
                           const sourceType = String(s.sourceType || "").trim().toLowerCase();
                           const sourceTypeLabel = spendSourceTypeLabel(sourceType);
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return {}; } })() : (s.mappingConfig || {});
@@ -7736,13 +7757,13 @@ export default function GA4Metrics() {
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium tabular-nums text-foreground">
-                                {s.latestSpend != null || s.spend != null ? formatMoney(latestSpend) : "Unavailable"}
+                                {s.publicationPending ? "Updating" : s.latestSpend != null || s.spend != null ? formatMoney(latestSpend) : "Unavailable"}
                               </span>
-                              {ga4ConnectionUsable && s.sourceType !== "manual" && (
+                              {ga4ConnectionUsable && currentSource && s.sourceType !== "manual" && (
                                 <button
                                   onClick={() => {
                                     setShowSpendSourcesDialog(false);
-                                    setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
+                                    setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: currentSource.displayName, mappingConfig: currentSource.mappingConfig });
                                     setShowSpendDialog(true);
                                   }}
                                   className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
@@ -7758,6 +7779,7 @@ export default function GA4Metrics() {
                                 }}
                                 className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
                                 title="Remove spend source"
+                                disabled={!currentSource}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>

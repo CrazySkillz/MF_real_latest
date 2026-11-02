@@ -4404,7 +4404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deleted = await storage.deleteSpendSourceWithRecords(campaignId, sourceId, deletingSourcePlatformContext);
       if (!deleted) return res.status(404).json({ success: false, error: "Spend source not found" });
       await recalcCampaignSpend(campaignId);
-      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
+      await recomputeGA4SpendBeforeResponse(campaignId);
       if (deletingSheetsConnectionId) {
         const remainingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
         const stillUsed = (Array.isArray(remainingSpendSources) ? remainingSpendSources : []).some((s: any) => {
@@ -4600,6 +4600,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const recomputeGA4SpendBeforeResponse = async (campaignId: string) => {
+    try {
+      await storage.getGA4PublicationVersion(campaignId);
+    } catch (error: any) {
+      if (error?.message !== "GA4_REFRESH_PUBLICATION_BUSY") throw error;
+      // Spend saves now queue the same durable financial publication as Revenue.
+      // A failed background attempt must not turn a committed save into an error.
+      void recoverInterruptedGA4Refreshes(campaignId).catch(error =>
+        console.warn("[Spend Update] Financial publication pending:", error?.message || error));
+      return;
+    }
     await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
   };
 

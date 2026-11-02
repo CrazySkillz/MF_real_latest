@@ -271,7 +271,7 @@ describe("source safety regression guards", () => {
     const deleteMethodStart = storageSource.indexOf("async deleteSpendSourceWithRecords(");
     const deleteMethodEnd = storageSource.indexOf("async hardDeleteInactiveSpendSource", deleteMethodStart);
     const deleteMethod = storageSource.slice(deleteMethodStart, deleteMethodEnd);
-    expect(deleteMethod).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId)");
+    expect(deleteMethod).toContain("this.writeGA4RefreshInputChange(campaignId, write, 0, false, true, undefined, true)");
     expect(deleteMethod).toContain("return await transaction(async (tx: any) => {");
     expect(deleteMethod).toContain("eq(spendSources.campaignId, campaignId)");
     expect(deleteMethod).toContain("eq(spendRecords.campaignId, campaignId)");

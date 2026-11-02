@@ -16,6 +16,7 @@ type WriterDependencies = {
   getGA4RevenuePublication?: (campaignId: string, reportingDate: string) => Promise<GA4RevenuePublication>;
   getRevenueSources?: typeof storage.getRevenueSources;
   getRevenueBreakdownBySource?: typeof storage.getRevenueBreakdownBySource;
+  getSpendBreakdownBySource?: typeof storage.getSpendBreakdownBySource;
   getCampaign: (campaignId: string) => Promise<any>;
   getGA4Connections: (campaignId: string) => Promise<any[]>;
   getGA4OverviewSnapshot: (campaignId: string, propertyId: string) => Promise<any>;
@@ -32,6 +33,7 @@ const defaultDependencies: WriterDependencies = {
   getGA4RevenuePublication: (campaignId, reportingDate) => storage.getGA4RevenuePublication(campaignId, reportingDate),
   getRevenueSources: (campaignId, context) => storage.getRevenueSources(campaignId, context),
   getRevenueBreakdownBySource: (campaignId, start, end, context) => storage.getRevenueBreakdownBySource(campaignId, start, end, context),
+  getSpendBreakdownBySource: (campaignId, start, end, context) => storage.getSpendBreakdownBySource(campaignId, start, end, context),
   getCampaign: (campaignId) => storage.getCampaign(campaignId),
   getGA4Connections: (campaignId) => storage.getGA4Connections(campaignId),
   getGA4OverviewSnapshot: (campaignId, propertyId) => storage.getGA4OverviewSnapshot(campaignId, propertyId),
@@ -188,6 +190,25 @@ export async function writeFinancialDailySnapshotIfReady(
           revenue: amounts.get(source.id) ?? 0, mappingConfig };
       }) };
     }
+  }
+
+  if (revenuePublication?.display && dependencies.getSpendBreakdownBySource) {
+    const breakdown = await dependencies.getSpendBreakdownBySource(campaignId, "1900-01-01", reportingDate, "ga4");
+    const amounts = new Map(breakdown.map(row => [row.sourceId, row.spend]));
+    if (new Set(spendSources.map(source => source.id)).size !== spendSources.length || amounts.size !== breakdown.length
+      || breakdown.some(row => !spendSources.some(source => source.id === row.sourceId) || row.currency !== currency || !Number.isFinite(row.spend) || row.spend < 0)
+      || spendSources.some(source => source.currency !== currency)
+      || Math.abs(breakdown.reduce((sum, row) => sum + row.spend, 0) - Number(spendSourceTotal.totalSpend || 0)) >= 0.005) {
+      return { status: "blocked", reasons: ["spend_publication_mismatch"], snapshot: cumulative.snapshot };
+    }
+    revenuePublication.display.spendSources = spendSources.map(source => {
+      let config: any = {};
+      try { config = JSON.parse(source.mappingConfig || "{}"); } catch {}
+      const mappingConfig = Object.fromEntries(["sheetName", "displayName", "selectedCampaignIds", "campaignValues", "platforms"]
+        .filter(key => config?.[key] !== undefined).map(key => [key, config[key]]));
+      return { sourceId: source.id, sourceType: source.sourceType, displayName: source.displayName || source.sourceType,
+        spend: amounts.get(source.id) ?? 0, mappingConfig };
+    });
   }
 
   try {

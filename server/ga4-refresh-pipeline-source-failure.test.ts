@@ -330,7 +330,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       await recoverInterruptedGA4Refreshes("campaign-a");
       expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledExactlyOnceWith("campaign-a", "campaign-a-owner", dueAt, reportingDate, { suppressAlerts: false, revenueChange: true });
       expect(mocks.recompute).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "campaign-a", refreshScope: scope }));
-      expect(mocks.storage.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "campaign-a", revenuePublication: { version: 1, reportingDate, sources: {}, pendingSourceIds: [], display: { nativeRevenue: 500, sources: [] } } }));
+      expect(mocks.storage.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "campaign-a", revenuePublication: { version: 1, reportingDate, sources: {}, pendingSourceIds: [], display: { nativeRevenue: 500, sources: [], spendSources: [] } } }));
       expect(mocks.aggregate).toHaveBeenCalledWith("campaign-a", expect.objectContaining({ refreshScope: scope }));
       expect(mocks.executive).toHaveBeenCalledTimes(1);
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(true);
@@ -502,6 +502,24 @@ describe("GA4 ordered refresh source-discovery failures", () => {
         await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
         expectNoProviderRefresh();
         expect(saved.get("campaign-a").inputs.revenue.value).toBe((500 + amount).toFixed(2));
+      });
+      it.each([null, 0, 20, 40])("publishes saved Spend after edit/removal to %s through the existing coordinated job", async amount => {
+        await seedSavedInputs();
+        const nativeBefore = structuredClone(overviews.get("campaign-a"));
+        mocks.storage.getSpendSources.mockResolvedValue(amount === null ? [] : [source("campaign-a", "spend")]);
+        mocks.storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: amount ?? 0, currency: "EUR", sourceIds: amount === null ? [] : ["campaign-a-spend"] });
+        mocks.storage.getSpendBreakdownBySource.mockResolvedValue(amount === null ? [] : [{ sourceId: "campaign-a-spend", sourceType: "csv", spend: amount, currency: "EUR" }]);
+        await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+        expectNoProviderRefresh();
+        expect(overviews.get("campaign-a")).toEqual(nativeBefore);
+        expect(saved.get("campaign-a").inputs.spend).toMatchObject({ available: amount !== null, value: amount === null ? null : amount.toFixed(2) });
+        expect(saved.get("campaign-a").inputs.revenue.value).toBe("600.00");
+        expect(mocks.recompute).toHaveBeenCalledExactlyOnceWith({ campaignId: "campaign-a", suppressAlerts: true, useSavedOverview: true, refreshScope: scope });
+        expect(mocks.aggregate).toHaveBeenCalledExactlyOnceWith("campaign-a", { allowScheduledGA4: true, refreshScope: scope });
+        expect(mocks.executive).toHaveBeenCalledTimes(1);
+        expect(mocks.kpiAlerts).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate, { refreshScope: scope });
+        expect(mocks.benchmarkAlerts).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate, { refreshScope: scope });
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(true);
       });
       it("does not let a caller label ordinary work as a revenue change", async () => {
         await seedSavedInputs();

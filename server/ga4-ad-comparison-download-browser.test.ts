@@ -68,6 +68,26 @@ describe("Ad Comparison precision through the real Reports page", () => {
     const pendingIndependent = new Promise<void>(resolve => { releaseIndependent = resolve; });
     const day = "2026-10-25", start = "2026-09-23", updatedAt = "2026-10-26T18:00:00Z";
     const promo = contextKind === "promo-rounding";
+    if (promo) await context.addInitScript(() => {
+      const state = { cancel: true, calls: [] as any[], writes: 0 };
+      (window as any).reportPickerFixture = state;
+      (window as any).showSaveFilePicker = async (options: any) => {
+        state.calls.push({ options, activated: navigator.userActivation.isActive });
+        if (state.cancel) { state.cancel = false; throw new DOMException("Cancelled", "AbortError"); }
+        let bytes: Blob;
+        return { createWritable: async () => ({
+          write: async (pdf: Blob) => { bytes = pdf; state.writes++; },
+          close: async () => {
+            // Substitute an ordinary browser download for disk writing in this isolated fixture.
+            const url = URL.createObjectURL(bytes);
+            const link = document.createElement("a");
+            link.href = url; link.download = options.suggestedName; link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          },
+          abort: async () => {},
+        }) };
+      };
+    });
     const rows = promo ? [
       { campaign: "yesop_brand_search", sessions: 2394, users: 2395, conversions: 250, revenue: 66625.346347, sessionKeyEventRate: 0.102 },
       { campaign: "yesop_retargeting", sessions: 1039, users: 1039, conversions: 66, revenue: 13808.508329999999, sessionKeyEventRate: 0.059 },
@@ -174,6 +194,12 @@ describe("Ad Comparison precision through the real Reports page", () => {
       await page.getByRole("dialog").getByText("Ad Comparison", { exact: true }).click();
     };
     const downloadReport = async (saved = false) => {
+      if (promo && downloads.length === 0) {
+        await page.getByRole("button", { name: "Generate & Download Report", exact: true }).click();
+        await browserExpect(page.getByRole("dialog")).toBeVisible();
+        expect(await page.evaluate(() => (window as any).reportPickerFixture.calls.length)).toBe(1);
+        expect(downloads).toHaveLength(0);
+      }
       const pending = page.waitForEvent("download", { timeout: 20_000 });
       await page.getByRole("button", { name: saved ? "Download" : "Generate & Download Report", exact: true }).click();
       const download = await pending;
@@ -380,6 +406,15 @@ describe("Ad Comparison precision through the real Reports page", () => {
       await downloadReport();
       if (contextKind === "background-read") await downloadReport(true);
       expect(downloads).toHaveLength(contextKind === "background-read" ? 6 : independentKind ? 7 : 5);
+      if (promo) {
+        const picker = await page.evaluate(() => (window as any).reportPickerFixture);
+        expect(picker.writes).toBe(5);
+        expect(picker.calls).toHaveLength(6);
+        for (const call of picker.calls) {
+          expect(call.activated).toBe(true);
+          expect(call.options).toMatchObject({ startIn: "downloads", types: [{ accept: { "application/pdf": [".pdf"] } }] });
+        }
+      }
       expect(providerRequests).toBe(0);
       expect(errors).toEqual([]);
     } catch (error) {

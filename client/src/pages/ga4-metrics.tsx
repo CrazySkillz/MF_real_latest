@@ -1,4 +1,5 @@
 import { conversionCreditsMatch } from "@shared/metric-math";
+import { requestReportSaveFile, writeReportSaveFile } from "@/lib/pdfExport";
 import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching, isCancelledError } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
@@ -3693,6 +3694,10 @@ export default function GA4Metrics() {
         throw new Error("Insights context is still loading. Try downloading the report again when it finishes.");
       }
     }
+    const reportName = String(opts.reportName || ga4ReportForm.name || "GA4 Report").trim() || "GA4 Report";
+    const filename = `${reportName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
+    const saveFile = await requestReportSaveFile(filename);
+    if (saveFile === null) return false;
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     const reportLogo = await loadMimoSaaSReportLogo();
@@ -3847,7 +3852,6 @@ export default function GA4Metrics() {
       return lines;
     };
 
-    const reportName = String(opts.reportName || ga4ReportForm.name || "GA4 Report").trim() || "GA4 Report";
     const ga4m = ga4Metrics as any;
 
     // ========== HEADER ==========
@@ -5052,7 +5056,9 @@ export default function GA4Metrics() {
 
     // Footer on last page
     addPageFooter();
-    doc.save(`${reportName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+    if (saveFile) await writeReportSaveFile(saveFile, doc.output("blob"));
+    else doc.save(filename);
+    return true;
   };
 
   const connectedPropertyCount =
@@ -11566,7 +11572,7 @@ export default function GA4Metrics() {
                         return;
                       }
                       try {
-                        await downloadGA4Report({
+                        const downloaded = await downloadGA4Report({
                           reportType: ga4ReportForm.reportType || "overview",
                           configuration: {
                             ...ga4ReportForm.configuration,
@@ -11576,7 +11582,7 @@ export default function GA4Metrics() {
                           },
                           reportName: ga4ReportForm.name || undefined,
                         });
-                        setShowGA4ReportModal(false);
+                        if (downloaded !== false) setShowGA4ReportModal(false);
                       } catch (error: any) {
                         toast({
                           title: "Failed to generate report",

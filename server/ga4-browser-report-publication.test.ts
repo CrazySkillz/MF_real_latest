@@ -17,6 +17,7 @@ if (start < 0 || end < start) throw new Error("Browser report preflight not foun
 const preflight = page.slice(start, end) + 'return "ready"; }; return downloadGA4Report;';
 function run(overrides: Record<string, any> = {}, configuration?: any, reportType = "custom", body = preflight) {
   const bindings: Record<string, any> = {
+    requestReportSaveFile: async () => undefined,
     ga4PublicationDisplayPending: false, ga4PublicationDisplayFailed: false,
     ga4InsightsContextFetching: 0, reportInsightsBreakdownError: false,
     ga4ReportForm: {}, normalizeCustomReportConfig: (value: any) => value, resolveGA4KpiMetricIdentity,
@@ -44,6 +45,13 @@ function run(overrides: Record<string, any> = {}, configuration?: any, reportTyp
 }
 
 describe("Browser GA4 report publication gate", () => {
+  it("opens the picker after validation and stops before PDF generation when cancelled", async () => {
+    const picker = vi.fn(async () => null);
+    await expect(run({ requestReportSaveFile: picker, ga4PublicationDisplayPending: true })).rejects.toThrow("still being checked");
+    expect(picker).not.toHaveBeenCalled();
+    await expect(run({ requestReportSaveFile: picker })).resolves.toBe(false);
+    expect(picker).toHaveBeenCalledWith(expect.stringMatching(/^GA4_Report_\d{4}-\d{2}-\d{2}\.pdf$/));
+  });
   it.each(["ga4PublicationDisplayPending", "ga4PublicationDisplayFailed"])("withholds a PDF while %s", async state => {
     await expect(run({ [state]: true })).rejects.toThrow("latest displayed figures are still being checked");
   });
@@ -197,7 +205,8 @@ describe("Browser Overview reports without a Spend source", () => {
       adComparisonChartRows: changes.campaignBreakdownAgg || [],
       ...changes,
     }, configuration, reportType, handler);
-    expect(save).toHaveBeenCalledOnce();
+    if (changes.writeReportSaveFile) expect(save).not.toHaveBeenCalled();
+    else expect(save).toHaveBeenCalledOnce();
     expect(doc.output()).toMatch(/^%PDF-/);
     const words = text.mock.calls.map(call => call[0]);
     return Object.assign((label: string) => words[words.indexOf(label.toUpperCase()) + 1], { doc, drawn, words, trendLines, content: words.flat().join(" ") });
@@ -211,6 +220,15 @@ describe("Browser Overview reports without a Spend source", () => {
       formatMoney: (value: number) => `EUR ${value.toFixed(2)}`, formatNumber: (value: number) => value.toLocaleString("en-US"),
     }, "custom", { sections: { insights: true }, subsections: { insights: { trends: true, actions: false, summaryCards: false, dataSummary: false } } });
   }
+  it("writes the exact rendered GA4 PDF to the selected file without a second download", async () => {
+    const handle = { name: "selected.pdf" };
+    const write = vi.fn(async (_handle: unknown, _pdf: Blob) => undefined);
+    const result = await render({ requestReportSaveFile: async () => handle, writeReportSaveFile: write });
+    expect(write).toHaveBeenCalledOnce();
+    expect(write.mock.calls[0][0]).toBe(handle);
+    const blob = write.mock.calls[0][1] as Blob;
+    expect(Buffer.from(await blob.arrayBuffer())).toEqual(Buffer.from(result.doc.output("arraybuffer")));
+  });
   it.each(["daily", "7d", "30d", "monthly"])("withholds a zero-baseline percentage in the %s Trends PDF", async mode => {
     const count = mode === "monthly" ? 61 : mode === "30d" ? 60 : mode === "7d" ? 14 : 2;
     const start = mode === "monthly" ? "2026-09-01" : "2026-10-01";

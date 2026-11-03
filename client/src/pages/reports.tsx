@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { reportStorage, type StoredReport } from "@/lib/reportStorage";
+import { requestReportSaveFile, writeReportSaveFile } from "@/lib/pdfExport";
 import { resolveFinancialBudgetPeriodSpend } from "@/lib/financial-executive-actions";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
@@ -721,11 +722,16 @@ export default function Reports() {
         });
       } else {
         if (campaignContextId) {
-          await downloadCampaignReportPdf({
+          const downloaded = await downloadCampaignReportPdf({
             ...reportPayload,
             id: `download_${Date.now()}`,
             generatedAt: new Date(),
           });
+          if (downloaded === false) {
+            reportSaveInProgress.current = false;
+            setReportSavePending(false);
+            return;
+          }
         } else {
           const savedReport = reportStorage.addReport({
             ...reportPayload,
@@ -960,6 +966,10 @@ export default function Reports() {
   const downloadCampaignReportPdf = async (report: StoredReport) => {
     const reportCampaignId = report.campaignId || campaignContextId;
     if (!reportCampaignId) throw new Error("Campaign is required to generate this report");
+    const safeName = report.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "campaign_report";
+    const filename = `${safeName}_${new Date().toISOString().split("T")[0]}.pdf`;
+    const saveFile = await requestReportSaveFile(filename);
+    if (saveFile === null) return false;
 
     let pdfResponse: Response;
     if (report.backendReportId) {
@@ -994,21 +1004,29 @@ export default function Reports() {
     const pdfBlob = await pdfResponse.blob();
     const signature = new TextDecoder().decode(await pdfBlob.slice(0, 5).arrayBuffer());
     if (!signature.startsWith("%PDF-")) throw new Error("Generated report PDF is invalid");
+    if (saveFile) {
+      await writeReportSaveFile(saveFile, pdfBlob);
+      return true;
+    }
     const objectUrl = URL.createObjectURL(pdfBlob);
     try {
       const link = document.createElement("a");
-      const safeName = report.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "campaign_report";
       link.href = objectUrl;
-      link.download = `${safeName}_${new Date().toISOString().split("T")[0]}.pdf`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
     } finally {
       URL.revokeObjectURL(objectUrl);
     }
+    return true;
   };
 
   const downloadReportPdf = async (report: StoredReport) => {
+    const safeName = report.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "campaign_report";
+    const filename = `${safeName}_${new Date().toISOString().split("T")[0]}.pdf`;
+    const saveFile = await requestReportSaveFile(filename);
+    if (saveFile === null) return false;
     const fetchReportJson = async (url: string) => {
       const response = await fetch(url, { credentials: "include" });
       if (!response.ok) return null;
@@ -2024,8 +2042,9 @@ export default function Reports() {
       }
     }
 
-    const safeName = report.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "campaign_report";
-    doc.save(`${safeName}_${new Date().toISOString().split("T")[0]}.pdf`);
+    if (saveFile) await writeReportSaveFile(saveFile, doc.output("blob"));
+    else doc.save(filename);
+    return true;
   };
 
   const downloadLatestReport = async (report: StoredReport) => {

@@ -1,3 +1,35 @@
+// Call during the download click, before fetching data or loading the PDF library.
+// null means cancelled; undefined preserves the browser's normal download path.
+export async function requestReportSaveFile(filename: string): Promise<FileSystemFileHandle | null | undefined> {
+  const pickerWindow = window as Window & {
+    showSaveFilePicker?: (options: { startIn: string; suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<FileSystemFileHandle>;
+  };
+  if (typeof pickerWindow.showSaveFilePicker !== "function") return undefined;
+  try {
+    return await pickerWindow.showSaveFilePicker({
+      startIn: "downloads",
+      suggestedName: filename,
+      types: [{ description: "PDF report", accept: { "application/pdf": [".pdf"] } }],
+    });
+  } catch (error) {
+    const name = (error as { name?: string })?.name;
+    if (name === "AbortError") return null;
+    if (name === "SecurityError" || name === "NotSupportedError") return undefined;
+    throw error;
+  }
+}
+
+export async function writeReportSaveFile(handle: FileSystemFileHandle, pdf: Blob): Promise<void> {
+  const writable = await handle.createWritable();
+  try {
+    await writable.write(pdf);
+    await writable.close();
+  } catch (error) {
+    await writable.abort().catch(() => undefined);
+    throw error;
+  }
+}
+
 export interface KPIExportData {
   id: string;
   name: string;

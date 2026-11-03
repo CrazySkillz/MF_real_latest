@@ -279,6 +279,12 @@ export default function ExecutiveSummary() {
   const executiveTrajectory = hasAuthoritativeGA4Window
     ? (executiveTrajectoryData as any)?.available === true ? (executiveTrajectoryData as any).trajectory : null
     : (executiveSummary as any)?.health?.trajectory;
+  const executiveTrajectoryPercentage = hasAuthoritativeGA4Window
+    ? (executiveTrajectoryData as any)?.trendPercentage
+    : (executiveSummary as any)?.health?.trendPercentage;
+  const executiveTrajectoryLabel = executiveTrajectory && typeof executiveTrajectoryPercentage === "number" && Number.isFinite(executiveTrajectoryPercentage)
+    ? `${executiveTrajectory} (${executiveTrajectoryPercentage.toFixed(1)}%)`
+    : executiveTrajectory;
   const executiveTrajectoryUnavailableReason = hasAuthoritativeGA4Window
     ? String((executiveTrajectoryData as any)?.reason || "")
     : "";
@@ -304,7 +310,7 @@ export default function ExecutiveSummary() {
       : "Based on compatible aggregate snapshots, not the removed date selector."
     : executiveTrajectoryUnavailableDetail;
   const executiveTrajectorySummary = executiveTrajectory
-    ? `7-day trend: ${executiveTrajectory}.`
+    ? `7-day trend: ${executiveTrajectoryLabel}.`
     : executiveTrajectoryUnavailableReason === "incompatible_history"
       ? "The 7-day trend is not comparable yet."
       : executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
@@ -535,7 +541,7 @@ export default function ExecutiveSummary() {
                             {executiveTrajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600" />}
                             {executiveTrajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600" />}
                             <span className="text-lg font-medium text-foreground capitalize">
-                              {executiveTrajectory}
+                              {executiveTrajectoryLabel}
                             </span>
                           </div>
                         ) : executiveTrajectoryUnavailableLabel ? (

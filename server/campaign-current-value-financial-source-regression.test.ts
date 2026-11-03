@@ -72,6 +72,31 @@ describe("campaign current-value financial source contract", () => {
 
   afterEach(() => vi.useRealTimers());
 
+  it("allows an exact saved read cutoff while default publication jobs still require the new completed day", async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-17T22:30:00Z"));
+    const campaignId = "campaign-1", propertyId = "properties/123";
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: "sale" });
+    storageMock.getGA4Connections.mockResolvedValue([{ campaignId, propertyId, isActive: true, isPrimary: true, importStartDate: "2026-10-15" }]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue([
+      { campaignId, propertyId, date: "2026-10-15", sessions: 10, users: 10, conversions: 2, revenue: 40, engagedSessions: 5 },
+      { campaignId, propertyId, date: "2026-10-16", sessions: 20, users: 20, conversions: 3, revenue: 60.01, engagedSessions: 10 },
+    ]);
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignId, propertyId, windowStart: "2026-10-15", windowEnd: "2026-10-16",
+      campaignBreakdown: { totals: { sessions: 30, conversions: 5, revenue: 100.01 }, meta: { currencyCode: "EUR" } } });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 30, currency: "EUR", sourceIds: ["r"] });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 20, currency: "EUR", sourceIds: ["s"] });
+    expect(await getCampaignMetricTotals(campaignId, true, true)).toBeNull();
+    expect(await getCampaignMetricTotals(campaignId, true, true, "2026-10-16")).toMatchObject({ revenue: 130.01, spend: 20, sessions: 30, financialConversions: 5, ga4FinancialSource: "persisted_overview" });
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-16", "ga4");
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-16", "ga4");
+    for (const invalidDate of ["2026-10-18", "2026-10-14", "2026-02-31", "invalid"]) {
+      expect(await getCampaignMetricTotals(campaignId, true, true, invalidDate)).toBeNull();
+    }
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled(); expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(null);
+    expect(await getCampaignMetricTotals(campaignId, true, true, "2026-10-16")).toBeNull();
+  });
+
   it("blocks publishing provider revisions ahead of saved GA4 conversions on the unfiltered legacy path", async () => {
     const ga4CampaignFilter = "";
     vi.useFakeTimers();

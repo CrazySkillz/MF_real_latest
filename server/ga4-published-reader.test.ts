@@ -7,7 +7,8 @@ import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
-import { getInternalGA4RefreshWriteInput } from "./internal-request-auth";
+import { getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest } from "./internal-request-auth";
+import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
 
 const source = readFileSync("server/routes-oauth.ts", "utf8");
 const file = ts.createSourceFile("routes-oauth.ts", source, ts.ScriptTarget.Latest, true);
@@ -46,7 +47,7 @@ describe("published GA4 readers", () => {
     storage.getSpendSources.mockResolvedValue([{ id: "s", currency: "EUR" }]); storage.getRevenueSources.mockResolvedValue([{ id: "r", currency: "EUR" }]);
     storage.getSpendBreakdownBySource.mockResolvedValue([{ sourceId: "s", spend: 20, currency: "EUR" }]); storage.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "r", revenue: 30, currency: "EUR" }]);
     provider = { getTotalsWithRevenue: vi.fn().mockResolvedValue({ currencyCode: "EUR", revenueMetric: "totalRevenue", totals: { sessions: 31, users: 26, conversions: 6, revenue: 110 } }), getAcquisitionBreakdown: vi.fn().mockRejectedValue(new Error("no live request")) };
-    bindings = { storage, ga4Service: provider, getInternalGA4RefreshWriteInput, ensureCampaignAccess: vi.fn().mockResolvedValue({ ...campaign }),
+    bindings = { storage, ga4Service: provider, getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest, ensureCampaignAccess: vi.fn().mockResolvedValue({ ...campaign }),
       parseGA4CampaignFilter: (value: string) => value ? [value] : [], isNoRevenueFilter: () => false,
       normalizePropertyIdForMock: (id: string) => id.replace("properties/", ""), isYesopMockProperty: (id: string) => id === "yesop", isSupportedGA4ConnectionMethod: () => true,
       getReportingDateWindow, resolveGA4ImportToDateWindow, isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource, financialDailySnapshotInputSchema,
@@ -97,6 +98,70 @@ describe("published GA4 readers", () => {
     expect(res.body.performanceSummary.totals.revenue).toMatchObject({ available: true, value: 130.01 });
     expect(res.body.financials).toMatchObject({ totalRevenue: 130.01, spend: 20, conversions: 5, cpa: 4 });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled(); expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+  it("retains the published diagnostic cutoff across local midnight without relabeling or fetching", async () => {
+    vi.setSystemTime(new Date("2026-10-17T22:30:00Z")); // October 18, 00:30 Amsterdam; October 17 is not published yet.
+    const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(), res);
+    expect(res.code, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.performanceSummary.currentValueWindow).toMatchObject({ startDate: "2026-10-15", endDate: "2026-10-16", dataThroughDate: "2026-10-16" });
+    expect(res.body.financials).toMatchObject({ totalRevenue: 130.01, spend: 20, profit: 110.01, conversions: 5, cpa: 4 });
+    expect(bindings.getCampaignMetricTotals).toHaveBeenCalledWith(campaign.id, true, true, "2026-10-16");
+    expect(storage.getRevenueTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-10-16", "ga4");
+    expect(storage.getSpendTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-10-16", "ga4");
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled(); expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+  it("does not use the prior publication for an internal refresh writer", async () => {
+    vi.setSystemTime(new Date("2026-10-17T22:30:00Z"));
+    bindings.isInternalAutoRefreshRequest = () => true;
+    const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(), res);
+    expect(res.code).toBe(503);
+    expect(bindings.getCampaignMetricTotals).toHaveBeenCalledWith(campaign.id, true, true, "2026-10-17");
+  });
+  it("does not rewrite an older Executive Summary snapshot while displaying the prior publication", async () => {
+    vi.setSystemTime(new Date("2026-10-17T22:30:00Z"));
+    storage.getGA4PublicationVersion = vi.fn().mockResolvedValue(null);
+    storage.upsertExecutiveSummaryDailySnapshot = vi.fn();
+    bindings.hasRefreshedGA4RowsForExecutiveSummarySnapshot = () => true;
+    const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req({ captureExecutiveSnapshot: "1", executiveFinancialScope: "campaign_to_date" }), res);
+    expect(res.code, JSON.stringify(res.body)).toBe(200);
+    expect(storage.upsertExecutiveSummaryDailySnapshot).not.toHaveBeenCalled();
+  });
+  it("advances the read cutoff when the new native and financial publication are complete", async () => {
+    vi.setSystemTime(new Date("2026-10-17T22:30:00Z"));
+    const native = overview(), financial = published();
+    native.windowEnd = "2026-10-17"; financial.reportingDate = "2026-10-17";
+    financial.metrics.financialDaily.currentValueWindow.endDate = "2026-10-17";
+    financial.metrics.financialDaily.currentValueWindow.dataThroughDate = "2026-10-17";
+    storage.getGA4OverviewSnapshot.mockResolvedValue(native); storage.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+    const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(), res);
+    expect(res.code, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.performanceSummary.currentValueWindow.dataThroughDate).toBe("2026-10-17");
+  });
+  it.each(["missing publication", "changed spend", "wrong publication campaign", "currency", "timezone", "different native cutoff"])("still withholds incompatible overnight financial inputs: %s", async (kind) => {
+    vi.setSystemTime(new Date("2026-10-17T22:30:00Z"));
+    const financial = published();
+    if (kind === "missing publication") storage.getLatestFinancialDailySnapshot.mockResolvedValue(null);
+    if (kind === "changed spend") storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: 21, currency: "EUR", sourceIds: ["s"] });
+    if (kind === "wrong publication campaign") { financial.campaignId = "other"; storage.getLatestFinancialDailySnapshot.mockResolvedValue(financial); }
+    if (kind === "currency") { financial.metrics.financialDaily.currency = "USD"; storage.getLatestFinancialDailySnapshot.mockResolvedValue(financial); }
+    if (kind === "timezone") { financial.metrics.financialDaily.currentValueWindow.reportingTimeZone = "UTC"; storage.getLatestFinancialDailySnapshot.mockResolvedValue(financial); }
+    if (kind === "different native cutoff") { const native = overview(); native.windowEnd = "2026-10-17"; storage.getGA4OverviewSnapshot.mockResolvedValue(native); }
+    const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(), res);
+    expect(res.code, JSON.stringify(res.body)).toBe(503); expect(res.body.performanceSummary).toBeUndefined();
+  });
+  it("reads Executive trajectory for the displayed prior publication without fabricating missing history", async () => {
+    vi.setSystemTime(new Date("2026-10-17T22:30:00Z"));
+    storage.getExecutiveSummaryDailyComparisonData = vi.fn().mockResolvedValue({ current: null, previous: null });
+    bindings.evaluateExecutiveSummaryTrajectory = evaluateExecutiveSummaryTrajectory;
+    const res = response(); await route("/api/campaigns/:id/executive-summary/trajectory", bindings)({ ...req({ reportingDate: "2026-10-16" }), _campaign: campaign }, res);
+    expect(res.code).toBe(200); expect(res.body.available).toBe(false);
+    expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith(campaign.id, "2026-10-16", "2026-10-09");
+  });
+  it.each(["2026-10-15", "2026-10-18", "invalid"])("rejects a trajectory date outside the current or last published cutoff: %s", async (reportingDate) => {
+    vi.setSystemTime(new Date("2026-10-17T22:30:00Z"));
+    storage.getExecutiveSummaryDailyComparisonData = vi.fn();
+    const res = response(); await route("/api/campaigns/:id/executive-summary/trajectory", bindings)({ ...req({ reportingDate }), _campaign: campaign }, res);
+    expect(res.code).toBe(400); expect(storage.getExecutiveSummaryDailyComparisonData).not.toHaveBeenCalled();
   });
   it.each([undefined, "0", "1"])("keeps native-only GA4 diagnostics on saved figures with persistedOnly=%s", async (persistedOnly) => {
     const saved = published();

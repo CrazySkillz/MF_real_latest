@@ -15148,11 +15148,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignToDateWindow = activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)
         ? resolveGA4ImportToDateWindow((persistedPrimaryGA4 as any)?.importStartDate, (campaign as any)?.reportingTimeZone)
         : null;
+      // Readers retain the last synchronized cutoff; refresh writers still require the new completed day.
+      const publishedOverview = useSavedOverview && campaignToDateWindow && !isInternalAutoRefreshRequest(req)
+        ? await getSynchronizedGA4OverviewSnapshot(campaignId, persistedPropertyId, campaignToDateWindow.startDate).catch(() => null)
+        : null;
+      const publishedEndDate = publishedOverview?.campaignId === campaignId && publishedOverview?.propertyId === persistedPropertyId
+        && publishedOverview.windowStart === campaignToDateWindow?.startDate
+        && publishedOverview.windowEnd >= campaignToDateWindow.startDate && publishedOverview.windowEnd <= campaignToDateWindow.endDate
+        ? publishedOverview.windowEnd : campaignToDateWindow?.endDate;
       const currentValueWindow = campaignToDateWindow ? {
         mode: "initial_import_to_latest_completed_day" as const,
         startDate: campaignToDateWindow.startDate,
-        endDate: campaignToDateWindow.endDate,
-        dataThroughDate: campaignToDateWindow.dataThroughDate,
+        endDate: publishedEndDate!,
+        dataThroughDate: publishedEndDate!,
         reportingTimeZone: campaignToDateWindow.reportingTimeZone,
       } : null;
       let performanceSummarySpendTotals: any = currentValueWindow ? null : spendTotals;
@@ -15489,7 +15497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
           }
           if (useSavedOverview) {
-            const saved = await getCampaignMetricTotals(campaignId, true, true);
+            const saved = await getCampaignMetricTotals(campaignId, true, true, currentValueWindow.endDate);
             if (!saved || saved.ga4FinancialSource !== "persisted_overview" || !saved.revenueAvailable || !saved.spendAvailable ||
                 saved.revenue !== Number((saved.ga4Revenue + importedRevenueToDateTotal).toFixed(2)) || saved.spend !== performanceSummarySpend) {
               throw new Error("Saved GA4 financial inputs are unavailable or changed during the read");
@@ -15849,7 +15857,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           unavailableReasons: [],
         };
       }
-      if (String(req.query.captureExecutiveSnapshot || "").trim() === "1" && currentValueWindow) {
+      if (String(req.query.captureExecutiveSnapshot || "").trim() === "1" && currentValueWindow
+          && currentValueWindow.endDate === campaignToDateWindow?.endDate) {
         try {
           if (!executiveGA4SnapshotRefreshReady) throw new Error("Persisted GA4 property metrics have not refreshed for the completed reporting day");
           const executiveRevenueSourceDefinitions = new Map(financialRevenueSourceDefinitions.map((source: any) => [String(source?.id || ""), source]));
@@ -31194,8 +31203,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(req.params.id || "");
       const reportingDate = String(req.query.reportingDate || "").trim();
       const latestReportingDate = getReportingDateWindow(1, (req as any)._campaign?.reportingTimeZone).endDate;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(reportingDate) || reportingDate !== latestReportingDate) {
-        return res.status(400).json({ message: "reportingDate must be the latest completed campaign reporting date" });
+      const published = /^\d{4}-\d{2}-\d{2}$/.test(reportingDate) && reportingDate < latestReportingDate
+        ? await storage.getLatestFinancialDailySnapshot(campaignId, latestReportingDate) : null;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(reportingDate) || (reportingDate !== latestReportingDate
+          && !(published?.campaignId === campaignId && published.reportingDate === reportingDate))) {
+        return res.status(400).json({ message: "reportingDate must be the latest completed or published campaign reporting date" });
       }
       const comparison = new Date(`${reportingDate}T00:00:00.000Z`);
       comparison.setUTCDate(comparison.getUTCDate() - 7);

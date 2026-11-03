@@ -134,8 +134,8 @@ const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: unkno
   };
 };
 
-async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false, useSavedOverview = false): Promise<CampaignMetricTotals | null> {
-  return getCampaignMetricTotalsForEndDate(campaignId, useFullFinancialCandidate, undefined, undefined, useSavedOverview);
+async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false, useSavedOverview = false, exactEndDate?: string): Promise<CampaignMetricTotals | null> {
+  return getCampaignMetricTotalsForEndDate(campaignId, useFullFinancialCandidate, exactEndDate, undefined, useSavedOverview);
 }
 
 async function getCampaignMetricTotalsForEndDate(

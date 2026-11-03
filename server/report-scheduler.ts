@@ -3290,7 +3290,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       drawText(executiveNarrative, margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 20 });
       y += narrativeHeight + 8;
 
-      sectionHeading("Marketing Funnel Performance", 32);
+      sectionHeading("Marketing Funnel Performance", executiveSummary?.performanceSummary ? 88 : 32);
       if (!executiveSummary?.performanceSummary) {
         card(margin, y, contentWidth, 22);
         drawText("Executive Summary source context unavailable.", margin + 6, y + 13, { size: 9, color: colors.secondary });
@@ -3351,12 +3351,16 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         ? `Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for ${executiveWindowDescription}.`
         : `No Benchmark Exceptions: No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for ${executiveWindowDescription}.`, true);
 
-      sectionHeading("Risk Assessment", 32);
       const riskWidth = (contentWidth - 4) / 2;
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      const riskHeights = riskInputRows.map((row) => Math.max(26, 17 + doc.splitTextToSize(row.detail, riskWidth - 12).length * 4.5));
+      const riskHeight = riskHeights.reduce((total, height, index) => index % 2 === 0
+        ? total + Math.max(height, riskHeights[index + 1] || 0) + 4 : total, 0);
+      sectionHeading("Risk Assessment", riskHeight <= pageHeight - 58 ? riskHeight : Math.max(...riskHeights.slice(0, 2)) + 4);
       for (let index = 0; index < riskInputRows.length; index += 2) {
         const pair = riskInputRows.slice(index, index + 2);
-        const heights = pair.map((row) => Math.max(26, 17 + doc.splitTextToSize(row.detail, riskWidth - 12).length * 4.5));
-        const rowHeight = Math.max(...heights);
+        const rowHeight = Math.max(...riskHeights.slice(index, index + 2));
         if (ensureDesignedSpace(rowHeight + 4) && index > 0) {
           drawText("Risk Assessment (continued)", margin, y + 5, { size: 10, bold: true });
           y += 10;

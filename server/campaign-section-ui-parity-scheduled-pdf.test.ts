@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
 const pdfTextPages = vi.hoisted((): Array<{ text: string; page: number }> => []);
+const pdfPageHeight = vi.hoisted(() => ({ value: 297 }));
 const trendChartMarks = vi.hoisted((): Array<{ chart: string; kind: string; color: string; args: number[] }> => []);
 const pdfDrawCalls = vi.hoisted(() => ({ lines: 0, circles: 0, roundedRects: 0, roundedRectArgs: [] as number[][], images: 0, fillColors: [] as string[], drawColors: [] as string[], lineWidths: [] as number[] }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
@@ -45,7 +46,7 @@ vi.mock("jspdf", () => ({
     chart = "";
     drawColor = "";
     fillColor = "";
-    internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+    internal = { pageSize: { getWidth: () => 210, getHeight: () => pdfPageHeight.value } };
     setFontSize() {}
     setFont() {}
     setTextColor() {}
@@ -176,6 +177,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     vi.setSystemTime(new Date("2026-08-28T12:00:00.000Z"));
     pdfTextCalls.length = 0;
     pdfTextPages.length = 0;
+    pdfPageHeight.value = 297;
     trendChartMarks.length = 0;
     pdfDrawCalls.lines = 0;
     pdfDrawCalls.circles = 0;
@@ -854,6 +856,25 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(storageMock.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("campaign-1", "2026-08-27", "2026-08-20");
     expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true, true);
   });
+
+  it.each([{ height: 292, funnelPage: 2 }, { height: 380, funnelPage: 1 }])(
+    "keeps Executive funnel and risk sections together at page height $height",
+    async ({ height, funnelPage }) => {
+      pdfPageHeight.value = height;
+      await buildPdfAttachmentForReport({
+        report: report("executive-summary", ["executive-summary:overview"]),
+        windowStart: "2026-07-29",
+        windowEnd: "2026-08-27",
+        campaignName: "Campaign",
+      });
+      const funnel = ["Marketing Funnel Performance", "USERS", "SESSIONS", "CONVERSIONS", "REVENUE", "SPEND", "CONVERSION RATE", "ROAS", "ROI"];
+      for (const text of funnel) expect(pdfTextPages.find((call) => call.text === text)?.page).toBe(funnelPage);
+      const risk = ["Risk Assessment", "KPI Risk", "Benchmark Risk", "Data Freshness", "ROI / ROAS Risk", "7-Day Trend Risk", "Paid Platform Concentration Risk"];
+      const riskPages = risk.map((text) => pdfTextPages.find((call) => call.text === text)?.page);
+      expect(riskPages).not.toContain(undefined);
+      expect(new Set(riskPages).size).toBe(1);
+    },
+  );
 
   it("fails Executive Summary freshness closed when the certified GA4 window is unavailable", async () => {
     aggregateCampaignMetricsMock.mockResolvedValue({

@@ -18,6 +18,7 @@ import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, computeEffe
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
 import { buildPerformanceRecommendedActions, resolvePerformanceAggregateMetricValue, resolvePerformanceConfiguredMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "../client/src/lib/performance-recommended-actions";
+import { datedFinancialSourceIds, datedFinancialSourceSetsCompatible } from "../client/src/lib/performance-financial-source-dates";
 import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialBudgetPeriodSpend, resolveFinancialPacingCalendar } from "../client/src/lib/financial-executive-actions";
 import { deriveTrendFinancialRatios, formatTrendComparison, resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
@@ -1400,6 +1401,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const executiveSummarySelected = selectedSections.some((section: string) => section.startsWith("executive-summary:"));
   const needsUiAlignedTraffic = performanceSummarySelected || trendAnalysisSelected || executiveSummarySelected;
   const needsUiAlignedFinancials = performanceSummarySelected || executiveSummarySelected;
+  const performancePublicationVersion = performanceSummarySelected && cumulativeGA4Connection
+    ? await storage.getGA4PublicationVersion(campaignId).catch(() => null) : null;
   const [performancePageTotals, performancePageRows] = needsUiAlignedTraffic && cumulativeGA4Connection && cumulativeGA4Window
     ? await Promise.all([
         needsUiAlignedFinancials ? getCampaignMetricTotals(campaignId, true, true).catch(() => null) : Promise.resolve(null),
@@ -1574,24 +1577,70 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           performanceRecentMovement.push({ key, current, previous: Number.isFinite(previous) && previous >= 0 ? previous : null, sourceLabel: "Google Analytics" });
         }
       }
+      // Use saved, dated inputs only. A refresh or source edit during the read
+      // invalidates the comparison instead of mixing two published versions.
+      let previousSpend: number | null = null;
+      let previousRevenue: number | null = null;
+      if (performancePublicationVersion !== null) {
+        try {
+          const currency = String(campaign?.currency || "USD").trim().toUpperCase();
+          const [spendSources, revenueSources, publication, spendNow, spendThen, revenueNow, revenueThen] = await Promise.all([
+            storage.getSpendSources(campaignId, "ga4").catch(() => null),
+            storage.getRevenueSources(campaignId, "ga4").catch(() => null),
+            storage.getGA4RevenuePublicationStatus(campaignId, dataThroughDate).catch(() => null),
+            storage.getSpendTotalForRange(campaignId, "1900-01-01", dataThroughDate, "ga4").catch(() => null),
+            storage.getSpendTotalForRange(campaignId, "1900-01-01", comparisonDate, "ga4").catch(() => null),
+            storage.getRevenueTotalForRange(campaignId, "1900-01-01", dataThroughDate, "ga4").catch(() => null),
+            storage.getRevenueTotalForRange(campaignId, "1900-01-01", comparisonDate, "ga4").catch(() => null),
+          ]);
+          const scoped = (sources: any[] | null) => sources !== null && sources.every(source => source.campaignId === campaignId
+            && source.isActive === true && (source.platformContext === "ga4" || source.platformContext === null));
+          const spendIds = scoped(spendSources) ? datedFinancialSourceIds({ success: true, sources: spendSources }, "spend", currency) : null;
+          const revenueIds = scoped(revenueSources) && publication ? datedFinancialSourceIds({ success: true, sources: (revenueSources || []).map(source => ({
+            ...source, materializedRevenueStatus: publication[source.id]?.status === "published" ? "available" : "unavailable",
+          })) }, "revenue", currency) : null;
+          const matchesCurrency = (range: { currency?: string; sourceIds: string[] }) => range.currency === currency
+            || (!range.currency && range.sourceIds.length === 0);
+          if (spendNow && spendThen && datedFinancialSourceSetsCompatible(spendIds, spendNow.sourceIds, spendThen.sourceIds)
+            && matchesCurrency(spendNow) && matchesCurrency(spendThen)
+            && Number.isFinite(spendNow.totalSpend) && Number.isFinite(spendThen.totalSpend) && spendThen.totalSpend >= 0
+            && Math.abs(spendNow.totalSpend - Number(performancePageMetric("spend")?.value)) < 0.005) {
+            previousSpend = spendThen.totalSpend;
+          }
+          const rows = performancePageRows || [];
+          const startDate = cumulativeGA4Window.startDate;
+          const expectedDays = (Date.parse(dataThroughDate) - Date.parse(startDate)) / 86400000 + 1;
+          const completeDaily = comparisonDate >= startDate && rows.length === expectedDays
+            && new Set(rows.map(row => row.date)).size === expectedDays
+            && rows.every(row => row.campaignId === campaignId && row.propertyId === cumulativeGA4Connection.propertyId
+              && !row.isSimulated && /^\d{4}-\d{2}-\d{2}$/.test(row.date) && Number.isFinite(Date.parse(row.date))
+              && new Date(row.date).toISOString().slice(0, 10) === row.date && row.date >= startDate && row.date <= dataThroughDate
+              && row.revenue !== null && String(row.revenue).trim() !== "" && Number.isFinite(Number(row.revenue)));
+          const nativeNow = rows.reduce((sum, row) => sum + Number(row.revenue), 0);
+          const nativeThen = rows.filter(row => row.date <= comparisonDate).reduce((sum, row) => sum + Number(row.revenue), 0);
+          // The range reader proves materialization, including legitimate zero-row
+          // CRM sources, and selects aggregate records over attributed duplicates.
+          if (completeDaily && performancePageTotals?.ga4RevenueAvailable === true && revenueIds !== null && revenueNow && revenueThen
+            && [...revenueNow.sourceIds, ...revenueThen.sourceIds].every(id => revenueIds.includes(id))
+            && matchesCurrency(revenueNow) && matchesCurrency(revenueThen)
+            && Number.isFinite(revenueNow.totalRevenue) && Number.isFinite(revenueThen.totalRevenue)
+            && Math.abs(nativeNow - Number(performancePageTotals.ga4Revenue)) < 0.005
+            && Math.abs(nativeNow + revenueNow.totalRevenue - Number(performancePageMetric("revenue")?.value)) < 0.005) {
+            previousRevenue = Number((nativeThen + revenueThen.totalRevenue).toFixed(2));
+          }
+          if (await storage.getGA4PublicationVersion(campaignId) !== performancePublicationVersion) {
+            previousSpend = previousRevenue = null;
+          }
+        } catch { previousSpend = previousRevenue = null; }
+      }
       const spendMetric = performancePageMetric("spend");
       if (spendMetric?.available === true && Number.isFinite(Number(spendMetric.value))) {
-        const comparison = await storage.getComparisonData(campaignId, "last_week", String((campaign as any)?.reportingTimeZone || "UTC"), comparisonDate).catch(() => null);
-        const previousSummary = (comparison as any)?.previous?.metrics?.performanceSummary;
-        const currentSourceIds = Array.isArray(spendMetric?.sources) ? spendMetric.sources.map(String).sort() : [];
-        const previousSpendMetric = previousSummary?.totals?.spend;
-        const previousSourceIds = Array.isArray(previousSpendMetric?.sources) ? previousSpendMetric.sources.map(String).sort() : [];
-        const previous = previousSummary?.version === performanceSummary?.version
-          && previousSpendMetric?.available === true
-          && JSON.stringify(currentSourceIds) === JSON.stringify(previousSourceIds)
-          ? Number(previousSpendMetric.value)
-          : null;
-        performanceRecentMovement.push({ key: "spend", current: Number(spendMetric.value), previous: Number.isFinite(previous) ? previous : null, sourceLabel: "Campaign spend sources" });
+        performanceRecentMovement.push({ key: "spend", current: Number(spendMetric.value), previous: previousSpend, sourceLabel: "Campaign spend sources" });
       }
       const revenueMetric = performancePageMetric("revenue");
       if (revenueMetric?.available === true && Number.isFinite(Number(revenueMetric.value))) {
         const revenueSources = [performancePageTotals?.ga4RevenueAvailable === true ? "GA4 native revenue" : null, performancePageTotals?.revenueBySource?.size ? "Imported revenue" : null].filter(Boolean).join(", ");
-        performanceRecentMovement.push({ key: "revenue", current: Number(revenueMetric.value), previous: null, sourceLabel: revenueSources || "Google Analytics", unavailableLabel: "Comparison unavailable - exact-date Revenue unavailable" });
+        performanceRecentMovement.push({ key: "revenue", current: Number(revenueMetric.value), previous: previousRevenue, sourceLabel: revenueSources || "Google Analytics", unavailableLabel: "Comparison unavailable - exact-date Revenue unavailable" });
       }
     }
   }
@@ -3460,7 +3509,19 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     drawText(priorityText, margin + panelWidth + 10, y + 17, { size: 8, color: colors.secondary, maxWidth: panelWidth - 12 });
     y += panelHeight + 8;
 
-    sectionHeading("Recent Movement", 28);
+    const movementRows = performanceRecentMovement.map(item => {
+      const comparison = item.previous === null
+        ? item.unavailableLabel || "Comparison unavailable - incomplete source history"
+        : `${item.current - item.previous >= 0 ? "+" : ""}${formatCampaignDeepDiveMetricValue(item.key, item.current - item.previous, performanceCurrency)}${item.previous > 0 ? ` (${((item.current - item.previous) / item.previous * 100) >= 0 ? "+" : ""}${((item.current - item.previous) / item.previous * 100).toFixed(1)}%)` : ""}; Previous ${formatCampaignDeepDiveMetricValue(item.key, item.previous, performanceCurrency)}`;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      const comparisonLines = doc.splitTextToSize(comparison, contentWidth - 78);
+      doc.setFontSize(7);
+      const sourceLines = doc.splitTextToSize(`Sources: ${item.sourceLabel}`, contentWidth - 78);
+      return { ...item, comparison, comparisonLines, rowHeight: Math.max(24, 13 + (comparisonLines.length + sourceLines.length) * 4.5) };
+    });
+    const movementHeight = 38 + movementRows.reduce((sum, row) => sum + row.rowHeight + 4, 0);
+    sectionHeading("Recent Movement", movementRows.length && movementHeight <= pageHeight - 40 ? movementHeight - 18 : 28);
     drawText("Compare with 7 days ago", margin, y + 4, { size: 8, color: colors.secondary });
     y += 10;
     if (performanceRecentMovement.length === 0) {
@@ -3468,15 +3529,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       drawText("No compatible historical data yet.", margin + 6, y + 12, { size: 9, color: colors.secondary });
       y += 26;
     } else {
-      performanceRecentMovement.forEach((item) => {
+      movementRows.forEach((item) => {
         const label = item.key === "revenue" ? "Total Revenue" : campaignDeepDiveMetricLabels[item.key] || item.key;
         const current = formatCampaignDeepDiveMetricValue(item.key, item.current, performanceCurrency);
-        const comparison = item.previous === null
-          ? item.unavailableLabel || "Comparison unavailable - incomplete source history"
-          : `${item.current - item.previous >= 0 ? "+" : ""}${formatCampaignDeepDiveMetricValue(item.key, item.current - item.previous, performanceCurrency)}${item.previous > 0 ? ` (${((item.current - item.previous) / item.previous * 100) >= 0 ? "+" : ""}${((item.current - item.previous) / item.previous * 100).toFixed(1)}%)` : ""}; Previous ${formatCampaignDeepDiveMetricValue(item.key, item.previous, performanceCurrency)}`;
-        const comparisonLines = doc.splitTextToSize(comparison, contentWidth - 80);
-        const sourceLines = doc.splitTextToSize(`Sources: ${item.sourceLabel}`, contentWidth - 80);
-        const rowHeight = Math.max(24, 12 + (comparisonLines.length + sourceLines.length) * 4);
+        const { comparison, comparisonLines, rowHeight } = item;
         if (ensureDesignedSpace(rowHeight + 14)) {
           drawText("Recent Movement (continued)", margin, y + 5, { size: 10, bold: true });
           y += 12;

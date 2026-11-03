@@ -19,6 +19,12 @@ const storageMock = vi.hoisted(() => ({
   getGA4DailyMetrics: vi.fn(),
   getFinancialDailyComparisonData: vi.fn(),
   getComparisonData: vi.fn(),
+  getGA4PublicationVersion: vi.fn(),
+  getSpendSources: vi.fn(),
+  getRevenueSources: vi.fn(),
+  getGA4RevenuePublicationStatus: vi.fn(),
+  getSpendTotalForRange: vi.fn(),
+  getRevenueTotalForRange: vi.fn(),
   getExecutiveSummaryDailyComparisonData: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(),
   getSpendBreakdownBySource: vi.fn(),
@@ -188,6 +194,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     pdfDrawCalls.drawColors.length = 0;
     pdfDrawCalls.lineWidths.length = 0;
     vi.clearAllMocks();
+    storageMock.getGA4PublicationVersion.mockReset().mockResolvedValue(null);
     storageMock.getComparisonData.mockResolvedValue({ current: null, previous: null });
     resolveFinancialDailyComparisonPreviousMock.mockResolvedValue(null);
     storageMock.getCampaign.mockResolvedValue({
@@ -886,6 +893,111 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       expect(new Set(riskPages).size).toBe(1);
     },
   );
+
+  describe("Performance Summary dated financial movement", () => {
+    const datedSource = (id: string) => ({ id, campaignId: "campaign-1", isActive: true, platformContext: "ga4", currency: "USD", sourceType: "csv", mappingConfig: { dateColumn: "Date" } });
+    let daily: any[];
+    const render = () => buildPdfAttachmentForReport({ report: report("performance-summary", ["performance-summary:overview"]), windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "Campaign" });
+    beforeEach(() => {
+      daily = Array.from({ length: 57 }, (_, i) => ({ campaignId: "campaign-1", propertyId: "properties/123", date: new Date(Date.UTC(2026, 6, 2 + i)).toISOString().slice(0, 10), isSimulated: false,
+        revenue: i === 0 ? "50000" : i === 56 ? "5966.70" : "0", sessions: i === 0 ? 1153 : i === 56 ? 30 : 0, users: i === 0 ? 1154 : i === 56 ? 30 : 0, conversions: i === 0 ? 145 : i === 56 ? 7 : 0, engagedSessions: 0 }));
+      storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => daily.filter(row => row.date >= start && row.date <= end));
+      storageMock.getGA4PublicationVersion.mockReset().mockResolvedValue("published-version");
+      storageMock.getSpendSources.mockReset().mockResolvedValue([datedSource("spend-1")]);
+      storageMock.getRevenueSources.mockReset().mockResolvedValue([datedSource("revenue-1"), { ...datedSource("crm-zero"), sourceType: "hubspot", mappingConfig: { dateField: "closedate", lastTotalRevenue: 0 } }]);
+      storageMock.getGA4RevenuePublicationStatus.mockReset().mockResolvedValue({ "revenue-1": { status: "published" }, "crm-zero": { status: "published" } });
+      storageMock.getSpendTotalForRange.mockReset().mockImplementation(async (_id, _start, end) => ({ totalSpend: end === "2026-08-27" ? 2699.75 : 2500, currency: "USD", sourceIds: ["spend-1"] }));
+      storageMock.getRevenueTotalForRange.mockReset().mockImplementation(async (_id, _start, end) => ({ totalRevenue: end === "2026-08-27" ? 16799.99 : 10000, currency: "USD", sourceIds: ["revenue-1"] }));
+    });
+
+    it("uses exact dated records, preserves current figures, and keeps all four movement rows together", async () => {
+      await render();
+      expect(pdfTextCalls).toContain("+$12,766.69 (+21.3%); Previous $60,000.00");
+      expect(pdfTextCalls).toContain("+$199.75 (+8.0%); Previous $2,500.00");
+      expect(pdfTextCalls).toContain("+30 (+2.6%); Previous 1,153");
+      expect(pdfTextCalls).toContain("+7 (+4.8%); Previous 145");
+      expect(pdfTextCalls).toContain("$72,766.69");
+      expect(pdfTextCalls).toContain("$2,699.75");
+      const movement = pdfTextPages.filter(row => row.text === "Recent Movement" || row.text.includes("; Previous "));
+      expect(movement).toHaveLength(5);
+      expect(new Set(movement.map(row => row.page)).size).toBe(1);
+      expect(pdfTextCalls).not.toContain("Recent Movement (continued)");
+      for (const fn of [storageMock.getRevenueTotalForRange, storageMock.getSpendTotalForRange]) {
+        expect(fn).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-27", "ga4");
+        expect(fn).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
+      }
+      expect(storageMock.getComparisonData).not.toHaveBeenCalled();
+      expect(resolveFinancialDailyComparisonPreviousMock).not.toHaveBeenCalled();
+      expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true, true);
+    });
+
+    it.each(["missing day", "duplicate day", "wrong campaign", "wrong property", "simulated", "invalid revenue", "unpublished source", "undated source", "wrong currency", "unknown record source", "native mismatch"])("withholds Revenue for %s without hiding valid Spend", async (reason) => {
+      if (reason === "missing day") daily.splice(2, 1);
+      if (reason === "duplicate day") daily[2] = { ...daily[1] };
+      if (reason === "wrong campaign") daily[2].campaignId = "other-campaign";
+      if (reason === "wrong property") daily[2].propertyId = "other-property";
+      if (reason === "simulated") daily[2].isSimulated = true;
+      if (reason === "invalid revenue") daily[2].revenue = "";
+      if (reason === "native mismatch") daily[2].revenue = "1";
+      if (reason === "unpublished source") storageMock.getGA4RevenuePublicationStatus.mockResolvedValue({ "revenue-1": { status: "pending" } });
+      if (reason === "undated source") storageMock.getRevenueSources.mockResolvedValue([{ ...datedSource("revenue-1"), mappingConfig: {} }]);
+      if (reason === "wrong currency") storageMock.getRevenueSources.mockResolvedValue([{ ...datedSource("revenue-1"), currency: "EUR" }]);
+      if (reason === "unknown record source") storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 16799.99, currency: "USD", sourceIds: ["other-source"] });
+      await render();
+      expect(pdfTextCalls).toContain("Comparison unavailable - exact-date Revenue unavailable");
+      expect(pdfTextCalls).toContain("+$199.75 (+8.0%); Previous $2,500.00");
+    });
+
+    it.each(["undated source", "wrong currency", "wrong campaign", "inactive source", "unknown source", "current total mismatch"])("withholds Spend for %s without hiding valid Revenue", async (reason) => {
+      const source = datedSource("spend-1");
+      if (reason === "undated source") source.mappingConfig = {} as any;
+      if (reason === "wrong currency") source.currency = "EUR";
+      if (reason === "wrong campaign") source.campaignId = "other-campaign";
+      if (reason === "inactive source") source.isActive = false;
+      storageMock.getSpendSources.mockResolvedValue([source]);
+      if (reason === "unknown source") storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 2699.75, currency: "USD", sourceIds: ["other-source"] });
+      if (reason === "current total mismatch") storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 2699.76, currency: "USD", sourceIds: ["spend-1"] });
+      await render();
+      expect(pdfTextCalls).toContain("Comparison unavailable - incomplete source history");
+      expect(pdfTextCalls).toContain("+$12,766.69 (+21.3%); Previous $60,000.00");
+    });
+
+    it.each(["changed version", "busy publication", "missing version"])("fails closed for %s", async (reason) => {
+      if (reason === "changed version") storageMock.getGA4PublicationVersion.mockResolvedValueOnce("before").mockResolvedValueOnce("after");
+      if (reason === "busy publication") storageMock.getGA4PublicationVersion.mockRejectedValue(new Error("GA4_REFRESH_PUBLICATION_BUSY"));
+      if (reason === "missing version") storageMock.getGA4PublicationVersion.mockResolvedValue(null);
+      await render();
+      expect(pdfTextCalls).toContain("Comparison unavailable - exact-date Revenue unavailable");
+      expect(pdfTextCalls).toContain("Comparison unavailable - incomplete source history");
+      expect(pdfTextCalls).toContain("$72,766.69");
+    });
+
+    it.each(["spend", "revenue"])("keeps the other comparison when the %s range read fails", async (kind) => {
+      const failed = kind === "spend" ? storageMock.getSpendTotalForRange : storageMock.getRevenueTotalForRange;
+      failed.mockRejectedValue(new Error("Financial input unavailable"));
+      await render();
+      expect(pdfTextCalls).toContain(kind === "spend" ? "Comparison unavailable - incomplete source history" : "Comparison unavailable - exact-date Revenue unavailable");
+      expect(pdfTextCalls).toContain(kind === "spend" ? "+$12,766.69 (+21.3%); Previous $60,000.00" : "+$199.75 (+8.0%); Previous $2,500.00");
+    });
+
+    it.each([0, -25])("preserves exact previous Revenue %s without an invalid percentage", async (previous) => {
+      daily[0].revenue = String(previous);
+      daily[56].revenue = String(55966.7 - previous);
+      storageMock.getRevenueTotalForRange.mockImplementation(async (_id, _start, end) => ({ totalRevenue: end === "2026-08-27" ? 16799.99 : 0, currency: "USD", sourceIds: end === "2026-08-27" ? ["revenue-1"] : [] }));
+      await render();
+      const comparison = pdfTextCalls.find(text => text.includes(`Previous ${previous === 0 ? "$0.00" : "-$25.00"}`));
+      expect(comparison).toBeDefined();
+      expect(comparison).not.toContain("%");
+      expect(pdfTextCalls).not.toContain("Comparison unavailable - exact-date Revenue unavailable");
+    });
+
+    it("retains continuation pagination if the whole movement group cannot fit a page", async () => {
+      pdfPageHeight.value = 170;
+      await render();
+      expect(pdfTextCalls).toContain("Recent Movement (continued)");
+      expect(pdfTextCalls).toContain("+$12,766.69 (+21.3%); Previous $60,000.00");
+    });
+  });
 
   it("fails Executive Summary freshness closed when the certified GA4 window is unavailable", async () => {
     aggregateCampaignMetricsMock.mockResolvedValue({

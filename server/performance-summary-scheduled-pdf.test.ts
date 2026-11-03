@@ -14,6 +14,7 @@ const storageMock = vi.hoisted(() => ({
   getPrimaryGA4Connection: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   getComparisonData: vi.fn(),
+  getGA4PublicationVersion: vi.fn().mockResolvedValue(null),
   getRevenueBreakdownBySource: vi.fn(),
   getSpendBreakdownBySource: vi.fn(),
 }));
@@ -217,7 +218,9 @@ describe("scheduled Performance Summary PDF", () => {
     expect(pdfTextCalls).toContain("$2,699.75");
     expect(pdfTextCalls.some((text) => text.includes("KPI below target: CPA"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Previous 1,153"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Previous $2,500.00"))).toBe(true);
+    // A legacy aggregate snapshot alone does not prove dated source history.
+    expect(pdfTextCalls.some((text) => text.includes("Previous $2,500.00"))).toBe(false);
+    expect(pdfTextCalls).toContain("Comparison unavailable - incomplete source history");
     expect(pdfTextCalls.some((text) => text.includes("exact-date Revenue unavailable"))).toBe(true);
     expect(pdfTextCalls).toContain("Sources: GA4 native revenue, Imported revenue");
     expect(pdfTextCalls).not.toContain("Overview");
@@ -228,7 +231,7 @@ describe("scheduled Performance Summary PDF", () => {
     expect(pdfTextCalls).not.toContain("Campaign Benchmark rows");
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-08-21", "2026-08-27");
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-02", "2026-08-27");
-    expect(storageMock.getComparisonData).toHaveBeenCalledWith("campaign-1", "last_week", "Europe/Amsterdam", "2026-08-20");
+    expect(storageMock.getComparisonData).not.toHaveBeenCalled();
     expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true, true);
   });
 

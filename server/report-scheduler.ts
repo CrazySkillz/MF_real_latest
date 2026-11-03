@@ -1545,7 +1545,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         const date = new Date(`${trendWindowEnd}T00:00:00.000Z`);
         date.setUTCDate(date.getUTCDate() - 7);
         return date.toISOString().slice(0, 10);
-      })()).then((snapshots: any) => evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous)).catch(() => ({ available: false, reason: "not_enough_history" }))
+      })()).then((snapshots: any) => evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous, snapshots.revenueHistory)).catch(() => ({ available: false, reason: "not_enough_history" }))
     : { available: false, reason: "not_enough_history" };
   const financialInputEndDate = String(performanceSummary?.currentValueWindow?.endDate || trendWindowEnd || windowEnd);
   const [financialRevenueInputRows, financialSpendInputRows] = financialAnalysisSelected && cumulativeGA4Connection && /^\d{4}-\d{2}-\d{2}$/.test(financialInputEndDate)
@@ -2436,10 +2436,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         executiveMetricAvailable("roi") ? `ROI is ${executiveMetricValue("roi")}` : "",
         executiveMetricAvailable("roas") ? `ROAS is ${executiveMetricValue("roas")}` : "",
       ].filter(Boolean).join(" and ");
-      addText(`7-Day Snapshot Trajectory: ${trajectoryName ? `${trajectoryName}${trajectoryPct ? ` (${trajectoryPct.toFixed(1)}%)` : ""}` : "Not enough history"}`, { bold: true, indent: 4 });
+      addText(`7-Day Revenue Trend: ${trajectoryName ? `${trajectoryName}${trajectoryPct ? ` (${trajectoryPct.toFixed(1)}%)` : ""}` : "Not enough history"}`, { bold: true, indent: 4 });
       addText(`Risk Level: ${executiveRiskLevel.toUpperCase()}`, { bold: true, indent: 4 });
       addText("Executive Summary", { bold: true, indent: 4 });
-      addText(`${campaignName || (campaign as any)?.name || "Campaign"}: ${metricSummary ? `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary}.` : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`} Risk level is ${executiveRiskLevel}. ${trajectoryName ? `7-day snapshot trajectory is ${trajectoryName}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
+      addText(`${campaignName || (campaign as any)?.name || "Campaign"}: ${metricSummary ? `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary}.` : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`} Risk level is ${executiveRiskLevel}. ${trajectoryName ? `7-day revenue trend is ${trajectoryName}.` : "7-day revenue trend does not have enough compatible history yet."}${executiveTrajectory?.available && "source" in executiveTrajectory && executiveTrajectory.source === "dated_revenue_history" ? " Both dates use the current sources and their dated records." : ""}`, { indent: 8 });
       addText("Marketing Funnel Performance", { bold: true, indent: 4 });
       if (!executiveSummary?.performanceSummary) {
         addText("- Executive Summary source context unavailable.", { indent: 8 });
@@ -3253,7 +3253,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         executiveMetricAvailable("roi") ? `ROI is ${executiveMetricValue("roi")}` : "",
         executiveMetricAvailable("roas") ? `ROAS is ${executiveMetricValue("roas")}` : "",
       ].filter(Boolean).join(" and ");
-      const executiveNarrative = `${campaignName || (campaign as any)?.name || "Campaign"}: ${metricSummary ? `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary}.` : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`} Risk level is ${executiveRiskLevel}. ${trajectoryName ? `7-day snapshot trajectory is ${trajectoryName}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`;
+      const executiveNarrative = `${campaignName || (campaign as any)?.name || "Campaign"}: ${metricSummary ? `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary}.` : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`} Risk level is ${executiveRiskLevel}. ${trajectoryName ? `7-day revenue trend is ${trajectoryName}.` : "7-day revenue trend does not have enough compatible history yet."}${executiveTrajectory?.available && "source" in executiveTrajectory && executiveTrajectory.source === "dated_revenue_history" ? " Both dates use the current sources and their dated records." : ""}`;
       const riskInputRows = [
         { label: "KPI Risk", status: kpiRiskCount > 0 ? "Risk" : kpiMonitorCount > 0 ? "Monitor" : executiveKpiRows.length > 0 ? "No Risk" : "Not Applicable", detail: kpiRiskCount > 0 ? `${kpiRiskCount} KPI${kpiRiskCount === 1 ? " is" : "s are"} below 70% of target${kpiMonitorCount > 0 ? `; ${kpiMonitorCount} additional KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : ""}` : kpiMonitorCount > 0 ? `${kpiMonitorCount} KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : executiveKpiRows.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available" },
         { label: "Benchmark Risk", status: benchmarkRiskCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable", detail: benchmarkRiskCount > 0 ? `${benchmarkRiskCount} benchmark${benchmarkRiskCount === 1 ? " is" : "s are"} classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention` : ""}` : benchmarkMonitorCount > 0 ? `${benchmarkMonitorCount} benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention; none is classified behind` : executiveBenchmarkRows.length > 0 ? "Mapped benchmarks are on track" : "No evaluable campaign benchmarks available" },
@@ -3276,7 +3276,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       const overviewWidth = (contentWidth - 4) / 2;
       card(margin, y, overviewWidth, 28);
       card(margin + overviewWidth + 4, y, overviewWidth, 28);
-      drawText("7-DAY SNAPSHOT TRAJECTORY", margin + 6, y + 8, { size: 7, bold: true, color: colors.muted });
+      drawText("7-DAY REVENUE TREND", margin + 6, y + 8, { size: 7, bold: true, color: colors.muted });
       drawText(trajectoryName ? `${trajectoryName}${trajectoryPct ? ` (${trajectoryPct.toFixed(1)}%)` : ""}` : "Not enough history", margin + 6, y + 19, { size: 11, bold: true, color: colors.accentText, maxWidth: overviewWidth - 12 });
       drawText("RISK LEVEL", margin + overviewWidth + 10, y + 8, { size: 7, bold: true, color: colors.muted });
       drawText(executiveRiskLevel.toUpperCase(), margin + overviewWidth + 10, y + 19, { size: 11, bold: true, color: colors.accentText });

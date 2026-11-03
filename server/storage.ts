@@ -17,7 +17,7 @@ import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, getGoogleAdsServiceAccountLoginCusto
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, normalizeReportingTimeZone } from "./utils/reporting-timezone";
-import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
+import { executiveSummaryDailySnapshotInputSchema, evaluateExecutiveSummaryTrajectory, type ExecutiveSummaryDailySnapshotInput, type ExecutiveSummaryRevenueHistory } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { normalizeShopifyDomain, resolveNewestShopifyOauthCredential } from "./utils/shopify-provider";
@@ -576,6 +576,7 @@ export interface IStorage {
   getExecutiveSummaryDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
+    revenueHistory?: ExecutiveSummaryRevenueHistory;
   }>;
   getFinancialDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
     current: MetricSnapshot | null;
@@ -7148,7 +7149,7 @@ export class DatabaseStorage implements IStorage {
     campaignId: string,
     currentReportingDate: string,
     comparisonDate: string,
-  ): Promise<{ current: MetricSnapshot | null; previous: MetricSnapshot | null }> {
+  ): Promise<{ current: MetricSnapshot | null; previous: MetricSnapshot | null; revenueHistory?: ExecutiveSummaryRevenueHistory }> {
     const [[currentSnapshot], [previousSnapshot]] = await Promise.all([
       db.select().from(metricSnapshots).where(and(
         eq(metricSnapshots.campaignId, campaignId),
@@ -7170,7 +7171,47 @@ export class DatabaseStorage implements IStorage {
         reportingDate: snapshot.reportingDate,
       }).success ? snapshot : null;
     };
-    return { current: validatedSnapshot(currentSnapshot), previous: validatedSnapshot(previousSnapshot) };
+    const snapshots = { current: validatedSnapshot(currentSnapshot), previous: validatedSnapshot(previousSnapshot) };
+    if (evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous).reason !== 'incompatible_history') return snapshots;
+    try {
+      return await db.transaction(async (tx: any) => {
+        // Re-read the snapshots with their dated inputs under one consistent view.
+        // This path never imports, renews credentials, or rewrites saved history.
+        const rows = await tx.select().from(metricSnapshots).where(and(eq(metricSnapshots.campaignId, campaignId),
+          eq(metricSnapshots.snapshotType, 'executive_summary_daily'), inArray(metricSnapshots.reportingDate, [currentReportingDate, comparisonDate])));
+        const current = validatedSnapshot(rows.find((row: MetricSnapshot) => row.reportingDate === currentReportingDate));
+        const previous = validatedSnapshot(rows.find((row: MetricSnapshot) => row.reportingDate === comparisonDate));
+        if (!current || !previous) return { current, previous };
+        const scope = (current.metrics as any).executiveSummaryDaily;
+        const [campaign] = await tx.select({ id: campaigns.id, currency: campaigns.currency, ga4CampaignFilter: campaigns.ga4CampaignFilter,
+          reportingTimeZone: campaigns.reportingTimeZone }).from(campaigns).where(eq(campaigns.id, campaignId));
+        if (!campaign) return { current, previous };
+        const connections = await tx.select({ campaignId: ga4Connections.campaignId, propertyId: ga4Connections.propertyId,
+          importStartDate: ga4Connections.importStartDate, isActive: ga4Connections.isActive }).from(ga4Connections)
+          .where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)));
+        const sources = await tx.select().from(revenueSources).where(and(eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.isActive, true), or(eq(revenueSources.platformContext, 'ga4'), isNull(revenueSources.platformContext))));
+        const records = await tx.select({ campaignId: revenueRecords.campaignId, revenueSourceId: revenueRecords.revenueSourceId,
+          date: revenueRecords.date, revenue: revenueRecords.revenue, currency: revenueRecords.currency, subCampaignUrn: revenueRecords.subCampaignUrn })
+          .from(revenueRecords).innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
+          .where(and(eq(revenueRecords.campaignId, campaignId), eq(revenueSources.campaignId, campaignId), eq(revenueSources.isActive, true),
+            or(eq(revenueSources.platformContext, 'ga4'), isNull(revenueSources.platformContext)),
+            gte(revenueRecords.date, '1900-01-01'), lte(revenueRecords.date, currentReportingDate)));
+        const daily = await tx.select({ campaignId: ga4DailyMetrics.campaignId, propertyId: ga4DailyMetrics.propertyId,
+          date: ga4DailyMetrics.date, revenue: ga4DailyMetrics.revenue, isSimulated: ga4DailyMetrics.isSimulated }).from(ga4DailyMetrics)
+          .where(and(eq(ga4DailyMetrics.campaignId, campaignId), eq(ga4DailyMetrics.propertyId, scope.ga4PropertyId),
+            gte(ga4DailyMetrics.date, scope.currentValueWindow.startDate), lte(ga4DailyMetrics.date, currentReportingDate)));
+        const [financial] = await tx.select({ metrics: metricSnapshots.metrics }).from(metricSnapshots).where(and(
+          eq(metricSnapshots.campaignId, campaignId), eq(metricSnapshots.snapshotType, 'financial_daily'), eq(metricSnapshots.reportingDate, currentReportingDate))).limit(1);
+        const publication = await this.readGA4RevenuePublication(tx, campaignId, currentReportingDate);
+        const receipt = financial?.metrics?.revenuePublication;
+        const publicationMatches = receipt?.version === 1 && receipt.reportingDate === currentReportingDate
+          && isDeepStrictEqual(receipt.sources, publication.sources);
+        return { current, previous, revenueHistory: { publicationMatches, campaign, connections, sources, records, daily } };
+      }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
+    } catch {
+      return snapshots; // Failed evidence reads must not turn an unproven comparison into a number.
+    }
   }
 
   async getFinancialDailyComparisonData(

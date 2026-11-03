@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { createHash } from "crypto";
-import { financialDailySnapshotInputSchema, type MetricSnapshot } from "../../shared/schema";
+import { financialDailySnapshotInputSchema, type MetricSnapshot, type Campaign, type GA4Connection, type GA4DailyMetric, type RevenueSource, type RevenueRecord } from "../../shared/schema";
 import { getExpectedDailyRefreshAt } from "./reporting-timezone";
+import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, selectRevenueRecordTotal } from "./revenue-record-total";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const metricSchema = z.discriminatedUnion("available", [
@@ -169,7 +170,65 @@ export function parseExecutiveSummaryDailySnapshot(snapshot: MetricSnapshot | nu
 const daysBetween = (later: string, earlier: string) =>
   (new Date(`${later}T00:00:00.000Z`).getTime() - new Date(`${earlier}T00:00:00.000Z`).getTime()) / 86400000;
 
-export function evaluateExecutiveSummaryTrajectory(currentRow: MetricSnapshot | null, previousRow: MetricSnapshot | null) {
+export type ExecutiveSummaryRevenueHistory = {
+  publicationMatches: boolean;
+  campaign: Pick<Campaign, "id" | "currency" | "ga4CampaignFilter" | "reportingTimeZone">;
+  connections: Pick<GA4Connection, "campaignId" | "propertyId" | "importStartDate" | "isActive">[];
+  sources: Pick<RevenueSource, "id" | "campaignId" | "isActive" | "platformContext" | "currency" | "sourceType" | "mappingConfig">[];
+  daily: Pick<GA4DailyMetric, "campaignId" | "propertyId" | "date" | "revenue" | "isSimulated">[];
+  records: Pick<RevenueRecord, "campaignId" | "revenueSourceId" | "date" | "revenue" | "currency" | "subCampaignUrn">[];
+};
+
+// Reconstruct both cutoffs from one read-only database view. Never relabel or
+// overwrite the saved snapshots, and never mix current mappings with old totals.
+function reconcileExecutiveRevenueHistory(current: ExecutiveSummaryDailySnapshotInput, previous: ExecutiveSummaryDailySnapshotInput, history?: ExecutiveSummaryRevenueHistory): number | null {
+  if (!history?.publicationMatches || !current.totals.revenue.available) return null;
+  const { campaign, connections, sources, daily, records } = history;
+  const connection = connections.length === 1 ? connections[0] : null;
+  if (campaign?.id !== current.campaignId || campaign.currency !== current.currency
+    || String(campaign.ga4CampaignFilter || "").trim() !== current.ga4CampaignFilter
+    || campaign.reportingTimeZone !== current.currentValueWindow.reportingTimeZone
+    || !connection?.isActive || connection.campaignId !== current.campaignId || connection.propertyId !== current.ga4PropertyId
+    || connection.importStartDate !== current.currentValueWindow.startDate) return null;
+  const nonFinancial = (snapshot: ExecutiveSummaryDailySnapshotInput) => snapshot.sourceSignature.filter(id => !/^(revenue|spend)_source:/.test(id));
+  if (JSON.stringify(nonFinancial(current)) !== JSON.stringify(nonFinancial(previous))
+    || nonFinancial(current).length !== 1 || !nonFinancial(current)[0].startsWith("ga4:web_analytics:")) return null;
+  if (sources.some(source => source.campaignId !== current.campaignId || source.isActive !== true
+    || (source.platformContext !== null && source.platformContext !== "ga4") || source.currency !== current.currency)) return null;
+  const identities = sources.map(source => formatFinancialSourceIdentity("revenue_source", buildExecutiveSummaryFinancialSourceIdentity(source))).sort();
+  if (JSON.stringify(identities) !== JSON.stringify(current.sourceSignature.filter(id => id.startsWith("revenue_source:")).sort())) return null;
+  const expectedDays = daysBetween(current.reportingDate, current.currentValueWindow.startDate) + 1;
+  if (daily.length !== expectedDays || new Set(daily.map(row => row.date)).size !== expectedDays
+    || daily.some(row => row.campaignId !== current.campaignId || row.propertyId !== current.ga4PropertyId || row.isSimulated
+      || !dateSchema.safeParse(row.date).success || row.date < current.currentValueWindow.startDate || row.date > current.reportingDate
+      || !Number.isFinite(Date.parse(row.date)) || new Date(row.date).toISOString().slice(0, 10) !== row.date
+      || row.revenue === null || String(row.revenue).trim() === "" || !Number.isFinite(Number(row.revenue)))) return null;
+  const sourceById = new Map(sources.map(source => [source.id, source]));
+  if (records.some(row => row.campaignId !== current.campaignId || !sourceById.has(row.revenueSourceId)
+    || !dateSchema.safeParse(row.date).success || row.date < "1900-01-01" || row.date > current.reportingDate
+    || !Number.isFinite(Date.parse(row.date)) || new Date(row.date).toISOString().slice(0, 10) !== row.date
+    || row.revenue === null || String(row.revenue).trim() === "" || !Number.isFinite(Number(row.revenue)))) return null;
+  try {
+    assertGa4RevenueMaterializationComplete(sources, records);
+    assertGa4RevenueCurrencyIntegrity(records.map(row => ({ ...row, sourceCurrency: sourceById.get(row.revenueSourceId)?.currency })), current.currency);
+  } catch { return null; }
+  const revenueAt = (date: string) => {
+    const totals = new Map<string, { aggregate: number; attributed: number; hasAggregate: boolean }>();
+    for (const row of records.filter(row => row.date <= date)) {
+      const total = totals.get(row.revenueSourceId) || { aggregate: 0, attributed: 0, hasAggregate: false };
+      if (row.subCampaignUrn) total.attributed += Number(row.revenue);
+      else { total.aggregate += Number(row.revenue); total.hasAggregate = true; }
+      totals.set(row.revenueSourceId, total);
+    }
+    return daily.filter(row => row.date <= date).reduce((sum, row) => sum + Number(row.revenue), 0)
+      + Array.from(totals.values()).reduce((sum, total) => sum + selectRevenueRecordTotal(total), 0);
+  };
+  if (Math.abs(revenueAt(current.reportingDate) - current.totals.revenue.value) >= 0.005) return null;
+  const prior = revenueAt(previous.reportingDate);
+  return Number.isFinite(prior) ? Number(prior.toFixed(2)) : null;
+}
+
+export function evaluateExecutiveSummaryTrajectory(currentRow: MetricSnapshot | null, previousRow: MetricSnapshot | null, revenueHistory?: ExecutiveSummaryRevenueHistory) {
   const current = parseExecutiveSummaryDailySnapshot(currentRow);
   const previous = parseExecutiveSummaryDailySnapshot(previousRow);
   if (!current || !previous) return { available: false as const, trajectory: null, trendPercentage: null, reason: "not_enough_history" };
@@ -181,17 +240,20 @@ export function evaluateExecutiveSummaryTrajectory(currentRow: MetricSnapshot | 
     && current.currentValueWindow.mode === previous.currentValueWindow.mode
     && current.currentValueWindow.startDate === previous.currentValueWindow.startDate
     && current.currentValueWindow.reportingTimeZone === previous.currentValueWindow.reportingTimeZone
-    && JSON.stringify(current.sourceSignature) === JSON.stringify(previous.sourceSignature)
     && daysBetween(current.reportingDate, previous.reportingDate) === 7;
   if (!sameContract) return { available: false as const, trajectory: null, trendPercentage: null, reason: "incompatible_history" };
+  const sameSources = JSON.stringify(current.sourceSignature) === JSON.stringify(previous.sourceSignature);
+  const reconstructedRevenue = sameSources ? null : reconcileExecutiveRevenueHistory(current, previous, revenueHistory);
+  if (!sameSources && reconstructedRevenue === null) return { available: false as const, trajectory: null, trendPercentage: null, reason: "incompatible_history" };
   const currentRevenue = current.totals.revenue;
-  const previousRevenue = previous.totals.revenue;
+  const previousRevenue = reconstructedRevenue === null ? previous.totals.revenue : { available: true, value: reconstructedRevenue };
   if (!currentRevenue.available || !previousRevenue.available || previousRevenue.value <= 0) {
     return { available: false as const, trajectory: null, trendPercentage: null, reason: "revenue_history_unavailable" };
   }
   const trendPercentage = ((currentRevenue.value - previousRevenue.value) / previousRevenue.value) * 100;
   const trajectory = trendPercentage > 10 ? "accelerating" : trendPercentage < -10 ? "declining" : "stable";
-  return { available: true as const, trajectory, trendPercentage, reason: null };
+  return { available: true as const, trajectory, trendPercentage, reason: null,
+    ...(reconstructedRevenue === null ? {} : { source: "dated_revenue_history" as const }) };
 }
 
 export function evaluateExecutiveSummaryTrajectoryFromFinancialDaily(

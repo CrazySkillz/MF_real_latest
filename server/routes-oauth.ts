@@ -31213,7 +31213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       comparison.setUTCDate(comparison.getUTCDate() - 7);
       const comparisonDate = comparison.toISOString().slice(0, 10);
       const snapshots = await storage.getExecutiveSummaryDailyComparisonData(campaignId, reportingDate, comparisonDate);
-      let trajectory = evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous);
+      let trajectory: ReturnType<typeof evaluateExecutiveSummaryTrajectory> | ReturnType<typeof evaluateExecutiveSummaryTrajectoryFromFinancialDaily> = evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous, snapshots.revenueHistory);
       if (!snapshots.previous && snapshots.current) {
         const activeRevenueSources = await storage.getRevenueSources(campaignId, "ga4").catch(() => null);
         if (Array.isArray(activeRevenueSources) && activeRevenueSources.length === 0) {

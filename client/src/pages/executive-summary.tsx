@@ -296,7 +296,9 @@ export default function ExecutiveSummary() {
     : "Based on compatible aggregate snapshots, not the removed date selector.";
   const executiveTrajectoryDetail = executiveTrajectory
     ? hasAuthoritativeGA4Window
-      ? (executiveTrajectoryData as any)?.source === "financial_daily_fallback"
+      ? (executiveTrajectoryData as any)?.source === "dated_revenue_history"
+        ? "Revenue compared at both dates using the current sources and their dated records."
+        : (executiveTrajectoryData as any)?.source === "financial_daily_fallback"
         ? "Revenue compared with aligned financial history from seven days earlier."
         : "Revenue compared with the matching Executive Summary reading from seven days earlier."
       : "Based on compatible aggregate snapshots, not the removed date selector."

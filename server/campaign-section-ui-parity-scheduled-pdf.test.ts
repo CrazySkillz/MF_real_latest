@@ -833,7 +833,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       campaignName: "Campaign",
     });
 
-    expect(pdfTextCalls).toContain("7-DAY SNAPSHOT TRAJECTORY");
+    expect(pdfTextCalls).toContain("7-DAY REVENUE TREND");
     expect(pdfTextCalls).toContain("accelerating (12.5%)");
     expect(pdfTextCalls).toContain("SESSIONS");
     expect(pdfTextCalls).toContain("1,183");
@@ -855,6 +855,17 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfDrawCalls.fillColors).toContain("244,174,126");
     expect(storageMock.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("campaign-1", "2026-08-27", "2026-08-20");
     expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true, true);
+  });
+
+  it("passes dated revenue evidence to the shared comparator and explains the recovered PDF comparison", async () => {
+    const snapshots = { current: { id: "current" }, previous: { id: "previous" }, revenueHistory: { publicationMatches: true } };
+    storageMock.getExecutiveSummaryDailyComparisonData.mockResolvedValue(snapshots);
+    evaluateExecutiveSummaryTrajectoryMock.mockReturnValue({ available: true, trajectory: "accelerating", trendPercentage: 19.1862, reason: null, source: "dated_revenue_history" });
+    await buildPdfAttachmentForReport({ report: report("executive-summary", ["executive-summary:overview"]), windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "Campaign" });
+    expect(evaluateExecutiveSummaryTrajectoryMock).toHaveBeenCalledWith(snapshots.current, snapshots.previous, snapshots.revenueHistory);
+    expect(pdfTextCalls).toContain("accelerating (19.2%)");
+    expect(pdfTextCalls.join(" ")).toContain("Both dates use the current sources and their dated records.");
+    expect(pdfTextCalls).not.toContain("Not Enough History");
   });
 
   it.each([{ height: 292, funnelPage: 2 }, { height: 380, funnelPage: 1 }])(

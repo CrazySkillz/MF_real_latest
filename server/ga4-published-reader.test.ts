@@ -157,6 +157,17 @@ describe("published GA4 readers", () => {
     expect(res.code).toBe(200); expect(res.body.available).toBe(false);
     expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith(campaign.id, "2026-10-16", "2026-10-09");
   });
+  it("uses the same dated revenue evidence in the UI response without exposing source records", async () => {
+    const snapshots = { current: { id: "current" }, previous: { id: "previous" }, revenueHistory: { publicationMatches: true, records: ["private inputs"] } };
+    storage.getExecutiveSummaryDailyComparisonData = vi.fn().mockResolvedValue(snapshots);
+    bindings.evaluateExecutiveSummaryTrajectory = vi.fn().mockReturnValue({ available: true, trajectory: "accelerating", trendPercentage: 19.1862, reason: null, source: "dated_revenue_history" });
+    const res = response(); await route("/api/campaigns/:id/executive-summary/trajectory", bindings)({ ...req({ reportingDate: "2026-10-16" }), _campaign: campaign }, res);
+    expect(res.code).toBe(200);
+    expect(bindings.evaluateExecutiveSummaryTrajectory).toHaveBeenCalledWith(snapshots.current, snapshots.previous, snapshots.revenueHistory);
+    expect(res.body).toMatchObject({ available: true, trendPercentage: 19.1862, source: "dated_revenue_history" });
+    expect(res.body.revenueHistory).toBeUndefined();
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
   it.each(["2026-10-15", "2026-10-18", "invalid"])("rejects a trajectory date outside the current or last published cutoff: %s", async (reportingDate) => {
     vi.setSystemTime(new Date("2026-10-17T22:30:00Z"));
     storage.getExecutiveSummaryDailyComparisonData = vi.fn();

@@ -36,7 +36,7 @@ describe("Executive Summary daily snapshot wiring", () => {
       .toBeLessThan(outcome.indexOf("upsertExecutiveSummaryDailySnapshot"));
     expect(routes).toContain('app.get("/api/campaigns/:id/executive-summary/trajectory", requireCampaignAccessParamId');
     expect(routes).toContain("getExecutiveSummaryDailyComparisonData(campaignId, reportingDate, comparisonDate)");
-    expect(routes).toContain("evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous)");
+    expect(routes).toContain("evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous, snapshots.revenueHistory)");
     expect(routes).toContain('storage.getRevenueSources(campaignId, "ga4")');
     expect(routes).toContain("activeRevenueSources.length === 0");
     expect(routes).toContain("resolveFinancialDailyComparisonPrevious({");

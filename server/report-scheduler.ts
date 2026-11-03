@@ -2780,10 +2780,17 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         formatCurrency: (value) => money(value),
         formatPercentage: (value) => `${value.toFixed(1)}%`,
       });
-      sectionHeading("Executive Action", 24);
-      [returnAction, budgetAction, allocationAction].forEach((action) => {
-        const bodyLines = doc.splitTextToSize(action.body, contentWidth - 24);
-        const actionHeight = Math.max(24, 16 + bodyLines.length * 4.5);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      const actions = [returnAction, budgetAction, allocationAction].map((action) => ({
+        ...action,
+        height: Math.max(24, 16 + doc.splitTextToSize(action.body, contentWidth - 18).length * 4.5),
+      }));
+      const actionsHeight = actions.reduce((total, action) => total + action.height + 4, 0);
+      // Keep the complete section together whenever it fits on a fresh page.
+      sectionHeading("Executive Action", actionsHeight <= pageHeight - 58 ? actionsHeight : actions[0].height + 4);
+      actions.forEach((action) => {
+        const actionHeight = action.height;
         ensureDesignedSpace(actionHeight + 4);
         card(margin, y, contentWidth, actionHeight);
         pdf.setFillColor?.(...colors.accentBg);

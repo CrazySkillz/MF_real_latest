@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
+const pdfTextPages = vi.hoisted((): Array<{ text: string; page: number }> => []);
 const trendChartMarks = vi.hoisted((): Array<{ chart: string; kind: string; color: string; args: number[] }> => []);
 const pdfDrawCalls = vi.hoisted(() => ({ lines: 0, circles: 0, roundedRects: 0, roundedRectArgs: [] as number[][], images: 0, fillColors: [] as string[], drawColors: [] as string[], lineWidths: [] as number[] }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
@@ -40,6 +41,7 @@ vi.mock("./utils/mailgun-delivery", () => ({
 }));
 vi.mock("jspdf", () => ({
   jsPDF: class {
+    page = 1;
     chart = "";
     drawColor = "";
     fillColor = "";
@@ -55,12 +57,13 @@ vi.mock("jspdf", () => ({
     rect() {}
     roundedRect(...values: number[]) { pdfDrawCalls.roundedRects += 1; pdfDrawCalls.roundedRectArgs.push(values.slice(0, 4)); }
     addImage() { pdfDrawCalls.images += 1; }
-    addPage() {}
+    addPage() { this.page += 1; }
     splitTextToSize(value: any) { return [String(value)]; }
     text(value: any) {
       (Array.isArray(value) ? value : [value]).forEach((item) => {
         if (["Daily Traffic", "Conversion Quality Trend", "Efficiency Trends"].includes(item)) this.chart = item;
         pdfTextCalls.push(String(item));
+        pdfTextPages.push({ text: String(item), page: this.page });
       });
     }
     output(kind: string) {
@@ -172,6 +175,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-28T12:00:00.000Z"));
     pdfTextCalls.length = 0;
+    pdfTextPages.length = 0;
     trendChartMarks.length = 0;
     pdfDrawCalls.lines = 0;
     pdfDrawCalls.circles = 0;
@@ -717,6 +721,28 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).not.toContain("ROI & ROAS");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
+
+  it.each([{ revenueRows: 1, movesSection: true }, { revenueRows: 12, movesSection: false }])(
+    "keeps Financial Executive Action together with $revenueRows revenue rows",
+    async ({ revenueRows, movesSection }) => {
+      storageMock.getRevenueBreakdownBySource.mockResolvedValue(Array.from({ length: revenueRows }, (_, index) => ({
+        sourceId: `revenue-${index}`, displayName: `Revenue ${index}`, sourceType: "csv", revenue: index === 0 ? 16799.99 : 0,
+      })));
+      await buildPdfAttachmentForReport({
+        report: report("financial-analysis", ["financial-analysis:overview"]),
+        windowStart: "2026-07-29",
+        windowEnd: "2026-08-27",
+        campaignName: "Campaign",
+      });
+
+      const actionTitles = ["Executive Action", "Positive financial return", "Budget is pacing below target", "Review spend source mix"];
+      const actions = pdfTextPages.filter(({ text }) => actionTitles.includes(text));
+      expect(actions.map(({ text }) => text)).toEqual(actionTitles);
+      expect(new Set(actions.map(({ page }) => page)).size).toBe(1);
+      const sourcePage = pdfTextPages.find(({ text }) => text === "Spend Sources")!.page;
+      expect(actions[0].page).toBe(sourcePage + (movesSection ? 1 : 0));
+    },
+  );
 
   it("uses the certified financial data-through date for financial pacing", async () => {
     vi.setSystemTime(new Date("2026-08-28T23:30:00.000Z"));

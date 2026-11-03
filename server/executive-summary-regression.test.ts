@@ -891,7 +891,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(executive).toContain("No KPI Exceptions");
     expect(executive).toContain("Benchmark Status Unavailable");
     expect(executive).toContain("No Benchmark Exceptions");
-    expect(executive).toContain("7-Day Snapshot Trajectory:");
+    expect(executive).toContain("7-Day Revenue Trend:");
     expect(executive).toContain("Risk Level:");
     expect(executive).toContain('addText("Risk Assessment"');
     expect(executive).toContain("Connected-source freshness is unavailable in this report context");

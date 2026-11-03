@@ -192,7 +192,9 @@ describe("GA4 Benchmark regression guard", () => {
     expect(executivePage).not.toContain("below 70% of benchmark");
 
     const reportDownloadStart = reportsPage.indexOf("const downloadReportPdf = async");
-    const reportDownloadEnd = reportsPage.indexOf("const safeName", reportDownloadStart);
+    const reportDownloadEnd = reportsPage.indexOf("const downloadLatestReport =", reportDownloadStart);
+    expect(reportDownloadStart).toBeGreaterThanOrEqual(0);
+    expect(reportDownloadEnd).toBeGreaterThan(reportDownloadStart);
     const reportDownloadSection = reportsPage.slice(reportDownloadStart, reportDownloadEnd);
     expect(reportDownloadSection).toContain("const benchmarkThresholdResult = (benchmark: any) => computeBenchmarkThresholdResult({");
     expect(reportDownloadSection).toContain('benchmarkThresholdResult(bm).status === "behind"');

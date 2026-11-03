@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
+const trendChartMarks = vi.hoisted((): Array<{ chart: string; kind: string; color: string; args: number[] }> => []);
 const pdfDrawCalls = vi.hoisted(() => ({ lines: 0, circles: 0, roundedRects: 0, roundedRectArgs: [] as number[][], images: 0, fillColors: [] as string[], drawColors: [] as string[], lineWidths: [] as number[] }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
@@ -39,22 +40,28 @@ vi.mock("./utils/mailgun-delivery", () => ({
 }));
 vi.mock("jspdf", () => ({
   jsPDF: class {
+    chart = "";
+    drawColor = "";
+    fillColor = "";
     internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
     setFontSize() {}
     setFont() {}
     setTextColor() {}
-    setFillColor(...values: number[]) { pdfDrawCalls.fillColors.push(values.join(",")); }
-    setDrawColor(...values: number[]) { pdfDrawCalls.drawColors.push(values.join(",")); }
+    setFillColor(...values: number[]) { this.fillColor = values.join(","); pdfDrawCalls.fillColors.push(this.fillColor); }
+    setDrawColor(...values: number[]) { this.drawColor = values.join(","); pdfDrawCalls.drawColors.push(this.drawColor); }
     setLineWidth(value: number) { pdfDrawCalls.lineWidths.push(value); }
-    line() { pdfDrawCalls.lines += 1; }
-    circle() { pdfDrawCalls.circles += 1; }
+    line(...args: number[]) { pdfDrawCalls.lines += 1; trendChartMarks.push({ chart: this.chart, kind: "line", color: this.drawColor, args }); }
+    circle(x: number, y: number, radius: number) { pdfDrawCalls.circles += 1; trendChartMarks.push({ chart: this.chart, kind: "circle", color: this.fillColor, args: [x, y, radius] }); }
     rect() {}
     roundedRect(...values: number[]) { pdfDrawCalls.roundedRects += 1; pdfDrawCalls.roundedRectArgs.push(values.slice(0, 4)); }
     addImage() { pdfDrawCalls.images += 1; }
     addPage() {}
     splitTextToSize(value: any) { return [String(value)]; }
     text(value: any) {
-      (Array.isArray(value) ? value : [value]).forEach((item) => pdfTextCalls.push(String(item)));
+      (Array.isArray(value) ? value : [value]).forEach((item) => {
+        if (["Daily Traffic", "Conversion Quality Trend", "Efficiency Trends"].includes(item)) this.chart = item;
+        pdfTextCalls.push(String(item));
+      });
     }
     output(kind: string) {
       return kind === "nodebuffer" ? Buffer.from("x".repeat(256)) : new ArrayBuffer(256);
@@ -165,6 +172,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-28T12:00:00.000Z"));
     pdfTextCalls.length = 0;
+    trendChartMarks.length = 0;
     pdfDrawCalls.lines = 0;
     pdfDrawCalls.circles = 0;
     pdfDrawCalls.roundedRects = 0;
@@ -422,6 +430,45 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).not.toContain("- Users: 1,184");
     expect(pdfTextCalls).toContain("- Sessions target: Current 1,183; Target 2,000");
     expect(pdfTextCalls).toContain("- Revenue benchmark: Yours $72,766.69; Benchmark $80,000.00");
+  });
+
+  it("leaves no-session rate gaps while retaining isolated readings and genuine zero rates in the Trend PDF", async () => {
+    const aggregate = await aggregateCampaignMetricsMock();
+    const dailyTotals = [
+      { sessions: 10, conversions: 1, cvr: 10, engagementRate: 0.8 },
+      { sessions: 0, conversions: 0, cvr: null, engagementRate: 0 },
+      { sessions: 20, conversions: 0, cvr: 0, engagementRate: 0 },
+      { sessions: 10, conversions: 2, cvr: 20, engagementRate: 1 },
+      { sessions: 0, conversions: 0, cvr: null, engagementRate: 0 },
+      { sessions: 0, conversions: 0, cvr: null, engagementRate: 0 },
+      { sessions: 10, conversions: 1, cvr: 10, engagementRate: 0.5 },
+    ].map((metrics, index) => ({ date: `2026-08-${21 + index}`, metrics: { ...metrics, users: metrics.sessions } }));
+    aggregate.detailedMetrics.trendAnalysis.dailyTotals = dailyTotals;
+    await buildPdfAttachmentForReport({ report: report("trend-analysis", ["trend-analysis:overview"]), windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "Rate fixture" });
+
+    const grids = trendChartMarks.filter(mark => mark.chart === "Conversion Quality Trend" && mark.kind === "line" && mark.color === "203,213,225");
+    expect(grids).toHaveLength(4);
+    const [left, top, right] = grids[0].args;
+    const bottom = grids[3].args[1];
+    for (const color of ["244,91,16", "16,185,129"]) {
+      const segments = trendChartMarks.filter(mark => mark.chart === "Conversion Quality Trend" && mark.kind === "line" && mark.color === color);
+      expect.soft(segments).toHaveLength(1); // Only Aug 23-24 are adjacent active dates.
+      const points = trendChartMarks.filter(mark => mark.chart === "Conversion Quality Trend" && mark.kind === "circle" && mark.color === color && mark.args[1] >= top && mark.args[1] <= bottom);
+      expect.soft(points).toHaveLength(4);
+      expect.soft(points.map(point => Number(((point.args[0] - left) / (right - left) * 6).toFixed(5)))).toEqual([0, 2, 3, 6]);
+      expect.soft(points[1]?.args[1]).toBe(bottom); // Real 0% with sessions remains a plotted value.
+    }
+    const traffic = trendChartMarks.filter(mark => mark.chart === "Daily Traffic" && mark.kind === "line" && mark.color === "16,185,129");
+    expect(traffic).toHaveLength(6); // Count charts still include no-activity dates as zero.
+  });
+
+  it("omits an all-no-activity quality chart without removing the daily traffic chart", async () => {
+    const aggregate = await aggregateCampaignMetricsMock();
+    aggregate.detailedMetrics.trendAnalysis.dailyTotals = [{ date: "2026-08-27", metrics: { users: 0, sessions: 0, conversions: 0, cvr: null, engagementRate: 0 } }];
+    await buildPdfAttachmentForReport({ report: report("trend-analysis", ["trend-analysis:overview"]), windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "No activity fixture" });
+    expect(pdfTextCalls).toContain("Daily Traffic");
+    expect(pdfTextCalls).not.toContain("Conversion Quality Trend");
+    expect(pdfTextCalls).toContain("Current Decision Metrics");
   });
 
   it("uses cumulative UI traffic, current financial totals, and the default 30-day Trend comparison", async () => {

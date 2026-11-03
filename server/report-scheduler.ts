@@ -2847,6 +2847,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         }
         series.forEach((item) => {
           pdf.setDrawColor?.(...item.color);
+          if (rate) pdf.setFillColor?.(...item.color);
           pdf.setLineWidth?.(seriesLineWidth);
           let previous: { x: number; y: number } | null = null;
           item.values.forEach((value, index) => {
@@ -2857,6 +2858,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
             const pointX = plotX + (item.values.length <= 1 ? 0 : (index / (item.values.length - 1)) * plotWidth);
             const pointY = plotY + plotHeight - (Math.max(0, value) / maximum) * plotHeight;
             if (previous) pdf.line?.(previous.x, previous.y, pointX, pointY);
+            if (rate) pdf.circle?.(pointX, pointY, 0.65, "F");
             previous = { x: pointX, y: pointY };
           });
         });
@@ -2952,7 +2954,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         ], false, 0.2);
         const qualitySeries = [
           { label: "Conversion Rate", color: chartColors.orange, values: trendWindowRows.map((row: any) => trendDailyRate(row, "cvr")) },
-          { label: "Engagement Rate", color: chartColors.green, values: trendWindowRows.map((row: any) => trendDailyRate(row, "engagementRate")) },
+          { label: "Engagement Rate", color: chartColors.green, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "sessions") === 0 ? null : trendDailyRate(row, "engagementRate")) },
         ].filter((item) => item.values.some((value: number | null) => value !== null));
         if (qualitySeries.length > 0) drawTrendChart("Conversion Quality Trend", trendWindowRows, qualitySeries, true, 0.2);
       } else {

@@ -975,7 +975,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const campaignTotalsBlock = sliceBetween(
       campaignCurrent,
-      "async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false, useSavedOverview = false): Promise<CampaignMetricTotals | null> {",
+      "async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false, useSavedOverview = false, exactEndDate?: string): Promise<CampaignMetricTotals | null> {",
       "function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricTotals): number | null {"
     );
     const campaignConfigBlock = sliceBetween(

@@ -2084,7 +2084,7 @@ export default function Reports() {
                 )}
                 <DialogContent
                   data-campaign-report-dialog
-                  className="max-w-2xl max-h-[80vh] overflow-y-auto"
+                  className={`max-w-2xl max-h-[80vh] overflow-y-auto ${campaignContextId && !editingReportId ? "scrollbar-hide" : ""}`}
                   onOpenAutoFocus={(event) => {
                     if (editingReportId) event.preventDefault();
                   }}

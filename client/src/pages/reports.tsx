@@ -2147,7 +2147,7 @@ export default function Reports() {
                         </div>
                       </div>
 
-                      {campaignContextId && (
+                      {campaignContextId && editingReportId && (
                         <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
                           <div className="font-medium text-foreground">Campaign connected-source data</div>
                           {campaignOutcomeTotalsLoading ? (

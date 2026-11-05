@@ -159,6 +159,118 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals();
   });
 
+  describe("campaign-local scheduled dispatch", () => {
+    const startWithoutBootstrap = async (before: string) => {
+      vi.setSystemTime(new Date(before));
+      mocks.storage.getCampaigns.mockResolvedValueOnce([]);
+      startGA4DailyScheduler(5000);
+      await vi.advanceTimersByTimeAsync(0);
+    };
+    const published = () => mocks.storage.markExecutiveSummaryDailySnapshotAligned.mock.calls.map(([id]) => id);
+
+    it("runs Amsterdam, London and New York independently with unchanged financial values", async () => {
+      campaigns[1].reportingTimeZone = "Europe/London";
+      campaigns.push({ ...campaigns[0], id: "campaign-c", reportingTimeZone: "America/New_York" });
+      await startWithoutBootstrap("2026-10-16T05:59:59Z");
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(published()).toEqual(["campaign-a"]);
+      expect(mocks.storage.getRevenueSources.mock.calls.every(([id]) => id === "campaign-a")).toBe(true);
+      expect(getGA4DailySchedulerStatus().nextRunAt).toBe("2026-10-16T07:00:00.000Z");
+      await vi.advanceTimersByTimeAsync(60 * 60_000);
+      expect(published()).toEqual(["campaign-a", "campaign-b"]);
+      expect(saved.has("campaign-c")).toBe(false);
+      await vi.advanceTimersByTimeAsync(5 * 60 * 60_000);
+      expect(published()).toEqual(["campaign-a", "campaign-b", "campaign-a", "campaign-c"]);
+      for (const { id } of campaigns) expect(saved.get(id)).toMatchObject({ campaignId: id, reportingDate,
+        inputs: { revenue: { value: "800.00" }, spend: { value: "100.00" }, conversions: { value: 25 } } });
+      expect(mocks.globalKpiAlerts).not.toHaveBeenCalled();
+      expect(mocks.globalBenchmarkAlerts).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["Asia/Kathmandu", "2026-10-16T02:14:59Z", "2026-10-16T02:15:00.000Z"],
+      ["Asia/Kolkata", "2026-10-16T02:29:59Z", "2026-10-16T02:30:00.000Z"],
+      ["Australia/Adelaide", "2026-10-15T21:29:59Z", "2026-10-15T21:30:00.000Z"],
+    ])("fires exactly at 08:00 in %s, including fractional offsets", async (zone, before, due) => {
+      campaigns = [{ ...campaigns[0], reportingTimeZone: zone }];
+      await startWithoutBootstrap(before);
+      expect(getGA4DailySchedulerStatus().nextRunAt).toBe(due);
+      await vi.advanceTimersByTimeAsync(999);
+      expect(published()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(published()).toEqual(["campaign-a"]);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(published()).toEqual(["campaign-a"]);
+    });
+
+    it.each(["edit timezone", "activate", "create", "delete", "pause"])("re-reads campaigns before dispatch after %s", async change => {
+      campaigns = [{ ...campaigns[0], reportingTimeZone: "America/New_York" }];
+      if (change === "activate") campaigns[0].status = "paused";
+      await startWithoutBootstrap("2026-10-16T05:58:30Z");
+      await vi.advanceTimersByTimeAsync(10_000);
+      if (change === "create") campaigns.push({ ...campaigns[0], id: "new-campaign", reportingTimeZone: "Europe/Amsterdam" });
+      else if (change === "delete") campaigns = [];
+      else if (change === "pause") campaigns[0].status = "paused";
+      else { campaigns[0].reportingTimeZone = "Europe/Amsterdam"; campaigns[0].status = "active"; }
+      await vi.advanceTimersByTimeAsync(80_000);
+      expect(published()).toEqual(change === "create" ? ["new-campaign"] : ["delete", "pause"].includes(change) ? [] : ["campaign-a"]);
+    });
+
+    it("keeps a due slot pending when database schedule discovery fails", async () => {
+      campaigns = [campaigns[0]];
+      await startWithoutBootstrap("2026-10-16T05:58:59Z");
+      mocks.storage.getCampaigns.mockRejectedValueOnce(new Error("temporary database failure"));
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(published()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(60_001);
+      expect(published()).toEqual(["campaign-a"]);
+    });
+
+    it("keeps an unaffected timezone's completed reports ready while a due campaign is busy", async () => {
+      campaigns[1].reportingTimeZone = "America/New_York";
+      markers.set("campaign-b", `ga4_aligned_refresh_v1:${reportingDate}:2026-10-16T00:10:00Z`);
+      const read = mocks.provider.getTimeSeriesData.getMockImplementation()!;
+      let release!: () => void;
+      const pending = new Promise<void>(resolve => { release = resolve; });
+      mocks.provider.getTimeSeriesData.mockImplementationOnce(async (...args) => { await pending; return read(...args); });
+      await startWithoutBootstrap("2026-10-16T05:59:59Z");
+      try {
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(getGA4DailySchedulerStatus().inProgress).toBe(true);
+        expect(await getScheduledReportAlignedRefreshGate(report("campaign-b"))).toEqual({ ready: true });
+        expect((await getScheduledReportAlignedRefreshGate(report("campaign-a"))).ready).toBe(false);
+        expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment.mock.calls.map(([id]) => id)).toEqual(["campaign-a"]);
+      } finally { release(); await vi.advanceTimersByTimeAsync(0); }
+      expect(published()).toEqual(["campaign-a"]);
+      expect(markers.get("campaign-b")).toBe(`ga4_aligned_refresh_v1:${reportingDate}:2026-10-16T00:10:00Z`);
+    });
+
+    it("does not re-arm a timer when a discovery read returns after stop", async () => {
+      await startWithoutBootstrap("2026-10-16T05:58:59Z");
+      let release!: (value: any) => void;
+      mocks.storage.getCampaigns.mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+      await vi.advanceTimersByTimeAsync(60_000);
+      stopGA4DailyScheduler(); release(campaigns);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(vi.getTimerCount()).toBe(0);
+      expect(published()).toEqual([]);
+    });
+
+    it("retries a failed due-campaign lookup without dropping the slot or publishing twice", async () => {
+      campaigns = [campaigns[0]];
+      await startWithoutBootstrap("2026-10-16T05:59:59Z");
+      mocks.storage.getCampaigns.mockRejectedValueOnce(new Error("temporary target lookup failure"));
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(published()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(59_999);
+      expect(published()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(2);
+      expect(published()).toEqual(["campaign-a"]);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(published()).toEqual(["campaign-a"]);
+    });
+  });
+
   it("captures ordinary publication after financial-source edits and before native computation", async () => {
     let version = "before-sources";
     mocks.storage.getGA4PublicationVersion.mockImplementation(async () => version);
@@ -206,6 +318,27 @@ describe("GA4 ordered refresh source-discovery failures", () => {
         if (action === "complete") markers.set("campaign-a", `ga4_aligned_refresh_v1:${reportingDate}:${completedAt}`);
         return { id: "work-a", status: action === "complete" ? "completed" : "running" };
       });
+    });
+    it.each([
+      ["America/New_York", "2026-10-16T00:00:00.000Z"],
+      ["Asia/Tokyo", "2026-10-16T05:00:00.000Z"],
+    ])("uses %s's latest due slot for a targeted recovery claim", async (reportingTimeZone, due) => {
+      campaigns[0].reportingTimeZone = reportingTimeZone;
+      await runGA4DailyRefreshPipelineForTrigger("snapshot_bootstrap", { campaignId: "campaign-a", refreshFinancialSources: true });
+      expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledExactlyOnceWith("campaign-a", "campaign-a-owner",
+        new Date(due), reportingDate, { suppressAlerts: false });
+      expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", "work-a", "owner-token", "complete", 120_000, expect.any(String));
+    });
+    it("claims only the due native campaign and leaves the other timezone's work untouched", async () => {
+      campaigns[1].reportingTimeZone = "America/New_York";
+      await runGA4DailyRefreshPipelineForTrigger("scheduled", { scheduledWindow: {
+        after: new Date("2026-10-16T05:59:59Z"), through: new Date("2026-10-16T06:00:00Z"),
+      } });
+      expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledExactlyOnceWith("campaign-a", "campaign-a-owner",
+        new Date("2026-10-16T06:00:00Z"), reportingDate, { suppressAlerts: false });
+      expect(mocks.storage.replaceGA4DailyMetricsWindow.mock.calls.map(([id]) => id)).toEqual(["campaign-a"]);
+      expect(mocks.kpiAlerts.mock.calls.map(([id]) => id)).toEqual(["campaign-a"]);
+      expect(saved.has("campaign-b")).toBe(false);
     });
     it("carries one claimed token through all saves, alerts and atomic completion", async () => {
       await runGA4DailyRefreshPipelineForTrigger("snapshot_bootstrap", options());
@@ -1401,8 +1534,10 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: false, lastRunStatus: "success" });
     expect(saved.get(waitingCampaign)?.inputs.revenue.value).toBe("800.00");
     expect(mocks.recompute.mock.calls.map(([options]) => options.campaignId)).toEqual([finishedCampaign, waitingCampaign]);
-    expect(mocks.globalKpiAlerts).toHaveBeenCalledTimes(1);
-    expect(mocks.globalBenchmarkAlerts).toHaveBeenCalledTimes(1);
+    expect(mocks.kpiAlerts).toHaveBeenCalledTimes(2);
+    expect(mocks.benchmarkAlerts).toHaveBeenCalledTimes(2);
+    expect(mocks.globalKpiAlerts).not.toHaveBeenCalled();
+    expect(mocks.globalBenchmarkAlerts).not.toHaveBeenCalled();
   });
 
   it("blocks old cached markers during initial invalidation and resets readiness for the next run", async () => {
@@ -1574,7 +1709,8 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     } finally { for (const release of releases.values()) release(); await vi.advanceTimersByTimeAsync(0); }
     expect(saved.size).toBe(4);
     expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).toHaveBeenCalledTimes(4);
-    expect(mocks.globalKpiAlerts).toHaveBeenCalledTimes(1);
+    expect(mocks.kpiAlerts).toHaveBeenCalledTimes(4);
+    expect(mocks.globalKpiAlerts).not.toHaveBeenCalled();
     expect(getGA4DailySchedulerStatus().lastRunStatus).toBe("success");
   });
 
@@ -1714,6 +1850,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       return read(id, ctx);
     });
     startGA4DailyScheduler(5000);
+    await vi.advanceTimersByTimeAsync(0);
     const nextRunAt = getGA4DailySchedulerStatus().nextRunAt!;
     expect(nextRunAt).toBe(expected);
     await vi.advanceTimersByTimeAsync(Date.parse(nextRunAt) - Date.now());

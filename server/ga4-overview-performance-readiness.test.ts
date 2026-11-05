@@ -65,13 +65,13 @@ describe("GA4 Overview Performance readiness contract", () => {
     const browserPdf = slice(overview, "if (includeOverviewPerformance)", "if (includeOverviewCampaignBreakdown)");
     const serverPdf = slice(scheduledOverviewPdf, "if (includePerformance)", "if (includeCampaignBreakdown)");
 
-    expect(cards).toContain('overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toFixed(2)}x` : "—"');
+    expect(cards).toContain('overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"');
     expect(cards).toContain('overviewFinancialSpend > 0 ? formatPercentage(overviewFinancialROI) : "—"');
     expect(cards).toContain('overviewFinancialSpend > 0 && overviewFinancialConversions > 0 ? formatMoney(overviewFinancialCPA) : "—"');
-    expect(browserPdf).toContain('["ROAS", !financialSpendAvailable ? "Unavailable" : spend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"]');
+    expect(browserPdf).toContain('["ROAS", !financialSpendAvailable ? "Unavailable" : spend > 0 ? `${Number(financialROAS || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"]');
     expect(browserPdf).toContain('["ROI", !financialSpendAvailable ? "Unavailable" : spend > 0 ? fP(roi) : "—"]');
     expect(browserPdf).toContain('["CPA", !financialSpendAvailable ? "Unavailable" : spend > 0 && convTot > 0 ? fC(cpa) : "—"]');
-    expect(serverPdf).toContain('["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"]');
+    expect(serverPdf).toContain('["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"]');
     expect(serverPdf).toContain('["ROI", payload.financialSpend > 0 ? formatPct(payload.financialROI) : "—"]');
     expect(serverPdf).toContain('["CPA", payload.financialSpend > 0 && payload.financialConversions > 0 ? formatMoney(payload.financialCPA) : "—"]');
   });

@@ -4036,7 +4036,7 @@ export default function GA4Metrics() {
       subheading("Performance");
       metricCards([
         ["Profit", financialSpendAvailable ? fC(rev - spend) : "Unavailable"],
-        ["ROAS", !financialSpendAvailable ? "Unavailable" : spend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROAS", !financialSpendAvailable ? "Unavailable" : spend > 0 ? `${Number(financialROAS || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"],
         ["ROI", !financialSpendAvailable ? "Unavailable" : spend > 0 ? fP(roi) : "—"],
         ["CPA", !financialSpendAvailable ? "Unavailable" : spend > 0 && convTot > 0 ? fC(cpa) : "—"],
       ], 4);
@@ -7210,7 +7210,7 @@ export default function GA4Metrics() {
                               {renderFinancialValue(
                                 financialDailySnapshotLoading,
                                 overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable,
-                                overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toFixed(2)}x` : "—"
+                                overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"
                               )}
                             </p>
                             <p className="text-xs text-muted-foreground/70 mt-1">

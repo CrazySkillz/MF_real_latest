@@ -30,6 +30,8 @@ type GA4DailyRefreshPipelineOptions = {
   includeTargetDraft?: boolean;
   suppressAlerts?: boolean;
   refreshFinancialSources?: boolean;
+  // Internal timer boundary; never supplied by an API request.
+  scheduledWindow?: { after: Date; through: Date };
   // Internal opt-in only; timers/bootstrap do not enable ownership recovery yet.
   workDueAt?: Date;
   initialImportWorkId?: string;
@@ -79,6 +81,7 @@ const ga4DailySchedulerStatus = {
 let executiveSummarySnapshotBaseUrl: string | null = null;
 const alignedRefreshByCampaign = new Map<string, { reportingDate: string; completedAt: string }>();
 let alignedCampaignIdsInCurrentRun = new Set<string>();
+let campaignIdsInCurrentRun: Set<string> | null = null;
 type GA4DailyRefreshAttempt = {
   reportingDate: string;
   startedAt: string;
@@ -112,7 +115,8 @@ export async function getGA4AlignedRefreshState(campaignId: string, reportingDat
   const normalizedReportingDate = String(reportingDate || "").trim();
   const cached = alignedRefreshByCampaign.get(normalizedCampaignId) || null;
   const completedCampaignIds = alignedCampaignIdsInCurrentRun;
-  if ((global as any).__ga4DailyRefreshInProgress && !completedCampaignIds.has(normalizedCampaignId)) return null;
+  if ((global as any).__ga4DailyRefreshInProgress && (!campaignIdsInCurrentRun || campaignIdsInCurrentRun.has(normalizedCampaignId))
+      && !completedCampaignIds.has(normalizedCampaignId)) return null;
   if (!normalizedReportingDate) return cached;
   const snapshots = await storage.getExecutiveSummaryDailyComparisonData(normalizedCampaignId, normalizedReportingDate, normalizedReportingDate);
   // A newer run may have invalidated the marker while this database read was pending.
@@ -249,7 +253,7 @@ export function getGA4DailySchedulerConfig(env: NodeJS.ProcessEnv = process.env)
     .filter((value) => value >= 0 && value <= 23);
   const hours = configuredHours.length > 0
     ? Array.from(new Set(configuredHours)).sort((a, b) => a - b)
-    : [legacyHour];
+    : env.GA4_DAILY_REFRESH_HOUR ? [legacyHour] : [8, 14, 20];
   const hour = hours[0];
   const minute = parseBoundedInt(env.GA4_DAILY_REFRESH_MINUTE, 0, 0, 59);
   const runOnStartup = false;
@@ -603,7 +607,8 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   if (parentRun && (!(global as any).__ga4DailyRefreshInProgress || parentRun !== alignedCampaignIdsInCurrentRun || !campaignId || !opts.workDueAt)) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
   if (campaignId && !opts.workDueAt && process.env.GA4_DURABLE_RECOVERY_ENABLED !== "false" && await storage.isGA4NativeRecoveryEligible(campaignId, { includeFinancialSources: true })) {
     const now = new Date();
-    const config = getGA4DailySchedulerConfig();
+    const target = await storage.getCampaign(campaignId);
+    const config = { ...getGA4DailySchedulerConfig(), reportingTimeZone: normalizeReportingTimeZone(target?.reportingTimeZone) };
     const date = getLatestCompleteReportingDate(config.reportingTimeZone, now);
     let due = getExpectedScheduledRefreshAt(date, config, now);
     if (due && due > now) due = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(date, -1), config, now);
@@ -628,6 +633,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   (global as any).__ga4DailyRefreshInProgress = true;
   const completedCampaignIds = parentRun || new Set<string>();
   alignedCampaignIdsInCurrentRun = completedCampaignIds;
+  if (!parentRun) campaignIdsInCurrentRun = null;
   if (!parentRun) beginFinancialDailySnapshotRefreshObservation("ga4_daily");
   const startedAtDate = new Date();
   const startedAt = Date.now();
@@ -638,6 +644,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   let ownershipError: unknown;
   let workCompleted = false;
   let revenueChangeWork = false;
+  let scheduleDiscovered = !opts.scheduledWindow;
   let closing = false;
   let attemptFailure: { retryable: boolean; code: string; retryAfterMs?: number } | undefined;
   const controller = opts.workDueAt ? new AbortController() : undefined;
@@ -681,7 +688,13 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger}${campaignId ? `, campaignId=${campaignId}` : ""})`);
   try {
     await withGA4DailyStage("owned_pipeline", (async () => {
-    const targets = filterActiveSchedulerCampaigns(campaignId ? [await storage.getCampaign(campaignId)].filter(Boolean) as any[] : await storage.getCampaigns(), opts.initialImportWorkId ? campaignId : "");
+    const targets = filterActiveSchedulerCampaigns(campaignId ? [await storage.getCampaign(campaignId)].filter(Boolean) as any[] : await storage.getCampaigns(), opts.initialImportWorkId ? campaignId : "")
+      .filter(target => !opts.scheduledWindow || getNextGA4DailyRunAt(opts.scheduledWindow.after, {
+        ...getGA4DailySchedulerConfig(), reportingTimeZone: normalizeReportingTimeZone(target.reportingTimeZone),
+      }) <= opts.scheduledWindow.through);
+    scheduleDiscovered = true;
+    if (!parentRun) campaignIdsInCurrentRun = new Set(targets.map(target => target.id));
+    if (opts.scheduledWindow && !targets.length) return;
     const nativeRecoveryTargets = new Set<string>();
     const ordinaryWriteInputs = new Map<string, GA4RefreshWriteInput>();
     const writeInputFor = (id: string): GA4RefreshWriteInput => refreshWriteInput.refreshScope ? refreshWriteInput : ordinaryWriteInputs.get(id) || {};
@@ -967,6 +980,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
         financialSourcesOnly: true,
         deferDownstream: true,
         excludeCampaignIds: Array.from(nativeRecoveryTargets),
+        ...(opts.scheduledWindow ? { campaignIds: targets.map(target => target.id) } : {}),
         ...(campaignId ? { campaignId } : {}),
         ...(finishEachCampaign ? { campaignConcurrency: 2, onCampaignRefreshed: async (id: string) => {
           if (finishedCampaignIds.has(id) || !targets.some(target => target.id === id)) return;
@@ -994,9 +1008,12 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
         while (nextOwnedTarget < ownedTargets.length) {
           const id = ownedTargets[nextOwnedTarget++];
           try {
-            const config = getGA4DailySchedulerConfig();
-            const date = getLatestCompleteReportingDate(config.reportingTimeZone, startedAtDate);
-            const due = getExpectedScheduledRefreshAt(date, config, startedAtDate);
+            const target = targets.find(target => target.id === id)!;
+            const config = { ...getGA4DailySchedulerConfig(), reportingTimeZone: normalizeReportingTimeZone(target.reportingTimeZone) };
+            const dueThrough = opts.scheduledWindow?.through || startedAtDate;
+            const date = getLatestCompleteReportingDate(config.reportingTimeZone, dueThrough);
+            let due = getExpectedScheduledRefreshAt(date, config, dueThrough);
+            if (due && due > dueThrough) due = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(date, -1), config, dueThrough);
             if (!due || due > startedAtDate) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
             await runGA4DailyRefreshPipelineForTrigger("scheduled", { campaignId: id, workDueAt: due, refreshFinancialSources: true }, completedCampaignIds);
           } catch (error: any) {
@@ -1015,14 +1032,14 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       ...(refreshWriteInput.refreshScope ? { assertWorkOwnership: checkOwnership, signal: controller?.signal } : {}),
     }));
     const refreshFailure = refreshFailures.join("; ") || null;
-    if (!opts.suppressAlerts && !campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {
+    if (!opts.scheduledWindow && !opts.suppressAlerts && !campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {
       try { await checkPerformanceAlerts(); } catch (e: any) {
         console.warn("[GA4 Daily] KPI alert check failed:", e?.message || e);
       }
       try { await checkBenchmarkPerformanceAlerts(); } catch (e: any) {
         console.warn("[GA4 Daily] Benchmark alert check failed:", e?.message || e);
       }
-    } else if (!opts.suppressAlerts && !campaignId) {
+    } else if (!opts.suppressAlerts && !campaignId && (refreshFailure || alignedRefreshFailures.length > 0)) {
       console.warn(`[GA4 Daily] Skipping global alert sweeps because ${refreshFailure || `${alignedRefreshFailures.length} campaign stage(s) failed`}`);
     }
     if (refreshFailure || alignedRefreshFailures.length > 0) {
@@ -1030,6 +1047,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     }
     })(), controller?.signal);
   } catch (e: any) {
+    if (!scheduleDiscovered) e.ga4ScheduleDiscoveryFailed = true;
     const message = String(e?.message || "");
     const transient = /GA4_TRANSIENT_ERROR|GA4_TEMPORARY_UNAVAILABLE|timeout|WORK_DEADLINE_EXCEEDED|WORK_STOPPED|\b(40001|40P01|53300|57014|57P0[123]|ECONNRESET|ECONNREFUSED|ETIMEDOUT)\b/i.test(`${message} ${e?.code || ""} ${e?.cause?.code || ""}`);
     attemptFailure = { retryable: transient, code: transient ? "GA4_TRANSIENT_ERROR" : getGA4DailyFailureReason(e),
@@ -1153,18 +1171,18 @@ export async function backfillMissingGA4OverviewSnapshots(
     }
     let discoveryRun = alignedCampaignIdsInCurrentRun;
     const now = new Date();
-    const config = getGA4DailySchedulerConfig();
-    const scheduleDate = getLatestCompleteReportingDate(config.reportingTimeZone, now);
-    let latestDueAt = getExpectedScheduledRefreshAt(scheduleDate, config, now);
-    if (latestDueAt && latestDueAt > now) {
-      latestDueAt = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(scheduleDate, -1), config, now);
-    }
     const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns())
       .filter(campaign => !attemptedCampaignIds.includes(campaign.id));
     const campaignIds: string[] = [];
     const financialBootstrapCampaignIds = new Set<string>();
     const overdueCampaignIds = new Set<string>();
     for (const campaign of campaigns) {
+      const config = { ...getGA4DailySchedulerConfig(), reportingTimeZone: normalizeReportingTimeZone(campaign.reportingTimeZone) };
+      const scheduleDate = getLatestCompleteReportingDate(config.reportingTimeZone, now);
+      let latestDueAt = getExpectedScheduledRefreshAt(scheduleDate, config, now);
+      if (latestDueAt && latestDueAt > now) {
+        latestDueAt = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(scheduleDate, -1), config, now);
+      }
       const campaignId = String((campaign as any)?.id || "").trim();
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const hasCampaignFilter = Array.isArray(campaignFilter)
@@ -1178,6 +1196,7 @@ export async function backfillMissingGA4OverviewSnapshots(
       );
       const primaryConnection = activeConnections.find((connection: any) => connection?.isPrimary) || activeConnections[0];
       let needsBootstrap = false;
+      let latestPrimaryDate = "";
       for (const connection of activeConnections) {
         const propertyId = String(connection.propertyId);
         const expectedStartDate = /^\d{4}-\d{2}-\d{2}$/.test(String(connection?.importStartDate || ""))
@@ -1196,6 +1215,7 @@ export async function backfillMissingGA4OverviewSnapshots(
           needsBootstrap = true;
         }
         if (connection !== primaryConnection || !latestDaily) continue;
+        latestPrimaryDate = String(latestDaily.date);
         const [spendSources, financial] = await Promise.all([
           storage.getSpendSources(campaignId, "ga4"),
           storage.getFinancialDailyComparisonData(campaignId, String(latestDaily.date), String(latestDaily.date)),
@@ -1216,8 +1236,14 @@ export async function backfillMissingGA4OverviewSnapshots(
       if (primaryConnection && latestDueAt) {
         // A restart can miss a slot even when the older snapshots are structurally valid.
         const reportingDate = getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, latestDueAt);
-        const aligned = await getGA4AlignedRefreshState(campaignId, reportingDate);
-        const completedAt = Date.parse(aligned?.completedAt || "");
+        let aligned = await getGA4AlignedRefreshState(campaignId, reportingDate);
+        let completedAt = Date.parse(aligned?.completedAt || "");
+        // An overnight publication can supersede the prior slot's reporting date.
+        if (!(completedAt >= latestDueAt.getTime() && completedAt <= now.getTime()) &&
+            latestPrimaryDate > reportingDate && latestPrimaryDate <= getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, now)) {
+          aligned = await getGA4AlignedRefreshState(campaignId, latestPrimaryDate);
+          completedAt = Date.parse(aligned?.completedAt || "");
+        }
         if (!(completedAt >= latestDueAt.getTime() && completedAt <= now.getTime())) {
           needsBootstrap = true;
           financialBootstrapCampaignIds.add(campaignId);
@@ -1277,6 +1303,7 @@ export async function recoverInterruptedGA4Refreshes(targetCampaignId?: string):
     if (campaigns.has(item.campaignId)) return false;
     campaigns.add(item.campaignId); return true;
   });
+  campaignIdsInCurrentRun = campaigns;
   let next = 0;
   try {
     await Promise.all(Array.from({ length: Math.min(2, pending.length) }, async () => {
@@ -1353,7 +1380,8 @@ export function startGA4DailyScheduler(port?: number): void {
   if (typeof port === "number" && Number.isInteger(port) && port > 0) {
     executiveSummarySnapshotBaseUrl = `http://127.0.0.1:${port}`;
   }
-  if ((global as any).ga4DailySchedulerTimer || (global as any).ga4DailySchedulerInterval) {
+  if ((global as any).ga4DailySchedulerTimer || (global as any).ga4DailySchedulerInterval ||
+      (ga4DailySchedulerStatus.startedAt && !ga4DailySchedulerStatus.stoppedAt)) {
     console.log("[GA4 Daily] Scheduler already running");
     return;
   }
@@ -1363,35 +1391,59 @@ export function startGA4DailyScheduler(port?: number): void {
   ga4DailySchedulerStatus.stoppedAt = null;
   ga4DailySchedulerStatus.config = config;
   const lifecycle = ga4DailySchedulerStatus.startedAt;
-  const scheduleNextRun = () => {
+  let checkedThrough = lifecycle;
+  const scheduleNextRun = async () => {
     if (ga4DailySchedulerStatus.startedAt !== lifecycle || ga4DailySchedulerStatus.stoppedAt) return;
-    const nextRunAt = getNextGA4DailyRunAt(new Date(), config);
-    const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);
-    const delayMs = Math.max(1000, nextRunAt.getTime() - Date.now());
+    try {
+    const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
+    if (ga4DailySchedulerStatus.startedAt !== lifecycle || ga4DailySchedulerStatus.stoppedAt) return;
+    const nextRuns = campaigns.map(campaign => {
+      const reportingTimeZone = normalizeReportingTimeZone(campaign.reportingTimeZone);
+      return { reportingTimeZone, at: getNextGA4DailyRunAt(checkedThrough, { ...config, reportingTimeZone }) };
+    }).sort((a, b) => a.at.getTime() - b.at.getTime());
+    const nextRunAt = nextRuns[0]?.at || getNextGA4DailyRunAt(new Date(), config);
+    const reportingTimeZone = nextRuns[0]?.reportingTimeZone || config.reportingTimeZone;
+    const dataThroughDate = getLatestCompleteReportingDate(reportingTimeZone, nextRunAt);
+    // Re-read saved timezones at least once a minute, including newly activated/edited campaigns.
+    const delayMs = Math.max(1, Math.min(60_000, nextRunAt.getTime() - Date.now()));
+    if (ga4DailySchedulerStatus.nextRunAt?.getTime() !== nextRunAt.getTime()) {
+      console.log(`[GA4 Daily] Next scheduled run at ${nextRunAt.toISOString()} (${formatSchedulerLocalTime(nextRunAt, reportingTimeZone)}, timezone=${reportingTimeZone}, dataThroughDate=${dataThroughDate})`);
+    }
     ga4DailySchedulerStatus.nextRunAt = nextRunAt;
     ga4DailySchedulerStatus.nextDataThroughDate = dataThroughDate;
-    console.log(`[GA4 Daily] Next scheduled run at ${nextRunAt.toISOString()} (${formatSchedulerLocalTime(nextRunAt, config.reportingTimeZone)}, timezone=${config.reportingTimeZone}, dataThroughDate=${dataThroughDate})`);
     const runScheduled = () => {
       if (ga4DailySchedulerStatus.startedAt !== lifecycle || ga4DailySchedulerStatus.stoppedAt) return;
+      if (Date.now() < nextRunAt.getTime()) { void scheduleNextRun(); return; }
       // Keep the elapsed slot pending while startup recovery or a manual run owns the lock.
       if ((global as any).__ga4DailyRefreshInProgress) {
         console.log(`[GA4 Daily] Scheduled pipeline deferred (already in progress; due=${nextRunAt.toISOString()}; retry in 60 seconds)`);
         (global as any).ga4DailySchedulerTimer = setTimeout(runScheduled, 60_000);
         return;
       }
-      runGA4DailyRefreshPipelineForTrigger("scheduled").catch((e) => {
+      const through = new Date();
+      let retryDiscovery = false;
+      runGA4DailyRefreshPipelineForTrigger("scheduled", { scheduledWindow: { after: checkedThrough, through } }).catch((e) => {
+        retryDiscovery = e?.ga4ScheduleDiscoveryFailed === true;
         console.warn("[GA4 Daily] Scheduled pipeline failed:", (e as any)?.message || e);
-      }).finally(scheduleNextRun);
+      }).finally(() => {
+        if (ga4DailySchedulerStatus.startedAt !== lifecycle || ga4DailySchedulerStatus.stoppedAt) return;
+        if (retryDiscovery) (global as any).ga4DailySchedulerTimer = setTimeout(() => void scheduleNextRun(), 60_000);
+        else { checkedThrough = through; void scheduleNextRun(); }
+      });
     };
     (global as any).ga4DailySchedulerTimer = setTimeout(runScheduled, delayMs);
+    } catch (error: any) {
+      console.warn("[GA4 Daily] Schedule discovery failed:", error?.message || error);
+      if (ga4DailySchedulerStatus.startedAt === lifecycle && !ga4DailySchedulerStatus.stoppedAt) {
+        (global as any).ga4DailySchedulerTimer = setTimeout(() => void scheduleNextRun(), 60_000);
+      }
+    }
   };
 
   const configuredTimes = config.hours
     .map((hour) => `${String(hour).padStart(2, "0")}:${String(config.minute).padStart(2, "0")}`)
     .join(",");
-  console.log(`[GA4 Daily] Scheduler started (times=${configuredTimes}, timezone=${config.reportingTimeZone}, startupRun=${config.runOnStartup})`);
-
-  scheduleNextRun();
+  console.log(`[GA4 Daily] Scheduler started (times=${configuredTimes}, timezone=campaign-selected, startupRun=${config.runOnStartup})`);
   const recover = () => {
     if (ga4DailySchedulerStatus.startedAt !== lifecycle || ga4DailySchedulerStatus.stoppedAt) return;
     // Avoid repeatedly colliding with the financial scheduler's one-minute timer.
@@ -1412,6 +1464,7 @@ export function startGA4DailyScheduler(port?: number): void {
   }).catch((error: any) => {
     console.warn("[GA4 Daily] Daily publication bootstrap discovery failed:", error?.message || error);
   });
+  void scheduleNextRun();
 }
 
 export function stopGA4DailyScheduler(): void {

@@ -31,16 +31,51 @@ function report(
 }
 
 describe("GA4 KPI current-version test boundary", () => {
+  it.each([
+  {
+    "file": "server/ga4-google-ads-scheduler-regression.test.ts",
+    "fullName": "GA4 Google Ads scheduler materialization uses the actual provider facts, exact selected scope, completed day, and downstream recompute"
+  },
+  {
+    "file": "server/google-ads-production-regression.test.ts",
+    "fullName": "Google Ads production readiness regression guard preserves selected Google Ads campaign filtering across UI, API, aggregate, scheduler, and snapshots"
+  },
+  {
+    "file": "server/google-ads-production-regression.test.ts",
+    "fullName": "Google Ads production readiness regression guard keeps disconnect and reconnect campaign-scoped so stale Google Ads rows cannot reseed the source"
+  },
+  {
+    "file": "server/google-ads-production-regression.test.ts",
+    "fullName": "Google Ads production readiness regression guard routes GA4 Overview Google Ads spend through production OAuth customer selection and provider refresh"
+  },
+  {
+    "file": "server/source-safety-regression.test.ts",
+    "fullName": "source safety regression guards ad-platform spend routes preserve source identity for Meta and Google Ads edits"
+  },
+  {
+    "file": "server/source-safety-regression.test.ts",
+    "fullName": "source safety regression guards Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted"
+  },
+  {
+    "file": "server/source-safety-regression.test.ts",
+    "fullName": "source safety regression guards Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections"
+  }
+])("blocks a release when the current spend check fails: $fullName", identity => {
+    const result = classifyCurrentVersionResults(report([{ ...identity, status: "failed" }]), readCurrentVersionManifest(root), root);
+    expect(result.currentFailures).toMatchObject([{ ...identity, status: "failed" }]);
+    expect(result.deferredResults).toEqual([]);
+  });
+
   it("keeps the exact documented deferred inventory visible and unique", () => {
     const manifest = readCurrentVersionManifest(root);
-    expect(manifest.tests).toHaveLength(52);
+    expect(manifest.tests).toHaveLength(45);
     expect(manifest.tests.filter((test) => test.group === "future-platforms")).toHaveLength(21);
-    expect(manifest.tests.filter((test) => test.group === "google-ads")).toHaveLength(27);
+    expect(manifest.tests.filter((test) => test.group === "google-ads")).toHaveLength(20);
     expect(manifest.tests.filter((test) => test.group === "ga4-ad-comparison")).toHaveLength(1);
     expect(manifest.tests.filter((test) => test.group === "external-certifications")).toHaveLength(3);
     expect(
       new Set(manifest.tests.map((test) => `${test.file}\u0000${test.fullName}`)).size,
-    ).toBe(52);
+    ).toBe(45);
     for (const test of manifest.tests.filter((item) => item.group === "external-certifications")) {
       const source = readFileSync(resolve(root, test.file), "utf8");
       const suiteName = source.match(/\bdescribe\("([^"]+)"/)?.[1];
@@ -105,7 +140,7 @@ describe("GA4 KPI current-version test boundary", () => {
   it("fails closed when a deferred identity is renamed or not executed", () => {
     const manifest = readCurrentVersionManifest(root);
     const result = classifyCurrentVersionResults(report([]), manifest, root);
-    expect(result.missingDeferred).toHaveLength(52);
+    expect(result.missingDeferred).toHaveLength(45);
     expect(result.currentFailures).toEqual([]);
   });
 

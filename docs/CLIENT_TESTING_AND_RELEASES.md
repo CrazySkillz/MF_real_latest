@@ -23,6 +23,13 @@ The other 32 campaigns remain; the three monitored campaigns' 27 checked data
 sets are unchanged. No application deployment was needed.
 [Cleanup and recovery evidence](fixes/obsolete-campaign-cleanup-2026-11-05.md).
 
+**Live-number monitoring added, with partial coverage:** the existing Render
+monitor now compares configured live/test campaign inputs and saved section
+values with source reads. Full checks of every displayed section and PDF are
+still incomplete; missing source access/history is explicitly unverified.
+The app deployments and data were not changed by this installation.
+[Current coverage, findings and activation evidence](LIVE_NUMBER_MONITORING.md).
+
 | Original step | Status | What remains |
 | --- | --- | --- |
 | 1. Confirm automatic backups | Confirmed: Render shows a 3-day recovery window. Historical restoration and encryption-key recovery evidence are retained. | Maintain backups and the saved encryption key. This does not claim a new production restore drill. |
@@ -83,17 +90,23 @@ This verifies code/schema compatibility and identifies the fallback deploy. It i
 
 ## Monitor configuration
 
-Current deployed monitor revision: `f7da1179`; expected live application revision:
-`706a7bac`. Both live and test passed its post-release check at 15:06:39 UTC on
-November 5. The earlier activation observations below are historical evidence.
-Use the current configuration from `test/hosted-20261105` when running the command
-below; the release commit's original configuration still records the old baseline.
+Current deployed monitor revision: `c1856e53`, branch `codex/live-number-checks`;
+expected live application revision: `706a7bac`. It retains operational checks
+and adds read-only source comparisons after the three campaign-local refresh
+slots. It now has separately prefixed database/provider read-access configuration.
+[Coverage is partial; read the current evidence and open findings](LIVE_NUMBER_MONITORING.md).
 
 Run the checker manually with:
 
 ```text
-node --import tsx scripts/check-hosted-health.ts scripts/hosted-live-monitor.json scripts/hosted-test-monitor.json
+node --import tsx scripts/check-hosted-monitors.ts
 ```
+
+### Historical operational-only activation
+
+The paragraphs below record the earlier health-only monitor, before live-number
+read access was added. Their original revisions and credential boundary are
+historical; the current configuration is documented above.
 
 The existing [Render monitor](https://dashboard.render.com/cron/crn-dbm6oql6e07s73bar4eg), still named `marketforensics-test-monitor`, now checks both live and test apps every ten minutes (`*/10 * * * *`, UTC), independently of the laptop. It makes two anonymous GET requests per app: `/api/health` and `/health/scheduler`. It receives no database or provider credentials and never starts a refresh or changes data. Monitor revision `6fc1bd8acc72452454fe2f0aa43350ecc9db20e3` was deployed as `dep-dbm7uflbedkc73bgfo5g` on November 5. Live app revision remains `9744d9a6df2c319890c0a9ebd596ce7400aad67c`; test app remains `5ed8e816adfed6e7174c9687a0c9e18df01bb34d`. Monitor and test-app automatic deployment are off; live `main` automatic deployment remains on. No additional service was purchased.
 
@@ -136,7 +149,7 @@ No tests were removed, skipped or relaxed to conceal these failures. The product
 - The first natural 14:00 scheduled completion on the hosted test revision is verified, including completion time, reporting date and next slot.
 - Recurring live/test monitoring is configured on the existing paid service. Render failure-email delivery is verified. Independent external uptime monitoring remains outside this activation.
 - Item 1 is complete: the reproduced CSV test timing failure is corrected and full current-release CI passed. No application runtime change or deployment was needed for this test-only correction.
-- Browser error reporting, continuous provider-versus-app reconciliation and CPU/memory threshold alerts are not installed by this change. Slow public health-response alerts are configured at five seconds.
+- Browser error reporting and CPU/memory threshold alerts remain deferred. Periodic provider-versus-app checks are now installed with [partial coverage and open findings](LIVE_NUMBER_MONITORING.md); this is not a full numerical certification. Slow public health-response alerts remain configured at five seconds.
 - Minimum backup recovery evidence is historical; independent-machine recovery and a current production point-in-time restore drill are not newly proven.
 - The current release is GA4-first. Broader platform and section certification remains governed by the existing readiness matrices; this checklist does not replace them.
 

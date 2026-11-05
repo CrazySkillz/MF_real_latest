@@ -1,5 +1,5 @@
 // Standalone operator monitor. Do not import application startup or schedule it in a request handler.
-import { readFileSync } from "node:fs";
+import { readFileSync, writeSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -104,6 +104,11 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  // Bound even provider-library auth calls that do not use the fetch deadline.
+  const deadline = setTimeout(() => {
+    writeSync(1, JSON.stringify({ status: "unverified", code: "MONITOR_DEADLINE_EXCEEDED" }) + "\n");
+    process.exit(1);
+  }, 10 * 60_000).unref();
   // Existing provider helpers log raw report samples. Suppress those in this isolated process, never in the app.
   const original = { log: console.log, warn: console.warn, error: console.error };
   const originalFetch = globalThis.fetch;
@@ -125,5 +130,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   } catch {
     process.stdout.write(JSON.stringify({ status: "unverified", code: "MONITOR_CONFIGURATION_OR_DATABASE_UNVERIFIED" }) + "\n");
     process.exitCode = 1;
-  } finally { Object.assign(console, original); globalThis.fetch = originalFetch; }
+  } finally { clearTimeout(deadline); Object.assign(console, original); globalThis.fetch = originalFetch; }
 }

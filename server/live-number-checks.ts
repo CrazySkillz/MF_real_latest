@@ -13,7 +13,7 @@ export const snapshotFingerprint = (snapshot: LiveNumberSnapshot) => createHash(
 export const numberOrNull = (value: unknown): number | null => {
   if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim())) return null;
   const parsed = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
-  return Number.isFinite(parsed) ? parsed : null;
+  return Number.isFinite(parsed) && Math.abs(parsed) <= Number.MAX_SAFE_INTEGER ? parsed : null;
 };
 export const dateIsValid = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
   && Number.isFinite(Date.parse(value + "T00:00:00Z")) && new Date(value + "T00:00:00Z").toISOString().slice(0, 10) === value;
@@ -31,9 +31,11 @@ export function monitorCampaignFilter(value: unknown): string[] {
 export function compareNumber(section: string, code: string, expected: unknown, actual: unknown,
   options: { decimals?: number; conversions?: boolean; operations?: number; subject?: string } = {}): NumberCheck {
   const a = numberOrNull(expected), b = numberOrNull(actual);
+  if (options.decimals !== undefined && [a, b].some(value => value !== null && Math.abs(value) * 10 ** options.decimals! > Number.MAX_SAFE_INTEGER)) {
+    return { section, code, status: "unverified", ...(options.subject ? { subject: options.subject } : {}) };
+  }
   const equal = a !== null && b !== null && (options.conversions ? conversionCreditsMatch(a, b, options.operations || 1)
-    : options.decimals !== undefined ? Math.abs(a - b) <= Number.EPSILON * Math.max(Math.abs(a), Math.abs(b), 1) * 8
-      || new Intl.NumberFormat("en-US", { maximumFractionDigits: options.decimals, minimumFractionDigits: options.decimals, useGrouping: false }).format(a)
+    : options.decimals !== undefined ? new Intl.NumberFormat("en-US", { maximumFractionDigits: options.decimals, minimumFractionDigits: options.decimals, useGrouping: false }).format(a)
         === new Intl.NumberFormat("en-US", { maximumFractionDigits: options.decimals, minimumFractionDigits: options.decimals, useGrouping: false }).format(b) : a === b);
   return { section, code, status: a === null || b === null ? "unverified" : equal ? "passed" : "difference",
     ...(options.subject ? { subject: options.subject } : {}) };

@@ -129,7 +129,7 @@ function aggregateDatedValues(rows: any[], endDate: string): any[] {
     if (!dateIsValid(row.date) || numberOrNull(row.value) === null) throw new Error("PROVIDER_VALUE_OR_DATE_UNVERIFIED");
     if (row.date <= endDate) daily.set(row.date, (daily.get(row.date) || 0) + row.value);
   }
-  return Array.from(daily).map(([date, value]) => ({ date, value: Number(value.toFixed(2)) }));
+  return Array.from(daily).map(([date, value]) => ({ date, value }));
 }
 function selectedTableRows(rows: any[], mapping: any, kind: "revenue" | "spend") {
   const selected = Array.isArray(mapping.campaignValues) && mapping.campaignValues.length ? mapping.campaignValues.map(String)

@@ -55,6 +55,8 @@ describe("live-number comparisons", () => {
   });
   it("does not use a percentage tolerance for money or small conversion credits", () => {
     expect(compareNumber("test", "revenue", 100000, 100000.01, { decimals: 2 }).status).toBe("difference");
+    expect(compareNumber("test", "revenue", 1e13, 1e13 + 0.01, { decimals: 2 }).status).toBe("difference");
+    expect(compareNumber("test", "revenue", 1e15, 1e15, { decimals: 2 }).status).toBe("unverified");
     expect(compareNumber("test", "conversions", 1e-12, 0, { conversions: true }).status).toBe("difference");
   });
   it.each([
@@ -134,6 +136,14 @@ describe("source reads", () => {
     expect(await checkFinancialProviderNumbers(s, now)).toContainEqual(expect.objectContaining({ code: "CSV_ORIGINAL_ROWS_UNVERIFIED", status: "unverified" }));
     s.rows.spendSources[0].sourceType = "unknown";
     expect(await checkFinancialProviderNumbers(s, now)).toContainEqual(expect.objectContaining({ code: "PROVIDER_ADAPTER_NOT_VERIFIED" }));
+  });
+  it("does not hide a source amount rounding difference before comparison", async () => {
+    const s = fixture(), config = JSON.parse(s.rows.spendSources[0].mappingConfig);
+    config.csvStoredSpendRows[0].spendRaw = "100.005";
+    s.rows.spendSources[0].mappingConfig = JSON.stringify(config);
+    expect(await checkFinancialProviderNumbers(s, now)).toContainEqual(expect.objectContaining({ code: "SOURCE_value", status: "difference" }));
+    s.rows.spendRecords[0].spend = "100.01";
+    expect((await checkFinancialProviderNumbers(s, now)).every(check => check.status === "passed")).toBe(true);
   });
   it("never renews expired credentials or falls back from failed decryption to plaintext", () => {
     expect(() => monitorCredential({ accessToken: "private", expiresAt: "2000-01-01" })).toThrow("PROVIDER_CREDENTIAL_UNAVAILABLE");

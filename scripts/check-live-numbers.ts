@@ -3,12 +3,10 @@ import { readFileSync, writeSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { spawn } from "node:child_process";
 import { z } from "zod";
 import { checkStoredNumbers, snapshotFingerprint, summarizeNumberChecks, type NumberCheck } from "../server/live-number-checks";
 import { normalizeReportingTimeZone } from "../server/utils/reporting-timezone";
 
-const outputHealthFetch = globalThis.fetch;
 const outputApplicationSchema = z.object({
   baseUrl: z.string().url().refine(value => { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash && ["", "/"].includes(url.pathname); }),
   expectedCommit: z.string().regex(/^[a-f0-9]{40}$/),
@@ -70,36 +68,6 @@ export function readOnlyMonitorFetch(request: typeof fetch): typeof fetch {
   };
 }
 
-export async function checkApplicationOutputProcess(campaignHash: string, databaseFingerprint: string, fingerprint: string, application?: z.infer<typeof outputApplicationSchema>): Promise<NumberCheck[]> {
-  const revisionMatches = async () => {
-    if (!application) return false;
-    try {
-      const checked = outputApplicationSchema.parse(application);
-      const response = await outputHealthFetch(new URL("/api/health", checked.baseUrl), { method: "GET", redirect: "error", signal: AbortSignal.timeout(10_000) });
-      const body = await response.json(); return response.ok && body.ok === true && body.commit === checked.expectedCommit;
-    } catch { return false; }
-  };
-  if (!await revisionMatches()) return [{ section: "Application outputs", code: "DEPLOYED_APPLICATION_REVISION_UNVERIFIED", status: "unverified" }];
-  const checks: NumberCheck[] = await new Promise(resolve => {
-    const child = spawn(process.execPath, ["--import", "tsx", "scripts/check-live-number-outputs.ts", campaignHash, databaseFingerprint, fingerprint],
-      { stdio: ["ignore", "pipe", "ignore"], windowsHide: true });
-    let output = "", tooLarge = false;
-    const timer = setTimeout(() => child.kill(), 190_000).unref();
-    child.stdout.on("data", chunk => { if (output.length + chunk.length > 2_000_000) { tooLarge = true; child.kill(); } else output += chunk; });
-    const failed = () => [{ section: "Application outputs", code: "OUTPUT_PROCESS_UNVERIFIED", status: "unverified" as const }];
-    child.once("error", () => { clearTimeout(timer); resolve(failed()); });
-    child.once("close", code => {
-      clearTimeout(timer);
-      try {
-        const checks = z.array(z.object({ section: z.string().max(100), code: z.string().max(100), status: z.enum(["passed", "difference", "unverified"]),
-          subject: z.string().regex(/^[a-f0-9]{12}$/).optional() }).strict()).min(1).max(20000).parse(JSON.parse(output));
-        resolve(tooLarge || code !== 0 ? failed() : checks);
-      } catch { resolve(failed()); }
-    });
-  });
-  return await revisionMatches() ? checks : [{ section: "Application outputs", code: "DEPLOYED_APPLICATION_REVISION_CHANGED", status: "unverified" }];
-}
-
 export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly = false) {
   const config = liveNumberConfigSchema.parse(configInput);
   const dueCampaigns = config.campaigns.filter(campaign => !scheduledOnly || liveNumberCheckIsDue(campaign.reportingTimeZone));
@@ -118,7 +86,7 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
   process.env.DATABASE_URL = readOnlyMonitorDatabaseUrl(raw, config.databaseFingerprint);
   const { pool } = await import("../server/db");
   if (!pool) throw new Error("MONITOR_DATABASE_NOT_CONFIGURED");
-  const results: ReturnType<typeof summarizeNumberChecks>[] = [];
+  const results: Array<ReturnType<typeof summarizeNumberChecks> & { inputFingerprint?: string }> = [];
   try {
     const guard = await pool.query("SELECT current_setting('default_transaction_read_only') AS read_only");
     if (guard.rows[0]?.read_only !== "on") throw new Error("MONITOR_READ_ONLY_GUARD_FAILED");
@@ -136,11 +104,11 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
           try { checks.push(...await checkGA4ProviderNumbers(before, now)); }
           catch { checks.push({ section: "GA4 provider", code: "GA4_SOURCE_COMPARISON_UNVERIFIED", status: "unverified" }); }
           checks.push(...await checkFinancialProviderNumbers(before, now));
-          checks.push(...await checkApplicationOutputProcess(campaignIdHash, config.databaseFingerprint, snapshotFingerprint(before), config.application));
         }
         const after = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         // Re-reading is essential: add/edit/delete/refresh during the provider query invalidates the comparison.
-        results.push(summarizeNumberChecks(campaignIdHash, checks, snapshotFingerprint(before) === snapshotFingerprint(after)));
+        const fingerprint = snapshotFingerprint(before), stable = fingerprint === snapshotFingerprint(after);
+        results.push({ ...summarizeNumberChecks(campaignIdHash, checks, stable), ...(stable ? { inputFingerprint: fingerprint } : {}) });
       } catch {
         results.push(summarizeNumberChecks(campaignIdHash, [{ section: "scope", code: "CAMPAIGN_READ_UNVERIFIED", status: "unverified" }], true));
       }

@@ -50,7 +50,23 @@ expiry are unverified and make the existing Render monitor exit unsuccessfully.
 The child has a three-minute deadline, response/output size bounds and redacted
 receipts. No new dependency, application route, schema or calculation is introduced.
 
-Local validation: 104 focused tests passed, including deliberately corrupted API
+Hosted capacity correction: the first output-enabled test job on `4117936f`
+(`job-dbmfc9d6e07s73c56n6g`) exceeded the existing 512 MiB limit. Render's
+`job_run_ended` event explicitly reported an OOM kill at 21:34:57 UTC. The source
+checker had retained its database/PDF dependencies while starting the full handler
+replay. `check-live-number-run.ts` now coordinates separate phases and waits for
+the source process to exit before starting any replay. Only redacted receipts and
+input fingerprints cross the boundary. The replay requires the same fingerprint
+at both its start and end, preserving source-to-output consistency. A standalone
+replay with a 512 MiB V8 heap completed 647 comparisons and peaked at 616 MiB RSS;
+192/256 MiB heaps failed. The release therefore requires the existing cron's
+2 GiB `1c-2g` compute plan, plus the sequential phases and 512 MiB replay heap.
+This changes monitoring capacity only. No application or database setting changes.
+Render bills this cron size at $0.00058 per running minute, prorated by second,
+with a $1 monthly minimum ([pricing](https://render.com/pricing),
+[cron billing](https://render.com/docs/cronjobs)).
+
+Local validation: 111 focused tests passed, including deliberately corrupted API
 and PDF numbers, source identity duplication, target/campaign mismatch, wrong alert
 links, budget-period mistakes, and SQL/network boundary rejection. Read-only live
 probes returned unchanged capture fingerprints for all three enrolled campaigns:

@@ -3,7 +3,7 @@ import { checkApplicationOutputs, expectedOutputNumbers } from "./live-number-ou
 import { monitorReadQueryAllowed, outputReportReadAllowed } from "../scripts/check-live-number-outputs";
 import type { LiveNumberSnapshot } from "./live-number-checks";
 import { checkGeneratedReportText } from "./live-number-generated-report-checks";
-import { checkApplicationOutputProcess } from "../scripts/check-live-numbers";
+import { checkApplicationOutputProcess } from "../scripts/check-live-number-run";
 
 const now = new Date("2026-11-05T13:00:00Z");
 const fixture = (): LiveNumberSnapshot => ({

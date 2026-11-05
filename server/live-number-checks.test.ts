@@ -291,7 +291,7 @@ describe("source reads", () => {
     await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("CRM_SAVED_QUERY_WINDOW_UNVERIFIED");
     s.rows.revenueRecords[0].revenue = 0;
     source.mappingConfig = JSON.stringify({ ...mapping, valueSource: "conversion_value" });
-    await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("CRM_VALUE_DEFINITION_UNVERIFIED");
+    await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("SOURCE_CURRENCY_OR_DEFINITION_UNVERIFIED");
     expect(request).toHaveBeenCalledTimes(1);
   });
   it.each([false, true])("verifies Salesforce's single-currency flag instead of assuming its default (multi=%s)", async multi => {

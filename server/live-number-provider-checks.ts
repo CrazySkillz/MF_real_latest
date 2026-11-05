@@ -245,7 +245,6 @@ export async function readFinancialSourceValues(snapshot: LiveNumberSnapshot, so
     return values;
   }
   if (kind !== "revenue" || !["hubspot", "salesforce"].includes(source.sourceType)) throw new Error("PROVIDER_ADAPTER_NOT_VERIFIED");
-  if (mapping.valueSource && mapping.valueSource !== "revenue") throw new Error("CRM_VALUE_DEFINITION_UNVERIFIED");
   const savedRecords = (snapshot.rows.revenueRecords || []).filter(row => row.revenueSourceId === source.id);
   // Current CRM importers deliberately omit dated-materialization metadata for
   // an empty zero result. Zero has no date allocation to invent; verify it by

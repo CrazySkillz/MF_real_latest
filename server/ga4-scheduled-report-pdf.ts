@@ -1470,7 +1470,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       subheading("Performance");
       metricCards([
         ["Profit", payload.financialSpendAvailable ? formatMoney(payload.financialRevenue - payload.financialSpend) : "Unavailable"],
-        ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"],
         ["ROI", payload.financialSpend > 0 ? formatPct(payload.financialROI) : "—"],
         ["CPA", payload.financialSpend > 0 && payload.financialConversions > 0 ? formatMoney(payload.financialCPA) : "—"],
       ], 4);

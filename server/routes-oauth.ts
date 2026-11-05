@@ -9527,7 +9527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the campaign reporting timezone to decide which daily row is complete.
       const reportingWindow = getReportingDateWindow(days, (campaign as any)?.reportingTimeZone);
       const { startDate, endDate, dataThroughDate, reportingTimeZone } = reportingWindow;
-      const schedulerConfig = getGA4DailySchedulerConfig();
+      const schedulerConfig = { ...getGA4DailySchedulerConfig(), reportingTimeZone };
       if (req.query.statusOnly === "1") {
         const connection = requestedPropertyId ? await storage.getGA4Connection(campaignId, requestedPropertyId) : null;
         if (!connection || connection.campaignId !== campaignId || connection.isActive === false

@@ -441,7 +441,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("renderFinancialValue(financialDailySnapshotLoading, overviewFinancialRevenueAvailable, formatMoney(overviewFinancialRevenue))");
     expect(ga4Metrics).toContain('if (needsRevenue && (!financialRevenueAvailable || importedRevenueError || revenueSourcesError || revenueBreakdownError)) unavailable.push("Revenue");');
     expect(ga4Metrics).toContain("overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable");
-    expect(ga4Metrics).toContain("overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toFixed(2)}x`");
+    expect(ga4Metrics).toContain('overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x`');
     expect(ga4Metrics).toContain("overviewFinancialSpend > 0 ? formatPercentage(overviewFinancialROI)");
     expect(ga4Metrics).not.toContain('financialRevenue <= 0 ? " (needs revenue)"');
     expect(ga4Metrics).toContain("Cannot generate the Overview report while these sections are unavailable:");

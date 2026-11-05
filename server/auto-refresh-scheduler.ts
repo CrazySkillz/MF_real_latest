@@ -45,6 +45,7 @@ export type AutoRefreshRunOptions = GA4RefreshWriteInput & {
   financialSourcesOnly?: boolean;
   deferDownstream?: boolean;
   campaignId?: string;
+  campaignIds?: string[];
   campaignConcurrency?: 1 | 2;
   excludeCampaignIds?: string[];
   onCampaignRefreshed?: (campaignId: string) => Promise<void>;
@@ -1101,7 +1102,8 @@ export async function runDailyAutoRefreshOnce(
     const requestedCampaign = requestedCampaignId ? await storage.getCampaign(requestedCampaignId) : undefined;
     const campaigns = filterActiveSchedulerCampaigns(requestedCampaignId
       ? (requestedCampaign ? [requestedCampaign] : [])
-      : await storage.getCampaigns()).filter(campaign => !opts.excludeCampaignIds?.includes(campaign.id));
+      : await storage.getCampaigns()).filter(campaign => (!opts.campaignIds || opts.campaignIds.includes(campaign.id))
+        && !opts.excludeCampaignIds?.includes(campaign.id));
     if (guarded && campaigns.length !== 1) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     campaignsScanned = campaigns.length;
 

@@ -91,6 +91,65 @@ describe("GA4 startup recovery after a missed scheduled slot", () => {
     expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", "2026-10-16", "2026-10-16");
   });
 
+  describe("restart after a newer completed-day publication", () => {
+    let newerMarker: string | null;
+    beforeEach(() => {
+      vi.setSystemTime(new Date("2026-11-05T00:15:20Z"));
+      marker = null;
+      newerMarker = "ga4_aligned_refresh_v1:2026-11-04:2026-11-05T00:07:35Z";
+      vi.mocked(storage.getGA4OverviewSnapshot).mockResolvedValue({
+        windowStart: "2026-09-04", windowEnd: "2026-11-04",
+        campaignBreakdown: { meta: { currencyCode: "EUR" } },
+        conversionEvents: { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION },
+      } as any);
+      vi.mocked(storage.getLatestGA4DailyMetric).mockResolvedValue({ date: "2026-11-04" } as any);
+      vi.mocked(storage.getExecutiveSummaryDailyComparisonData).mockImplementation(async (id, date) => ({
+        current: { notes: id !== campaign.id ? null : date === "2026-11-04" ? newerMarker : date === "2026-11-03" ? marker : null },
+        previous: null,
+      } as any));
+    });
+
+    it.each([null, "ga4_aligned_refresh_v1:2026-11-03:2026-11-04T13:10:00Z"])(
+      "does not rerun a superseded evening slot when its prior marker is %s", async olderMarker => {
+        marker = olderMarker;
+        const runPipeline = vi.fn(async () => { throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST"); });
+        await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual([]);
+        expect(runPipeline).not.toHaveBeenCalled();
+        expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", "2026-11-04", "2026-11-04");
+      },
+    );
+
+    it.each([
+      null,
+      "ga4_aligned_refresh_v1:2026-11-04:invalid",
+      "ga4_aligned_refresh_v1:2026-11-04:2026-11-05T00:30:00Z",
+      "ga4_aligned_refresh_v1:2026-11-04:2026-11-04T13:10:00Z",
+      "ga4_aligned_refresh_v1:2026-11-03:2026-11-05T00:07:35Z",
+    ])("still recovers when the newer publication is missing or invalid: %s", async notes => {
+      newerMarker = notes;
+      const runPipeline = vi.fn(async () => undefined);
+      await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["ptomo"]);
+      expect(runPipeline).toHaveBeenCalledExactlyOnceWith("snapshot_bootstrap", {
+        campaignId: "ptomo", suppressAlerts: false, refreshFinancialSources: true,
+      });
+    });
+
+    it("does not accept an aligned marker without the matching newer daily facts", async () => {
+      vi.mocked(storage.getLatestGA4DailyMetric).mockResolvedValue({ date: "2026-11-03" } as any);
+      await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual(["ptomo"]);
+    });
+
+    it("does not suppress repair of missing financial inputs", async () => {
+      vi.mocked(storage.getFinancialDailyComparisonData).mockResolvedValue({ current: null, previous: null });
+      await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual(["ptomo"]);
+    });
+
+    it("still runs the next 08:00 slot after an overnight publication", async () => {
+      vi.setSystemTime(new Date("2026-11-05T07:00:01Z"));
+      await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual(["ptomo"]);
+    });
+  });
+
   it.each([
     ["2026-10-17T18:29:59Z", "2026-10-17T12:42:00Z", false],
     ["2026-10-17T18:30:42Z", "2026-10-17T12:42:00Z", true],
@@ -111,11 +170,11 @@ describe("GA4 startup recovery after a missed scheduled slot", () => {
     expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", date, date);
   });
 
-  it("looks up the campaign's reporting date at the scheduler's due slot", async () => {
+  it("looks up Tokyo's own evening slot after Tokyo midnight, independent of the operations timezone", async () => {
     campaign.reportingTimeZone = "Asia/Tokyo";
-    marker = "ga4_aligned_refresh_v1:2026-10-17:2026-10-17T18:00:30Z";
+    marker = "ga4_aligned_refresh_v1:2026-10-16:2026-10-17T11:00:30Z";
     await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual([]);
-    expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", "2026-10-17", "2026-10-17");
+    expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", "2026-10-16", "2026-10-16");
   });
 
   it.each(["draft", "inactive", "archived"])("does not recover a %s campaign", async (status) => {
@@ -138,11 +197,11 @@ describe("GA4 startup recovery after a missed scheduled slot", () => {
 describe("GA4 daily scheduler timing", () => {
   beforeEach(() => vi.spyOn(storage, "getGA4OverviewSnapshot").mockResolvedValue(undefined));
   afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); });
-  it("defaults to a controlled 03:00 UTC daily run with startup disabled", () => {
+  it("defaults to 08:00, 14:00, 20:00 with startup disabled", () => {
     expect(getGA4DailySchedulerConfig({} as any)).toEqual({
       reportingTimeZone: "UTC",
-      hour: 3,
-      hours: [3],
+      hour: 8,
+      hours: [8, 14, 20],
       minute: 0,
       runOnStartup: false,
     });
@@ -161,6 +220,21 @@ describe("GA4 daily scheduler timing", () => {
       minute: 0,
       runOnStartup: false,
     });
+  });
+
+  it.each([
+    ["Europe/Amsterdam", "2026-03-28T19:00:00Z", "2026-03-29T06:00:00.000Z"],
+    ["Europe/Amsterdam", "2026-10-24T18:00:00Z", "2026-10-25T07:00:00.000Z"],
+    ["America/New_York", "2026-03-08T01:00:00Z", "2026-03-08T12:00:00.000Z"],
+    ["America/New_York", "2026-11-01T00:00:00Z", "2026-11-01T13:00:00.000Z"],
+    ["Australia/Sydney", "2026-04-04T09:00:00Z", "2026-04-04T22:00:00.000Z"],
+    ["Australia/Sydney", "2026-10-03T10:00:00Z", "2026-10-03T21:00:00.000Z"],
+    ["Asia/Kathmandu", "2026-11-04T14:15:00Z", "2026-11-05T02:15:00.000Z"],
+    ["Pacific/Chatham", "2026-11-04T06:15:00Z", "2026-11-04T18:15:00.000Z"],
+    ["Pacific/Kiritimati", "2026-11-04T06:00:00Z", "2026-11-04T18:00:00.000Z"],
+    ["Pacific/Honolulu", "2026-11-04T06:00:00Z", "2026-11-04T18:00:00.000Z"],
+  ])("keeps local 08:00 after midnight/DST in %s from %s", (reportingTimeZone, now, expected) => {
+    expect(getNextGA4DailyRunAt(new Date(now), { reportingTimeZone, hour: 8, hours: [8, 14, 20], minute: 0, runOnStartup: false }).toISOString()).toBe(expected);
   });
 
   it("uses sorted unique configured run hours and keeps the legacy hour as the fallback", () => {
@@ -234,7 +308,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed)");
     expect(source).toContain('if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap" || refreshWriteInput.refreshScope)) {');
     expect(source).toContain("Next scheduled run at");
-    expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);");
+    expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(reportingTimeZone, nextRunAt);");
     expect(source).toContain("dataThroughDate=${dataThroughDate}");
     expect(source).toContain("__ga4DailyRefreshInProgress");
     expect(source).toContain("Skipping ${trigger} pipeline (already in progress)");
@@ -479,7 +553,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source.indexOf("alignedRefreshByCampaign.set(processedCampaignId")).toBeLessThan(
       source.indexOf(finalFailureCheck),
     );
-    expect(source).toContain("if (!opts.suppressAlerts && !campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {");
+    expect(source).toContain("if (!opts.scheduledWindow && !opts.suppressAlerts && !campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {");
     expect(source).toContain("Skipping global alert sweeps because ${refreshFailure || `${alignedRefreshFailures.length} campaign stage(s) failed`}");
   });
 

@@ -1,0 +1,11 @@
+{
+  "baseUrl": "https://app.mimosaas.app",
+  "expectedCommit": "9744d9a6df2c319890c0a9ebd596ce7400aad67c",
+  "graceMinutes": 20,
+  "maxResponseMilliseconds": 5000,
+  "campaigns": [
+    { "campaignIdHash": "b85505d40a0a", "reportingTimeZone": "Europe/Amsterdam" },
+    { "campaignIdHash": "de4775c3b435", "reportingTimeZone": "Europe/Amsterdam" },
+    { "campaignIdHash": "156b23ba019e", "reportingTimeZone": "Europe/Amsterdam" }
+  ]
+}

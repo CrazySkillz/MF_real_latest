@@ -119,7 +119,7 @@ describe("GA4 Google Sheets revenue downstream propagation", () => {
     expect(financials).toContain("const overviewFinancialCPA = computeCpa(overviewFinancialSpend, overviewFinancialConversions);");
     expect(cards).toContain("formatMoney(overviewFinancialRevenue)");
     expect(cards).toContain("formatMoney(overviewFinancialRevenue - overviewFinancialSpend)");
-    expect(cards).toContain("overviewFinancialROAS.toFixed(2)");
+    expect(cards).toContain('overviewFinancialROAS.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })');
     expect(cards).toContain("formatPercentage(overviewFinancialROI)");
     expect(cards).toContain("formatMoney(overviewFinancialCPA)");
   });

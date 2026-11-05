@@ -64,8 +64,20 @@ describe("GA4 scheduled refresh status", () => {
     vi.stubEnv("GA4_DAILY_REFRESH_HOUR", "3");
     vi.stubEnv("GA4_DAILY_REFRESH_MINUTE", "0");
     expect(resolveStoredGA4TrafficFreshness({
-      rows: [], startDate: "2026-08-01", dataThroughDate: "2026-08-01", now: new Date(`2026-08-02T${time}.000Z`),
+      rows: [], startDate: "2026-08-01", dataThroughDate: "2026-08-01", reportingTimeZone: "Europe/Amsterdam", now: new Date(`2026-08-02T${time}.000Z`),
     }).refreshIsStale).toBe(stale);
+  });
+
+  it.each([
+    ["America/New_York", "2026-11-05T12:59:59Z", false],
+    ["America/New_York", "2026-11-05T13:00:00Z", true],
+    ["Asia/Kathmandu", "2026-11-05T02:14:59Z", false],
+    ["Asia/Kathmandu", "2026-11-05T02:15:00Z", true],
+  ])("checks missing-data alert deadlines in %s at %s", (reportingTimeZone, now, stale) => {
+    vi.stubEnv("GA4_DAILY_REFRESH_TIME_ZONE", "Europe/Amsterdam");
+    vi.stubEnv("GA4_DAILY_REFRESH_HOURS", "8,14,20");
+    expect(resolveStoredGA4TrafficFreshness({ rows: [], startDate: "2026-11-04", dataThroughDate: "2026-11-04",
+      reportingTimeZone, now: new Date(now) }).refreshIsStale).toBe(stale);
   });
 
   it.each([
@@ -83,6 +95,7 @@ describe("GA4 scheduled refresh status", () => {
       rows: [{ date: "2026-08-01", updatedAt: `2026-08-02T${updatedTime}.000Z` }],
       startDate: "2026-08-01",
       dataThroughDate: "2026-08-01",
+      reportingTimeZone: "Europe/Amsterdam",
       now: new Date(`2026-08-02T${time}.000Z`),
     }).refreshIsStale).toBe(stale);
   });

@@ -89,6 +89,20 @@ describe("GA4 lightweight publication status", () => {
     expect(response.body).toBeUndefined();
   });
   it.each([
+    ["America/New_York", "2026-11-05T07:00:00Z", "2026-11-05T13:00:00.000Z"],
+    ["Asia/Kathmandu", "2026-11-05T02:14:59Z", "2026-11-05T02:15:00.000Z"],
+    ["Asia/Tokyo", "2026-11-05T11:00:01Z", "2026-11-05T23:00:00.000Z"],
+  ])("uses %s from the authorized campaign for browser polling, not the operations timezone", async (reportingTimeZone, now, expected) => {
+    vi.setSystemTime(new Date(now));
+    const { response } = await statusRoute({
+      ensureCampaignAccess: async () => ({ id: "a", ownerId: "owner-a", reportingTimeZone }),
+      parseGA4AlignedRefreshMarker: () => ({ reportingDate: "fixture", completedAt: now }),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body.nextCheckAt).toBe(expected);
+    expect(response.body.refreshStatus).not.toBe("delayed");
+  });
+  it.each([
     ["2026-10-28T06:59:55Z", "2026-10-28T07:00:00.000Z"],
     ["2026-10-28T07:00:01Z", "2026-10-28T13:00:00.000Z"],
     ["2026-10-28T13:00:01Z", "2026-10-28T19:00:00.000Z"],

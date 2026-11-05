@@ -40,12 +40,17 @@ export function readOnlyMonitorFetch(request: typeof fetch): typeof fetch {
     const url = new URL(String(input)), method = String(options.method || "GET").toUpperCase();
     const host = url.hostname, path = url.pathname;
     let allowed = method === "GET" && ((host === "sheets.googleapis.com" && path.startsWith("/v4/spreadsheets/"))
+      || (host === "api.hubapi.com" && path === "/account-info/v3/details")
       || (/\.(salesforce\.com|force\.com)$/.test(host) && /^\/services\/data\/v\d+\.\d+\/query(?:\/|$)/.test(path))
       || (/^[a-z0-9-]+\.myshopify\.com$/.test(host) && (path === "/admin/oauth/access_scopes.json" || /^\/admin\/api\/\d{4}-\d{2}\/orders.json$/.test(path))));
     if (method === "POST") {
       allowed = (host === "analyticsdata.googleapis.com" && /^\/v1beta\/properties\/\d+:runReport$/.test(path))
         || (host === "api.hubapi.com" && path === "/crm/v3/objects/deals/search")
         || (host === "oauth2.googleapis.com" && path === "/token" && new URLSearchParams(String(options.body)).get("grant_type") === "refresh_token");
+      if (/\.(salesforce\.com|force\.com)$/.test(host) && /^\/services\/Soap\/u\/\d+\.\d+$/.test(path)) {
+        // Permit only the existing utility's exact read-only getUserInfo envelope.
+        allowed = /^<\?xml version="1\.0" encoding="UTF-8"\?><env:Envelope xmlns:xsd="http:\/\/www\.w3\.org\/2001\/XMLSchema" xmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance" xmlns:env="http:\/\/schemas\.xmlsoap\.org\/soap\/envelope\/">\s*<env:Header><SessionHeader xmlns="urn:partner\.soap\.sforce\.com"><sessionId>[^<>&]+<\/sessionId><\/SessionHeader><\/env:Header><env:Body><getUserInfo xmlns="urn:partner\.soap\.sforce\.com" \/><\/env:Body><\/env:Envelope>$/.test(String(options.body));
+      }
       if (/^[a-z0-9-]+\.myshopify\.com$/.test(host) && /^\/admin\/api\/\d{4}-\d{2}\/graphql.json$/.test(path)) {
         const query = JSON.parse(String(options.body))?.query;
         allowed = typeof query === "string" && /^\s*query\s/.test(query) && !/\bmutation\b/.test(query);
@@ -81,12 +86,14 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
     if (guard.rows[0]?.read_only !== "on") throw new Error("MONITOR_READ_ONLY_GUARD_FAILED");
     const { storage } = await import("../server/storage");
     const { checkGA4ProviderNumbers, checkFinancialProviderNumbers } = await import("../server/live-number-provider-checks");
+    const { checkSavedReportNumbers } = await import("../server/live-number-report-checks");
     for (const { campaignIdHash, reportingTimeZone } of dueCampaigns) {
       const now = new Date();
       try {
         const before = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         if (before.campaign.reportingTimeZone !== reportingTimeZone) throw new Error("MONITOR_TIMEZONE_CHANGED");
         const checks = checkStoredNumbers(before, now);
+        checks.push(...await checkSavedReportNumbers(before));
         if (!checks.some(check => check.section === "scope")) {
           try { checks.push(...await checkGA4ProviderNumbers(before, now)); }
           catch { checks.push({ section: "GA4 provider", code: "GA4_SOURCE_COMPARISON_UNVERIFIED", status: "unverified" }); }

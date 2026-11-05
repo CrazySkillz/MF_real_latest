@@ -5,6 +5,7 @@ import { hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-shee
 import { normalizeFinancialSourceDateKey } from "./utils/csv";
 import { validateHubspotSearchPage, nextHubspotPageCursor, MAX_HUBSPOT_PAGES } from "./utils/hubspot-pagination";
 import { fetchCompleteSalesforceQuery } from "./utils/salesforce-pagination";
+import { detectSalesforceCurrency } from "./utils/salesforceCurrency";
 import { escapeSalesforceSoqlStringLiteral, isSafeSalesforceFieldPath } from "./utils/salesforce-query";
 import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain,
   requireShopifyOrderWindowScopes, shopifyAdminFetch } from "./utils/shopify-provider";
@@ -91,7 +92,7 @@ export async function checkGA4ProviderNumbers(snapshot: LiveNumberSnapshot, now 
         { decimals: metric === "revenue" ? 2 : metric === "engagementRate" ? 4 : undefined, conversions: metric === "conversions" }));
     }
     checks.push(...compareProviderRows("Campaign Comparison", provider.rows, saved.rows, ["campaign", "source", "medium", "channel", "device", "country", "date"],
-      ["sessions", "users", "conversions", "revenue", "engagedSessions"]));
+      ["sessions", "users", "conversions", "revenue", "engagedSessions", "sessionKeyEventRate"]));
   }
   for (const part of ["landingPages", "conversionEvents"] as const) {
     try {
@@ -104,6 +105,13 @@ export async function checkGA4ProviderNumbers(snapshot: LiveNumberSnapshot, now 
       checks.push(...compareProviderRows(`Overview / ${part}`, result.rows, stored.rows,
         part === "landingPages" ? ["landingPage", "source", "medium"] : ["eventName"],
         part === "landingPages" ? ["sessions", "users", "conversions"] : ["conversions"]));
+      if (part === "conversionEvents") {
+        for (const metric of ["eventCount", "users"]) {
+          if (result.rows.every((row: any) => row[metric] == null) && stored.rows.every((row: any) => row[metric] == null)) {
+            checks.push({ section: "Overview / conversionEvents", code: `${metric}_UNAVAILABLE`, status: "passed" });
+          } else checks.push(...compareProviderRows("Overview / conversionEvents", result.rows, stored.rows, ["eventName"], [metric]));
+        }
+      }
       if (result.rows.length || stored.rows.length) checks.push({ section: `Overview / ${part}`, code: "DETAIL_REVENUE_CURRENCY_NOT_RECORDED", status: "unverified" });
     } catch { checks.push({ section: `Overview / ${part}`, code: "SOURCE_DETAIL_UNVERIFIED", status: "unverified" }); }
   }
@@ -245,6 +253,7 @@ export async function readFinancialSourceValues(snapshot: LiveNumberSnapshot, so
     const token = monitorCredential(uniqueConnection(snapshot, "hubspotConnections", source, mapping));
     if (!Array.isArray(mapping.stageIds) || !mapping.stageIds.length || !mapping.dateField || !mapping.campaignProperty || !mapping.revenueProperty) throw new Error("CRM_MAPPING_UNVERIFIED");
     let after: string | undefined;
+    let accountCurrency: string | undefined;
     const values: any[] = [], state = { ids: new Set<string>() }, cursors = new Set<string>();
     for (let page = 0; page < MAX_HUBSPOT_PAGES; page++) {
       const json = await readJson("https://api.hubapi.com/crm/v3/objects/deals/search", token, {
@@ -256,8 +265,13 @@ export async function readFinancialSourceValues(snapshot: LiveNumberSnapshot, so
       validateHubspotSearchPage(json, state);
       for (const deal of json.results) {
         const p = deal.properties;
+        let recordCurrency = String(p.deal_currency_code || p.hs_currency || "").trim().toUpperCase();
+        if (!recordCurrency) {
+          if (accountCurrency === undefined) accountCurrency = String((await readJson("https://api.hubapi.com/account-info/v3/details", token, undefined, request)).companyCurrency || "").trim().toUpperCase();
+          recordCurrency = accountCurrency;
+        }
         if (!mapping.selectedValues.includes(String(p[mapping.campaignProperty])) || !mapping.stageIds.includes(String(p.dealstage))
-          || String(p.deal_currency_code || p.hs_currency || "").toUpperCase() !== source.currency) throw new Error("CRM_RESPONSE_SCOPE_UNVERIFIED");
+          || !/^[A-Z]{3}$/.test(recordCurrency) || recordCurrency !== source.currency) throw new Error("CRM_RESPONSE_SCOPE_UNVERIFIED");
         const value = numberOrNull(p[mapping.revenueProperty]), date = normalizeFinancialSourceDateKey(p[mapping.dateField]);
         if (value === null || !date || date < start) throw new Error("CRM_VALUE_UNVERIFIED");
         values.push({ date, value });
@@ -277,11 +291,30 @@ export async function readFinancialSourceValues(snapshot: LiveNumberSnapshot, so
   const query = `SELECT Id, ${mapping.campaignField}, ${mapping.dateField}, ${mapping.revenueField}, CurrencyIsoCode FROM Opportunity WHERE (IsWon = true OR StageName LIKE 'Closed Won%') AND ${mapping.dateField} >= ${start} AND ${mapping.campaignField} IN (${mapping.selectedValues.map((v: string) => `'${escapeSalesforceSoqlStringLiteral(v)}'`).join(",")})`;
   const version = process.env.SALESFORCE_API_VERSION || "v59.0";
   if (!/^v\d+\.\d+$/.test(version)) throw new Error("SALESFORCE_VERSION_UNVERIFIED");
-  const records = await fetchCompleteSalesforceQuery({ initialUrl: `${instance.origin}/services/data/${version}/query?q=${encodeURIComponent(query)}`,
-    instanceUrl: instance.origin, accessToken: token, fetchImpl: request });
+  let missingCurrencyColumn = false, accountCurrency: string | null = null;
+  const initialUrl = `${instance.origin}/services/data/${version}/query?q=${encodeURIComponent(query)}`;
+  const checkedRequest: typeof fetch = async (url, options) => {
+    const response = await request(url, options);
+    if (String(url) === initialUrl && response.status === 400) {
+      const errors = await response.clone().json().catch(() => null);
+      missingCurrencyColumn = Array.isArray(errors) && errors.some(error => error?.errorCode === "INVALID_FIELD"
+        && /no such column.*currencyisocode/i.test(String(error.message)));
+    }
+    return response;
+  };
+  let records: any[];
+  try { records = await fetchCompleteSalesforceQuery({ initialUrl, instanceUrl: instance.origin, accessToken: token, fetchImpl: checkedRequest }); }
+  catch (error) {
+    if (!missingCurrencyColumn) throw error;
+    const detected = await detectSalesforceCurrency({ accessToken: token, instanceUrl: instance.origin, apiVersion: version, fetchImpl: request, requireSingleCurrency: true });
+    accountCurrency = detected.detectedCurrency;
+    if (!accountCurrency || accountCurrency !== source.currency) throw new Error("SALESFORCE_ACCOUNT_CURRENCY_UNVERIFIED");
+    records = await fetchCompleteSalesforceQuery({ initialUrl: `${instance.origin}/services/data/${version}/query?q=${encodeURIComponent(query.replace(", CurrencyIsoCode", ""))}`,
+      instanceUrl: instance.origin, accessToken: token, fetchImpl: request });
+  }
   const readField = (row: any, path: string) => path.split(".").reduce((value, part) => value?.[part], row);
   return { startDate: start, values: records.map(row => {
-    if (row.CurrencyIsoCode !== source.currency || !mapping.selectedValues.includes(String(readField(row, mapping.campaignField)))) throw new Error("CRM_RESPONSE_SCOPE_UNVERIFIED");
+    if ((row.CurrencyIsoCode || accountCurrency) !== source.currency || !mapping.selectedValues.includes(String(readField(row, mapping.campaignField)))) throw new Error("CRM_RESPONSE_SCOPE_UNVERIFIED");
     const value = numberOrNull(readField(row, mapping.revenueField)), date = row[mapping.dateField];
     if (value === null || !dateIsValid(date) || date < start) throw new Error("CRM_VALUE_UNVERIFIED");
     return { date, value };

@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import { checkStoredNumbers, compareNumber, resolveMonitorScope, snapshotFingerprint, summarizeNumberChecks, type LiveNumberSnapshot } from "./live-number-checks";
 import { checkFinancialProviderNumbers, compareProviderRows, googleMonitorCredential, monitorCredential, readFinancialSourceValues } from "./live-number-provider-checks";
 import { liveNumberCheckIsDue, liveNumberConfigSchema, readOnlyMonitorDatabaseUrl, readOnlyMonitorFetch } from "../scripts/check-live-numbers";
+import * as insightCalculations from "../shared/ga4-insights";
+import * as kpiCalculations from "../shared/ga4-kpi-live-value";
+import * as alertCalculations from "./utils/alert-decision";
+import * as trendCalculations from "../client/src/lib/trend-analysis-cumulative";
 
 const now = new Date("2026-11-05T13:30:00Z");
 const fixture = (): LiveNumberSnapshot => {
@@ -82,6 +86,53 @@ describe("live-number comparisons", () => {
     const checks = checkStoredNumbers(s, now);
     expect(checks).toContainEqual(expect.objectContaining({ section: "kpis", status: "difference" }));
     expect(checks).toContainEqual(expect.objectContaining({ section: "Budget & Financial Analysis / Executive Summary", code: "revenue", status: "difference" }));
+  });
+  it("detects a corrupted Insights rollup rather than trusting the shared calculation", () => {
+    const implementation = insightCalculations.buildGA4InsightsRollups;
+    const spy = vi.spyOn(insightCalculations, "buildGA4InsightsRollups").mockImplementation((...args) => {
+      const result = implementation(...args); result.last3.sessions += 1; return result;
+    });
+    try {
+      expect(checkStoredNumbers(fixture(), now)).toContainEqual(expect.objectContaining({ section: "Insights calculations", code: "last3_sessions", status: "difference" }));
+    } finally { spy.mockRestore(); }
+  });
+  it("detects a missing month in the actual Insights series", () => {
+    const spy = vi.spyOn(insightCalculations, "buildGA4InsightsMonthlySeries").mockReturnValue([]);
+    try {
+      expect(checkStoredNumbers(fixture(), now)).toContainEqual(expect.objectContaining({ code: "sessions_MONTH_COVERAGE", status: "difference" }));
+    } finally { spy.mockRestore(); }
+  });
+  it("detects incorrect card/PDF calculation even when the saved KPI value is correct", () => {
+    const spy = vi.spyOn(kpiCalculations, "resolveGA4KpiLiveValue").mockReturnValue("999");
+    try {
+      expect(checkStoredNumbers(fixture(), now)).toContainEqual(expect.objectContaining({ section: "kpis / PDF calculations", code: "CALCULATED_sessions", status: "difference" }));
+    } finally { spy.mockRestore(); }
+  });
+  it("does not treat a partial calendar window as a complete Insights period", () => {
+    expect(checkStoredNumbers(fixture(), now)).toContainEqual(expect.objectContaining({ code: "last7_CALENDAR_SCOPE", status: "passed" }));
+    const s = fixture(); s.rows.ga4DailyMetrics.pop();
+    expect(checkStoredNumbers(s, now).some(check => check.section === "Insights calculations")).toBe(false);
+  });
+  it("checks configured budget dates across the daylight-saving boundary", () => {
+    const s = fixture(); s.campaign.pacingStartDate = "2026-10-24"; s.campaign.pacingEndDate = "2026-11-10";
+    expect(checkStoredNumbers(s, now).filter(check => check.section === "Budget & Financial Analysis calculations")).toEqual([
+      expect.objectContaining({ code: "BUDGET_PERIOD_DAYS", status: "passed" }), expect.objectContaining({ code: "BUDGET_ELAPSED_DAYS", status: "passed" }),
+    ]);
+  });
+  it("detects an incorrect Trend financial ratio from the displayed-value helper", () => {
+    const implementation = trendCalculations.deriveTrendFinancialRatios;
+    const spy = vi.spyOn(trendCalculations, "deriveTrendFinancialRatios").mockImplementation(input => ({ ...implementation(input), roas: 9 }));
+    try {
+      expect(checkStoredNumbers(fixture(), now)).toContainEqual(expect.objectContaining({ section: "Trend Analysis calculations", code: "roas", status: "difference" }));
+    } finally { spy.mockRestore(); }
+  });
+  it("checks thresholds and catches an alert decision that ignores unavailable data", () => {
+    const s = fixture(); Object.assign(s.rows.kpis[0], { alertsEnabled: true, alertThreshold: "10", alertCondition: "above", targetValue: "40" });
+    expect(checkStoredNumbers(s, now)).toContainEqual(expect.objectContaining({ code: "THRESHOLD_COMPARISON", status: "passed" }));
+    const spy = vi.spyOn(alertCalculations, "isAlertDecisionBreached").mockReturnValue(true);
+    try {
+      expect(checkStoredNumbers(s, now)).toContainEqual(expect.objectContaining({ code: "UNAVAILABLE_INPUT_BLOCKED", status: "difference" }));
+    } finally { spy.mockRestore(); }
   });
   it("catches a one-cent ROAS display difference at the half-cent boundary", () => {
     expect(compareNumber("Performance Summary", "roas", 28501.5 / 100, 285.01, { decimals: 2 }).status).toBe("difference");
@@ -215,6 +266,32 @@ describe("source reads", () => {
     await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("CRM_MAPPING_UNVERIFIED");
     expect(request).toHaveBeenCalledTimes(1);
   });
+  it.each(["EUR", "USD", ""])("verifies HubSpot account currency %s when a deal omits its currency", async currency => {
+    const s = fixture(); s.rows.hubspotConnections = [{ campaignId: "campaign-a", isActive: true, accessToken: "private" }];
+    const source = { campaignId: "campaign-a", sourceType: "hubspot", currency: "EUR", mappingConfig: JSON.stringify({
+      dailyMaterialization: "selected_date_field_v1", lastSyncedAt: "2026-11-05T13:00:00Z", days: 30, selectedValues: ["selected"],
+      stageIds: ["won"], dateField: "closedate", campaignProperty: "campaign", revenueProperty: "amount" }) };
+    const request = vi.fn(async (url: any) => new Response(JSON.stringify(String(url).endsWith("/details") ? { companyCurrency: currency }
+      : { results: [{ id: "deal", properties: { campaign: "selected", dealstage: "won", closedate: "2026-11-04", amount: "12.50" } }], total: 1 })));
+    if (currency === "EUR") expect(await readFinancialSourceValues(s, source, "revenue", request)).toEqual({ startDate: "2026-10-07", values: [{ date: "2026-11-04", value: 12.5 }] });
+    else await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("CRM_RESPONSE_SCOPE_UNVERIFIED");
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+  it.each([false, true])("verifies Salesforce's single-currency flag instead of assuming its default (multi=%s)", async multi => {
+    const s = fixture(); s.rows.salesforceConnections = [{ campaignId: "campaign-a", isActive: true, accessToken: "private", instanceUrl: "https://tenant.my.salesforce.com" }];
+    const source = { campaignId: "campaign-a", sourceType: "salesforce", currency: "EUR", mappingConfig: JSON.stringify({
+      dailyMaterialization: "selected_date_field_v1", lastSyncedAt: "2026-11-05T13:00:00Z", days: 30, selectedValues: ["selected"],
+      dateField: "CloseDate", campaignField: "Campaign__c", revenueField: "Amount" }) };
+    const raw = vi.fn(async (url: any) => {
+      if (String(url).includes("/Soap/")) return new Response(`<getUserInfoResponse><result><organizationMultiCurrency>${multi}</organizationMultiCurrency><orgDefaultCurrencyIsoCode>EUR</orgDefaultCurrencyIsoCode></result></getUserInfoResponse>`);
+      if (new URL(url).searchParams.get("q")?.includes("CurrencyIsoCode")) return new Response(JSON.stringify([{ errorCode: "INVALID_FIELD", message: "No such column 'CurrencyIsoCode' on entity Opportunity" }]), { status: 400 });
+      return new Response(JSON.stringify({ records: [{ Id: "opp", Campaign__c: "selected", CloseDate: "2026-11-04", Amount: 20 }], totalSize: 1, done: true }));
+    });
+    const request = readOnlyMonitorFetch(raw);
+    if (multi) await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("SALESFORCE_ACCOUNT_CURRENCY_UNVERIFIED");
+    else expect(await readFinancialSourceValues(s, source, "revenue", request)).toEqual({ startDate: "2026-10-07", values: [{ date: "2026-11-04", value: 20 }] });
+    expect(raw).toHaveBeenCalledTimes(multi ? 2 : 3);
+  });
   it("reads only selected paid Shopify orders and preserves separate order identities on one date", async () => {
     const s = fixture(); s.rows.shopifyConnections = [{ campaignId: "campaign-a", isActive: true, accessToken: "private", shopDomain: "test-store.myshopify.com" }];
     const source = { campaignId: "campaign-a", sourceType: "shopify", currency: "EUR", mappingConfig: JSON.stringify({ orderWindowStart: "2026-11-01T00:00:00Z",
@@ -228,6 +305,11 @@ describe("source reads", () => {
 });
 
 describe("operator safety", () => {
+  it("blocks SOAP mutations before making a network request", async () => {
+    const raw = vi.fn();
+    await expect(readOnlyMonitorFetch(raw)("https://tenant.my.salesforce.com/services/Soap/u/59.0", { method: "POST", body: '<env:Body><create /></env:Body>' })).rejects.toThrow("MONITOR_PROVIDER_WRITE_OR_HOST_BLOCKED");
+    expect(raw).not.toHaveBeenCalled();
+  });
   it("blocks provider mutations and unknown hosts before sending credentials, and refuses redirects", async () => {
     const request = vi.fn().mockResolvedValue(new Response("{}"));
     const safe = readOnlyMonitorFetch(request);

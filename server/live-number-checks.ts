@@ -5,6 +5,12 @@ import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { getLatestCompleteReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { readReportPdfArtifact } from "./utils/report-pdf-artifact";
 import { parseExecutiveSummaryDailySnapshot } from "./utils/executive-summary-daily-snapshot";
+import { buildGA4InsightsRollups, buildGA4InsightsMonthlySeries } from "../shared/ga4-insights";
+import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
+import { computeAttainmentPct, computeBenchmarkThresholdResult, computeEffectiveDeltaPct, isLowerIsBetterKpi } from "../shared/kpi-math";
+import { deriveTrendFinancialRatios } from "../client/src/lib/trend-analysis-cumulative";
+import { resolveFinancialPacingCalendar } from "../client/src/lib/financial-executive-actions";
+import { isAlertDecisionBreached } from "./utils/alert-decision";
 
 export type LiveNumberSnapshot = { campaign: Record<string, any>; rows: Record<string, any[]> };
 export type NumberCheck = { section: string; code: string; status: "passed" | "difference" | "unverified"; subject?: string };
@@ -133,6 +139,25 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
       if (expected === null && !input.available) checks.push({ section: "Budget & Financial Analysis / Executive Summary", code: `${metric}_UNAVAILABLE`, status: "passed" });
       else push("Budget & Financial Analysis / Executive Summary", metric, expected, input.available ? input.value : null, metric === "conversions" ? undefined : 2);
     }
+    const inputValue = (metric: "revenue" | "spend" | "conversions") => parsed.data.inputs[metric].available ? numberOrNull(parsed.data.inputs[metric].value) : null;
+    const trend = deriveTrendFinancialRatios({ revenue: inputValue("revenue"), spend: inputValue("spend"), conversions: totals.conversions });
+    for (const [metric, expected] of Object.entries({
+      roas: spend !== null && spend > 0 && totalRevenue !== null ? totalRevenue / spend : null,
+      roi: spend !== null && spend > 0 && totalRevenue !== null ? (totalRevenue - spend) / spend * 100 : null,
+      cpa: totals.conversions !== null && totals.conversions > 0 && spend !== null ? spend / totals.conversions : null,
+    })) {
+      const actual = trend[metric as keyof typeof trend];
+      if (expected === null && actual === null) checks.push({ section: "Trend Analysis calculations", code: `${metric}_UNAVAILABLE`, status: "passed" });
+      else push("Trend Analysis calculations", metric, expected, actual, 2);
+    }
+  }
+  if (dateIsValid(campaign.pacingStartDate) && dateIsValid(campaign.pacingEndDate) && campaign.pacingStartDate <= campaign.pacingEndDate) {
+    const calendar = resolveFinancialPacingCalendar({ startDate: campaign.pacingStartDate, endDate: campaign.pacingEndDate,
+      reportingTimeZone, dataThroughDate: endDate, now });
+    const periodStart = Date.parse(campaign.pacingStartDate), periodEnd = Date.parse(campaign.pacingEndDate);
+    push("Budget & Financial Analysis calculations", "BUDGET_PERIOD_DAYS", (periodEnd - periodStart) / 86400000 + 1, calendar.totalDays);
+    push("Budget & Financial Analysis calculations", "BUDGET_ELAPSED_DAYS",
+      Math.max(0, (Math.min(Date.parse(endDate), periodEnd) - periodStart) / 86400000 + 1), calendar.elapsedDays);
   }
   const metricValues: Record<string, number | null> = { ...totals, revenue: totalRevenue,
     conversion_rate: totals.sessions! > 0 && totals.conversions !== null ? totals.conversions / totals.sessions! * 100 : null,
@@ -140,6 +165,42 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
     roas: spend! > 0 && totalRevenue !== null ? totalRevenue / spend! : null,
     roi: spend! > 0 && totalRevenue !== null ? (totalRevenue - spend!) / spend! * 100 : null,
     cpa: totals.conversions! > 0 && spend !== null ? spend / totals.conversions! : null };
+  // Exercise the same pure calculations consumed by cards/Insights/PDFs, using live
+  // inputs. These checks do not claim that a browser or an API response was rendered.
+  if (complete && Object.values(totals).every(value => value !== null)) {
+    const rollups = buildGA4InsightsRollups(daily, endDate);
+    const dayAt = (offset: number) => new Date(Date.parse(endDate) + offset * 86400000).toISOString().slice(0, 10);
+    for (const [name, length, offset] of [["last3", 3, 0], ["prior3", 3, 3], ["last7", 7, 0], ["prior7", 7, 7], ["last30", 30, 0], ["prior30", 30, 30]] as const) {
+      const lower = dayAt(-offset - length + 1), upper = dayAt(-offset);
+      const selectedDays = daily.filter(row => row.date >= lower && row.date <= upper);
+      const actual = rollups[name];
+      checks.push({ section: "Insights calculations", code: `${name}_CALENDAR_SCOPE`, status:
+        actual.startDate === lower && actual.endDate === upper && actual.days === selectedDays.length
+        && actual.expectedDays === length && actual.complete === (selectedDays.length === length) ? "passed" : "difference" });
+      const sums = Object.fromEntries(Object.keys(totals).map(metric => [metric, selectedDays.reduce((sum, row) => sum + Number(row[metric]), 0)]));
+      for (const [metric, value] of Object.entries({ ...sums,
+        cr: sums.sessions > 0 ? sums.conversions / sums.sessions * 100 : 0,
+        pvps: sums.sessions > 0 ? sums.pageviews / sums.sessions : 0,
+        engagementRate: sums.sessions > 0 ? sums.engagedSessions / sums.sessions * 100 : 0 })) {
+        push("Insights calculations", `${name}_${metric}`, value, actual[metric as keyof typeof actual],
+          ["revenue", "cr", "pvps", "engagementRate"].includes(metric) ? 2 : undefined);
+      }
+    }
+    for (const metric of ["sessions", "users", "conversions", "revenue", "pageviews", "engagementRate"]) {
+      const monthly = buildGA4InsightsMonthlySeries(daily, endDate, metric);
+      const months = Array.from(new Set(daily.map(row => row.date.slice(0, 7)))).sort();
+      checks.push({ section: "Insights calculations", code: `${metric}_MONTH_COVERAGE`, status:
+        JSON.stringify(monthly.map(row => row.month)) === JSON.stringify(months) ? "passed" : "difference" });
+      for (const month of months) {
+        const selectedDays = daily.filter(row => row.date.startsWith(month)), actual = monthly.find(row => row.month === month);
+        const sessions = selectedDays.reduce((sum, row) => sum + Number(row.sessions), 0);
+        const expected = metric === "engagementRate" ? sessions > 0
+          ? selectedDays.reduce((sum, row) => sum + Number(row.engagedSessions), 0) / sessions * 100 : 0
+          : selectedDays.reduce((sum, row) => sum + Number(row[metric]), 0);
+        push("Insights calculations", `MONTH_${metric}`, expected, actual?.value, ["revenue", "engagementRate"].includes(metric) ? 2 : undefined);
+      }
+    }
+  }
   const executiveRows = (rows.metricSnapshots || []).filter(r => r.snapshotType === "executive_summary_daily" && r.reportingDate === endDate);
   const executive = executiveRows.length === 1 ? parseExecutiveSummaryDailySnapshot(executiveRows[0] as any) : null;
   if (!executive || executive.campaignId !== campaign.id || executive.currency !== currency || executive.ga4PropertyId !== connection.propertyId
@@ -190,6 +251,43 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
     }
     push(section, identity, metricValues[identity], row.currentValue,
       ["users", "sessions", "pageviews", "conversions"].includes(identity) ? undefined : 2, subject);
+    const expected = metricValues[identity];
+    if (expected === null || expected === undefined || !complete) continue;
+    const actual = resolveGA4KpiLiveValue({ kpi: row, breakdownTotals: totals,
+      overviewEngagementRate: metricValues.engagement_rate === null ? NaN : metricValues.engagement_rate / 100,
+      financialRevenue: totalRevenue ?? NaN, financialSpend: spend ?? NaN,
+      financialROI: metricValues.roi ?? NaN, financialCPA: metricValues.cpa ?? NaN });
+    push(`${section} / PDF calculations`, `CALCULATED_${identity}`, expected, actual,
+      ["users", "sessions", "pageviews", "conversions"].includes(identity) ? undefined : 2, subject);
+    const target = numberOrNull(section === "kpis" ? row.targetValue : row.benchmarkValue);
+    if (target !== null && target > 0) {
+      const lowerIsBetter = identity === "cpa";
+      checks.push({ section: `${section} / PDF calculations`, code: "TARGET_DIRECTION", subject,
+        status: isLowerIsBetterKpi({ metric: row.metric, name: row.name }) === lowerIsBetter ? "passed" : "difference" });
+      const expectedDelta = (expected - target) / target * 100 * (lowerIsBetter ? -1 : 1);
+      push(`${section} / PDF calculations`, "TARGET_DELTA", expectedDelta,
+        computeEffectiveDeltaPct({ current: expected, target, lowerIsBetter }), 2, subject);
+      if (section === "kpis") push(`${section} / PDF calculations`, "TARGET_ATTAINMENT",
+        Math.max(0, (lowerIsBetter ? expected > 0 ? target / expected : 1 : expected / target) * 100),
+        computeAttainmentPct({ current: expected, target, lowerIsBetter }), 2, subject);
+      else {
+        const threshold = computeBenchmarkThresholdResult({ metric: row.metric, name: row.name, unit: row.unit, current: expected, benchmarkValue: target });
+        const ratio = lowerIsBetter ? expected > 0 ? target / expected : null : expected / target;
+        if (ratio !== null) push(`${section} / PDF calculations`, "TARGET_PROGRESS", Math.max(0, Math.min(100, ratio * 100)), threshold.pct, 2, subject);
+      }
+    }
+    if (row.alertsEnabled) {
+      const threshold = numberOrNull(row.alertThreshold), condition = row.alertCondition || "below";
+      if (threshold === null || !["below", "above", "equals"].includes(condition)) {
+        checks.push({ section: "Alerts / threshold calculations", code: "ALERT_THRESHOLD_UNVERIFIED", subject, status: "unverified" });
+      } else {
+        const expectedBreach = condition === "above" ? expected > threshold : condition === "below" ? expected < threshold : Math.abs(expected - threshold) < 0.01;
+        const actualBreach = isAlertDecisionBreached({ ...row, currentValue: expected, __alertDecisionEligible: true });
+        checks.push({ section: "Alerts / threshold calculations", code: "THRESHOLD_COMPARISON", subject, status: actualBreach === expectedBreach ? "passed" : "difference" });
+        checks.push({ section: "Alerts / threshold calculations", code: "UNAVAILABLE_INPUT_BLOCKED", subject,
+          status: !isAlertDecisionBreached({ ...row, currentValue: expected, __alertDecisionEligible: false }) ? "passed" : "difference" });
+      }
+    }
   }
   for (const report of rows.reportSnapshots || []) {
     if (!["google_analytics", "campaign_deepdive"].includes(report.platformType)) continue;

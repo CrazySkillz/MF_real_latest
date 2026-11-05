@@ -1,6 +1,12 @@
 # Live-number monitoring
 
-**Status on 5 November 2026:** installed and running on the existing Render monitor, revision `c1856e53`. **Coverage is partial.** The broader request to compare every section/report value is not complete: the remaining source-access, historical-evidence and output-checking boundaries below must remain visible.
+**Status on 5 November 2026:** running on the existing Render monitor, revision `7b29a8e2`, with hosted execution verified. **Coverage is partial.** The broader request to compare every section/report value is not complete: the remaining source-access, historical-evidence and output-checking boundaries below must remain visible.
+
+- Active: read-only source reconciliation, supported section calculations and saved-PDF numeric checks; existing Render failure notifications retained.
+- Latest hosted test: 342 matching checks, two saved ROAS differences, two unverified checks.
+- Latest hosted live: 1,450 matching checks, zero comparable-number differences, 34 unverified checks. Missing evidence is not a pass.
+- Open: source access, missing historical definitions, unsupported configurations and direct displayed-output coverage identified below. A separate existing provider-refresh warning also needs attention.
+- Application releases/settings and customer records were not changed by this monitoring extension.
 
 ## Purpose and boundary
 
@@ -19,16 +25,16 @@ This is a section-level monitoring inventory, not an exhaustive value-by-value c
 | Surface | Implemented comparison | Explicit remaining boundary |
 | --- | --- | --- |
 | GA4 Overview | Selected property/campaigns, fixed import start, latest completed date in the campaign timezone, requested currency; provider daily sessions/users/pageviews/conversion credits/revenue/engaged sessions/engagement rate; saved aggregate and campaign rows; landing-page traffic and conversion-event credits | Browser DOM/card formatting is covered by release tests, not this recurring process. Landing-page/event revenue does not retain an explicit currency in old publications and is reported unverified rather than compared across assumed currencies. |
-| Financial sources | Active source ownership, currency, materialization grain, duplicate identities; complete saved CSV rows; selected Sheets tab/columns/filter; HubSpot closed-stage mapping and selected date field; Salesforce selected campaign/date/amount/currency; Shopify selected tags/discount codes/UTMs and paid current order totals | CSV comparison validates the uploaded data retained by the app, not an external accounting ledger. CRM legacy imports without recorded daily materialization/query timing are unverified. The partially recorded CRM lower-bound day is excluded explicitly. Google Ads spend, unknown adapters, unsupported field formats and expired/rejected access fail as unverified. Pipeline estimates are not treated as confirmed revenue or independently certified by this check. |
-| GA4 KPIs and Benchmarks | Active GA4 `applyTo=all` current values compared with independent arithmetic over the same import-to-date native and financial inputs, including fractional conversion credits | Specific-campaign/custom calculation configurations are unverified; target edits, status/variance badges and historical progress rendering remain release-test responsibilities. No configured KPI/Benchmark is not evidence that its screen was exercised. |
+| Financial sources | Active source ownership, currency, materialization grain, duplicate identities; complete saved CSV rows; selected Sheets tab/columns/filter; HubSpot closed-stage mapping and selected date field; Salesforce selected campaign/date/amount/currency; Shopify selected tags/discount codes/UTMs and paid current order totals; guarded account-currency lookup and saved zero-import handling | CSV comparison validates the uploaded data retained by the app, not an external accounting ledger. Nonzero CRM imports without recorded daily materialization/query timing are unverified. The partially recorded CRM lower-bound day is excluded explicitly. Google Ads spend, unknown adapters, unsupported field formats and expired/rejected access fail as unverified. Pipeline estimates are not treated as confirmed revenue or independently certified by this check. |
+| GA4 KPIs and Benchmarks | Active GA4 `applyTo=all` current values compared with independent arithmetic over the same import-to-date native and financial inputs, including fractional conversion credits; existing card/PDF value resolver, target progress and delta calculations | Specific-campaign/custom calculation configurations are unverified; target edits, browser status/variance badges and historical progress rendering remain release-test responsibilities. No configured KPI/Benchmark is not evidence that its screen was exercised. |
 | Campaign Comparison | Fresh provider dimension rows and aggregate against saved publication, keyed by campaign/source/medium/channel/device/country/date; imported campaign scope | Additional browser-side chart transforms and source-specific row attribution are not independently rendered by the monitor. |
-| Insights | Fresh provider daily inputs used by Insights, including missing/duplicate date checks | Individual insight text, severity, recommendations, target alignment and calendar rollup rendering are not directly compared in this process. |
+| Insights | Fresh provider daily inputs, including missing/duplicate date checks; existing calendar and monthly rollup helpers exercised against independent sums, rates and date-window arithmetic | Helper checks use the captured import window. Actual caller window selection, individual insight text, severity, recommendations, target alignment and browser rendering are not directly compared. |
 | Performance Summary | Independent ROAS/ROI/CPA/conversion-rate arithmetic over saved available inputs | Old `platform_sync` snapshots without `currentValueWindow` are explicitly unverified for source-to-section parity. The runtime route is not called because ordinary GET paths can hydrate/migrate credentials. |
-| Budget & Financial Analysis | Saved financial snapshot currency/window/availability and revenue/spend/conversion inputs compared with source records and native publication | Budget pacing, forecast estimates and browser presentation are not newly certified. |
-| Trend Analysis | Underlying GA4 daily input reconciliation and date completeness | Trend charts, comparisons, additional daily financial transforms and explanatory text are not directly rendered by the monitor. |
+| Budget & Financial Analysis | Saved financial snapshot currency/window/availability and revenue/spend/conversion inputs compared with source records and native publication; configured pacing-calendar day counts | Full budget pacing, forecast estimates and browser presentation are not newly certified. |
+| Trend Analysis | Underlying GA4 daily input reconciliation and date completeness; existing financial-ratio helper checked against independent arithmetic | Trend charts, caller comparisons, additional daily financial transforms and explanatory text are not directly rendered by the monitor. |
 | Executive Summary | Saved daily snapshot's property/campaign filter/window/currency and users/sessions/conversions/revenue/spend/CVR/CPA/ROAS/ROI against the same inputs | Narrative, health recommendations and historical trajectory presentation remain outside direct output checking. |
-| GA4 and Campaign Diagnostics reports | Saved artifact ownership, report/snapshot/payload/window consistency and artifact envelope validation; retired definitions remain identifiable | Historical PDFs do not retain the complete original source configuration and value inventory. Numeric PDF contents/source parity are explicitly unverified; a valid artifact envelope is not a number check. No reports are created, regenerated, changed or emailed. |
-| Alerts and notifications | Related supported KPI/Benchmark current values are checked | Alert thresholds, notification text/values, historical breach context and delivery contents are not independently compared by this recurring checker. |
+| GA4 and Campaign Diagnostics reports | Saved artifact ownership, report/snapshot/payload/window consistency and artifact envelope validation; actual saved PDF extraction for supported Overview arithmetic, Insights revenue card/table agreement and Campaign Comparison revenue-source sums | Historical PDFs do not retain complete original source settings/value definitions. Historical source parity, CPA's conversion basis, native session-key-event-rate numerators and unsupported templates remain unverified. No reports are created, regenerated, changed or emailed. |
+| Alerts and notifications | Related supported KPI/Benchmark current values; actual threshold-decision and unavailable-input suppression helpers checked against independent comparisons | Actual notification creation, text/values, historical breach context and delivery contents are not independently compared by this recurring checker. |
 
 The GA4 comparisons reuse existing read-only provider query/parsing methods to preserve the application's session/event/UTM attribution definitions. They detect source drift and persistence/propagation differences; they cannot independently detect every common bug in a shared provider parser. Fractional credits use the existing scale-sensitive comparison. Monetary/rate comparisons use their stated display/storage precision, not a blanket percentage tolerance. Saved daily revenue can differ from a whole-window value only within its documented half-cent-per-day storage bound. Whole-window unique users are never equated with summed daily users.
 
@@ -60,7 +66,7 @@ Do not describe source credentials as valid merely because the app's health chec
 - The first read-only live run checked the three existing campaign hashes. Native GA4/source inputs matched in the covered paths; legacy CRM query metadata, provider access and historical report evidence were incomplete. Three report snapshots referenced retired report definitions; that is retained history, not proof of a number error or permission to delete it.
 - Final targeted validation: 44 new checker tests and 39 existing monitor tests passed. Required [branch CI](https://github.com/CrazySkillz/MF_real_latest/actions/runs/42083823938) and [PR CI](https://github.com/CrazySkillz/MF_real_latest/actions/runs/42083832982) both passed on `c1856e539dbf707ed42e696dfc4dc5159df45f34`. The branch run passed TypeScript, build, the existing release gate, and 7,453 current-version tests in 418 files. The separate deferred-source step remained non-blocking and reported 45 passed / 166 skipped; no exclusion was added.
 
-## Hosted activation evidence
+## Initial hosted activation evidence (`c1856e53`)
 
 - Existing service: [Render monitor](https://dashboard.render.com/cron/crn-dbm6oql6e07s73bar4eg). Deployment `dep-dbmcpejl550s739f3u3g` became live at 18:37:35 UTC on 5 November. Only its branch/command and separately prefixed read-access configuration were changed. Automatic monitor deployment remains off. Code is retained in [draft PR 4](https://github.com/CrazySkillz/MF_real_latest/pull/4); no live-app merge/deployment was performed.
 - Hosted test job `job-dbmcr16k1f9s73bbun4g`: 258 matching comparisons, two ROAS differences in saved Executive Summary/Performance Summary values, and two unverified checks. Its nonzero result is expected and confirms that those findings are not treated as passes.
@@ -72,7 +78,7 @@ Do not describe source credentials as valid merely because the app's health chec
 
 ## Remaining work in the live-number request
 
-### Continuation on 5 November (release verification in progress)
+### Continuation on 5 November (`7b29a8e2`)
 
 The checker now also exercises the existing pure KPI/Benchmark card and PDF value
 resolver, target progress/delta arithmetic, Insights calendar/monthly rollups,
@@ -108,9 +114,58 @@ other SOAP calls and credential renewal remain blocked. Relevant provider refere
 Focused validation at this continuation: 70 tests passed, including deliberate
 corruption of the actual Insights, KPI, Trend and alert helper outputs, genuine
 stored-PDF extraction, currency mismatch/multi-currency rejection, and mutation
-blocking. Full release checks and hosted verification must pass before activating
-this extension. The earlier coverage table describes the original deployed version;
-this continuation expands only the explicit boundaries above.
+blocking. Required [branch CI](https://github.com/CrazySkillz/MF_real_latest/actions/runs/42098669168)
+and [PR CI](https://github.com/CrazySkillz/MF_real_latest/actions/runs/42098678972)
+passed on `7b29a8e29cb6db7d242cd2d5e224a4e96ec0d4e9`: TypeScript, build,
+release gate, and 7,479 current-version tests in 419 files. The existing separate,
+non-blocking deferred-source step reported 45 passed / 166 skipped; no exclusions
+were added. The coverage table above now includes this extension's explicit checks.
+
+The existing monitor deployment `dep-dbme4js9v7es73cp3nf0` became live at
+20:09:36 UTC. No environment variables were added or changed. At 20:10:32 UTC,
+readback confirmed the monitor configuration and unchanged application revisions,
+configuration and environment hashes; this was confirmed again at 20:19:38 UTC.
+
+Hosted execution on that exact revision:
+
+| Run | Matching | Differences | Unverified | Result |
+| --- | ---: | ---: | ---: | --- |
+| Test `job-dbme5i8u01pc73a9u2h0` | 342 | 2 | 2 | Finished 20:12:33 UTC; nonzero exit for the saved ROAS findings and missing evidence |
+| Live `job-dbme6qp5efls73a919m0` | 1,450 | 0 | 34 | Finished 20:16:55 UTC; nonzero exit for missing evidence/access |
+
+Live campaign breakdown: `b85505d40a0a` 619 matched / 21 unverified;
+`de4775c3b435` 444 / 9; `156b23ba019e` 387 / 4. Actual saved PDF extraction
+ran on Render. The empty Salesforce import was compared successfully. Three
+HubSpot sources lacked a usable unexpired access token at this late one-shot run;
+Shopify access/scope could not be verified for one source. These are not evidence
+that reconnection is required: the monitor deliberately does not renew credentials,
+and an application's next normal refresh can change their availability. Historical
+report definitions, conversion-event currency and saved Performance Summary window
+evidence remain incomplete. Every returned check retained an unchanged before/after
+captured-input fingerprint. Receipts are in
+`.local-test/live-number-hosted-{test,live}-extension-receipt.json`.
+
+The natural 21:10 Amsterdam operational run continued to check both applications:
+test health passed; live health reported `RECORDED_JOB_FAILURE`; accuracy correctly
+returned `not_due`. This live warning predates the extension's 20:09 UTC deployment:
+the app's own 20:02:03–20:03:34 UTC provider refresh attempted five jobs and none
+succeeded. Logs identify four HubSpot mapping requests with no usable access/refresh
+token across `ga4_ga` (`7d54956576d4`) and `ga4_no_rev` (`2fbf15cb66be`), plus a
+stale Salesforce revenue source in `ga4_test` (`8953c822705f`). Read-only SQL
+confirmed these three active campaigns have no client ID; they are outside the
+three enrolled live-number campaigns. The GA4 daily scheduler itself reported
+success and no error. No records were deleted, mappings rewritten or warning
+suppressed. These additional campaigns were not part of the earlier five-campaign
+cleanup; any cleanup needs its own exact ownership/dependency review. The underlying
+stale Salesforce mapping was not traced further or repaired in this monitoring task.
+
+The existing Render failure-email path remains enabled and was inbox-verified
+earlier. Delivery of this extension's particular emails has not been inbox-verified.
+
+The earlier revision's natural 20:20 Amsterdam run was also observed: the test
+campaign reported 258 matches / 2 differences / 2 unverified checks; the three live
+campaigns reported 1,140 matches / 23 unverified checks. This proves a natural
+hosted accuracy slot occurred, but is not evidence for the later extension's checks.
 
 The three earlier `CRM_SAVED_QUERY_WINDOW_UNVERIFIED` findings were traced further:
 the current HubSpot/Salesforce importers intentionally store `dailyMaterialization:

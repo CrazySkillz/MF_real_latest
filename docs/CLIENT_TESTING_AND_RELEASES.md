@@ -90,10 +90,11 @@ This verifies code/schema compatibility and identifies the fallback deploy. It i
 
 ## Monitor configuration
 
-Current deployed monitor revision: `c1856e53`, branch `codex/live-number-checks`;
+Current deployed monitor revision: `7b29a8e2`, branch `codex/live-number-checks`;
 expected live application revision: `706a7bac`. It retains operational checks
 and adds read-only source comparisons after the three campaign-local refresh
-slots. It now has separately prefixed database/provider read-access configuration.
+slots, with additional section-calculation and supported saved-PDF checks. It has
+separately prefixed database/provider read-access configuration.
 [Coverage is partial; read the current evidence and open findings](LIVE_NUMBER_MONITORING.md).
 
 Run the checker manually with:

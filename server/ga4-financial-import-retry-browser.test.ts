@@ -39,7 +39,10 @@ describe("financial import retries in actual CSV wizards with isolated HTTP", ()
       await route.fulfill({ json });
     });
     const upload = async () => {
-      await page.locator('input[type="file"]').first().setInputFiles({ name: "fixture.csv", mimeType: "text/csv", buffer: Buffer.from(`Date,${column}\n2026-09-30,250`) });
+      // Reopening replaces the input; use the visible picker so a detached input cannot silently receive the file.
+      const fileChooser = page.waitForEvent("filechooser");
+      await page.getByLabel("Upload file (CSV)", { exact: true }).click();
+      await (await fileChooser).setFiles({ name: "fixture.csv", mimeType: "text/csv", buffer: Buffer.from(`Date,${column}\n2026-09-30,250`) });
       await page.getByRole("button", { name: "Next", exact: true }).click();
       const submit = page.getByRole("button", { name: kind === "revenue" ? "Import revenue" : "Import spend", exact: true });
       if (kind === "spend") {

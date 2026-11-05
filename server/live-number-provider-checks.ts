@@ -245,7 +245,15 @@ export async function readFinancialSourceValues(snapshot: LiveNumberSnapshot, so
     return values;
   }
   if (kind !== "revenue" || !["hubspot", "salesforce"].includes(source.sourceType)) throw new Error("PROVIDER_ADAPTER_NOT_VERIFIED");
-  if (mapping.dailyMaterialization !== "selected_date_field_v1" || !Number.isFinite(Date.parse(mapping.lastSyncedAt))
+  if (mapping.valueSource && mapping.valueSource !== "revenue") throw new Error("CRM_VALUE_DEFINITION_UNVERIFIED");
+  const savedRecords = (snapshot.rows.revenueRecords || []).filter(row => row.revenueSourceId === source.id);
+  // Current CRM importers deliberately omit dated-materialization metadata for
+  // an empty zero result. Zero has no date allocation to invent; verify it by
+  // querying the same saved selection over the common completed-date window.
+  const emptyMaterialization = mapping.mode === "revenue_to_date" && numberOrNull(mapping.lastTotalRevenue) === 0
+    && savedRecords.length > 0 && savedRecords.every(row => row.campaignId === source.campaignId && row.currency === source.currency
+      && dateIsValid(row.date) && numberOrNull(row.revenue) === 0);
+  if ((mapping.dailyMaterialization !== "selected_date_field_v1" && !emptyMaterialization) || !Number.isFinite(Date.parse(mapping.lastSyncedAt))
     || !Number.isInteger(mapping.days) || mapping.days < 1 || !Array.isArray(mapping.selectedValues) || !mapping.selectedValues.length) throw new Error("CRM_SAVED_QUERY_WINDOW_UNVERIFIED");
   // Exclude the partial boundary day: old imports recorded completion time, not the exact query-start millisecond.
   const start = new Date(Date.parse(mapping.lastSyncedAt) - (mapping.days - 1) * 86400000).toISOString().slice(0, 10);

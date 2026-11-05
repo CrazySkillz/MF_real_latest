@@ -277,6 +277,23 @@ describe("source reads", () => {
     else await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("CRM_RESPONSE_SCOPE_UNVERIFIED");
     expect(request).toHaveBeenCalledTimes(2);
   });
+  it("checks intentionally empty CRM imports, but never gives an undated nonzero import the same exception", async () => {
+    const s = fixture(); s.rows.hubspotConnections = [{ campaignId: "campaign-a", isActive: true, accessToken: "private" }];
+    const mapping = { mode: "revenue_to_date", lastTotalRevenue: 0, dailyMaterialization: null, valueSource: "revenue",
+      lastSyncedAt: "2026-11-05T13:00:00Z", days: 30, selectedValues: ["selected"], stageIds: ["won"],
+      dateField: "closedate", campaignProperty: "campaign", revenueProperty: "amount" };
+    const source = { id: "empty", isActive: true, campaignId: "campaign-a", sourceType: "hubspot", currency: "EUR", mappingConfig: JSON.stringify(mapping) };
+    s.rows.revenueSources = [source];
+    s.rows.revenueRecords = [{ revenueSourceId: "empty", campaignId: "campaign-a", currency: "EUR", date: "2026-11-04", revenue: 0 }];
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [], total: 0 })));
+    expect(await readFinancialSourceValues(s, source, "revenue", request)).toEqual({ startDate: "2026-10-07", values: [] });
+    s.rows.revenueRecords[0].revenue = 10;
+    await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("CRM_SAVED_QUERY_WINDOW_UNVERIFIED");
+    s.rows.revenueRecords[0].revenue = 0;
+    source.mappingConfig = JSON.stringify({ ...mapping, valueSource: "conversion_value" });
+    await expect(readFinancialSourceValues(s, source, "revenue", request)).rejects.toThrow("CRM_VALUE_DEFINITION_UNVERIFIED");
+    expect(request).toHaveBeenCalledTimes(1);
+  });
   it.each([false, true])("verifies Salesforce's single-currency flag instead of assuming its default (multi=%s)", async multi => {
     const s = fixture(); s.rows.salesforceConnections = [{ campaignId: "campaign-a", isActive: true, accessToken: "private", instanceUrl: "https://tenant.my.salesforce.com" }];
     const source = { campaignId: "campaign-a", sourceType: "salesforce", currency: "EUR", mappingConfig: JSON.stringify({

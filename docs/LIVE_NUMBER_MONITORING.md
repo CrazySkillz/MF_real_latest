@@ -105,12 +105,23 @@ permits only the exact existing read-only SOAP `getUserInfo` envelope; mutations
 other SOAP calls and credential renewal remain blocked. Relevant provider reference:
 [Salesforce getUserInfo](https://developer.salesforce.com/docs/platform/api/guide/sforce-api-calls-getuserinfo.html).
 
-Focused validation at this continuation: 69 tests passed, including deliberate
+Focused validation at this continuation: 70 tests passed, including deliberate
 corruption of the actual Insights, KPI, Trend and alert helper outputs, genuine
 stored-PDF extraction, currency mismatch/multi-currency rejection, and mutation
 blocking. Full release checks and hosted verification must pass before activating
 this extension. The earlier coverage table describes the original deployed version;
 this continuation expands only the explicit boundaries above.
+
+The three earlier `CRM_SAVED_QUERY_WINDOW_UNVERIFIED` findings were traced further:
+the current HubSpot/Salesforce importers intentionally store `dailyMaterialization:
+null` when their dated revenue map is empty (`routes-oauth.ts` revenue mapping
+construction). All three inspected sources have a saved zero total and only a
+zero materialized record. The original monitor incorrectly required a dated-map
+marker even for this case. The extension permits this exception only with an
+explicit zero total, nonempty all-zero campaign/currency-checked records, saved
+selection/date/window configuration and a fresh complete provider query. A nonzero
+undated import remains unverified; conversion-value modes are not silently treated
+as native revenue. No source mapping or customer record was repaired or rewritten.
 
 1. Resolve the exact source-access and saved-query-evidence gaps reported above without automatically renewing rotating credentials or rewriting source records. Historical evidence that cannot be reconstructed must stay unverified.
 2. Extend direct numeric checks to the currently unimplemented displayed-section/PDF/alert outputs and unsupported calculation/source configurations listed in the coverage table. Existing input checks and release tests are not a substitute for that direct output coverage.

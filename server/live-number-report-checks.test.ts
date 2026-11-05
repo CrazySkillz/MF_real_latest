@@ -70,6 +70,7 @@ describe("numbers in the saved PDF, without regeneration", () => {
     expect(checkReportTextNumbers(text, "ads")[0].status).toBe("passed");
     expect(checkReportTextNumbers(text.replace("30.03", "40.03"), "ads")[0].status).toBe("difference");
     expect(checkReportTextNumbers(text.replace("CSV EUR", "CSV USD"), "ads")[0].status).toBe("unverified");
+    expect(checkReportTextNumbers(text.replace("30.03", "30.02"), "ads")[0].status).toBe("unverified");
   });
   it("compares the Insights revenue card and table without assuming its history window", () => {
     const text = "GA4 Insights Report\nREVENUE\nEUR 2,500.00\nData Summary\nRevenue EUR 2,500.00 Total across revenue sources\nWhat to investigate next";

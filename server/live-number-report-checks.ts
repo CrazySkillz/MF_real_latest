@@ -73,8 +73,11 @@ export function checkReportTextNumbers(text: string, reportType: string): Number
     const rows = start >= 0 && header > start ? lines.slice(header + 1).map(line => line.match(amountRow)).filter(Boolean) : [];
     const totals = rows.filter(row => row![1] === "TOTAL"), sources = rows.filter(row => row![1] !== "TOTAL");
     if (totals.length === 1 && sources.length > 0 && sources.every(row => row![2] === totals[0]![2])) {
-      push("REVENUE_SOURCE_TOTAL", sources.reduce((sum, row) => sum + Number(row![3].replaceAll(",", "")), 0),
-        numberOrNull(totals[0]![3].replaceAll(",", "")), 2);
+      const sum = sources.reduce((sum, row) => sum + Number(row![3].replaceAll(",", "")), 0);
+      const total = numberOrNull(totals[0]![3].replaceAll(",", ""));
+      const result = compareNumber(section, "REVENUE_SOURCE_TOTAL", sum, total, { decimals: 2 });
+      if (result.status === "difference" && total !== null && Math.abs(sum - total) <= (sources.length + 1) * 0.005 + 1e-9) result.status = "unverified";
+      checks.push(result);
     } else checks.push({ section, code: "REVENUE_TABLE_SCOPE_UNVERIFIED", status: "unverified" });
   } else if (reportType === "insights" && lines[0] === "GA4 Insights Report") {
     const revenue = parseValue(valueAfter("REVENUE"), "money");

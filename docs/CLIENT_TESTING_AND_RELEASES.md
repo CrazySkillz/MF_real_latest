@@ -17,6 +17,12 @@ settings were preserved; the updated monitor passed for both apps.
 **There is no pending deployment for these three corrections.**
 [Release evidence and precise remaining limits](fixes/ga4-live-release-2026-11-05.md).
 
+**Obsolete-campaign cleanup complete:** the five user-identified historical
+campaigns were deleted at 17:21 Amsterdam after backup and restore rehearsal.
+The other 32 campaigns remain; the three monitored campaigns' 27 checked data
+sets are unchanged. No application deployment was needed.
+[Cleanup and recovery evidence](fixes/obsolete-campaign-cleanup-2026-11-05.md).
+
 | Original step | Status | What remains |
 | --- | --- | --- |
 | 1. Confirm automatic backups | Confirmed: Render shows a 3-day recovery window. Historical restoration and encryption-key recovery evidence are retained. | Maintain backups and the saved encryption key. This does not claim a new production restore drill. |
@@ -31,7 +37,7 @@ The user asked to retain the already configured Render option; the recommendatio
 
 ## Current scope
 
-The user's original five-step list above is the governing checklist, with the later choice to retain Render monitoring for now. All metric values across all enabled sections remain part of the accuracy requirement. Reuse completed evidence; do not confuse avoiding unnecessary repeat manual certification with omitting accuracy checks. Existing readiness records retain their scope and limitations. The three application corrections are now live; the five historical campaign configuration issues remain separate and unresolved.
+The user's original five-step list above is the governing checklist, with the later choice to retain Render monitoring for now. All metric values across all enabled sections remain part of the accuracy requirement. Reuse completed evidence; do not confuse avoiding unnecessary repeat manual certification with omitting accuracy checks. Existing readiness records retain their scope and limitations. The three application corrections are now live; the user-authorized deletion of the five obsolete campaigns is complete.
 
 Accuracy coverage reference: the [input/calculation matrix](validation/stage1-completion-2026-11-02/STAGE1_VALUE_MATRIX.md), [18-family screen/output matrix](validation/stage2-outputs-2026-11-02/STAGE2_OUTPUT_MATRIX.md) and [source/refresh lifecycle matrix](validation/stage3-lifecycle-2026-11-02/STAGE3_LIFECYCLE_MATRIX.md) include more than Overview. They cover GA4 KPIs, Benchmarks, Campaign Comparison, Insights, Reports; Campaign Diagnostics; source lists and row values; exports, snapshots, alerts and notifications. The [Step 3 record](fixes/step3-release-guard-2026-11-05.md) maps these existing value families to the enforced full suite and records the exact seven corrected exemptions. Existing detailed evidence retains its boundaries; no new unrestricted whole-app/provider-data certification is claimed.
 

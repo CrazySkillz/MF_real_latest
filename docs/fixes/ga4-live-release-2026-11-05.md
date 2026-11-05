@@ -54,12 +54,13 @@ files match the already exercised hosted test revision `5ed8e816`.
 
 ## Boundaries and remaining issues
 
-The five historical campaigns with missing clients/Google credentials remain
-unchanged and unresolved; see the [existing investigation](ga4-live-refresh-investigation-2026-11-05.md).
-The new process currently reports healthy/idle. That clears process-local error
-history on restart; it does **not** repair those campaign configurations or prove
-that their next scheduled attempts will succeed. The monitor continues to report
-future recorded failures.
+The five historical campaigns with missing clients/Google credentials were
+subsequently deleted at the user's explicit request, after backup and a verified
+restore/deletion rehearsal. See the
+[cleanup record](obsolete-campaign-cleanup-2026-11-05.md). The other 32 campaigns
+remain, the three monitored campaigns' checked values are unchanged, and live
+health is healthy/idle. No application deployment was needed for that cleanup.
+The monitor continues to report future recorded failures.
 
 The first natural post-release production slot is 20:00 Amsterdam; it has not
 occurred at this verification. Automated tests cover other timezones and DST;

@@ -1,6 +1,6 @@
 # Live-number monitoring
 
-**Status on 5 November 2026:** running on the existing Render monitor, revision `7b29a8e2`, with hosted execution verified. **Coverage is partial.** The broader request to compare every section/report value is not complete: the remaining source-access, historical-evidence and output-checking boundaries below must remain visible.
+**Status on 5 November 2026:** the existing Render monitor runs revision `7b29a8e2`. The next extension adds actual handler responses and newly generated report bytes, as detailed below. Its release evidence is recorded in [PR 4](https://github.com/CrazySkillz/MF_real_latest/pull/4). **Coverage remains partial:** unsupported definitions, missing historical evidence and browser-only presentation paths are not certified.
 
 - Active: read-only source reconciliation, supported section calculations and saved-PDF numeric checks; existing Render failure notifications retained.
 - Latest hosted test: 342 matching checks, two saved ROAS differences, two unverified checks.
@@ -11,6 +11,63 @@
 ## Purpose and boundary
 
 Compare published campaign figures with fresh source reads, detect disagreement between saved section inputs, and fail visibly when a comparison cannot be proved. This is monitoring, not a production-readiness certificate or a replacement for the mandatory release tests.
+
+## Actual-output extension
+
+`scripts/check-live-number-outputs.ts` runs the existing application handlers in a
+private child process. Its loopback listener accepts only exact allowlisted GETs
+with a random per-run capability. Its temporary actor is the owner of the already
+validated campaign/client; this does not add authentication to either deployed app.
+The runner checks the real app's `/api/health` commit before and after replay.
+The reviewed live and test runtime files match this checkout; their only storage
+difference is the operator-only capture method. After an app release, reconcile
+the monitor checkout with that release before updating the pinned commit. A stale
+pin fails visibly rather than claiming the old handlers tested a new app.
+
+New comparisons cover:
+
+- Real Overview totals and dates; native totals, Campaign Comparison, landing-page
+  and conversion-event rows; Insights daily rows, including row identities.
+- Revenue/spend totals and source-list contributions; KPI/Benchmark current and
+  target values and campaign boundaries; report-library identities.
+- Performance and Executive aggregate values/availability, Executive metric
+  fields, published financial inputs, configured budget-period spend, Trend daily
+  inputs and daily financial ratios, and visible alert values/links.
+- Newly generated scheduled GA4 Overview, KPI, Benchmark, Comparison, Insights and
+  a combined Overview/KPI/Benchmark custom PDF. The monitor checks actual extracted
+  core numeric cards and target tables against captured inputs. PDFs exist only in
+  memory and are never saved, added to the library or emailed. This is not coverage
+  of every custom selection or every sentence/chart in those PDFs.
+
+All DB connections retain PostgreSQL read-only mode. A second SQL barrier rejects
+writes, guard changes and multiple statements. Raw SDK HTTP is blocked. The existing
+Google service-account helper may obtain an in-memory `analytics.readonly` token
+before app handlers are imported; report generation may make at most ten exact
+selected-property GA4 report reads with explicit dates and campaign currency.
+Provider writes, rotating-token renewal and email sending remain blocked. Captured
+inputs must be identical before/after; failures, blocked operations and deadline
+expiry are unverified and make the existing Render monitor exit unsuccessfully.
+The child has a three-minute deadline, response/output size bounds and redacted
+receipts. No new dependency, application route, schema or calculation is introduced.
+
+Local validation: 104 focused tests passed, including deliberately corrupted API
+and PDF numbers, source identity duplication, target/campaign mismatch, wrong alert
+links, budget-period mistakes, and SQL/network boundary rejection. Read-only live
+probes returned unchanged capture fingerprints for all three enrolled campaigns:
+2,691 matching output checks and 11 unverified checks, with no numeric differences
+detected by this output phase. The unverified checks concern the Executive
+response's missing source-window metadata and raw unavailable-value basis.
+The test campaign's existing ROAS discrepancy also appears in actual aggregate
+responses and the newly generated Insights PDF. No rounding correction is included.
+
+Still outside direct recurring output comparison: authenticated browser DOM,
+chart/ranking presentation, narratives/recommendations, forecast/health/trajectory
+outputs, arbitrary custom calculations and non-GA4 diagnostic source adapters,
+browser-generated PDFs and the four Diagnostic PDF builders. Existing release
+tests for these paths remain mandatory; they are not a substitute for live numeric
+coverage. Historical source definitions that were never recorded cannot be
+reconstructed by this extension. Do not describe the full live-number request as
+complete on the strength of this extension.
 
 The checker is a standalone process. It does not load application startup, invoke refresh/reprocess endpoints, generate/send reports, update credentials in the database, repair figures, or change customer records. The only application-storage addition is `getLiveNumberCheckSnapshot`, which uses an owner/client-joined, exact campaign hash and a repeatable-read, read-only transaction. The runner also forces every PostgreSQL connection into read-only mode and verifies that setting. Database identity is pinned by hostname/port/database fingerprint.
 
@@ -29,12 +86,12 @@ This is a section-level monitoring inventory, not an exhaustive value-by-value c
 | GA4 KPIs and Benchmarks | Active GA4 `applyTo=all` current values compared with independent arithmetic over the same import-to-date native and financial inputs, including fractional conversion credits; existing card/PDF value resolver, target progress and delta calculations | Specific-campaign/custom calculation configurations are unverified; target edits, browser status/variance badges and historical progress rendering remain release-test responsibilities. No configured KPI/Benchmark is not evidence that its screen was exercised. |
 | Campaign Comparison | Fresh provider dimension rows and aggregate against saved publication, keyed by campaign/source/medium/channel/device/country/date; imported campaign scope | Additional browser-side chart transforms and source-specific row attribution are not independently rendered by the monitor. |
 | Insights | Fresh provider daily inputs, including missing/duplicate date checks; existing calendar and monthly rollup helpers exercised against independent sums, rates and date-window arithmetic | Helper checks use the captured import window. Actual caller window selection, individual insight text, severity, recommendations, target alignment and browser rendering are not directly compared. |
-| Performance Summary | Independent ROAS/ROI/CPA/conversion-rate arithmetic over saved available inputs | Old `platform_sync` snapshots without `currentValueWindow` are explicitly unverified for source-to-section parity. The runtime route is not called because ordinary GET paths can hydrate/migrate credentials. |
+| Performance Summary | Independent ROAS/ROI/CPA/conversion-rate arithmetic over saved available inputs; extension compares the real aggregate response, availability, campaign/window and source values | Old `platform_sync` snapshots without `currentValueWindow` remain unverified. Additional paid/custom platform aggregates are not substituted with GA4-only expectations. |
 | Budget & Financial Analysis | Saved financial snapshot currency/window/availability and revenue/spend/conversion inputs compared with source records and native publication; configured pacing-calendar day counts | Full budget pacing, forecast estimates and browser presentation are not newly certified. |
 | Trend Analysis | Underlying GA4 daily input reconciliation and date completeness; existing financial-ratio helper checked against independent arithmetic | Trend charts, caller comparisons, additional daily financial transforms and explanatory text are not directly rendered by the monitor. |
 | Executive Summary | Saved daily snapshot's property/campaign filter/window/currency and users/sessions/conversions/revenue/spend/CVR/CPA/ROAS/ROI against the same inputs | Narrative, health recommendations and historical trajectory presentation remain outside direct output checking. |
 | GA4 and Campaign Diagnostics reports | Saved artifact ownership, report/snapshot/payload/window consistency and artifact envelope validation; actual saved PDF extraction for supported Overview arithmetic, Insights revenue card/table agreement and Campaign Comparison revenue-source sums | Historical PDFs do not retain complete original source settings/value definitions. Historical source parity, CPA's conversion basis, native session-key-event-rate numerators and unsupported templates remain unverified. No reports are created, regenerated, changed or emailed. |
-| Alerts and notifications | Related supported KPI/Benchmark current values; actual threshold-decision and unavailable-input suppression helpers checked against independent comparisons | Actual notification creation, text/values, historical breach context and delivery contents are not independently compared by this recurring checker. |
+| Alerts and notifications | Related supported KPI/Benchmark current values; threshold-decision and unavailable-input suppression helpers; extension checks returned visible alert current value, threshold, breached condition, target identity and destination | Creation, missing-notification detection, historical breach context and delivered email contents remain outside this read-only replay. |
 
 The GA4 comparisons reuse existing read-only provider query/parsing methods to preserve the application's session/event/UTM attribution definitions. They detect source drift and persistence/propagation differences; they cannot independently detect every common bug in a shared provider parser. Fractional credits use the existing scale-sensitive comparison. Monetary/rate comparisons use their stated display/storage precision, not a blanket percentage tolerance. Saved daily revenue can differ from a whole-window value only within its documented half-cent-per-day storage bound. Whole-window unique users are never equated with summed daily users.
 

@@ -201,6 +201,7 @@ export type GA4RefreshConnectionWriteInput = GA4RefreshWriteInput & { expectedCo
 export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { expectedSource?: { id: string; mappingConfig: string | null } };
 
 export interface IStorage {
+  getLiveNumberCheckSnapshot(campaignHash: string): Promise<{ campaign: Campaign; rows: Record<string, any[]> }>;
   withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T>;
   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
@@ -700,6 +701,30 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Operator-only monitoring input. No credential hydration, lazy migration, refresh or writes.
+  async getLiveNumberCheckSnapshot(campaignHash: string): Promise<{ campaign: Campaign; rows: Record<string, any[]> }> {
+    if (!/^[a-f0-9]{12}$/.test(campaignHash)) throw new Error("MONITOR_SCOPE_INVALID");
+    return db.transaction(async (tx: any) => {
+      const matches = await tx.select({ campaign: campaigns }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(ne(campaigns.status, "deleted"), sql`left(encode(sha256(${campaigns.id}::bytea), 'hex'), 12) = ${campaignHash}`)).limit(2);
+      if (matches.length !== 1) throw new Error("MONITOR_CAMPAIGN_UNAVAILABLE");
+      const campaign = matches[0].campaign;
+      if (!campaign.ownerId || !campaign.clientId) throw new Error("MONITOR_SCOPE_INVALID");
+      const rows: Record<string, any[]> = {};
+      const tables = { ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, revenueSources, revenueRecords,
+        spendSources, spendRecords, googleSheetsConnections, hubspotConnections, salesforceConnections,
+        shopifyConnections, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics, kpis, benchmarks,
+        metricSnapshots, linkedinReports, reportSnapshots, ga4RefreshWork };
+      for (const [name, table] of Object.entries(tables)) {
+        rows[name] = await tx.select().from(table as any).where(eq(table.campaignId, campaign.id)).limit(10001);
+        if (rows[name].length > 10000) throw new Error("MONITOR_INPUT_LIMIT_EXCEEDED");
+        rows[name].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      }
+      return { campaign, rows };
+    }, { isolationLevel: "repeatable read", readOnly: true });
+  }
+
   async withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
     if (!pool || !/^\d+$/.test(propertyId)) throw new Error('GA4_PROPERTY_UNVERIFIED');
     // Transaction locks bind all updated workers and pin transaction-pooled connections.

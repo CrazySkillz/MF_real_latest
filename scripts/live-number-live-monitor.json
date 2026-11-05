@@ -1,0 +1,10 @@
+{
+  "databaseEnvironmentVariable": "LIVE_NUMBER_DATABASE_URL",
+  "databaseFingerprint": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "credentialsEnvironmentPrefix": "LIVE_NUMBER_",
+  "campaigns": [
+    { "campaignIdHash": "b85505d40a0a", "reportingTimeZone": "Europe/Amsterdam" },
+    { "campaignIdHash": "de4775c3b435", "reportingTimeZone": "Europe/Amsterdam" },
+    { "campaignIdHash": "156b23ba019e", "reportingTimeZone": "Europe/Amsterdam" }
+  ]
+}

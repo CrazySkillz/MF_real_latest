@@ -1,0 +1,5 @@
+{
+  "databaseEnvironmentVariable": "LIVE_NUMBER_MONITOR_DATABASE_URL",
+  "databaseFingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+  "campaigns": [{ "campaignIdHash": "000000000000", "reportingTimeZone": "Europe/Amsterdam" }]
+}

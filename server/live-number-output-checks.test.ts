@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkApplicationOutputs, expectedOutputNumbers } from "./live-number-output-checks";
 import { monitorReadQueryAllowed, outputReportReadAllowed } from "../scripts/check-live-number-outputs";
 import type { LiveNumberSnapshot } from "./live-number-checks";
-import { checkGeneratedReportText } from "./live-number-generated-report-checks";
+import { checkDiagnosticReportText, checkGeneratedReportText } from "./live-number-generated-report-checks";
 import { checkApplicationOutputProcess } from "../scripts/check-live-number-run";
 
 const now = new Date("2026-11-05T13:00:00Z");
@@ -124,7 +124,42 @@ describe("current generated PDF values", () => {
   });
 });
 
+describe("Diagnostic PDF core numeric cards", () => {
+  const bodies: Record<string, string> = {
+    "performance-summary": "Key Outcomes\nTOTAL USERS\n10\nTOTAL SESSIONS\n20\nTOTAL CONVERSIONS\n1.5\nTOTAL REVENUE\n€100.00\nTOTAL SPEND\n€40.00\nCampaign Health",
+    "financial-analysis": "Financial Position\nTOTAL SPEND\n€40.00\nTOTAL REVENUE\n€100.00\nPROFIT\n€60.00\nROAS\n2.50x\nROI\n150.0%\nCOST PER ACQUISITION\n€26.67\nCONVERSION RATE\n7.5%\nBudget & Pacing",
+    "trend-analysis": "Current Decision Metrics\nREVENUE\n€100.00\nSPEND\n€40.00\nROAS\n2.5x\nROI\n150.0%\nCONVERSIONS\n1.5\nCOST PER ACQUISITION\n€26.67\nSESSIONS\n20\nUSERS\n10\nCONVERSION RATE\n7.5%\nENGAGEMENT RATE\n50.0%\nCampaign Performance Trend",
+    "executive-summary": "Marketing Funnel Performance\nUSERS\n10\nSESSIONS\n20\nCONVERSIONS\n1.5\nREVENUE\n€100.00\nSPEND\n€40.00\nCONVERSION RATE\n7.5%\nROAS\n2.5x\nROI\n150.0%\nKPI Exceptions",
+  };
+  it.each(Object.keys(bodies))("checks %s against independent inputs and catches altered revenue", type => {
+    const checks = checkDiagnosticReportText(fixture(), bodies[type], type, now);
+    expect(checks.length).toBeGreaterThanOrEqual(5); expect(checks.every(check => check.status === "passed")).toBe(true);
+    expect(checkDiagnosticReportText(fixture(), bodies[type].replace("€100.00", "€101.00"), type, now)).toContainEqual(expect.objectContaining({ code: "REVENUE", status: "difference" }));
+  });
+  it("rejects a different currency, ambiguous labels and missing section boundaries", () => {
+    const text = bodies["financial-analysis"];
+    expect(checkDiagnosticReportText(fixture(), text.replace("€100.00", "$100.00"), "financial-analysis", now)).toContainEqual(expect.objectContaining({ code: "REVENUE", status: "unverified" }));
+    expect(checkDiagnosticReportText(fixture(), text.replace("ROAS\n", "ROAS\n2.50x\nROAS\n"), "financial-analysis", now)).toContainEqual(expect.objectContaining({ code: "ROAS", status: "unverified" }));
+    expect(checkDiagnosticReportText(fixture(), text.replace("Budget & Pacing", ""), "financial-analysis", now)[0].status).toBe("unverified");
+  });
+  it("accepts omitted unavailable Trend cards but rejects a fabricated available value", () => {
+    const snapshot = fixture(); snapshot.rows.spendSources = []; snapshot.rows.spendRecords = [];
+    const text = bodies["trend-analysis"].replace("SPEND\n€40.00\nROAS\n2.5x\nROI\n150.0%\n", "").replace("COST PER ACQUISITION\n€26.67\n", "");
+    expect(checkDiagnosticReportText(snapshot, text, "trend-analysis", now).every(check => check.status === "passed")).toBe(true);
+    expect(checkDiagnosticReportText(snapshot, text.replace("REVENUE", "SPEND\n€0.00\nREVENUE"), "trend-analysis", now)).toContainEqual(expect.objectContaining({ code: "SPEND", status: "unverified" }));
+  });
+  it("parses negative money without losing its sign", () => {
+    const snapshot = fixture(); snapshot.rows.spendRecords[0].spend = "140";
+    const text = bodies["financial-analysis"].replace("€60.00", "-€40.00");
+    expect(checkDiagnosticReportText(snapshot, text, "financial-analysis", now)).toContainEqual(expect.objectContaining({ code: "PROFIT", status: "passed" }));
+  });
+});
+
 describe("isolated handler SQL barrier", () => {
+  it("allows only the three existing bounded publication-read timeouts", () => {
+    for (const sql of ["SET LOCAL lock_timeout = '10s'", "SET LOCAL statement_timeout = '30s'", "SET LOCAL idle_in_transaction_session_timeout = '30s'"]) expect(monitorReadQueryAllowed(sql)).toBe(true);
+    for (const sql of ["SET LOCAL statement_timeout = '0'", "SET LOCAL transaction_read_only = off", "SET LOCAL lock_timeout = '10s'; DELETE FROM campaigns", "SET LOCAL statement_timeout = '60s'"]) expect(monitorReadQueryAllowed(sql)).toBe(false);
+  });
   it.each(["SELECT * FROM campaigns WHERE id=$1", 'select "campaigns"."id" from "campaigns"', "BEGIN", "set transaction isolation level repeatable read read only", "COMMIT", "ROLLBACK"])("permits required reads/transactions: %s", sql => expect(monitorReadQueryAllowed(sql)).toBe(true));
   it.each(["UPDATE campaigns SET name='bad'", "DELETE FROM campaigns", "INSERT INTO campaigns VALUES (1)", "BEGIN READ WRITE", "SET default_transaction_read_only=off", "SELECT set_config('transaction_read_only','off',false)", "SELECT 1; DELETE FROM campaigns", "SELECT 1 /* hidden */", "RESET ALL", "SELECT 1 -- hidden"])("blocks mutations and guard bypasses: %s", sql => expect(monitorReadQueryAllowed(sql)).toBe(false));
 });

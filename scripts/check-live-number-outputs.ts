@@ -16,6 +16,9 @@ export function monitorReadQueryAllowed(sql: string): boolean {
   // Reject multiple statements, SQL comments, setting changes and explicit write
   // transactions. PostgreSQL read-only is the second, authoritative barrier.
   const text = sql.trim().replace(/;$/, "");
+  // Existing publication-version reads use these bounded, transaction-local
+  // timeouts. They do not change PostgreSQL's read-only setting.
+  if (/^set local (?:lock_timeout = '10s'|statement_timeout = '30s'|idle_in_transaction_session_timeout = '30s')$/i.test(text)) return true;
   return !/;|--|\/\*|\bread\s+write\b|\bset_config\s*\(|\b(?:set|reset)\s+(?:session|local|all|default_transaction_read_only|transaction_read_only)\b/i.test(text)
     && /^(?:select\b|with\b|show\b|begin(?:\s+isolation\s+level\s+repeatable\s+read)?(?:\s+read\s+only)?$|commit$|rollback$|savepoint\s+\w+$|release\s+savepoint\s+\w+$|set\s+transaction\s+isolation\s+level\s+repeatable\s+read\s+read\s+only$)/i.test(text);
 }
@@ -126,7 +129,7 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
     }
     checks.push(...checkApplicationOutputs(before, outputs));
     const { checkGeneratedReportNumbers } = await import("../server/live-number-generated-report-checks");
-    checks.push(...await checkGeneratedReportNumbers(before, () => writes + external));
+    checks.push(...await checkGeneratedReportNumbers(before, () => writes + external, outputs.outcome?.performanceSummary?.sources));
     const after = await storage.getLiveNumberCheckSnapshot(campaignHash);
     if (snapshotFingerprint(after) !== expectedFingerprint) return [{ section: "scope", code: "OUTPUT_INPUTS_CHANGED", status: "unverified" as const }];
     checks.push({ section: "Application output safety", code: "DATABASE_READ_ONLY_ENFORCED", status: "passed" });

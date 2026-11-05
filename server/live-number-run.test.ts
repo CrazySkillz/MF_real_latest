@@ -58,4 +58,21 @@ describe("memory-bounded monitoring phases", () => {
     expect(validOutputChecks([{ section: "Output", code: "VALUE", status: "passed", token: "secret" }])).toBe(false);
     expect(validOutputChecks([{ section: "Output", code: "VALUE", status: "passed", subject: "customer@example.com" }])).toBe(false);
   });
+  it("compacts passing row identities while retaining the number of comparisons", async () => {
+    const run = runNumberMonitorPhases("config.json"); finish(0, receipt());
+    await vi.waitFor(() => expect(children).toHaveLength(2));
+    finish(1, Array.from({ length: 200 }, (_, index) => ({ section: "Output", code: "VALUE", status: "passed", subject: index.toString(16).padStart(12, "0") })));
+    expect(await run).toBe(0);
+    const output = mocks.write.mock.calls.map(call => String(call[1])).filter(line => line.includes('"phase":"application_outputs"')).map(line => JSON.parse(line));
+    expect(output).toHaveLength(1); expect(output[0].checks).toEqual([{ section: "Output", code: "VALUE", status: "passed", count: 200 }]);
+  });
+  it("preserves all failure subjects in log lines below Render's size limit", async () => {
+    const run = runNumberMonitorPhases("config.json"); finish(0, receipt());
+    await vi.waitFor(() => expect(children).toHaveLength(2));
+    finish(1, Array.from({ length: 200 }, (_, index) => ({ section: "Output", code: "VALUE", status: "difference", subject: index.toString(16).padStart(12, "0") })));
+    expect(await run).toBe(1);
+    const lines = mocks.write.mock.calls.map(call => String(call[1])).filter(line => line.includes('"phase":"application_outputs"'));
+    expect(lines).toHaveLength(4); expect(lines.every(line => Buffer.byteLength(line) < 32_000)).toBe(true);
+    expect(new Set(lines.flatMap(line => JSON.parse(line).checks.map((check: any) => check.subject))).size).toBe(200);
+  });
 });

@@ -1,10 +1,10 @@
 # Live-number monitoring
 
-**Status on 5 November 2026:** the existing Render monitor runs revision `7b29a8e2`. The next extension adds actual handler responses and newly generated report bytes, as detailed below. Its release evidence is recorded in [PR 4](https://github.com/CrazySkillz/MF_real_latest/pull/4). **Coverage remains partial:** unsupported definitions, missing historical evidence and browser-only presentation paths are not certified.
+**Status on 5 November 2026:** the existing Render monitor runs revision `6fb50d18`, with actual handler and GA4 PDF comparisons and corrected memory allocation. The final extension adds the four Diagnostic PDFs and bounded log entries, as detailed below. Its release evidence is recorded in [PR 4](https://github.com/CrazySkillz/MF_real_latest/pull/4). **Coverage remains partial:** unsupported definitions, missing historical evidence and browser-only presentation paths are not certified.
 
 - Active: read-only source reconciliation, supported section calculations and saved-PDF numeric checks; existing Render failure notifications retained.
-- Latest hosted test: 342 matching checks, two saved ROAS differences, two unverified checks.
-- Latest hosted live: 1,450 matching checks, zero comparable-number differences, 34 unverified checks. Missing evidence is not a pass.
+- Hosted memory correction: `6fb50d18` completed both phases without an OOM kill; the output log exceeded Render's 64 KiB line limit. The final extension fixes this by aggregating passed identities and chunking findings without dropping them.
+- Earlier hosted live (`7b29a8e2`): 1,450 matching source/helper checks, zero comparable-number differences, 34 unverified checks. Final expanded hosted results are pending. Missing evidence is not a pass.
 - Open: source access, missing historical definitions, unsupported configurations and direct displayed-output coverage identified below. A separate existing provider-refresh warning also needs attention.
 - Application releases/settings and customer records were not changed by this monitoring extension.
 
@@ -38,6 +38,11 @@ New comparisons cover:
   core numeric cards and target tables against captured inputs. PDFs exist only in
   memory and are never saved, added to the library or emailed. This is not coverage
   of every custom selection or every sentence/chart in those PDFs.
+- Core numeric cards in the existing Performance Summary, Budget & Financial
+  Analysis, Trend Analysis and Executive Summary PDF generators. Comparisons use
+  independent captured-input totals, each displayed precision and the campaign
+  currency. Additional non-GA4 diagnostic sources fail closed. Unsupported chart,
+  forecast, narrative and exception-table values are not certified by card checks.
 
 All DB connections retain PostgreSQL read-only mode. A second SQL barrier rejects
 writes, guard changes and multiple statements. Raw SDK HTTP is blocked. The existing
@@ -66,7 +71,7 @@ Render bills this cron size at $0.00058 per running minute, prorated by second,
 with a $1 monthly minimum ([pricing](https://render.com/pricing),
 [cron billing](https://render.com/docs/cronjobs)).
 
-Local validation: 111 focused tests passed, including deliberately corrupted API
+Local validation: 121 focused tests passed, including deliberately corrupted API
 and PDF numbers, source identity duplication, target/campaign mismatch, wrong alert
 links, budget-period mistakes, and SQL/network boundary rejection. Read-only live
 probes returned unchanged capture fingerprints for all three enrolled campaigns:
@@ -74,18 +79,34 @@ probes returned unchanged capture fingerprints for all three enrolled campaigns:
 detected by this output phase. The unverified checks concern the Executive
 response's missing source-window metadata and raw unavailable-value basis.
 The test campaign's existing ROAS discrepancy also appears in actual aggregate
-responses and the newly generated Insights PDF. No rounding correction is included.
+responses and the newly generated Insights and Financial Analysis PDFs. No rounding
+correction is included. The ten-PDF local probe completed with 676 matching output
+checks and five ROAS differences; its captured inputs remained unchanged. Trend's
+existing comparison path attempted Google credential renewal and remained
+unverified when the monitor blocked it. This is not proof of a failed app connection.
+
+The publication-version reader uses three exact bounded `SET LOCAL` timeout
+statements. The output guard now allows those statements; PostgreSQL read-only
+mode and mutation/guard-change rejection remain enforced. Tests reject unlimited
+timeouts, altered read-only settings and appended statements. Credential renewal
+with persistence remains blocked. No diagnostic-generated report is saved or sent.
+
+Passing output checks are grouped by section/code with their original counts.
+Every non-passing subject hash is retained. Output records contain at most 64 groups
+and numbered `part`/`parts` fields, avoiding the hosted 64 KiB log-line truncation
+observed on `6fb50d18`. Tests verify all 200 synthetic failure subjects survive
+chunking and that passing-row compaction preserves the comparison count.
 
 Still outside direct recurring output comparison: authenticated browser DOM,
 chart/ranking presentation, narratives/recommendations, forecast/health/trajectory
 outputs, arbitrary custom calculations and non-GA4 diagnostic source adapters,
-browser-generated PDFs and the four Diagnostic PDF builders. Existing release
+browser-generated PDFs and non-card portions of the four Diagnostic PDFs. Existing release
 tests for these paths remain mandatory; they are not a substitute for live numeric
 coverage. Historical source definitions that were never recorded cannot be
 reconstructed by this extension. Do not describe the full live-number request as
 complete on the strength of this extension.
 
-The checker is a standalone process. It does not load application startup, invoke refresh/reprocess endpoints, generate/send reports, update credentials in the database, repair figures, or change customer records. The only application-storage addition is `getLiveNumberCheckSnapshot`, which uses an owner/client-joined, exact campaign hash and a repeatable-read, read-only transaction. The runner also forces every PostgreSQL connection into read-only mode and verifies that setting. Database identity is pinned by hostname/port/database fingerprint.
+The checker is a standalone process. It does not load application startup, invoke refresh/reprocess endpoints, save/send reports, update credentials in the database, repair figures, or change customer records. The output phase generates temporary PDFs in memory as described above. The only application-storage addition is `getLiveNumberCheckSnapshot`, which uses an owner/client-joined, exact campaign hash and a repeatable-read, read-only transaction. The runner also forces every PostgreSQL connection into read-only mode and verifies that setting. Database identity is pinned by hostname/port/database fingerprint.
 
 Before and after each comparison, the runner fingerprints the complete captured campaign inputs. A source edit/deletion, credential update, publication, or other captured change invalidates that run rather than producing a false pass/difference. Running refresh work is not compared. Inputs over 10,000 rows per captured table fail explicitly; they are never silently truncated.
 
@@ -101,12 +122,12 @@ This is a section-level monitoring inventory, not an exhaustive value-by-value c
 | Financial sources | Active source ownership, currency, materialization grain, duplicate identities; complete saved CSV rows; selected Sheets tab/columns/filter; HubSpot closed-stage mapping and selected date field; Salesforce selected campaign/date/amount/currency; Shopify selected tags/discount codes/UTMs and paid current order totals; guarded account-currency lookup and saved zero-import handling | CSV comparison validates the uploaded data retained by the app, not an external accounting ledger. Nonzero CRM imports without recorded daily materialization/query timing are unverified. The partially recorded CRM lower-bound day is excluded explicitly. Google Ads spend, unknown adapters, unsupported field formats and expired/rejected access fail as unverified. Pipeline estimates are not treated as confirmed revenue or independently certified by this check. |
 | GA4 KPIs and Benchmarks | Active GA4 `applyTo=all` current values compared with independent arithmetic over the same import-to-date native and financial inputs, including fractional conversion credits; existing card/PDF value resolver, target progress and delta calculations | Specific-campaign/custom calculation configurations are unverified; target edits, browser status/variance badges and historical progress rendering remain release-test responsibilities. No configured KPI/Benchmark is not evidence that its screen was exercised. |
 | Campaign Comparison | Fresh provider dimension rows and aggregate against saved publication, keyed by campaign/source/medium/channel/device/country/date; imported campaign scope | Additional browser-side chart transforms and source-specific row attribution are not independently rendered by the monitor. |
-| Insights | Fresh provider daily inputs, including missing/duplicate date checks; existing calendar and monthly rollup helpers exercised against independent sums, rates and date-window arithmetic | Helper checks use the captured import window. Actual caller window selection, individual insight text, severity, recommendations, target alignment and browser rendering are not directly compared. |
+| Insights | Fresh provider daily inputs, including missing/duplicate date checks; actual daily response rows; existing calendar/monthly rollup helpers against independent arithmetic; generated Insights PDF financial cards | Browser-selected window, individual insight text, severity, recommendations, target alignment and browser rendering are not directly compared. |
 | Performance Summary | Independent ROAS/ROI/CPA/conversion-rate arithmetic over saved available inputs; extension compares the real aggregate response, availability, campaign/window and source values | Old `platform_sync` snapshots without `currentValueWindow` remain unverified. Additional paid/custom platform aggregates are not substituted with GA4-only expectations. |
 | Budget & Financial Analysis | Saved financial snapshot currency/window/availability and revenue/spend/conversion inputs compared with source records and native publication; configured pacing-calendar day counts | Full budget pacing, forecast estimates and browser presentation are not newly certified. |
-| Trend Analysis | Underlying GA4 daily input reconciliation and date completeness; existing financial-ratio helper checked against independent arithmetic | Trend charts, caller comparisons, additional daily financial transforms and explanatory text are not directly rendered by the monitor. |
-| Executive Summary | Saved daily snapshot's property/campaign filter/window/currency and users/sessions/conversions/revenue/spend/CVR/CPA/ROAS/ROI against the same inputs | Narrative, health recommendations and historical trajectory presentation remain outside direct output checking. |
-| GA4 and Campaign Diagnostics reports | Saved artifact ownership, report/snapshot/payload/window consistency and artifact envelope validation; actual saved PDF extraction for supported Overview arithmetic, Insights revenue card/table agreement and Campaign Comparison revenue-source sums | Historical PDFs do not retain complete original source settings/value definitions. Historical source parity, CPA's conversion basis, native session-key-event-rate numerators and unsupported templates remain unverified. No reports are created, regenerated, changed or emailed. |
+| Trend Analysis | Underlying GA4 daily input reconciliation/date completeness; actual Trend response window, property, GA4 daily series and daily financial ratios; existing financial-ratio helper against independent arithmetic | Trend charts, comparative-period presentation, additional daily financial transforms and explanatory text are not directly rendered by the monitor. |
+| Executive Summary | Saved snapshot's property/campaign filter/window/currency and core metrics; actual aggregate response and raw metric values against independent inputs | Missing response window/availability evidence is unverified. Narrative, health recommendations and historical trajectory presentation remain outside direct output checking. |
+| GA4 and Campaign Diagnostics reports | Saved artifact ownership, report/snapshot/payload/window consistency; saved PDF extraction for supported Overview/Insights/Comparison checks; actual library identities; core numeric cards/target tables in six temporary GA4 PDF variants and core cards in all four Diagnostic PDFs | Historical PDFs lack complete original source definitions. Historical source parity, CPA's conversion basis, native session-key-event-rate numerators, arbitrary custom selections, browser exports and non-card Diagnostic PDF content remain unverified or unchecked. Temporary PDFs are not saved or emailed. |
 | Alerts and notifications | Related supported KPI/Benchmark current values; threshold-decision and unavailable-input suppression helpers; extension checks returned visible alert current value, threshold, breached condition, target identity and destination | Creation, missing-notification detection, historical breach context and delivered email contents remain outside this read-only replay. |
 
 The GA4 comparisons reuse existing read-only provider query/parsing methods to preserve the application's session/event/UTM attribution definitions. They detect source drift and persistence/propagation differences; they cannot independently detect every common bug in a shared provider parser. Fractional credits use the existing scale-sensitive comparison. Monetary/rate comparisons use their stated display/storage precision, not a blanket percentage tolerance. Saved daily revenue can differ from a whole-window value only within its documented half-cent-per-day storage bound. Whole-window unique users are never equated with summed daily users.
@@ -128,7 +149,7 @@ The current configuration names the existing three monitored live campaigns and 
 
 `scripts/live-number-{test,live}-monitor.json` contain only database fingerprints, environment-variable names and approved campaign hashes/timezones. The cron needs separately prefixed database URLs and only the required existing provider/token-encryption configuration from each corresponding app. Never put secret values in these files or log them. Preserve all existing cron variables, notification settings and its ten-minute schedule. The live and test web applications do not need a deployment to run this standalone checker.
 
-One-shot verification: `node --import tsx scripts/check-live-numbers.ts <config-file>`. Add `--scheduled` for normal cron execution. For rollback, restore the former cron command (`node --import tsx scripts/check-hosted-health.ts scripts/hosted-live-monitor.json scripts/hosted-test-monitor.json`) and prior monitor revision `f7da117923c2ff192220c36ad83f1d909e7e9951` from `test/hosted-20261105`, after verifying that branch still resolves to that revision. No database rollback is required. An incident rollback was not performed during this activation.
+One-shot verification: `node --import tsx scripts/check-live-number-run.ts <config-file>`. This runs source and output phases sequentially. Add `--scheduled` for normal cron execution. `check-live-numbers.ts` alone runs only the source phase. To roll back this extension, redeploy monitor commit `7b29a8e29cb6db7d242cd2d5e224a4e96ec0d4e9` with the same combined command and existing configuration. That retains the previous source/saved-PDF checks. No database rollback is required. An incident rollback was not performed during this activation.
 
 Do not describe source credentials as valid merely because the app's health check succeeds. Do not automatically delete retired reports, remap legacy sources, renew rotating provider tokens or change formulas to make the monitor pass. Resolve each finding through the existing test → mandatory checks → release workflow.
 

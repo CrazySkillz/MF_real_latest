@@ -80,11 +80,17 @@ export async function runNumberMonitorPhases(configPath: string, scheduledOnly =
       ? await checkApplicationOutputProcess(record.campaignIdHash, config.databaseFingerprint, record.inputFingerprint, config.application, environment)
       : unverified("SOURCE_INPUT_FINGERPRINT_UNVERIFIED");
     const groups = new Map<string, NumberCheck & { count: number }>();
-    for (const check of checks) { const key = JSON.stringify(check); groups.set(key, { ...check, count: (groups.get(key)?.count || 0) + 1 }); }
+    for (const check of checks) {
+      const item = check.status === "passed" ? { section: check.section, code: check.code, status: check.status } : check;
+      const key = JSON.stringify(item); groups.set(key, { ...item, count: (groups.get(key)?.count || 0) + 1 });
+    }
     const status = checks.some(check => check.status === "difference") ? "difference" : checks.some(check => check.status === "unverified") ? "unverified" : "passed";
     if (status !== "passed") code = 1;
-    writeSync(1, JSON.stringify({ campaignIdHash: record.campaignIdHash, checkedAt: new Date().toISOString(), phase: "application_outputs", status,
-      checks: Array.from(groups.values()), scope: "Actual handler and generated PDF comparisons; unverified paths are not passing." }) + "\n");
+    // Render truncates a log line at 64 KiB. Preserve every finding in bounded
+    // chunks, aggregating passing row identities while retaining their count.
+    const grouped = Array.from(groups.values()), parts = Math.ceil(grouped.length / 64);
+    for (let part = 0; part < parts; part++) writeSync(1, JSON.stringify({ campaignIdHash: record.campaignIdHash, checkedAt: new Date().toISOString(), phase: "application_outputs", status,
+      part: part + 1, parts, checks: grouped.slice(part * 64, (part + 1) * 64), scope: "Actual handler and generated PDF comparisons; unverified paths are not passing." }) + "\n");
   }
   return code;
 }

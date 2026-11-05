@@ -237,7 +237,7 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(financials).toContain("const financialCPA = computeCpa(financialSpend, financialConversions);");
     expect(insights).toContain('sourceType === "ad_platforms" && adPlatform === "google_ads"');
     expect(cards).toContain("formatMoney(overviewFinancialRevenue - overviewFinancialSpend)");
-    expect(cards).toContain("`${overviewFinancialROAS.toFixed(2)}x`");
+    expect(cards).toContain('`${overviewFinancialROAS.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x`');
     expect(cards).toContain("formatPercentage(overviewFinancialROI)");
     expect(cards).toContain("overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable");
     expect(ga4Page).toContain("financialCPA: overviewFinancialCPA");

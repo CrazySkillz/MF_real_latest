@@ -112,6 +112,7 @@ describe("read-only hosted operations monitor", () => {
     { baseUrl: "https://example.com/path" }, { campaigns: [] }, { graceMinutes: 0 },
     { campaigns: [{ ...config.campaigns[0], reportingTimeZone: "invalid" }] },
     { campaigns: [config.campaigns[0], config.campaigns[0]] },
+    { maxResponseMilliseconds: 0 }, { maxResponseMilliseconds: 15001 },
   ])("rejects unsafe or incomplete configuration %j", change => expect(() => assess(fixture(), { ...config, ...change })).toThrow());
   it("requests only the two public endpoints with GET and no credentials", async () => {
     const f = fixture(new Date().toISOString());
@@ -128,5 +129,14 @@ describe("read-only hosted operations monitor", () => {
     const result = await checkHostedHealth(config, request as any);
     expect(result.status).toBe("failed");
     expect(JSON.stringify(result)).not.toContain("sensitive");
+  });
+  it("alerts when a health response exceeds the configured latency limit", async () => {
+    const f = fixture(new Date().toISOString());
+    const timer = vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(6000);
+    try {
+      const result = await checkHostedHealth({ ...config, maxResponseMilliseconds: 5000 }, (async (url: URL) =>
+        new Response(JSON.stringify(url.pathname === "/api/health" ? f.health : f.scheduler))) as any);
+      expect(result.failures).toContain("HEALTH_RESPONSE_SLOW");
+    } finally { timer.mockRestore(); }
   });
 });

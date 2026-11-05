@@ -12,6 +12,7 @@ const configSchema = z.object({
   }),
   expectedCommit: z.string().regex(/^[a-f0-9]{40}$/),
   graceMinutes: z.number().int().min(5).max(60),
+  maxResponseMilliseconds: z.number().int().min(100).max(15000).default(5000),
   campaigns: z.array(z.object({
     campaignIdHash: z.string().regex(/^[a-f0-9]{12}$/),
     reportingTimeZone: z.string().min(1).refine(value => normalizeReportingTimeZone(value) === value),
@@ -82,28 +83,31 @@ export function assessHostedHealth(health: unknown, scheduler: unknown, input: u
 export async function checkHostedHealth(input: unknown, request: typeof fetch = fetch) {
   const config = configSchema.parse(input);
   const get = async (path: string) => {
+    const started = performance.now();
     const response = await request(new URL(path, config.baseUrl), {
       method: "GET", redirect: "error", headers: { "Cache-Control": "no-cache" }, signal: AbortSignal.timeout(15_000),
     });
     if (response.status !== 200) throw new Error("HEALTH_HTTP_FAILURE");
-    return response.json();
+    const body = await response.json();
+    if (performance.now() - started > config.maxResponseMilliseconds) throw new Error("HEALTH_RESPONSE_SLOW");
+    return body;
   };
   try {
     const [health, scheduler] = await Promise.all([get("/api/health"), get("/health/scheduler")]);
     return assessHostedHealth(health, scheduler, config);
-  } catch {
+  } catch (error) {
     // Never echo server bodies, redirect locations, credentials, or raw network errors into monitor logs.
     return { checkedAt: new Date().toISOString(), origin: new URL(config.baseUrl).origin,
-      status: "failed", failures: ["HEALTH_REQUEST_FAILED"], pending: [], monitoredCampaigns: config.campaigns.length };
+      status: "failed", failures: [error instanceof Error && error.message === "HEALTH_RESPONSE_SLOW" ? "HEALTH_RESPONSE_SLOW" : "HEALTH_REQUEST_FAILED"], pending: [], monitoredCampaigns: config.campaigns.length };
   }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  try {
-    if (process.argv.length !== 3) throw new Error("CONFIG_REQUIRED");
-    const result = await checkHostedHealth(JSON.parse(readFileSync(process.argv[2], "utf8")));
+  if (process.argv.length < 3) { console.error("MONITOR_CONFIGURATION_INVALID"); process.exitCode = 1; }
+  for (const configPath of process.argv.slice(2)) try {
+    const result = await checkHostedHealth(JSON.parse(readFileSync(configPath, "utf8")));
     console.log(JSON.stringify(result));
-    process.exitCode = result.status === "failed" ? 1 : 0;
+    if (result.status === "failed") process.exitCode = 1;
   } catch {
     console.error("MONITOR_CONFIGURATION_INVALID");
     process.exitCode = 1;

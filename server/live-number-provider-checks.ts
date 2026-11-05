@@ -157,6 +157,11 @@ export async function readFinancialSourceValues(snapshot: LiveNumberSnapshot, so
   if (source.sourceType === "csv") {
     const stored = mapping[kind === "revenue" ? "csvStoredRevenueRows" : "csvStoredSpendRows"];
     if (!Array.isArray(stored) || stored.length !== mapping.csvRowCount || !mapping.storedDateColumn) throw new Error("CSV_ORIGINAL_ROWS_UNVERIFIED");
+    const amountKey = kind === "revenue" ? "storedRevenueColumn" : "storedSpendColumn";
+    const storedAmountColumn = amountKey in mapping ? mapping[amountKey] : mapping[kind + "Column"];
+    const storedCampaignColumn = "storedCampaignColumn" in mapping ? mapping.storedCampaignColumn : mapping.campaignColumn;
+    if (!storedAmountColumn || storedAmountColumn !== mapping[kind + "Column"] || mapping.storedDateColumn !== mapping.dateColumn
+      || (storedCampaignColumn || "") !== (mapping.campaignColumn || "")) throw new Error("CSV_ORIGINAL_MAPPING_UNVERIFIED");
     const table = stored.map(row => ({ [mapping[kind + "Column"]]: row[kind + "Raw"], [mapping.dateColumn]: row.dateRaw,
       ...(mapping.campaignColumn ? { [mapping.campaignColumn]: row.campaignKey } : {}) }));
     return selectedTableRows(table, mapping, kind);

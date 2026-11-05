@@ -145,6 +145,17 @@ describe("source reads", () => {
     s.rows.spendRecords[0].spend = "100.01";
     expect((await checkFinancialProviderNumbers(s, now)).every(check => check.status === "passed")).toBe(true);
   });
+  it.each(["storedSpendColumn", "storedDateColumn", "storedCampaignColumn"])("rejects a CSV whose %s disagrees with the selected mapping", async key => {
+    const s = fixture(), config = JSON.parse(s.rows.spendSources[0].mappingConfig);
+    config[key] = "different original column";
+    s.rows.spendSources[0].mappingConfig = JSON.stringify(config);
+    expect(await checkFinancialProviderNumbers(s, now)).toContainEqual(expect.objectContaining({ code: "CSV_ORIGINAL_MAPPING_UNVERIFIED", status: "unverified" }));
+  });
+  it("does not invent a campaign column when the original CSV explicitly had none", async () => {
+    const s = fixture(), config = JSON.parse(s.rows.spendSources[0].mappingConfig);
+    s.rows.spendSources[0].mappingConfig = JSON.stringify({ ...config, storedCampaignColumn: null, campaignColumn: "New column", campaignValues: ["selected"] });
+    expect(await checkFinancialProviderNumbers(s, now)).toContainEqual(expect.objectContaining({ code: "CSV_ORIGINAL_MAPPING_UNVERIFIED", status: "unverified" }));
+  });
   it("never renews expired credentials or falls back from failed decryption to plaintext", () => {
     expect(() => monitorCredential({ accessToken: "private", expiresAt: "2000-01-01" })).toThrow("PROVIDER_CREDENTIAL_UNAVAILABLE");
     expect(() => monitorCredential({ accessToken: "private", encryptedTokens: { v: 1, accessToken: {} } })).toThrow("PROVIDER_CREDENTIAL_UNAVAILABLE");

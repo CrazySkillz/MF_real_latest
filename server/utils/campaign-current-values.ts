@@ -25,6 +25,7 @@ export type CampaignMetricTotals = {
   spendBySource: Map<string, number>;
   revenueAvailable?: boolean;
   spendAvailable?: boolean;
+  spendRecordsAvailable?: boolean;
   revenueBreakdownAvailable?: boolean;
   spendBreakdownAvailable?: boolean;
   ga4Available?: boolean;
@@ -353,7 +354,8 @@ async function getCampaignMetricTotalsForEndDate(
     revenueBySource: new Map((revenueBreakdown || []).map((row: any) => [String(row?.sourceId || ""), parseNum(row?.revenue)])),
     spendBySource: new Map((spendBreakdown || []).map((row: any) => [String(row?.sourceId || ""), parseNum(row?.spend)])),
     revenueAvailable: revenueTotalsResult.status === "fulfilled" && (!primary?.propertyId || ga4RevenueAvailable),
-    spendAvailable: spendTotalsResult.status === "fulfilled" && Array.isArray(spendTotals?.sourceIds) && spendTotals.sourceIds.length > 0,
+    spendAvailable: spendTotalsResult.status === "fulfilled",
+    spendRecordsAvailable: spendTotalsResult.status === "fulfilled" && Array.isArray(spendTotals?.sourceIds) && spendTotals.sourceIds.length > 0,
     revenueBreakdownAvailable: revenueBreakdownResult.status === "fulfilled",
     spendBreakdownAvailable: spendBreakdownResult.status === "fulfilled",
     ga4Available,

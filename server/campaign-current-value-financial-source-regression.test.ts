@@ -163,7 +163,13 @@ describe("campaign current-value financial source contract", () => {
     storageMock.getGA4Connections.mockResolvedValue([]);
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: amount, sourceIds });
     const totals = await getCampaignMetricTotals("campaign-1");
-    expect(totals).toMatchObject({ spend: amount, spendAvailable: available });
+    expect(totals).toMatchObject({ spend: amount, spendAvailable: true, spendRecordsAvailable: available });
+  });
+
+  it("keeps a failed spend query unavailable to publication readers and PDFs", async () => {
+    storageMock.getGA4Connections.mockResolvedValue([]);
+    storageMock.getSpendTotalForRange.mockRejectedValue(new Error("unavailable"));
+    expect(await getCampaignMetricTotals("campaign-1")).toMatchObject({ spendAvailable: false, spendRecordsAvailable: false });
   });
 
   it("uses saved aggregate revenue rather than a later provider revision, preserving daily cent rounding and external revenue", async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { checkStoredNumbers, compareNumber, resolveMonitorScope, snapshotFingerprint, summarizeNumberChecks, type LiveNumberSnapshot } from "./live-number-checks";
-import { checkFinancialProviderNumbers, compareProviderRows, googleMonitorCredential, monitorCredential, readFinancialSourceValues } from "./live-number-provider-checks";
+import { checkFinancialProviderNumbers, checkPipelineProviderNumbers, compareProviderRows, googleMonitorCredential, monitorCredential, readFinancialSourceValues } from "./live-number-provider-checks";
 import { liveNumberCheckIsDue, liveNumberConfigSchema, readOnlyMonitorDatabaseUrl, readOnlyMonitorFetch } from "../scripts/check-live-numbers";
 import * as insightCalculations from "../shared/ga4-insights";
 import * as kpiCalculations from "../shared/ga4-kpi-live-value";
@@ -9,6 +9,63 @@ import * as alertCalculations from "./utils/alert-decision";
 import * as trendCalculations from "../client/src/lib/trend-analysis-cumulative";
 
 const now = new Date("2026-11-05T13:30:00Z");
+
+describe("read-only Pipeline Proxy source reconciliation", () => {
+  const setup = (provider = "hubspot") => {
+    const snapshot = fixture();
+    snapshot.rows[provider === "hubspot" ? "hubspotConnections" : "salesforceConnections"] = [{ campaignId: "campaign-a", isActive: true, accessToken: "private", instanceUrl: "https://tenant.my.salesforce.com" }];
+    const cfg = { pipelineEnabled: true, pipelineProxyMode: "current_stage", pipelineStageId: "open", pipelineStageName: "Open", pipelineLastUpdatedAt: "2026-11-05T13:00:00Z",
+      pipelineTotalToDate: 12.5, pipelineCurrency: "EUR", pipelineValueRevenueTotals: [{ campaignValue: "selected", revenue: 12.5 }], selectedValues: ["selected"],
+      campaignProperty: "campaign", revenueProperty: "amount", campaignField: "Campaign__c", revenueField: "Amount" };
+    snapshot.rows.revenueSources = [{ id: "pipeline-source", campaignId: "campaign-a", sourceType: provider, isActive: true, platformContext: "ga4", currency: "EUR", mappingConfig: cfg }];
+    return { snapshot, cfg };
+  };
+  it("checks the selected current stage separately from confirmed revenue", async () => {
+    const { snapshot, cfg } = setup();
+    const request = vi.fn(async () => new Response(JSON.stringify({ total: 1, results: [{ id: "deal", properties: { campaign: "selected", dealstage: "open", amount: "12.50", deal_currency_code: "EUR" } }] })));
+    expect((await checkPipelineProviderNumbers(snapshot, request)).every(check => check.status === "passed")).toBe(true);
+    const body = JSON.parse((request.mock.calls[0] as any)[1].body);
+    expect(body.filterGroups[0].filters).toEqual([{ propertyName: "campaign", operator: "IN", values: ["selected"] }, { propertyName: "dealstage", operator: "IN", values: ["open"] }]);
+    cfg.pipelineTotalToDate = 20;
+    expect(await checkPipelineProviderNumbers(snapshot, request)).toContainEqual(expect.objectContaining({ code: "CURRENT_STAGE_TOTAL", status: "difference" }));
+    expect(request.mock.calls.every(call => (call as any)[0] === "https://api.hubapi.com/crm/v3/objects/deals/search")).toBe(true);
+  });
+  it.each(["stage", "currency", "campaign", "duplicate", "incomplete"])("rejects %s provider evidence", async problem => {
+    const { snapshot } = setup();
+    const deal = { id: "deal", properties: { campaign: problem === "campaign" ? "other" : "selected", dealstage: problem === "stage" ? "won" : "open", amount: "12.50", deal_currency_code: problem === "currency" ? "USD" : "EUR" } };
+    const request = vi.fn(async () => new Response(JSON.stringify({ total: problem === "incomplete" || problem === "duplicate" ? 2 : 1, results: problem === "duplicate" ? [deal, deal] : [deal] })));
+    expect((await checkPipelineProviderNumbers(snapshot, request)).some(check => check.status === "unverified")).toBe(true);
+  });
+  it("scopes Salesforce reads and rejects invalid fields before sending", async () => {
+    const { snapshot, cfg } = setup("salesforce");
+    const request = vi.fn(async () => new Response(JSON.stringify({ totalSize: 1, done: true, records: [{ Id: "opp", Campaign__c: "selected", StageName: "Open", Amount: 12.5, CurrencyIsoCode: "EUR" }] })));
+    expect((await checkPipelineProviderNumbers(snapshot, request)).every(check => check.status === "passed")).toBe(true);
+    expect(new URL((request.mock.calls[0] as any)[0]).searchParams.get("q")).toContain("StageName = 'Open' AND Campaign__c IN ('selected')");
+    cfg.campaignField = "Id FROM User";
+    expect(await checkPipelineProviderNumbers(snapshot, request)).toContainEqual(expect.objectContaining({ code: "PIPELINE_MAPPING_UNVERIFIED", status: "unverified" }));
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+  it.each([false, true])("requires proven single currency for a Salesforce pipeline fallback (multi=%s)", async multi => {
+    const { snapshot } = setup("salesforce");
+    const raw = vi.fn(async (url: any) => {
+      if (String(url).includes("/Soap/")) return new Response(`<getUserInfoResponse><result><organizationMultiCurrency>${multi}</organizationMultiCurrency><orgDefaultCurrencyIsoCode>EUR</orgDefaultCurrencyIsoCode></result></getUserInfoResponse>`);
+      if (new URL(url).searchParams.get("q")?.includes("CurrencyIsoCode")) return new Response(JSON.stringify([{ errorCode: "INVALID_FIELD", message: "No such column 'CurrencyIsoCode' on entity Opportunity" }]), { status: 400 });
+      return new Response(JSON.stringify({ records: [{ Id: "opp", Campaign__c: "selected", StageName: "Open", Amount: 12.5 }], totalSize: 1, done: true }));
+    });
+    const checks = await checkPipelineProviderNumbers(snapshot, readOnlyMonitorFetch(raw));
+    expect(checks.every(check => check.status === "passed")).toBe(!multi);
+    expect(raw).toHaveBeenCalledTimes(multi ? 2 : 3);
+  });
+  it("never treats a Salesforce permissions error as missing currency metadata", async () => {
+    const { snapshot } = setup("salesforce");
+    const request = vi.fn(async () => new Response(JSON.stringify([{ errorCode: "INSUFFICIENT_ACCESS", message: "private provider detail" }]), { status: 403 }));
+    const checks = await checkPipelineProviderNumbers(snapshot, request);
+    expect(checks.every(check => check.status === "unverified")).toBe(true);
+    expect(JSON.stringify(checks)).not.toContain("private provider detail");
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+});
+
 const fixture = (): LiveNumberSnapshot => {
   const snapshot: LiveNumberSnapshot = {
   campaign: { id: "campaign-a", ownerId: "owner-a", clientId: "client-a", status: "active", currency: "EUR",

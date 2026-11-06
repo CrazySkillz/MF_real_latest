@@ -1,8 +1,32 @@
-import { compareNumber, dateIsValid, monitorHash, numberOrNull, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
+import { compareNumber, dateIsValid, monitorHash, numberOrNull, parseMonitorMapping, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+import { buildExecutiveSummaryFinancialSourceIdentity } from "./utils/executive-summary-daily-snapshot";
 
 export type MonitorOutputs = Record<string, any>;
 const numericMetrics = ["users", "sessions", "conversions", "revenue", "pageviews", "engagedSessions"];
+
+// Independent target bands for the currently supported GA4 metric definitions.
+// Unsupported/custom definitions remain explicit gaps, never guessed targets.
+export function expectedTargetNumbers(snapshot: LiveNumberSnapshot, now = new Date()) {
+  const e = expectedOutputNumbers(snapshot, now);
+  const numbers: Record<string, number | null> = { ...e.totals, revenue: e.revenue, roas: e.roas, roi: e.roi, cpa: e.cpa,
+    conversion_rate: e.cvr, engagement_rate: e.engagementRate === null ? null : e.engagementRate * 100 };
+  return ["kpis", "benchmarks"].flatMap(kind => (snapshot.rows[kind] || []).filter(row => row.platformType === "google_analytics" && row.status !== "inactive").map(row => {
+    const identity = resolveGA4KpiMetricIdentity(row.metric, row.name), current = identity ? numbers[identity] : null;
+    const target = numberOrNull(kind === "kpis" ? row.targetValue : row.benchmarkValue);
+    if (!identity || row.applyTo !== "all" || row.calculationConfig || current == null || target === null || target <= 0) return { kind, row, verified: false as const };
+    const lower = identity === "cpa", delta = (current - target) / target * 100 * (lower ? -1 : 1);
+    const rate = ["conversion_rate", "engagement_rate"].includes(identity);
+    const count = ["users", "sessions", "conversions", "pageviews"].includes(identity);
+    const absolute = rate && target >= 2 ? 0.25 : count && target >= 5 ? target < 20 ? 1 : Math.max(1, target * 0.05) : 0;
+    const tolerance = Math.max(target * 0.05, absolute);
+    const band = Math.abs(current - target) <= tolerance + 1e-9 ? "near" : delta > 0 ? "above" : "below";
+    const ratio = lower ? current > 0 ? target / current : 0 : current / target;
+    const benchmarkStatus = ratio <= 1e-9 ? "behind" : delta >= -5 - 1e-9 || Math.abs(current - target) <= absolute + 1e-9
+      ? "on_track" : ratio + 1e-9 < 0.7 ? "behind" : "needs_attention";
+    return { kind, row, verified: true as const, identity, current, target, delta, band, benchmarkStatus, attainment: Math.min(ratio * 100, 100) };
+  }));
+}
 
 // Independent expected values. This module never calls a production calculation,
 // writes a value, or equates whole-window unique users with summed daily users.
@@ -30,7 +54,25 @@ export function expectedOutputNumbers(snapshot: LiveNumberSnapshot, now = new Da
   const native = numberOrNull(scope.publication.campaignBreakdown?.totals?.revenue);
   const revenue = native !== null && imported !== null ? native + imported : null;
   const conversions = numberOrNull(scope.publication.campaignBreakdown?.totals?.conversions);
+  const start = campaign.pacingStartDate, end = campaign.pacingEndDate;
+  const periodValid = dateIsValid(start) && dateIsValid(end) && start <= end;
+  const through = periodValid && end < scope.endDate ? end : scope.endDate;
+  const periodSpend = !periodValid || spend === null ? null : spendSources.reduce((sum, source) => {
+    const eligible = (rows.spendRecords || []).filter(row => row.spendSourceId === source.id && row.date >= start && row.date <= through);
+    const aggregate = eligible.filter(row => !row.subCampaignUrn);
+    return sum + (aggregate.length ? aggregate : eligible).reduce((total, row) => total + Number(row.spend), 0);
+  }, 0);
+  const budgetValue = numberOrNull(typeof campaign.budget === "string" ? campaign.budget.replaceAll(",", "") : campaign.budget);
+  const budget = budgetValue !== null && budgetValue > 0 ? budgetValue : null;
+  const days = periodValid ? (Date.parse(end) - Date.parse(start)) / 86400000 + 1 : 0;
+  const elapsed = dateIsValid(start) ? Math.max(0, (Date.parse(through) - Date.parse(start)) / 86400000 + 1) : 0;
+  const burn = periodSpend !== null && elapsed > 0 ? periodSpend / elapsed : null;
+  const target = budget !== null && days > 0 ? budget / days : null;
+  const pacing = { budget, periodSpend, remaining: budget !== null && periodSpend !== null ? budget - periodSpend : null,
+    utilization: budget !== null && periodSpend !== null ? periodSpend / budget * 100 : null, burn, target,
+    percentage: burn !== null && target !== null && target > 0 ? burn / target * 100 : null };
   return { scope, daily, totals, revenueSources, spendSources, imported, native, revenue, spend, conversions,
+    pacing,
     profit: revenue !== null && spend !== null ? revenue - spend : null,
     roas: revenue !== null && spend !== null && spend > 0 ? revenue / spend : null,
     roi: revenue !== null && spend !== null && spend > 0 ? (revenue - spend) / spend * 100 : null,
@@ -61,7 +103,7 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
       for (const metric of metrics) if (row[metric] !== undefined) value(section, metric, row[metric], actual?.[metric], ["revenue", "spend"].includes(metric) ? 2 : undefined, subject);
     }
   };
-  for (const key of ["daily", "native", "breakdown", "landing", "events", "revenue", "revenueBreakdown", "spend", "spendBreakdown", "kpis", "benchmarks", "outcome", "executive", "trend", "financial", "reports", "notifications"]) {
+  for (const key of ["daily", "native", "breakdown", "landing", "events", "revenue", "revenueBreakdown", "spend", "spendBreakdown", "kpis", "benchmarks", "outcome", "executive", "trend", "financial", "trajectory", "reports", "notifications"]) {
     if (outputs[key] === undefined) checks.push({ section: "Application outputs", code: `RESPONSE_${key}_UNVERIFIED`, status: "unverified" });
   }
   if (outputs.daily) {
@@ -133,9 +175,12 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
     }
   }
   for (const [section, summary] of [["Performance Summary response", outputs.outcome?.performanceSummary], ["Executive Summary response", outputs.executive?.performanceSummary]] as const) if (summary) {
-    const window = summary.currentValueWindow;
+    // The Executive page renders the outcome endpoint's aggregate/window; the
+    // legacy executive response retains totals but has no window field.
+    const screenSummary = section === "Executive Summary response" ? outputs.outcome?.performanceSummary : summary;
+    const window = screenSummary?.currentValueWindow;
     if (!window) checks.push({ section, code: "SOURCE_WINDOW_UNVERIFIED", status: "unverified" });
-    else flag(section, "SOURCE_WINDOW", summary.campaignId === campaign.id && window.startDate === scope.startDate && window.endDate === scope.endDate && window.reportingTimeZone === scope.reportingTimeZone);
+    else flag(section, "SOURCE_WINDOW", summary.campaignId === campaign.id && screenSummary.campaignId === campaign.id && window.startDate === scope.startDate && window.endDate === scope.endDate && window.reportingTimeZone === scope.reportingTimeZone);
     const unsupportedSources = summary.sources?.some((source: any) => source.connected && source.id !== "ga4" && source.category !== "financial");
     if (unsupportedSources) { checks.push({ section, code: "ADDITIONAL_PLATFORM_OUTPUT_UNVERIFIED", status: "unverified" }); continue; }
     for (const [metric, wanted] of Object.entries({ users: totals.users, sessions: totals.sessions, conversions: totals.conversions,
@@ -155,11 +200,99 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
       else value("Published financial response", metric, wanted, input?.available ? input.value : undefined, 2);
     }
   }
+  if (outputs.trajectory) {
+    const section = "Executive trajectory response", actual = outputs.trajectory;
+    const previousDate = new Date(Date.parse(scope.endDate) - 7 * 86400000).toISOString().slice(0, 10);
+    flag(section, "COMPARISON_DATES", actual.reportingDate === scope.endDate && actual.comparisonDate === previousDate);
+    const currentRows = (rows.metricSnapshots || []).filter(row => row.snapshotType === "executive_summary_daily" && row.reportingDate === scope.endDate);
+    const previousRows = (rows.metricSnapshots || []).filter(row => row.snapshotType === "executive_summary_daily" && row.reportingDate === previousDate);
+    const current = currentRows.length === 1 ? currentRows[0].metrics?.executiveSummaryDaily : null;
+    const previous = previousRows.length === 1 ? previousRows[0].metrics?.executiveSummaryDaily : null;
+    if (!current || !previous) {
+      if (actual.available === false) flag(section, "MISSING_HISTORY_UNAVAILABLE", actual.trajectory === null && actual.trendPercentage === null && actual.reason === "not_enough_history");
+      else checks.push({ section, code: "FALLBACK_HISTORY_UNVERIFIED", status: "unverified" });
+    } else {
+      flag(section, "HISTORY_CAMPAIGN_SCOPE", [currentRows[0], previousRows[0]].every(row => row.campaignId === campaign.id)
+        && current.currency === scope.currency && current.ga4PropertyId === scope.connection.propertyId
+        && current.ga4CampaignFilter === String(campaign.ga4CampaignFilter).trim()
+        && current.currentValueWindow?.startDate === scope.startDate
+        && current.currentValueWindow?.endDate === scope.endDate && previous.currentValueWindow?.endDate === previousDate);
+      const compatible = ["version", "currency", "ga4PropertyId", "ga4CampaignFilter", "performanceSummaryVersion"].every(key => current[key] === previous[key])
+        && ["mode", "startDate", "reportingTimeZone"].every(key => current.currentValueWindow?.[key] === previous.currentValueWindow?.[key]);
+      const sameSources = JSON.stringify(current.sourceSignature) === JSON.stringify(previous.sourceSignature);
+      let oldValue = numberOrNull(previous.totals?.revenue?.value), previousAvailable = previous.totals?.revenue?.available === true, reconstructed = false;
+      const newValue = numberOrNull(current.totals?.revenue?.value);
+      if (compatible && !sameSources) {
+        const nonFinancial = (item: any) => item.sourceSignature.filter((id: string) => !/^(revenue|spend)_source:/.test(id));
+        const sources = (rows.revenueSources || []).filter(source => source.isActive && (!source.platformContext || source.platformContext === "ga4"));
+        // Reuse only the canonical identity serializer. Both dated amounts are
+        // independently summed here, never read from a production calculator.
+        const identities = sources.map(source => {
+          const identity = buildExecutiveSummaryFinancialSourceIdentity(source);
+          return `revenue_source:${identity.id}:configuration_sha256:${identity.configurationFingerprint}`;
+        }).sort();
+        const historyValid = expected.revenueSources.every(source => source.value !== null)
+          && nonFinancial(current).length === 1 && nonFinancial(current)[0].startsWith("ga4:web_analytics:")
+          && JSON.stringify(nonFinancial(current)) === JSON.stringify(nonFinancial(previous))
+          && JSON.stringify(identities) === JSON.stringify(current.sourceSignature.filter((id: string) => id.startsWith("revenue_source:")).sort())
+          && expected.daily.length === (Date.parse(scope.endDate) - Date.parse(scope.startDate)) / 86400000 + 1
+          && new Set(expected.daily.map(day => day.date)).size === expected.daily.length
+          && expected.daily.every(day => day.campaignId === campaign.id && !day.isSimulated && dateIsValid(day.date) && numberOrNull(day.revenue) !== null);
+        const revenueAt = (date: string) => expected.daily.filter(day => day.date <= date).reduce((sum, day) => sum + Number(day.revenue), 0)
+          + sources.reduce((sum, source) => {
+            const eligible = (rows.revenueRecords || []).filter(record => record.revenueSourceId === source.id && record.date <= date);
+            const aggregate = eligible.filter(record => !record.subCampaignUrn);
+            return sum + (aggregate.length ? aggregate : eligible).reduce((total, record) => total + Number(record.revenue), 0);
+          }, 0);
+        if (historyValid && newValue !== null && Math.abs(revenueAt(scope.endDate) - newValue) < 0.005) {
+          oldValue = Number(revenueAt(previousDate).toFixed(2)); previousAvailable = true; reconstructed = true;
+          flag(section, "DATED_HISTORY_SOURCE", actual.source === "dated_revenue_history");
+        }
+      }
+      if (!compatible) flag(section, "INCOMPATIBLE_HISTORY_UNAVAILABLE", actual.available === false && actual.trajectory === null && actual.trendPercentage === null && actual.reason === "incompatible_history");
+      else if (!sameSources && !reconstructed) checks.push({ section, code: "CHANGED_SOURCE_HISTORY_UNVERIFIED", status: "unverified" });
+      else if (!previousAvailable || current.totals?.revenue?.available !== true || oldValue === null || oldValue <= 0 || newValue === null) {
+        flag(section, "REVENUE_HISTORY_UNAVAILABLE", actual.available === false && actual.trajectory === null && actual.trendPercentage === null && actual.reason === "revenue_history_unavailable");
+      } else {
+        const percentage = (newValue - oldValue) / oldValue * 100;
+        value(section, "REVENUE_CHANGE_PERCENT", percentage, actual.trendPercentage, 8);
+        flag(section, "TRAJECTORY_BAND", actual.available === true && actual.reason === null && actual.trajectory === (percentage > 10 ? "accelerating" : percentage < -10 ? "declining" : "stable"));
+      }
+    }
+  }
   if (outputs.executive?.metrics && !outputs.executive.performanceSummary?.sources?.some((source: any) => source.connected && source.id !== "ga4" && source.category !== "financial")) {
     for (const [metric, wanted] of Object.entries({ totalRevenue: expected.revenue, totalSpend: expected.spend, totalConversions: totals.conversions,
       roas: expected.roas, roi: expected.roi, cpa: expected.cpa, cvr: expected.cvr, websitePageviews: totals.pageviews })) {
-      if (wanted === null) checks.push({ section: "Executive metric response", code: `${metric}_UNAVAILABLE_BASIS_UNVERIFIED`, status: "unverified" });
+      if (wanted === null) {
+        const displayMetric = metric === "totalSpend" ? "spend" : metric;
+        // This legacy transport uses zero for missing metrics. The current page
+        // reads availability from outcome totals, never from that sentinel.
+        flag("Executive metric response", `${metric}_UNAVAILABLE_DISPLAY_GUARD`, outputs.executive.metrics[metric] === 0
+          && outputs.executive.performanceSummary?.totals?.[displayMetric]?.available === false
+          && outputs.outcome?.performanceSummary?.totals?.[displayMetric]?.available === false);
+      }
       else value("Executive metric response", metric, wanted, outputs.executive.metrics[metric], 2);
+    }
+  }
+  if (outputs.executive) {
+    const targets = expectedTargetNumbers(snapshot, now);
+    for (const kind of ["kpis", "benchmarks"]) {
+      const section = "Executive " + kind + " response", wanted = targets.filter(item => item.kind === kind);
+      const returned = kind === "kpis" ? outputs.executive.kpiProgress : outputs.executive.benchmarkComparison;
+      if (!Array.isArray(returned)) { checks.push({ section, code: "TARGET_LIST_UNVERIFIED", status: "unverified" }); continue; }
+      if (wanted.every(item => item.verified)) value(section, "TARGET_COUNT", wanted.length, returned.length);
+      for (const item of wanted) {
+        const subject = monitorHash(String(item.row.id));
+        if (!item.verified) { checks.push({ section, code: "TARGET_DEFINITION_UNVERIFIED", subject, status: "unverified" }); continue; }
+        const matches = returned.filter((row: any) => kind === "kpis" ? row.kpiId === item.row.id : row.metric === item.row.name);
+        if (matches.length !== 1) { checks.push({ section, code: "TARGET_IDENTITY_UNVERIFIED", subject, status: "unverified" }); continue; }
+        const row = matches[0];
+        value(section, "CURRENT_VALUE", item.current, kind === "kpis" ? row.current : row.yours, 2, subject);
+        value(section, "TARGET_VALUE", item.target, kind === "kpis" ? row.target : row.benchmark, 2, subject);
+        flag(section, "TARGET_STATUS", row.status === (kind === "kpis" ? item.band : item.benchmarkStatus), subject);
+        if (kind === "kpis") value(section, "ATTAINMENT_FILL", item.attainment, row.pctComplete, 6, subject);
+        else value(section, "TARGET_DELTA", item.delta, typeof row.delta === "string" && /^[+-]?\d+(\.\d+)?%$/.test(row.delta) ? Number(row.delta.slice(0, -1)) : null, 1, subject);
+      }
     }
   }
   if (outputs.trend?.trendAnalysis) {
@@ -178,6 +311,21 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
     const saved = (rows.linkedinReports || []).filter(row => row.platformType === "google_analytics");
     table("Report library response", saved, outputs.reports, "id", []);
     flag("Report library response", "CAMPAIGN_BOUNDARY", Array.isArray(outputs.reports) && outputs.reports.every((row: any) => row.campaignId === campaign.id));
+  }
+  for (const provider of ["hubspot", "salesforce"]) {
+    const section = `Pipeline Proxy / ${provider} response`;
+    const configured = (rows.revenueSources || []).filter(source => source.isActive && source.platformContext === "ga4" && source.sourceType === provider)
+      .map(source => { try { return { source, cfg: parseMonitorMapping(source.mappingConfig) }; } catch { return { source, cfg: {} as Record<string, any> }; } })
+      .filter(item => item.cfg.pipelineEnabled === true);
+    if (!configured.length) continue;
+    const actual = outputs[provider + "Pipeline"], chosen = configured.filter(item => item.source.id === actual?.sourceId);
+    if (!actual || chosen.length !== 1) { checks.push({ section, code: "PIPELINE_SOURCE_UNVERIFIED", status: "unverified" }); continue; }
+    const { source, cfg } = chosen[0];
+    flag(section, "PIPELINE_DEFINITION", actual.success === true && actual.pipelineEnabled === true && actual.mode === "current_stage" && cfg.pipelineProxyMode === "current_stage"
+      && actual.lastUpdatedAt === cfg.pipelineLastUpdatedAt && !actual.warning && (actual.currency === scope.currency || cfg.pipelineTotalToDate === 0 && !actual.currency));
+    flag(section, "CAMPAIGN_CURRENCY_BOUNDARY", source.campaignId === campaign.id && source.currency === scope.currency);
+    value(section, "EXPECTED_REVENUE", cfg.pipelineTotalToDate, actual.totalToDate, 2);
+    table(section, cfg.pipelineValueRevenueTotals || [], actual.pipelineValueRevenueTotals, "campaignValue", ["revenue"]);
   }
   if (outputs.notifications) {
     const items = Array.isArray(outputs.notifications) ? outputs.notifications : outputs.notifications.notifications;

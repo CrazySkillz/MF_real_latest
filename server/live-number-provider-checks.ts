@@ -100,7 +100,8 @@ export async function checkGA4ProviderNumbers(snapshot: LiveNumberSnapshot, now 
         : await service.getConversionEventsReport(campaignId, facade, scope.startDate, connection.propertyId, 50, scope.filter, scope.endDate, true,
           Object.fromEntries(expectedDaily.map(row => [row.date, row.conversions])));
       const stored = scope.publication[part];
-      // These APIs use the property's currency, not the campaign's requested currency. Compare their own like-for-like outputs.
+      // The current UI and Overview PDFs display counts/rates from these tables,
+      // not their internal revenue field (which has no saved currency metadata).
       if (!stored || stored.propertyId !== result.propertyId || stored.revenueMetric !== result.revenueMetric) throw new Error("SOURCE_DETAIL_SCOPE_UNVERIFIED");
       checks.push(...compareProviderRows(`Overview / ${part}`, result.rows, stored.rows,
         part === "landingPages" ? ["landingPage", "source", "medium"] : ["eventName"],
@@ -112,7 +113,6 @@ export async function checkGA4ProviderNumbers(snapshot: LiveNumberSnapshot, now 
           } else checks.push(...compareProviderRows("Overview / conversionEvents", result.rows, stored.rows, ["eventName"], [metric]));
         }
       }
-      if (result.rows.length || stored.rows.length) checks.push({ section: `Overview / ${part}`, code: "DETAIL_REVENUE_CURRENCY_NOT_RECORDED", status: "unverified" });
     } catch { checks.push({ section: `Overview / ${part}`, code: "SOURCE_DETAIL_UNVERIFIED", status: "unverified" }); }
   }
   return checks;
@@ -345,6 +345,93 @@ export async function checkFinancialProviderNumbers(snapshot: LiveNumberSnapshot
     } catch (error) {
       const code = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : "PROVIDER_CHECK_UNVERIFIED";
       checks.push({ section, code, subject, status: "unverified" });
+    }
+  }
+  return checks;
+}
+
+export async function checkPipelineProviderNumbers(snapshot: LiveNumberSnapshot, request: typeof fetch = fetch): Promise<NumberCheck[]> {
+  const checks: NumberCheck[] = [];
+  for (const source of snapshot.rows.revenueSources || []) {
+    if (!source.isActive || source.platformContext !== "ga4" || !["hubspot", "salesforce"].includes(source.sourceType)) continue;
+    const section = `Pipeline Proxy / ${source.sourceType}`, subject = monitorHash(source.id);
+    try {
+      const cfg = parseMonitorMapping(source.mappingConfig);
+      if (cfg.pipelineEnabled !== true) continue;
+      if (source.campaignId !== snapshot.campaign.id || source.currency !== snapshot.campaign.currency || cfg.pipelineProxyMode !== "current_stage" || !Array.isArray(cfg.selectedValues)
+        || !cfg.selectedValues.length || !cfg.selectedValues.every((v: unknown) => typeof v === "string" && v.trim())
+        || new Set(cfg.selectedValues).size !== cfg.selectedValues.length || !Array.isArray(cfg.pipelineValueRevenueTotals)
+        || !Number.isFinite(Date.parse(cfg.pipelineLastUpdatedAt))) throw new Error("PIPELINE_SCOPE_UNVERIFIED");
+      const connection = uniqueConnection(snapshot, source.sourceType === "hubspot" ? "hubspotConnections" : "salesforceConnections", source, cfg);
+      const token = monitorCredential(connection), totals = new Map<string, number>();
+      let accountCurrency: string | undefined;
+      const add = (campaignValue: unknown, amount: unknown, currency: unknown) => {
+        const key = String(campaignValue || "").trim(), value = numberOrNull(amount);
+        if (!cfg.selectedValues.includes(key) || value === null || currency !== source.currency) throw new Error("PIPELINE_PROVIDER_SCOPE_UNVERIFIED");
+        totals.set(key, (totals.get(key) || 0) + value);
+      };
+      if (source.sourceType === "hubspot") {
+        if (!cfg.campaignProperty || !cfg.revenueProperty || !cfg.pipelineStageId) throw new Error("PIPELINE_MAPPING_UNVERIFIED");
+        let after: string | undefined;
+        const state = { ids: new Set<string>() }, cursors = new Set<string>();
+        for (let page = 0; page < MAX_HUBSPOT_PAGES; page++) {
+          const json = await readJson("https://api.hubapi.com/crm/v3/objects/deals/search", token, {
+            filterGroups: [{ filters: [{ propertyName: cfg.campaignProperty, operator: "IN", values: cfg.selectedValues },
+              { propertyName: "dealstage", operator: "IN", values: [cfg.pipelineStageId] }] }],
+            properties: [cfg.campaignProperty, cfg.revenueProperty, "dealstage", "deal_currency_code", "hs_currency"], limit: 100, ...(after ? { after } : {}),
+          }, request);
+          validateHubspotSearchPage(json, state);
+          for (const deal of json.results) {
+            const p = deal.properties;
+            if (String(p.dealstage) !== String(cfg.pipelineStageId)) throw new Error("PIPELINE_STAGE_UNVERIFIED");
+            let currency = String(p.deal_currency_code || p.hs_currency || "").trim().toUpperCase();
+            if (!currency) {
+              accountCurrency ??= String((await readJson("https://api.hubapi.com/account-info/v3/details", token, undefined, request)).companyCurrency || "").trim().toUpperCase();
+              currency = accountCurrency;
+            }
+            add(p[cfg.campaignProperty], p[cfg.revenueProperty], currency);
+          }
+          after = nextHubspotPageCursor(json.paging?.next?.after, page + 1, cursors);
+          if (!after) break;
+        }
+      } else {
+        const instance = new URL(connection.instanceUrl), version = process.env.SALESFORCE_API_VERSION || "v59.0";
+        if (instance.protocol !== "https:" || instance.username || instance.password || instance.port || !/\.(salesforce\.com|force\.com)$/.test(instance.hostname)
+          || !/^v\d+\.\d+$/.test(version) || ![cfg.campaignField, cfg.revenueField].every(v => typeof v === "string" && isSafeSalesforceFieldPath(v))
+          || !cfg.pipelineStageName) throw new Error("PIPELINE_MAPPING_UNVERIFIED");
+        const query = `SELECT Id, ${cfg.campaignField}, ${cfg.revenueField}, StageName, CurrencyIsoCode FROM Opportunity WHERE StageName = '${escapeSalesforceSoqlStringLiteral(cfg.pipelineStageName)}' AND ${cfg.campaignField} IN (${cfg.selectedValues.map((v: string) => `'${escapeSalesforceSoqlStringLiteral(v)}'`).join(",")})`;
+        const initialUrl = `${instance.origin}/services/data/${version}/query?q=${encodeURIComponent(query)}`;
+        let records: any[], missingCurrencyColumn = false;
+        const checkedRequest: typeof fetch = async (url, options) => {
+          const response = await request(url, options);
+          if (String(url) === initialUrl && response.status === 400) {
+            const errors = await response.clone().json().catch(() => null);
+            missingCurrencyColumn = Array.isArray(errors) && errors.some(error => error?.errorCode === "INVALID_FIELD" && /no such column.*currencyisocode/i.test(String(error.message)));
+          }
+          return response;
+        };
+        try { records = await fetchCompleteSalesforceQuery({ initialUrl, instanceUrl: instance.origin, accessToken: token, fetchImpl: checkedRequest }); }
+        catch (error) {
+          if (!missingCurrencyColumn) throw error;
+          accountCurrency = (await detectSalesforceCurrency({ accessToken: token, instanceUrl: instance.origin, apiVersion: version, fetchImpl: request, requireSingleCurrency: true })).detectedCurrency || undefined;
+          if (accountCurrency !== source.currency) throw new Error("PIPELINE_CURRENCY_UNVERIFIED");
+          records = await fetchCompleteSalesforceQuery({ initialUrl: `${instance.origin}/services/data/${version}/query?q=${encodeURIComponent(query.replace(", CurrencyIsoCode", ""))}`, instanceUrl: instance.origin, accessToken: token, fetchImpl: request });
+        }
+        const field = (row: any, path: string) => Object.prototype.hasOwnProperty.call(row, path) ? row[path] : path.split(".").reduce((value, part) => value?.[part], row);
+        for (const row of records) {
+          if (row.StageName !== cfg.pipelineStageName) throw new Error("PIPELINE_STAGE_UNVERIFIED");
+          add(field(row, cfg.campaignField), field(row, cfg.revenueField), row.CurrencyIsoCode || accountCurrency);
+        }
+      }
+      const expected = Array.from(totals).map(([campaignValue, revenue]) => ({ campaignValue, revenue }));
+      const actual = cfg.pipelineValueRevenueTotals;
+      if (new Set(actual.map((row: any) => row.campaignValue)).size !== actual.length
+        || actual.some((row: any) => !cfg.selectedValues.includes(row.campaignValue) || numberOrNull(row.revenue) === null)) throw new Error("PIPELINE_SAVED_ROWS_UNVERIFIED");
+      checks.push(...compareProviderRows(section, expected.filter(row => row.revenue !== 0), actual.filter((row: any) => row.revenue !== 0), ["campaignValue"], ["revenue"], subject));
+      checks.push(compareNumber(section, "CURRENT_STAGE_TOTAL", Array.from(totals.values()).reduce((sum, value) => sum + value, 0), cfg.pipelineTotalToDate, { decimals: 2, subject }));
+      checks.push({ section, code: "PIPELINE_CURRENCY", subject, status: cfg.pipelineCurrency === source.currency || totals.size === 0 && !cfg.pipelineCurrency ? "passed" : "difference" });
+    } catch (error) {
+      checks.push({ section, subject, code: error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : "PIPELINE_PROVIDER_UNVERIFIED", status: "unverified" });
     }
   }
   return checks;

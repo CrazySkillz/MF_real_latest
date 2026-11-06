@@ -91,7 +91,7 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
     const guard = await pool.query("SELECT current_setting('default_transaction_read_only') AS read_only");
     if (guard.rows[0]?.read_only !== "on") throw new Error("MONITOR_READ_ONLY_GUARD_FAILED");
     const { storage } = await import("../server/storage");
-    const { checkGA4ProviderNumbers, checkFinancialProviderNumbers } = await import("../server/live-number-provider-checks");
+    const { checkGA4ProviderNumbers, checkFinancialProviderNumbers, checkPipelineProviderNumbers } = await import("../server/live-number-provider-checks");
     const { checkSavedReportNumbers } = await import("../server/live-number-report-checks");
     for (const { campaignIdHash, reportingTimeZone } of dueCampaigns) {
       const now = new Date();
@@ -104,6 +104,7 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
           try { checks.push(...await checkGA4ProviderNumbers(before, now)); }
           catch { checks.push({ section: "GA4 provider", code: "GA4_SOURCE_COMPARISON_UNVERIFIED", status: "unverified" }); }
           checks.push(...await checkFinancialProviderNumbers(before, now));
+          checks.push(...await checkPipelineProviderNumbers(before));
         }
         const after = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         // Re-reading is essential: add/edit/delete/refresh during the provider query invalidates the comparison.

@@ -9,7 +9,7 @@ import https from "node:https";
 import { syncBuiltinESMExports } from "node:module";
 import express from "express";
 import { readOnlyMonitorDatabaseUrl, readOnlyMonitorFetch } from "./check-live-numbers";
-import { snapshotFingerprint, resolveMonitorScope, type NumberCheck } from "../server/live-number-checks";
+import { snapshotFingerprint, resolveMonitorScope, parseMonitorMapping, type NumberCheck } from "../server/live-number-checks";
 import { checkApplicationOutputs } from "../server/live-number-output-checks";
 
 export function monitorReadQueryAllowed(sql: string): boolean {
@@ -32,12 +32,19 @@ export function outputReportReadAllowed(url: URL, options: RequestInit | undefin
   } catch { return false; }
 }
 
+export function outputReportAuthorization(options: RequestInit | undefined, token: string): RequestInit {
+  if (!token || !options?.body) throw new Error("OUTPUT_REPORT_CREDENTIAL_UNAVAILABLE");
+  const headers = new Headers(options.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  return { ...options, headers };
+}
+
 export async function runApplicationOutputMonitor(campaignHash: string, databaseFingerprint: string, expectedFingerprint: string) {
   if (!/^[a-f0-9]{12}$/.test(campaignHash) || !/^[a-f0-9]{64}$/.test(expectedFingerprint)) throw new Error("OUTPUT_CONFIGURATION_INVALID");
   process.env.DATABASE_URL = readOnlyMonitorDatabaseUrl(process.env.DATABASE_URL || "", databaseFingerprint);
   const originalFetch = globalThis.fetch, originalHttp = http.request, originalHttps = https.request;
   const originalHttpGet = http.get, originalHttpsGet = https.get;
-  let origin = "", propertyScope = "", currencyScope = "", writes = 0, external = 0, reportReads = 0;
+  let origin = "", propertyScope = "", currencyScope = "", reportToken = "", writes = 0, external = 0, reportReads = 0;
   const providerRead = readOnlyMonitorFetch(originalFetch);
   const blocked = () => { external++; throw new Error("OUTPUT_EXTERNAL_REQUEST_BLOCKED"); };
   // Provider SDKs may use node:http instead of fetch. Both are blocked.
@@ -47,7 +54,9 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
     if (input instanceof Request) return blocked();
     const url = new URL(String(input));
     if (origin && url.origin === origin && (options?.method || "GET") === "GET") return originalFetch(input, { ...options, redirect: "error", signal: AbortSignal.timeout(45_000) });
-    if (propertyScope && outputReportReadAllowed(url, options, propertyScope, currencyScope) && ++reportReads <= 10) return providerRead(input, options);
+    // Ten report variants plus exact-date fallbacks require up to thirteen reads
+    // in the enrolled campaigns. Retain a bounded allowance for those reads.
+    if (propertyScope && outputReportReadAllowed(url, options, propertyScope, currencyScope) && ++reportReads <= 20) return providerRead(input, outputReportAuthorization(options, reportToken));
     return blocked();
   };
   globalThis.fetch = replayFetch;
@@ -81,11 +90,17 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
       const { hydrateGA4ServiceAccountConnection } = await import("../server/utils/ga4-service-account");
       globalThis.fetch = originalFetch; http.request = originalHttp; https.request = originalHttps;
       http.get = originalHttpGet; https.get = originalHttpsGet; syncBuiltinESMExports();
-      try { await hydrateGA4ServiceAccountConnection(scope.connection); }
+      try { reportToken = (await hydrateGA4ServiceAccountConnection(scope.connection)).accessToken || ""; }
       finally {
         http.request = https.request = http.get = https.get = blocked as any; syncBuiltinESMExports();
         globalThis.fetch = replayFetch;
       }
+    } else {
+      // Use the same reusable Google token exchange as the source comparison.
+      // Only the exact permitted GA4 read's Authorization header changes; query
+      // bodies and app calculations stay intact. Never persist the new token.
+      const { googleMonitorCredential } = await import("../server/live-number-provider-checks");
+      reportToken = await googleMonitorCredential({ ...scope.connection, expiresAt: "1970-01-01T00:00:00Z" }, providerRead);
     }
     const prefix = `/api/campaigns/${id}`;
     const paths: Record<string, string> = {
@@ -102,8 +117,13 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
       outcome: `${prefix}/outcome-totals?dateRange=90days&persistedOnly=1`,
       executive: `${prefix}/executive-summary`, trend: `${prefix}/trend-analysis?dateRange=30days&days=60`,
       financial: `${prefix}/financial-daily-snapshot?throughDate=${scope.endDate}`,
+      trajectory: `${prefix}/executive-summary/trajectory?reportingDate=${scope.endDate}`,
       notifications: "/api/notifications?readOnly=1",
     };
+    for (const provider of ["hubspot", "salesforce"]) if ((before.rows.revenueSources || []).some(source => {
+      if (!source.isActive || source.platformContext !== "ga4" || source.sourceType !== provider) return false;
+      try { return parseMonitorMapping(source.mappingConfig).pipelineEnabled === true; } catch { return false; }
+    })) paths[provider + "Pipeline"] = `/api/${provider}/${id}/pipeline-proxy?platformContext=ga4`;
     const capability = randomBytes(32).toString("hex"), allowed = new Set(Object.values(paths));
     const app = express();
     app.use((req, res, next) => {

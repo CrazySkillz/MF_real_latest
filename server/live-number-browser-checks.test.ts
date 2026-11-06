@@ -55,6 +55,8 @@ describe("isolated browser monitoring boundaries", () => {
     const text='Current 3-day window 2026-11-02 to 2026-11-04: 1/3 completed days';
     expect(checkNarrativeWindows(fixture(),text,now).every(c=>c.status==='passed')).toBe(true);
     expect(checkNarrativeWindows(fixture(),text.replace('1/3','3/3'),now)[0].status).toBe('difference');
+    const later = fixture(); later.campaign.createdAt = '2026-11-04T23:44:00Z';
+    expect(checkNarrativeWindows(later,text.replace('1/3','0/3'),now).every(c=>c.status==='passed')).toBe(true);
   });
 });
 

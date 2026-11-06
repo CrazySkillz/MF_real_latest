@@ -164,7 +164,12 @@ export function expectedBrowserCampaignRows(snapshot: LiveNumberSnapshot, now = 
 
 export function checkNarrativeWindows(snapshot: LiveNumberSnapshot, text: string, now = new Date()): NumberCheck[] {
   const e = expectedOutputNumbers(snapshot, now), checks: NumberCheck[] = [];
-  const dates = new Set(e.daily.map(row => row.date));
+  // Insights Trends intentionally excludes dates before campaign creation,
+  // unlike Overview's historical-import window (GA4/INSIGHTS.md).
+  const created = new Date(snapshot.campaign.createdAt), start = Number.isFinite(created.getTime())
+    ? new Intl.DateTimeFormat("en-CA", { timeZone: snapshot.campaign.reportingTimeZone || "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" }).format(created) : "";
+  const dates = new Set(e.daily.filter(row => start && row.date >= start).map(row => row.date));
+  if (!start) return [{ section: "Insights narrative", code: "CAMPAIGN_START_UNVERIFIED", status: "unverified" }];
   const pattern = /(?:Current|Prior|prior) (?:\d+-day )?window (\d{4}-\d{2}-\d{2}) to\s*(\d{4}-\d{2}-\d{2}): (\d+)\/(\d+) (?:completed|recorded|imported) days/g;
   for (const match of text.matchAll(pattern)) {
     const duration = (Date.parse(match[2]) - Date.parse(match[1])) / 86400000 + 1;

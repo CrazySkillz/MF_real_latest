@@ -299,7 +299,7 @@ describe("scheduled Performance Summary PDF", () => {
     const totals = await getCampaignMetricTotalsMock();
     for (const available of [false, true]) {
       pdfTextCalls.length = 0;
-      getCampaignMetricTotalsMock.mockResolvedValue({ ...totals, spend: 0, spendAvailable: available });
+      getCampaignMetricTotalsMock.mockResolvedValue({ ...totals, spend: 0, spendAvailable: true, spendRecordsAvailable: available });
       await buildPdfAttachmentForReport({ report: { id: "report-1", name: "Availability report", platformType: "campaign_deepdive", campaignId: "campaign-1", reportType: "custom",
         configuration: { reportType, selectedSections: [`${reportType}:overview`] } }, windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "Campaign", isTest: true });
       expect(pdfTextCalls.some(text => text.includes(available ? "$0.00" : "Unavailable"))).toBe(true);

@@ -1431,7 +1431,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       ? performancePageTrafficTotals !== null
       : key === "revenue"
         ? performancePageTotals.revenueAvailable === true
-        : key === "spend" && performancePageTotals.spendAvailable === true;
+        : key === "spend" && performancePageTotals.spendAvailable === true && performancePageTotals.spendRecordsAvailable !== false;
     const resolvedAvailable = available && Number.isFinite(value);
     return ["users", "sessions", "conversions", "pageviews", "revenue", "spend"].includes(key)
       ? { ...aggregateMetric, available: resolvedAvailable, value: resolvedAvailable ? value : null, unavailableReasons: resolvedAvailable ? [] : ["Performance Summary UI value unavailable"] }
@@ -1446,17 +1446,17 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     let value: number | null = null;
     if (["users", "sessions", "conversions", "pageviews"].includes(key)) value = trafficValue(key);
     else if (key === "revenue" && performancePageTotals.revenueAvailable === true) value = financialValue("revenue");
-    else if (key === "spend") value = performancePageTotals.spendAvailable === true ? financialValue("spend") : null;
+    else if (key === "spend") value = performancePageTotals.spendAvailable === true && performancePageTotals.spendRecordsAvailable !== false ? financialValue("spend") : null;
     else if (key === "cvr" && available(trafficValue("sessions")) && available(trafficValue("conversions"))) {
       value = trafficValue("sessions") > 0 ? (trafficValue("conversions") / trafficValue("sessions")) * 100 : 0;
     } else if (key === "engagementRate" && available(trafficValue("sessions"))) {
       value = trafficValue("sessions") > 0 ? (Number(performancePageTrafficTotals.engagedSessions) / trafficValue("sessions")) * 100 : 0;
     } else if (["roas", "roi"].includes(key)) {
-      value = performancePageTotals.revenueAvailable !== true || performancePageTotals.spendAvailable !== true || financialValue("spend") <= 0 ? null : key === "roas"
+      value = performancePageTotals.revenueAvailable !== true || performancePageTotals.spendAvailable !== true || performancePageTotals.spendRecordsAvailable === false || financialValue("spend") <= 0 ? null : key === "roas"
         ? financialValue("revenue") / financialValue("spend")
         : ((financialValue("revenue") - financialValue("spend")) / financialValue("spend")) * 100;
     } else if (key === "cpa") {
-      value = performancePageTotals.spendAvailable === true && performanceFinancialConversionsAvailable && performanceFinancialConversions > 0
+      value = performancePageTotals.spendAvailable === true && performancePageTotals.spendRecordsAvailable !== false && performanceFinancialConversionsAvailable && performanceFinancialConversions > 0
         ? financialValue("spend") / performanceFinancialConversions : null;
     } else return aggregateMetric;
     const resolvedAvailable = value !== null && Number.isFinite(value) && (["revenue", "roas", "roi"].includes(key) || available(value));

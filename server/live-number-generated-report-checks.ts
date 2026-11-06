@@ -223,8 +223,21 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
       for (const item of [...rows].sort((a, b) => metricValue(b) - metricValue(a) || a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.name.localeCompare(b.name, "en", { sensitivity: "variant" })).slice(0, 10)) {
         checks.push({ section, code: "CAMPAIGN_CHART_VALUE", subject: monitorHash(item.name), status: start < 0 || end <= start ? "unverified" : new RegExp(`(?:^| )${escape(formatValue(metricValue(item)) + " " + item.name)}(?: |$)`).test(chart) ? "passed" : "difference" });
       }
-      if (lines.includes("All Campaigns")) for (const [index, item] of Array.from(nativeCampaigns.entries())) row("ALL_CAMPAIGNS", `${index + 1} ${item.name.slice(0, 28)}`,
-        [[item.sessions, 0], [item.users, 0], [item.conversions, 8], [item.revenue, 2, "money"], [item.sessions > 0 ? item.conversions / item.sessions * 100 : 0, 2, "%"]]);
+      if (lines.includes("All Campaigns")) {
+        const nativeAmounts = nativeCampaigns.map(item => ({ ...item, exact: item.revenue * 100, cents: Math.floor(item.revenue * 100) }));
+        const total = Math.round(Number(nativeCampaigns.reduce((sum, item) => sum + item.revenue, 0).toFixed(2)) * 100);
+        const remainder = total - nativeAmounts.reduce((sum, item) => sum + item.cents, 0);
+        const removes = total < nativeCampaigns.reduce((sum, item) => sum + Math.round(Number(item.revenue.toFixed(2)) * 100), 0);
+        const priority = [...nativeAmounts].sort((a, b) => (b.exact - b.cents) - (a.exact - a.cents)
+          || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) * (removes ? -1 : 1));
+        if (!Number.isSafeInteger(remainder) || remainder < 0 || remainder > priority.length)
+          checks.push({ section, code: "ALL_CAMPAIGNS_ALLOCATION_UNVERIFIED", status: "unverified" });
+        else {
+          for (let i = 0; i < remainder; i++) priority[i].cents++;
+          for (const [index, item] of Array.from(nativeAmounts.sort((a, b) => b.sessions - a.sessions).entries())) row("ALL_CAMPAIGNS", `${index + 1} ${item.name.slice(0, 28)}`,
+            [[item.sessions, 0], [item.users, 0], [item.conversions, 8], [item.cents / 100, 2, "money"], [item.sessions > 0 ? item.conversions / item.sessions * 100 : 0, 2, "%"]]);
+        }
+      }
     }
   }
   if (["overview", "ads", "financial-analysis"].includes(type)) {

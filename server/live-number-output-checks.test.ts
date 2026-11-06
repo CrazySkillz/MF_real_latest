@@ -118,6 +118,16 @@ describe("remaining live monitor selections", () => {
     expect(checkConfiguredReportText(snapshot, text, report, now).every(check => check.status === "passed")).toBe(true);
     expect(checkConfiguredReportText(snapshot, text.replace(value + "\nsearch", "999\nsearch"), report, now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_CHART_VALUE", status: "difference" }));
   });
+  it("checks native All Campaigns ordering and cent allocation independently of imported revenue", () => {
+    const snapshot = fixture(); snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [
+      { campaign: "a", sessions: 20, users: 8, conversions: 0.1, revenue: 1.0049, sessionKeyEventRate: 0.05 },
+      { campaign: "b", sessions: 30, users: 9, conversions: 1.5, revenue: 1.0051, sessionKeyEventRate: 0.05 },
+    ];
+    const report = custom({ sections: { ads: true }, subsections: { ads: { allCampaigns: true } } });
+    const text = "All Campaigns\n1 b 30 9 1.5 EUR 1.01 5%\n2 a 20 8 0.1 EUR 1.00 0.50%";
+    expect(checkConfiguredReportText(snapshot, text, report, now).every(check => check.status === "passed")).toBe(true);
+    expect(checkConfiguredReportText(snapshot, text.replace("EUR 1.01", "EUR 1.00"), report, now)).toContainEqual(expect.objectContaining({ code: "ALL_CAMPAIGNS_3", status: "difference" }));
+  });
 });
 
 describe("actual application output comparisons", () => {

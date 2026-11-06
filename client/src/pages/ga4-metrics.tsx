@@ -1,4 +1,4 @@
-import { conversionCreditsMatch } from "@shared/metric-math";
+import { conversionCreditsMatch, formatRoasRatio } from "@shared/metric-math";
 import { requestReportSaveFile, writeReportSaveFile } from "@/lib/pdfExport";
 import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching, isCancelledError } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -4395,7 +4395,7 @@ export default function GA4Metrics() {
         ["Spend", overviewFinancialSpendAvailable ? fC(Number(financialSpend || 0)) : "Unavailable"],
         ["Revenue", fC(Number(financialRevenue || 0))],
         ["Profit", overviewFinancialSpendAvailable ? fC(Number(financialRevenue || 0) - Number(financialSpend || 0)) : "Unavailable"],
-        ["ROAS", financialSpend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROAS", financialSpend > 0 ? `${formatRoasRatio(Number(financialROAS || 0))}x` : "—"],
         ["ROI", financialSpend > 0 ? fP(Number(financialROI || 0)) : "—"],
       ];
       renderInsightsFreshness();
@@ -4608,7 +4608,7 @@ export default function GA4Metrics() {
         const secondaryDataCards: string[][] = [
           ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""] as [string, string, string]] : []),
           ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""] as [string, string, string]] : []),
-          ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""] as [string, string, string]] : []),
+          ...(financialROAS > 0 ? [["ROAS", `${formatRoasRatio(financialROAS)}x`, ""] as [string, string, string]] : []),
           ...(financialConversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialCPA), ""] as [string, string, string]] : []),
         ];
         if (primaryDataCards.length > 0) renderInsightDataCards(primaryDataCards, 4);
@@ -5746,7 +5746,7 @@ export default function GA4Metrics() {
           id: "financial:roas_below_1",
           severity: "medium",
           title: "ROAS is below 1.0x to date",
-          description: `ROAS is ${roas.toFixed(2)}x (${toDateRangeLabel}).`,
+          description: `ROAS is ${formatRoasRatio(roas)}x (${toDateRangeLabel}).`,
           recommendation: "Check the conversion funnel, traffic mix, revenue source, and campaign filter before treating ROAS as a performance diagnosis.",
         });
       }
@@ -9638,7 +9638,7 @@ export default function GA4Metrics() {
                                 {renderFinancialValue(
                                   snapshotRevenueKpiInputState === "loading" || snapshotSpendKpiInputState === "loading",
                                   executiveRevenueAvailable && executiveSpendAvailable && overviewFinancialSpend > 0,
-                                  `${overviewFinancialROAS.toFixed(2)}x`,
+                                  `${formatRoasRatio(overviewFinancialROAS)}x`,
                                   executiveRevenueAvailable && executiveSpendAvailable && overviewFinancialSpend <= 0 ? "—" : "Unavailable",
                                 )}
                               </div>

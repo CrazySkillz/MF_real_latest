@@ -15,7 +15,7 @@ describe("GA4 Insights Executive Financials Overview inputs", () => {
     expect(section).toContain("formatMoney(overviewFinancialSpend)");
     expect(section).toContain("formatMoney(overviewFinancialRevenue)");
     expect(section).toContain("formatMoney(overviewFinancialRevenue - overviewFinancialSpend)");
-    expect(section).toContain("overviewFinancialROAS.toFixed(2)");
+    expect(section).toContain("formatRoasRatio(overviewFinancialROAS)");
     expect(section).toContain("formatPercentage(overviewFinancialROI)");
     expect(section).not.toMatch(/const financial(?:Spend|Revenue|ROAS|ROI)\s*=/);
   });

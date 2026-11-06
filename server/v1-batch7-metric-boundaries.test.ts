@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { deriveExactCumulativeGA4Traffic } from "../client/src/lib/trend-analysis-cumulative";
-import { formatPct, normalizeRateToPercent } from "../shared/metric-math";
+import { formatPct, normalizeRateToPercent, formatRoasRatio } from "../shared/metric-math";
 import { formatConversionCredit } from "../shared/metric-math";
 import { buildGA4InsightsRollups, addGA4InsightsDateDays } from "../shared/ga4-insights";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
@@ -45,13 +45,13 @@ describe("Batch 7 metric display and data-state boundaries", () => {
     const source = ast("client/src/pages/financial-analysis.tsx");
     const node = find(source, n => ts.isIfStatement(n) && n.expression.getText(source) === "financialRoasMetric.available && financialRoiMetric.available")[0];
     const actions: any[] = [];
-    evaluate(node.getText(source), { executiveFinancialActions: actions, financialRoasMetric: { available: true, value: 1 + roi / 100 }, financialRoiMetric: { available: true, value: roi }, formatPercentage: (v: number) => `${v.toFixed(2)}%` });
+    evaluate(node.getText(source), { formatRoasRatio, executiveFinancialActions: actions, financialRoasMetric: { available: true, value: 1 + roi / 100 }, financialRoiMetric: { available: true, value: roi }, formatPercentage: (v: number) => `${v.toFixed(2)}%` });
     const title = roi < 0 ? "Return below break-even" : roi === 0 ? "Financial return at break-even" : "Positive financial return";
     expect(actions[0].title).toBe(title);
     const pdf = ast(report);
     const branches = find(pdf, n => ts.isVariableDeclaration(n) && n.name.getText(pdf) === "returnAction");
     expect(branches).toHaveLength(2);
-    for (const branch of branches) expect(evaluate(`return (${(branch as ts.VariableDeclaration).initializer!.getText(pdf)});`, { metricAvailable: () => true, metricNumber: (key: string) => key === "roi" ? roi : 1 + roi / 100 }).title).toBe(title);
+    for (const branch of branches) expect(evaluate(`return (${(branch as ts.VariableDeclaration).initializer!.getText(pdf)});`, { formatRoasRatio, metricAvailable: () => true, metricNumber: (key: string) => key === "roi" ? roi : 1 + roi / 100 }).title).toBe(title);
   });
   it.each([-1, 0, 1])("V1-094 projection equality %s preserves date direction", offset => {
     const source = ast("client/src/pages/financial-analysis.tsx");

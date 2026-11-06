@@ -1,4 +1,4 @@
-import { formatConversionCredit } from "../shared/metric-math";
+import { formatConversionCredit, formatRoasRatio } from "../shared/metric-math";
 import { buildGoogleSheetsMetricSummary } from "./utils/google-sheets-aggregate-source";
 import { filterGoogleSheetsRows } from "./utils/googleSheetsSelection";
 import { hasCompleteGoogleSheetsCache } from "./utils/google-sheets-revenue-ranges";
@@ -1431,7 +1431,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       ? performancePageTrafficTotals !== null
       : key === "revenue"
         ? performancePageTotals.revenueAvailable === true
-        : key === "spend" && performancePageTotals.spendAvailable === true;
+        : key === "spend" && performancePageTotals.spendAvailable === true && performancePageTotals.spendRecordsAvailable !== false;
     const resolvedAvailable = available && Number.isFinite(value);
     return ["users", "sessions", "conversions", "pageviews", "revenue", "spend"].includes(key)
       ? { ...aggregateMetric, available: resolvedAvailable, value: resolvedAvailable ? value : null, unavailableReasons: resolvedAvailable ? [] : ["Performance Summary UI value unavailable"] }
@@ -1446,17 +1446,18 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     let value: number | null = null;
     if (["users", "sessions", "conversions", "pageviews"].includes(key)) value = trafficValue(key);
     else if (key === "revenue" && performancePageTotals.revenueAvailable === true) value = financialValue("revenue");
-    else if (key === "spend" && performancePageTotals.spendAvailable === true) value = financialValue("spend");
+    else if (key === "spend") value = performancePageTotals.spendAvailable === true && performancePageTotals.spendRecordsAvailable !== false ? financialValue("spend") : null;
     else if (key === "cvr" && available(trafficValue("sessions")) && available(trafficValue("conversions"))) {
       value = trafficValue("sessions") > 0 ? (trafficValue("conversions") / trafficValue("sessions")) * 100 : 0;
     } else if (key === "engagementRate" && available(trafficValue("sessions"))) {
       value = trafficValue("sessions") > 0 ? (Number(performancePageTrafficTotals.engagedSessions) / trafficValue("sessions")) * 100 : 0;
-    } else if (["roas", "roi"].includes(key) && performancePageTotals.revenueAvailable === true && performancePageTotals.spendAvailable === true && financialValue("spend") > 0) {
-      value = key === "roas"
+    } else if (["roas", "roi"].includes(key)) {
+      value = performancePageTotals.revenueAvailable !== true || performancePageTotals.spendAvailable !== true || performancePageTotals.spendRecordsAvailable === false || financialValue("spend") <= 0 ? null : key === "roas"
         ? financialValue("revenue") / financialValue("spend")
         : ((financialValue("revenue") - financialValue("spend")) / financialValue("spend")) * 100;
-    } else if (key === "cpa" && performancePageTotals.spendAvailable === true && performanceFinancialConversionsAvailable && performanceFinancialConversions > 0) {
-      value = financialValue("spend") / performanceFinancialConversions;
+    } else if (key === "cpa") {
+      value = performancePageTotals.spendAvailable === true && performancePageTotals.spendRecordsAvailable !== false && performanceFinancialConversionsAvailable && performanceFinancialConversions > 0
+        ? financialValue("spend") / performanceFinancialConversions : null;
     } else return aggregateMetric;
     const resolvedAvailable = value !== null && Number.isFinite(value) && (["revenue", "roas", "roi"].includes(key) || available(value));
     return { ...aggregateMetric, available: resolvedAvailable, value: resolvedAvailable ? value : null, unavailableReasons: resolvedAvailable ? [] : ["Executive Summary UI value unavailable"] };
@@ -2106,7 +2107,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText("Financial Position", { bold: true, indent: 4 });
       addMetricRows(["spend", "revenue"], 8, campaignCurrency);
       addText(`- Profit: ${revenue !== null && spend !== null ? money(revenue - spend) : "Unavailable"}`, { indent: 8 });
-      addText(`- ROAS: ${metricAvailable("roas") ? `${metricNumber("roas").toFixed(2)}x` : metricValue("roas", campaignCurrency)}`, { indent: 8 });
+      addText(`- ROAS: ${metricAvailable("roas") ? `${formatRoasRatio(metricNumber("roas"))}x` : metricValue("roas", campaignCurrency)}`, { indent: 8 });
       addMetricRows(["roi", "cpa", "cvr"], 8, campaignCurrency);
       addText("Budget & Pacing", { bold: true, indent: 4 });
       addText("Budget Position", { bold: true, indent: 8 });
@@ -2138,10 +2139,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       if (financialSpendInputRows.length === 0) addText("- No detailed spend inputs are available.", { indent: 12 });
       const returnAction = metricAvailable("roas") && metricAvailable("roi")
         ? metricNumber("roas") < 1 || metricNumber("roi") < 0
-          ? { title: "Return below break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Review revenue attribution, conversion efficiency, and spend before adding budget.` }
+          ? { title: "Return below break-even", body: `ROAS is ${formatRoasRatio(metricNumber("roas"))}x and ROI is ${metricNumber("roi").toFixed(2)}%. Review revenue attribution, conversion efficiency, and spend before adding budget.` }
           : metricNumber("roi") === 0
-            ? { title: "Financial return at break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is 0.00%. Revenue equals spend. Monitor efficiency before increasing budget.` }
-            : { title: "Positive financial return", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
+            ? { title: "Financial return at break-even", body: `ROAS is ${formatRoasRatio(metricNumber("roas"))}x and ROI is 0.00%. Revenue equals spend. Monitor efficiency before increasing budget.` }
+            : { title: "Positive financial return", body: `ROAS is ${formatRoasRatio(metricNumber("roas"))}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
         : { title: "Return cannot be assessed", body: "Compatible revenue and spend are required to assess return." };
       const budgetAction = buildFinancialBudgetAction({
         hasCampaignBudget: campaignBudget !== null,
@@ -2439,12 +2440,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       if (trendROASDecisionReady) {
         trendRecommendations.push({
           title: "Connected-Source ROAS — Reconciled Sources",
-          message: `Cumulative ROAS is ${currentRoas.toFixed(2)}x using financial records dated no later than ${trendFinancialWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${trendCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
+          message: `Cumulative ROAS is ${formatRoasRatio(currentRoas)}x using financial records dated no later than ${trendFinancialWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${trendCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
         });
       } else if (currentRoas !== null) {
         trendRecommendations.push({
           title: "ROAS Decision Context Not Verified",
-          message: `A descriptive cumulative ROAS of ${currentRoas.toFixed(2)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
+          message: `A descriptive cumulative ROAS of ${formatRoasRatio(currentRoas)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
         });
       }
       if (performancePageTrafficTotals && Number(performancePageTrafficTotals.sessions) > 0) {
@@ -2737,7 +2738,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         ["Total Spend", money(spend)],
         ["Total Revenue", money(revenue)],
         ["Profit", revenue !== null && spend !== null ? money(revenue - spend) : "Unavailable"],
-        ["ROAS", metricAvailable("roas") ? `${metricNumber("roas").toFixed(2)}x` : metricValue("roas", campaignCurrency)],
+        ["ROAS", metricAvailable("roas") ? `${formatRoasRatio(metricNumber("roas"))}x` : metricValue("roas", campaignCurrency)],
         ["ROI", metricValue("roi", campaignCurrency)],
         ["Cost per Acquisition", metricValue("cpa", campaignCurrency)],
         ["Conversion Rate", metricValue("cvr", campaignCurrency)],
@@ -2800,10 +2801,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
 
       const returnAction = metricAvailable("roas") && metricAvailable("roi")
         ? metricNumber("roas") < 1 || metricNumber("roi") < 0
-          ? { title: "Return below break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Review revenue attribution, conversion efficiency, and spend before adding budget.` }
+          ? { title: "Return below break-even", body: `ROAS is ${formatRoasRatio(metricNumber("roas"))}x and ROI is ${metricNumber("roi").toFixed(2)}%. Review revenue attribution, conversion efficiency, and spend before adding budget.` }
           : metricNumber("roi") === 0
-            ? { title: "Financial return at break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is 0.00%. Revenue equals spend. Monitor efficiency before increasing budget.` }
-            : { title: "Positive financial return", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
+            ? { title: "Financial return at break-even", body: `ROAS is ${formatRoasRatio(metricNumber("roas"))}x and ROI is 0.00%. Revenue equals spend. Monitor efficiency before increasing budget.` }
+            : { title: "Positive financial return", body: `ROAS is ${formatRoasRatio(metricNumber("roas"))}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
         : { title: "Return cannot be assessed", body: "Compatible revenue and spend are required to assess return." };
       const budgetAction = buildFinancialBudgetAction({
         hasCampaignBudget: campaignBudget !== null,
@@ -3143,7 +3144,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         sectionHeading("Source Contribution", 30);
         const contributionValue = (key: string, value: number | null) => value === null
           ? "Unavailable"
-          : key === "roas" ? `${value.toFixed(2)}x` : formatCampaignDeepDiveMetricValue(key, value, trendCurrency);
+          : key === "roas" ? `${formatRoasRatio(value)}x` : formatCampaignDeepDiveMetricValue(key, value, trendCurrency);
         contributionSources.forEach((source: any) => {
           const traffic = source.sessions !== null
             ? `${formatCampaignDeepDiveMetricValue("sessions", source.sessions)} sessions`
@@ -3242,12 +3243,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       if (trendROASDecisionReady) {
         trendRecommendations.push({
           title: "Connected-Source ROAS - Reconciled Sources",
-          message: `Cumulative ROAS is ${currentRoas.toFixed(2)}x using financial records dated no later than ${trendFinancialWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${trendCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
+          message: `Cumulative ROAS is ${formatRoasRatio(currentRoas)}x using financial records dated no later than ${trendFinancialWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${trendCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
         });
       } else if (currentRoas !== null) {
         trendRecommendations.push({
           title: "ROAS Decision Context Not Verified",
-          message: `A descriptive cumulative ROAS of ${currentRoas.toFixed(2)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
+          message: `A descriptive cumulative ROAS of ${formatRoasRatio(currentRoas)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
         });
       }
       if (performancePageTrafficTotals && Number(performancePageTrafficTotals.sessions) > 0) {

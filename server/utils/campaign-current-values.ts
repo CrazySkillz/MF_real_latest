@@ -1,4 +1,4 @@
-import { conversionCreditsMatch } from "../../shared/metric-math";
+import { conversionCreditsMatch, formatRoasRatio } from "../../shared/metric-math";
 import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { storage, type GA4RefreshWriteInput } from "../storage";
 import { ga4Service } from "../analytics";
@@ -25,6 +25,7 @@ export type CampaignMetricTotals = {
   spendBySource: Map<string, number>;
   revenueAvailable?: boolean;
   spendAvailable?: boolean;
+  spendRecordsAvailable?: boolean;
   revenueBreakdownAvailable?: boolean;
   spendBreakdownAvailable?: boolean;
   ga4Available?: boolean;
@@ -354,6 +355,7 @@ async function getCampaignMetricTotalsForEndDate(
     spendBySource: new Map((spendBreakdown || []).map((row: any) => [String(row?.sourceId || ""), parseNum(row?.spend)])),
     revenueAvailable: revenueTotalsResult.status === "fulfilled" && (!primary?.propertyId || ga4RevenueAvailable),
     spendAvailable: spendTotalsResult.status === "fulfilled",
+    spendRecordsAvailable: spendTotalsResult.status === "fulfilled" && Array.isArray(spendTotals?.sourceIds) && spendTotals.sourceIds.length > 0,
     revenueBreakdownAvailable: revenueBreakdownResult.status === "fulfilled",
     spendBreakdownAvailable: spendBreakdownResult.status === "fulfilled",
     ga4Available,
@@ -439,7 +441,7 @@ export function computeCampaignCurrentValueFromConfig(rawConfig: unknown, totals
     const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);
     const spend = sumSelected("spend", cfg?.inputs?.spend, totals);
     if (revenue === null || spend === null) return null;
-    return spend > 0 ? round2(revenue / spend) : 0;
+    return spend > 0 ? Number(formatRoasRatio(revenue / spend)) : 0;
   }
   if (metric === "roi") {
     const revenue = sumSelected("revenue", cfg?.inputs?.revenue, totals);

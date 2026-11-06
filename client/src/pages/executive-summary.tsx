@@ -1,4 +1,4 @@
-import { formatConversionCredit } from "@shared/metric-math";
+import { formatConversionCredit, formatRoasRatio } from "@shared/metric-math";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, ChevronDown, Percent } from "lucide-react";
@@ -506,7 +506,7 @@ export default function ExecutiveSummary() {
     if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, true);
     if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return `${value.toFixed(2)}%`;
     if (metricName === "conversions") return formatConversionCredit(value);
-    if (metricName === "roas") return `${value.toFixed(2)}x`;
+    if (metricName === "roas") return `${formatRoasRatio(value)}x`;
     if (metricName && ["users", "sessions", "conversions", "clicks", "impressions"].includes(metricName)) return Math.trunc(value).toLocaleString();
     if (unit === "$" || /^[A-Z]{3}$/.test(unit)) return formatCurrency(value, true);
     if (unit === "%") return `${value.toFixed(2)}%`;

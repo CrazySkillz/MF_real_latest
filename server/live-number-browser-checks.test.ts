@@ -23,6 +23,10 @@ describe("isolated browser monitoring boundaries", () => {
   it("allows only scoped GET replay and adds read-only/persisted-only flags", () => {
     expect(browserReadPath('/api/campaigns/a/ga4-daily?propertyId=123&days=60','a','123',[])).toBe('/api/campaigns/a/ga4-daily?days=60&propertyId=123&readOnly=1');
     expect(browserReadPath('/api/campaigns/a/outcome-totals?dateRange=90days','a','123',[])).toContain('persistedOnly=1');
+    expect(browserReadPath('/api/campaigns/a/outcome-totals?dateRange=90days&persistedOnly=1','a','123',[])).toBe('/api/campaigns/a/outcome-totals?dateRange=90days&persistedOnly=1');
+    expect(browserReadPath('/api/campaigns/a/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date','a','123',[])).toBe('/api/campaigns/a/outcome-totals?captureExecutiveSnapshot=1&dateRange=90days&executiveFinancialScope=campaign_to_date&persistedOnly=1');
+    expect(browserReadPath('/api/campaigns/a/ga4-daily?captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date','a','123',[])).toBeNull();
+    expect(browserReadPath('/api/campaigns/a/outcome-totals?captureExecutiveSnapshot=1&executiveFinancialScope=foreign','a','123',[])).toBeNull();
     expect(browserReadPath('/api/kpis/target/analytics?ga4Scope=1','a','123',['target'])).toContain('/target/analytics');
     for(const path of ['https://external.invalid/api/campaigns/a','/api/campaigns/b/ga4-daily','/api/campaigns/a/ga4-daily?propertyId=456','/api/campaigns/a/ga4-daily?mock=1','/api/campaigns/a/ga4-daily?days=10000','/api/campaigns/a/ga4-refresh','/api/kpis/foreign/analytics','/api/campaigns/a/ga4-metrics']) expect(browserReadPath(path,'a','123',[])).toBeNull();
   });

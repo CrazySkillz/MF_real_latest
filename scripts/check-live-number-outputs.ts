@@ -27,8 +27,10 @@ export function browserReadPath(path: string, campaignId: string, propertyId: st
   if (!(url.pathname === prefix || url.pathname.startsWith(prefix + "/") && endpoints.includes(name) || global.includes(url.pathname) || target || provider
     || url.pathname === `/api/ga4/check-connection/${encodeURIComponent(campaignId)}` || platforms.includes(url.pathname) && url.searchParams.get("campaignId") === campaignId)) return null;
   if (url.searchParams.has("campaignId") && url.searchParams.get("campaignId") !== campaignId || url.searchParams.has("propertyId") && url.searchParams.get("propertyId") !== propertyId) return null;
-  const keys = ["campaignId", "propertyId", "days", "readOnly", "includeMonthly", "statusOnly", "insightsScope", "window", "overviewCampaignBreakdown", "adComparisonCampaignBreakdown", "insightsChannelAttribution", "snapshotEndDate", "limit", "dateRange", "platformContext", "startDate", "endDate", "throughDate", "reportingDate", "type", "snapshotType", "comparisonDate", "period", "timeframe", "ga4Scope", "start", "end"];
+  const keys = ["campaignId", "propertyId", "days", "readOnly", "persistedOnly", "captureExecutiveSnapshot", "executiveFinancialScope", "includeMonthly", "statusOnly", "insightsScope", "window", "overviewCampaignBreakdown", "adComparisonCampaignBreakdown", "insightsChannelAttribution", "snapshotEndDate", "limit", "dateRange", "platformContext", "startDate", "endDate", "throughDate", "reportingDate", "type", "snapshotType", "comparisonDate", "period", "timeframe", "ga4Scope", "start", "end"];
   if ([...url.searchParams.keys()].some(key => !keys.includes(key))) return null;
+  if ((url.searchParams.has("captureExecutiveSnapshot") || url.searchParams.has("executiveFinancialScope"))
+    && (name !== "outcome-totals" || url.searchParams.get("captureExecutiveSnapshot") !== "1" || url.searchParams.get("executiveFinancialScope") !== "campaign_to_date")) return null;
   if (url.searchParams.has("days") && !/^(?:[1-9]|[1-9]\d|[12]\d\d|3[0-6]\d)$/.test(url.searchParams.get("days")!)) return null;
   if (name.startsWith("ga4-") || url.pathname.includes("check-connection") || url.pathname === "/api/notifications") url.searchParams.set("readOnly", "1");
   if (name === "outcome-totals") url.searchParams.set("persistedOnly", "1");
@@ -111,6 +113,9 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
     if (snapshotFingerprint(before) !== expectedFingerprint) throw new Error("OUTPUT_INPUTS_CHANGED");
     const scope = resolveMonitorScope(before), id = encodeURIComponent(before.campaign.id), property = scope.connection.propertyId;
     campaignScope = before.campaign.id;
+    // Executive's flag also selects its financial calculation scope. Preserve
+    // that calculation, but reject its optional snapshot save before storage.
+    storage.upsertExecutiveSummaryDailySnapshot = async () => { throw new Error("MONITOR_SNAPSHOT_SAVE_DISABLED"); };
     propertyScope = property; currencyScope = scope.currency;
     if (scope.connection.method === "service_account") {
       // The existing helper requests analytics.readonly only and caches the JWT

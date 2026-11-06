@@ -183,6 +183,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let ga4FinancialData = { ...ga4Data };
   let ga4FinancialConversions = ga4Data.conversions;
   let ga4FinancialConversionsAvailable = false;
+  let usedSavedGA4Overview = false;
   if (ga4Connected) {
     const useSavedOverview = options.useSavedOverview === true && String(ga4PropertyId).trim().toLowerCase() !== 'yesop'
       && parseGA4CampaignFilter(campaign?.ga4CampaignFilter).length > 0;
@@ -193,6 +194,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       || financialTotals.revenueAvailable !== true || financialTotals.spendAvailable !== true)) {
       throw new Error('Verified saved GA4 financial inputs are unavailable for the campaign snapshot');
     }
+    usedSavedGA4Overview = useSavedOverview;
     if (financialTotals) {
       ga4FinancialData = {
         ...ga4Data,
@@ -754,7 +756,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     },
     webAnalyticsProvider: ga4Connected ? 'ga4' : 'custom_integration',
     performanceSummary,
-    ...(options.useSavedOverview && ga4FinancialWindow ? { performanceSummaryVerification: {
+    ...(usedSavedGA4Overview && ga4FinancialWindow ? { performanceSummaryVerification: {
       version: 1, campaignId, propertyId: ga4PropertyId, currency: campaign.currency, campaignFilter: campaign.ga4CampaignFilter,
       trafficWindow: { startDate, endDate }, nativeFinancialWindow: ga4FinancialWindow,
       importedFinancialWindow: { startDate: financialSourceStartDate, endDate: financialSourceEndDate },

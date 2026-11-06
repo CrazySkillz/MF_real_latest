@@ -6,7 +6,7 @@ import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { formatPct, normalizeRateToPercent } from "@shared/metric-math";
+import { formatPct, normalizeRateToPercent, formatRoasRatio } from "@shared/metric-math";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   Area, BarChart, Bar, ComposedChart, PieChart, Pie, Cell,
@@ -1289,19 +1289,19 @@ export default function TrendAnalysis() {
         pushInsight({
           type: "info",
           title: "Connected-Source ROAS — Reconciled Sources",
-          message: `Cumulative ROAS is ${roas.toFixed(2)}x using financial records dated no later than ${currentValueWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${campaignCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
+          message: `Cumulative ROAS is ${formatRoasRatio(roas)}x using financial records dated no later than ${currentValueWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${campaignCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
         });
       } else if (usesCumulativeGA4Consumer && typeof roas === "number") {
         pushInsight({
           type: "warning",
           title: "ROAS Decision Context Not Verified",
-          message: `A descriptive cumulative ROAS of ${roas.toFixed(2)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
+          message: `A descriptive cumulative ROAS of ${formatRoasRatio(roas)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
         });
       } else if (typeof roas === "number") {
         pushInsight({
           type: "info",
           title: "Observed Revenue Efficiency",
-          message: `ROAS is ${roas.toFixed(2)}x from the available revenue and spend inputs. This is descriptive, not a scaling signal; compare it with an approved campaign ROAS and profit target before changing budget.`,
+          message: `ROAS is ${formatRoasRatio(roas)}x from the available revenue and spend inputs. This is descriptive, not a scaling signal; compare it with an approved campaign ROAS and profit target before changing budget.`,
         });
       } else if (typeof cpa === "number" && cpa > 0) {
         pushInsight({
@@ -1580,7 +1580,7 @@ export default function TrendAnalysis() {
                       {[
                         { label: 'Revenue', value: authoritativeHeadlineCurrent.revenue === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.revenue), change: headlineComparison.revenue, comparisonPending: !trendFinancialComparisonFetched },
                         { label: 'Spend', value: authoritativeHeadlineCurrent.spend === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.spend), change: headlineComparison.spend, invertColor: true, comparisonPending: !trendFinancialComparisonFetched },
-                        { label: 'ROAS', value: authoritativeHeadlineCurrent.roas === null ? null : `${authoritativeHeadlineCurrent.roas.toFixed(2)}x`, change: headlineComparison.roas, comparisonPending: !trendFinancialComparisonFetched },
+                        { label: 'ROAS', value: authoritativeHeadlineCurrent.roas === null ? null : `${formatRoasRatio(authoritativeHeadlineCurrent.roas)}x`, change: headlineComparison.roas, comparisonPending: !trendFinancialComparisonFetched },
                         { ...(authoritativeHeadlineEfficiencyCards.find((card) => card.key === "roi") || { label: 'ROI', value: null, change: null }), comparisonPending: !trendFinancialComparisonFetched },
                         { label: 'Conversions', value: authoritativeHeadlineCurrent.conversions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.conversions), change: headlineComparison.conversions },
                         { label: 'CPA', value: authoritativeHeadlineCurrent.cpa === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.cpa), change: headlineComparison.cpa, invertColor: true, comparisonPending: !trendFinancialComparisonFetched },

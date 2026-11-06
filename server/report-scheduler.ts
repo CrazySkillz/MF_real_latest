@@ -27,7 +27,7 @@ import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-v
 import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
 import { getLatestCompleteReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
-import { createReportPdfArtifact, readReportPdfArtifact, attachReportVerification } from "./utils/report-pdf-artifact";
+import { createReportPdfArtifact, readReportPdfArtifact, attachReportVerification, reportTargetInputs } from "./utils/report-pdf-artifact";
 import { randomUUID } from "node:crypto";
 import { getGA4AlignedRefreshState, isGA4AlignedRefreshReady } from "./ga4-daily-scheduler";
 import { existsSync, readFileSync } from "node:fs";
@@ -1397,7 +1397,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     performanceSummary, financialInputs, budgetPacing, financialDecisionContext, executiveSummary, trendAnalysis,
     cumulativeGA4Window, performancePageTrafficTotals, performancePageTotals,
     trendWindowStart, trendWindowEnd, trendWindowRows, trendPreviousWindowRows, compatibleTrendFinancialDaily, executiveTrajectory,
-    targets: { kpis, benchmarks },
+    targets: { kpis: reportTargetInputs(kpis), benchmarks: reportTargetInputs(benchmarks) },
   });
   const cumulativeGA4Connection = campaignId && aggregateSources.length === 1 && aggregateSources[0]?.id === "ga4"
     ? await storage.getPrimaryGA4Connection(campaignId).catch(() => null)

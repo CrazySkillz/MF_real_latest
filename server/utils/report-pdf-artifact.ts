@@ -4,6 +4,11 @@ const MAX_REPORT_PDF_BYTES = 25 * 1024 * 1024;
 const verificationKey = Symbol("report-verification");
 const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 
+export function reportTargetInputs(items: any[]) {
+  const keys = ["id", "name", "metric", "metricType", "unit", "platformType", "campaignId", "applyTo", "specificCampaignId", "currentValue", "targetValue", "benchmarkValue", "targetPeriod", "targetDate", "targetStartDate", "calculationConfig", "status"];
+  return items.map(item => Object.fromEntries(keys.filter(key => item[key] !== undefined).map(key => [key, item[key]])));
+}
+
 // Capture only report inputs, never connection credentials or delivery recipients.
 export function reportSourceSettings(source: any) {
   let config: any;

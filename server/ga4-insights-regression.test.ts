@@ -57,7 +57,7 @@ describe("GA4 Insights regression guard", () => {
     expect(section).toContain('renderFinancialValue(snapshotSpendKpiInputState === "loading", executiveSpendAvailable, formatMoney(overviewFinancialSpend))');
     expect(section).toContain('renderFinancialValue(snapshotRevenueKpiInputState === "loading", executiveRevenueAvailable, formatMoney(overviewFinancialRevenue)');
     expect(section).toContain("formatMoney(overviewFinancialRevenue - overviewFinancialSpend)");
-    expect(section).toContain("${overviewFinancialROAS.toFixed(2)}x");
+    expect(section).toContain("${formatRoasRatio(overviewFinancialROAS)}x");
     expect(section).toContain("formatPercentage(overviewFinancialROI)");
     expect(section).not.toContain("formatMoney(financialRevenue - financialSpend)");
     expect(section).not.toContain("pipelineProxyData.totalToDate");

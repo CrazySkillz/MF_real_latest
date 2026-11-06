@@ -3,7 +3,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { computeCpa, computeRoiPercent } from "../shared/metric-math";
+import { computeCpa, computeRoiPercent, formatRoasRatio } from "../shared/metric-math";
 import { resolveGA4OverviewFinancialRefreshWarning } from "../shared/ga4-financial-source";
 import { resolveGA4InsightsExecutiveFinancials } from "../client/src/lib/ga4-insights-executive-financials";
 
@@ -74,7 +74,7 @@ const fixture = (): Record<string, any> => ({
 // Only the surrounding UI primitives and query responses are replaced.
 function render(input = fixture()) {
   const bindings = {
-    ...input, React, computeCpa, computeRoiPercent, resolveGA4OverviewFinancialRefreshWarning,
+    ...input, React, computeCpa, computeRoiPercent, formatRoasRatio, resolveGA4OverviewFinancialRefreshWarning,
     resolveGA4InsightsExecutiveFinancials,
     Card: (props: any) => React.createElement("section", props),
     CardHeader: (props: any) => React.createElement("header", props),

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { PassThrough } from "node:stream";
 vi.mock("./db", () => ({ db: null, pool: null }));
-import { browserReadPath } from "../scripts/check-live-number-outputs";
+import { browserReadPath, writeOutputChecks } from "../scripts/check-live-number-outputs";
 import { browserSafeValue } from "../scripts/live-number-browser-process";
 import { checkDisplayedNumber, checkBrowserReportText, expectedBrowserCampaignRows, checkNarrativeWindows } from "../scripts/live-number-browser-checks";
 import { checkNotificationCoverage, checkNotificationEmailContent } from "./live-number-notification-checks";
@@ -20,6 +21,17 @@ const fixture = (): LiveNumberSnapshot => ({
 const alert = () => ({id:"alert",campaignId:"a",metadata:JSON.stringify({kpiId:"target"})});
 
 describe("isolated browser monitoring boundaries", () => {
+  it("transfers every result through a backpressured pipe before completing", async () => {
+    const checks = Array.from({ length: 4000 }, (_, index) => ({ section: "Screen GA4 Overview", code: "VALUE", status: "passed" as const, subject: index.toString(16).padStart(12, "0") }));
+    const pipe = new PassThrough({ highWaterMark: 1024 });
+    let finished = false;
+    const writing = writeOutputChecks(checks, pipe).then(() => { finished = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    expect(finished).toBe(false);
+    const chunks: Buffer[] = []; pipe.on("data", chunk => chunks.push(chunk));
+    await writing; pipe.end();
+    expect(JSON.parse(Buffer.concat(chunks).toString("utf8"))).toEqual(checks);
+  });
   it("allows only scoped GET replay and adds read-only/persisted-only flags", () => {
     expect(browserReadPath('/api/campaigns/a/ga4-daily?propertyId=123&days=60','a','123',[])).toBe('/api/campaigns/a/ga4-daily?days=60&propertyId=123&readOnly=1');
     expect(browserReadPath('/api/campaigns/a/outcome-totals?dateRange=90days','a','123',[])).toContain('persistedOnly=1');

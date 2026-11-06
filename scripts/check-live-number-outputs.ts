@@ -2,6 +2,7 @@
 // Authentication below exists only on loopback with an ephemeral capability.
 import { randomBytes } from "node:crypto";
 import { writeSync } from "node:fs";
+import type { Writable } from "node:stream";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import http from "node:http";
@@ -226,10 +227,16 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
   }
 }
 
+export function writeOutputChecks(checks: NumberCheck[], output: Pick<Writable, "write"> = process.stdout): Promise<void> {
+  // A single writeSync can return after only part of a large pipe write. Wait
+  // for the stream to finish transferring the complete JSON result instead.
+  return new Promise((resolve, reject) => output.write(JSON.stringify(checks), error => error ? reject(error) : resolve()));
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   console.log = console.warn = console.error = () => {};
   const deadline = setTimeout(() => { writeSync(1, JSON.stringify([{ section: "Application outputs", code: "OUTPUT_DEADLINE", status: "unverified" }])); process.exit(1); }, 300_000).unref();
-  try { writeSync(1, JSON.stringify(await runApplicationOutputMonitor(process.argv[2], process.argv[3], process.argv[4]))); }
+  try { await writeOutputChecks(await runApplicationOutputMonitor(process.argv[2], process.argv[3], process.argv[4])); }
   catch { writeSync(1, JSON.stringify([{ section: "Application outputs", code: "OUTPUT_REPLAY_UNVERIFIED", status: "unverified" }])); process.exitCode = 1; }
   finally { clearTimeout(deadline); }
 }

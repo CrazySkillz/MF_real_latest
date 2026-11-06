@@ -51,6 +51,23 @@ describe("isolated browser monitoring boundaries", () => {
   it("uses session key-event rate rather than conversions divided by sessions", () => {
     expect(expectedBrowserCampaignRows(fixture(),now)[0].conversionRate).toBe(5);
   });
+  it("checks shortened source labels without inventing a join for ambiguous sources", () => {
+    const snapshot=fixture();
+    snapshot.rows.revenueSources=[{id:'shop',campaignId:'a',sourceType:'shopify',displayName:'Shopify (fixture.invalid)',currency:'EUR',isActive:true}];
+    snapshot.rows.revenueRecords=[{revenueSourceId:'shop',campaignId:'a',currency:'EUR',date:'2026-11-04',revenue:30}];
+    const text='Revenue Sources\nShopify EUR 30.00';
+    expect(checkBrowserReportText(snapshot,text,'overview',now)).toContainEqual(expect.objectContaining({code:'REVENUE_SOURCE_AMOUNT',status:'passed'}));
+    expect(checkBrowserReportText(snapshot,text.replace('30.00','29.00'),'overview',now)).toContainEqual(expect.objectContaining({code:'REVENUE_SOURCE_AMOUNT',status:'difference'}));
+    expect(snapshot.rows.revenueSources[0].displayName).toBe('Shopify (fixture.invalid)');
+    snapshot.rows.revenueSources.push({...snapshot.rows.revenueSources[0],id:'other',displayName:'Shopify (other.invalid)'});
+    expect(checkBrowserReportText(snapshot,text,'overview',now)).toContainEqual(expect.objectContaining({code:'REVENUE_SOURCE_AMOUNT',status:'unverified'}));
+  });
+  it("accepts intentional missing-spend summary omissions but rejects fabricated zero cards", () => {
+    const text='Executive Financials\nTrends\nNo daily history\nData Summary\nSESSIONS\n20\nCONVERSIONS\n1.5\nREVENUE\n€100.00';
+    const checks=checkBrowserReportText(fixture(),text,'insights',now).filter(c=>c.code.startsWith('SUMMARY_'));
+    expect(checks).toHaveLength(7);expect(checks.every(c=>c.status==='passed')).toBe(true);
+    expect(checkBrowserReportText(fixture(),text+'\nTOTAL SPEND\n€0.00','insights',now)).toContainEqual(expect.objectContaining({code:'SUMMARY_TOTAL_SPEND_CONDITIONAL_ABSENCE',status:'difference'}));
+  });
   it("checks narrative calendar denominators and actual recorded-day counts", () => {
     const text='Current 3-day window 2026-11-02 to 2026-11-04: 1/3 completed days';
     expect(checkNarrativeWindows(fixture(),text,now).every(c=>c.status==='passed')).toBe(true);

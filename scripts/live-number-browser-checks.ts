@@ -90,6 +90,11 @@ export function checkDisplayedNumber(section: string, code: string, expected: nu
 }
 
 export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: string, type: string, now = new Date()): NumberCheck[] {
+  // Browser PDFs deliberately shorten the Shopify label. Only resolve it when
+  // exactly one active source has that label; ambiguous sources remain unverified.
+  const shopify = (snapshot.rows.revenueSources || []).filter(r => r.sourceType === "shopify" && r.isActive !== false);
+  if (type !== "ads" && shopify.length === 1) snapshot = { ...snapshot, rows: { ...snapshot.rows,
+    revenueSources: snapshot.rows.revenueSources.map(r => r.id === shopify[0].id ? { ...r, displayName: "Shopify" } : r) } };
   if (type !== "insights") {
     const normalized = text.replaceAll("Revenue SOURCES", "Revenue Sources").replaceAll("Spend SOURCES", "Spend Sources");
     const checks = [...checkGeneratedReportText(snapshot, normalized, type, now), ...checkReportDetailText(snapshot, normalized, type, now)]
@@ -120,6 +125,11 @@ export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: strin
   const summaryStart = lines.indexOf("Data Summary"), summary = summaryStart < 0 ? [] : lines.slice(summaryStart + 1);
   for (const [label, wanted, decimals, money] of [["SESSIONS", e.totals.sessions, 0], ["CONVERSIONS", e.totals.conversions, 8], ["REVENUE", e.revenue, 2, true], ["TOTAL SPEND", e.spend, 2, true], ["PROFIT", e.profit, 2, true], ["ROAS", e.roas, 2], ["CPA", e.cpa, 2, true]] as const) {
     const i = summary.indexOf(label);
+    // The secondary Data Summary intentionally includes only applicable cards;
+    // the mandatory Executive Financials block above still checks availability.
+    const shown = label === "PROFIT" ? (e.revenue || 0) > 0 && (e.spend || 0) > 0
+      : label === "CPA" ? (e.totals.conversions || 0) > 0 && (e.spend || 0) > 0 : (wanted || 0) > 0;
+    if (!shown) { checks.push({ section, code: "SUMMARY_" + label.replaceAll(" ", "_") + "_CONDITIONAL_ABSENCE", status: i < 0 ? "passed" : "difference" }); continue; }
     checks.push(checkDisplayedNumber(section, "SUMMARY_" + label.replaceAll(" ", "_"), wanted, i < 0 ? null : summary[i + 1], decimals, money ? e.scope.currency : undefined));
   }
   // The browser template has a selected-metric trend table, unlike the server
@@ -249,7 +259,11 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
       await observe?.("screen", path.split("/").at(-1)!, await page.locator("body").innerText());
     };
     const cards = async (section: string, values: [string, number | null, number?, boolean?][]) => {
-      for (const [label, wanted, decimals, money] of values) checks.push(checkDisplayedNumber(section, label.toUpperCase().replace(/[^A-Z0-9]/g, "_"), wanted, await cardValue(page, label), decimals ?? 2, money ? e.scope.currency : undefined));
+      for (const [label, wanted, decimals, money] of values) {
+        if (section === "Screen GA4 Overview" && label === "Profit" && (e.revenue === null || e.spend === null)) {
+          checks.push({ section, code: "PROFIT_HIDDEN_WITHOUT_REQUIRED_INPUTS", status: await page.getByText("Profit", { exact: true }).count() === 0 ? "passed" : "difference" });
+        } else checks.push(checkDisplayedNumber(section, label.toUpperCase().replace(/[^A-Z0-9]/g, "_"), wanted, await cardValue(page, label), decimals ?? 2, money ? e.scope.currency : undefined));
+      }
     };
     const tableText = async () => {
       const rows = await page.locator("table:visible tr").evaluateAll(rows => rows.map(row => [...row.querySelectorAll("th,td")].map(cell => cell.textContent?.trim().replace(/\s+/g, " ") || "").join(" ")));
@@ -284,11 +298,16 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
       if (!await button.count()) { if (sources.length) checks.push({ section: "Screen source details", code: kind.toUpperCase() + "_LIST_MISSING", status: "difference" }); continue; }
       await button.click(); const dialog = page.getByRole("dialog"); await dialog.waitFor();
       const text = await dialog.innerText();
+      await observe?.("source", kind, text);
       for (const source of sources) {
-        const original = snapshot.rows[kind + "Sources"].find(r => r.id === source.id), name = original?.displayName || original?.sourceType;
+        const original = snapshot.rows[kind + "Sources"].find(r => r.id === source.id);
+        const name = kind === "revenue" && ["shopify", "google_sheets", "csv", "ga4"].includes(original?.sourceType)
+          ? ({ shopify: "Shopify", google_sheets: "Google Sheets", csv: "CSV", ga4: "Imported GA4 Revenue" } as Record<string, string>)[original.sourceType]
+          : original?.displayName || original?.sourceType;
         const amount = await dialog.evaluate((root, name) => {
           const leaves=[...root.querySelectorAll('p,span,div')].filter(el=>el.children.length===0);
-          const label=leaves.find(el=>el.textContent?.trim()===name);
+          const headings=[...root.querySelectorAll('p[title]')].filter(el=>el.textContent?.trim()===name);
+          const labels=headings.length?headings:leaves.filter(el=>el.textContent?.trim()===name), label=labels.length===1?labels[0]:undefined;
           let parent=label?.parentElement;
           for(let i=0;parent&&i<5;i++,parent=parent.parentElement){
             const values=[...parent.querySelectorAll('p,span,div')].filter(el=>el.children.length===0 && /^(?:Unavailable|[€$£]|[A-Z]{3} )/.test(el.textContent?.trim()||''));

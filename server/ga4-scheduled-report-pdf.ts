@@ -16,7 +16,7 @@ import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
 import { financialDailySnapshotInputSchema } from "../shared/schema";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
-import { attachReportVerification, reportSourceSettings } from "./utils/report-pdf-artifact";
+import { attachReportVerification, reportSourceSettings, reportTargetInputs } from "./utils/report-pdf-artifact";
 
 type CampaignFilter = string | string[] | undefined;
 type C3 = [number, number, number];
@@ -1191,6 +1191,13 @@ async function buildGA4ReportPayload(report: any) {
       financial: { revenue: financialRevenue, spend: financialSpend, spendAvailable: publishedFinancialInputs ? publishedFinancialInputs.spend.available : true, conversions: financialConversions,
         nativeRevenue: ga4RevenueForFinancials, importedRevenue: importedRevenueForFinancials },
       campaignRows: adComparisonChartRows,
+      comparisonRows: adComparisonBreakdownAgg,
+      landingPages: landingPages?.rows || [], conversionEvents: conversionEvents?.rows || [],
+      dailyRows: dailyRows.map((row: any) => ({ date: row.date, sessions: row.sessions, users: row.users, pageviews: row.pageviews,
+        conversions: row.conversions, revenue: row.revenue, engagedSessions: row.engagedSessions })),
+      targets: { kpis: reportTargetInputs((Array.isArray(platformKPIs) ? platformKPIs : []).map(reportCurrentValue)), benchmarks: reportTargetInputs((Array.isArray(benchmarks) ? benchmarks : []).map(reportCurrentValue)) },
+      insights: { rollups: insightsRollups, kpiHistory: insightsKpiHistory, benchmarkHistory: insightsBenchmarkHistory,
+        historyFailures: insightsHistoryFailures, channelAnalysis: insightsChannelAnalysis },
       sourceSettings: { revenue: revenueSources.map(reportSourceSettings), spend: spendSources.map(reportSourceSettings) },
       sourceAmounts: { revenue: revenueBreakdown.map((row: any) => ({ id: row.sourceId, value: row.revenue })), spend: spendBreakdown.map((row: any) => ({ id: row.sourceId, value: row.spend })) },
     },
@@ -1901,6 +1908,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   addFooter();
   return attachReportVerification(coercePdfBufferFromDoc(doc), {
     ...payload.verificationInputs,
+    insightsItems: payload.insightsItems,
     report: { id: String(report.id || ""), campaignId: String(report.campaignId), platformType: "google_analytics", reportType,
       configuration: cfg },
     reportWindow: { startDate: _args.windowStart, endDate: _args.windowEnd },

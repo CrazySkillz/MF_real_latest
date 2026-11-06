@@ -129,6 +129,9 @@ describe("GA4 Overview Conversion Events scheduled PDF value parity", () => {
     expect(inputs.report.configuration.subsections.overview.conversionEvents).toBe(true);
     expect(JSON.stringify(inputs)).not.toContain('"accessToken"');
     expect(inputs.financial).toHaveProperty("conversions");
+    expect(inputs.conversionEvents).toEqual(conversionRows);
+    expect(inputs.targets).toEqual({ kpis: [], benchmarks: [] });
+    expect(inputs).toHaveProperty("dailyRows");
   });
 
   it("renders the exact first 25 API rows, preserves fractional credit, and excludes revenue", async () => {

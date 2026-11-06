@@ -307,10 +307,10 @@ requires a separate application change that captures the exact generation inputs
 with the saved artifact. Re-fetching current settings after PDF generation would
 not prove its inputs and is not implemented as a shortcut here.
 
-Follow-up validation before hosted release: TypeScript passed and 150 focused
+Follow-up validation before hosted release: TypeScript passed and 151 focused
 tests passed. Deliberately wrong rates, currency, stage, campaign, source amounts,
 duplicate/truncated provider pages, campaign cent allocation, target status,
-trajectory boundaries and SQL/network mutations are covered. A captured live
+trajectory boundaries, tiny nonzero conversion credits and SQL/network mutations are covered. A captured live
 campaign completed 1,267 output/PDF comparisons with no finding; its pipeline
 response was captured from the real read-only handler. This does not prove fresh
 pipeline provider parity when its credential is expired. The full run exposed a

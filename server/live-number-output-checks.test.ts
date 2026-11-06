@@ -236,6 +236,14 @@ describe("Diagnostic PDF core numeric cards", () => {
 });
 
 describe("actual report detail values", () => {
+  it("never rounds tiny nonzero conversion credits into a passing zero", () => {
+    const snapshot = fixture(); snapshot.rows.ga4DailyMetrics[0].conversions = 0.000000000001;
+    snapshot.rows.ga4OverviewSnapshots[0].conversionEvents = { rows: [{ eventName: "purchase", conversions: 0.000000000001, eventCount: 1, users: 1 }] };
+    expect(checkGeneratedReportText(snapshot, "Summary\nCONVERSIONS\n0\nRevenue & Financial", "overview", now)).toContainEqual(expect.objectContaining({ code: "CONVERSIONS", status: "difference" }));
+    expect(checkDiagnosticReportText(snapshot, "Key Outcomes\nTOTAL CONVERSIONS\n0\nCampaign Health", "performance-summary", now)).toContainEqual(expect.objectContaining({ code: "CONVERSIONS", status: "difference" }));
+    expect(checkReportDetailText(snapshot, "purchase 0 1 1", "overview", now)).toContainEqual(expect.objectContaining({ code: "CONVERSION_EVENT_0", status: "difference" }));
+    expect(checkReportDetailText(snapshot, "purchase 0.000000000001 1 1", "overview", now)).toContainEqual(expect.objectContaining({ code: "CONVERSION_EVENT_0", status: "passed" }));
+  });
   it("detects incorrect Comparison leaders and chart values independently of its total", () => {
     const snapshot = fixture();
     snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [

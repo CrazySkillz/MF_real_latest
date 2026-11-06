@@ -49,7 +49,7 @@ export function checkDiagnosticReportText(snapshot: LiveNumberSnapshot, text: st
     if (wanted === null && actual !== null || wanted !== null && raw?.startsWith("Unavailable")) {
       checks.push({ section, code: key.replaceAll(" ", "_") + "_AVAILABILITY", status: "difference" }); continue;
     }
-    checks.push(compareNumber(section, key.replaceAll(" ", "_"), wanted, actual, { decimals }));
+    checks.push(compareNumber(section, key.replaceAll(" ", "_"), wanted, actual, { decimals: key === "CONVERSIONS" ? undefined : decimals, conversions: key === "CONVERSIONS", operations: 10000 }));
   }
   if (type === "financial-analysis") {
     const pct = expected.pacing.percentage;
@@ -75,7 +75,8 @@ export function checkGeneratedReportText(snapshot: LiveNumberSnapshot, text: str
     const pattern = unit === "money" ? new RegExp(`^${expected.scope.currency} (-?[\\d,]+(?:\\.\\d+)?)$`)
       : new RegExp(`^(-?[\\d,]+(?:\\.\\d+)?)${unit === "rate" ? "%" : unit === "ratio" ? "x" : ""}$`);
     const match = raw?.match(pattern);
-    checks.push(compareNumber(section, label.replace(/[^A-Z0-9]/g, "_"), wanted, match ? numberOrNull(match[1].replaceAll(",", "")) : null, { decimals }));
+    checks.push(compareNumber(section, label.replace(/[^A-Z0-9]/g, "_"), wanted, match ? numberOrNull(match[1].replaceAll(",", "")) : null,
+      { decimals: label === "CONVERSIONS" ? undefined : decimals, conversions: label === "CONVERSIONS", operations: 10000 }));
   };
   if (type === "overview" || type === "custom") {
     const summaryStart = lines.indexOf("Summary"), summaryEnd = lines.indexOf("Revenue & Financial", summaryStart), subset = lines.slice(summaryStart + 1, summaryEnd);
@@ -126,7 +127,11 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
       const raw = found[0]![index + 1], actual = raw === "Unavailable" ? null : numberOrNull(raw.replaceAll(",", ""));
       if (wanted === null && actual === null) checks.push({ section, code: `${code}_${index}_UNAVAILABLE`, subject, status: "passed" });
       else if (wanted === null || actual === null) checks.push({ section, code: `${code}_${index}_AVAILABILITY`, subject, status: "difference" });
-      else checks.push(compareNumber(section, `${code}_${index}`, wanted, actual, { decimals, subject }));
+      else {
+        const conversion = ["CONVERSION_EVENT", "SUMMARY_conversions", "WEBSITE_CONVERSIONS"].includes(code) && index === 0
+          || ["LANDING_PAGE", "CAMPAIGN_BREAKDOWN", "INSIGHTS_TREND"].includes(code) && index === 2;
+        checks.push(compareNumber(section, `${code}_${index}`, wanted, actual, { decimals: conversion ? undefined : decimals, conversions: conversion, operations: 10000, subject }));
+      }
     });
   };
   if (type === "overview" || type === "ads") {

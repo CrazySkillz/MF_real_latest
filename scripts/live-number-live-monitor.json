@@ -2,7 +2,7 @@
   "databaseEnvironmentVariable": "LIVE_NUMBER_DATABASE_URL",
   "databaseFingerprint": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
   "credentialsEnvironmentPrefix": "LIVE_NUMBER_",
-  "application": { "baseUrl": "https://app.mimosaas.app", "expectedCommit": "706a7bacb04cf1b7802ab4279c6f1f6935337d29" },
+  "application": { "baseUrl": "https://app.mimosaas.app", "expectedCommit": "e48b4aeca9cc1e32ddad45ed4f1b0e75728f5970" },
   "campaigns": [
     { "campaignIdHash": "b85505d40a0a", "reportingTimeZone": "Europe/Amsterdam" },
     { "campaignIdHash": "de4775c3b435", "reportingTimeZone": "Europe/Amsterdam" },

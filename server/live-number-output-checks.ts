@@ -1,9 +1,92 @@
 import { compareNumber, dateIsValid, monitorHash, numberOrNull, parseMonitorMapping, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { buildExecutiveSummaryFinancialSourceIdentity } from "./utils/executive-summary-daily-snapshot";
+import { resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
 
 export type MonitorOutputs = Record<string, any>;
 const numericMetrics = ["users", "sessions", "conversions", "revenue", "pageviews", "engagedSessions"];
+
+// Exact selectors used by Financial Analysis and Trend Analysis. A calendar
+// month is intentionally different from Trend's fixed thirty-day interval.
+export function monitorComparisonWindows(endDate: string) {
+  if (!dateIsValid(endDate)) throw new Error("COMPARISON_DATE_INVALID");
+  const day = new Date(endDate + "T00:00:00Z"), month = new Date(day);
+  month.setUTCDate(1); month.setUTCMonth(month.getUTCMonth() - 1);
+  month.setUTCDate(Math.min(day.getUTCDate(), new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0)).getUTCDate()));
+  return [...[1, 7, 14, 30, 90].map(days => ({ key: `comparison${days}d`, type: days === 1 ? "yesterday" : "last_week",
+    date: new Date(day.getTime() - days * 86400000).toISOString().slice(0, 10) })),
+  { key: "comparisonMonth", type: "last_month", date: month.toISOString().slice(0, 10) }];
+}
+
+export function checkFinancialComparisonOutputs(snapshot: LiveNumberSnapshot, outputs: MonitorOutputs, now = new Date()): NumberCheck[] {
+  const e = expectedOutputNumbers(snapshot, now), checks: NumberCheck[] = [], { scope } = e;
+  for (const window of monitorComparisonWindows(scope.endDate)) {
+    const section = `Financial comparison / ${window.key}`, actual = outputs[window.key];
+    const flag = (code: string, valid: boolean) => checks.push({ section, code, status: valid ? "passed" : "difference" });
+    if (!actual) { checks.push({ section, code: "COMPARISON_RESPONSE_UNVERIFIED", status: "unverified" }); continue; }
+    flag("EXACT_COMPARISON_DATE", actual.comparisonDate === window.date);
+    for (const side of ["current", "previous"] as const) {
+      const date = side === "current" ? scope.endDate : window.date;
+      const retained = (snapshot.rows.metricSnapshots || []).filter(row => row.snapshotType === "financial_daily" && row.reportingDate === date);
+      const returned = actual[side], financial = returned?.metrics?.financialDaily;
+      if (retained.length > 1) { checks.push({ section, code: `${side}_DUPLICATE_SNAPSHOTS`, status: "unverified" }); continue; }
+      if (!returned) {
+        // Do not manufacture missing history. Retained valid inputs must not
+        // disappear from a response; an absent derived basis remains unverified.
+        checks.push({ section, code: `${side}_HISTORY_UNVERIFIED`, status: "unverified" }); continue;
+      }
+      const expectedStart = date < scope.startDate ? "1900-01-01" : scope.startDate;
+      const reference = retained[0]?.metrics?.financialDaily;
+      flag(`${side}_SCOPE`, returned.campaignId === snapshot.campaign.id && returned.snapshotType === "financial_daily"
+        && returned.reportingDate === date && financial?.version === "financial_daily_snapshot_v1" && financial?.currency === (reference?.currency || scope.currency)
+        && financial?.currentValueWindow?.mode === (reference?.currentValueWindow?.mode || "initial_import_to_latest_completed_day")
+        && financial?.currentValueWindow?.startDate === (reference?.currentValueWindow?.startDate || expectedStart) && financial?.currentValueWindow?.endDate === date
+        && financial?.currentValueWindow?.dataThroughDate === date && financial?.currentValueWindow?.reportingTimeZone === (reference?.currentValueWindow?.reportingTimeZone || scope.reportingTimeZone));
+      const compatible = returned.campaignId === snapshot.campaign.id && returned.snapshotType === "financial_daily" && returned.reportingDate === date
+        && financial?.version === "financial_daily_snapshot_v1" && financial?.currency === scope.currency
+        && financial?.currentValueWindow?.mode === "initial_import_to_latest_completed_day" && financial?.currentValueWindow?.startDate === expectedStart
+        && financial?.currentValueWindow?.endDate === date && financial?.currentValueWindow?.dataThroughDate === date
+        && financial?.currentValueWindow?.reportingTimeZone === scope.reportingTimeZone;
+      const consumer = resolveCompatibleTrendFinancialDaily({ snapshot: returned, campaignId: snapshot.campaign.id, comparisonDate: date,
+        campaignCurrency: scope.currency, currentValueWindow: { startDate: scope.startDate, reportingTimeZone: scope.reportingTimeZone } });
+      flag(`${side}_DISPLAY_COMPATIBILITY`, compatible ? consumer === financial : consumer === null);
+      let inputs = retained[0]?.metrics?.financialDaily?.inputs;
+      if (retained.length) flag(`${side}_STORED_IDENTITY`, returned.id === retained[0].id);
+      if (!inputs) {
+        const days = e.daily.filter(row => row.date <= date), count = Math.max(0, (Date.parse(date) - Date.parse(scope.startDate)) / 86400000 + 1);
+        const complete = days.length === count && new Set(days.map(row => row.date)).size === count
+          && days.every(row => row.campaignId === snapshot.campaign.id && !row.isSimulated && dateIsValid(row.date)
+            && numberOrNull(row.revenue) !== null && numberOrNull(row.conversions) !== null);
+        if (!complete || e.revenueSources.some(source => source.value === null) || e.spendSources.some(source => source.value === null)) {
+          checks.push({ section, code: `${side}_DATED_INPUTS_UNVERIFIED`, status: "unverified" }); continue;
+        }
+        const atDate = (kind: "revenue" | "spend") => (kind === "revenue" ? e.revenueSources : e.spendSources).reduce((sum, source) => {
+          const selected = (snapshot.rows[kind + "Records"] || []).filter(row => row[kind + "SourceId"] === source.id && row.date <= date);
+          const aggregate = selected.filter(row => !row.subCampaignUrn);
+          return sum + (kind === "revenue" && aggregate.length ? aggregate : selected).reduce((total, row) => total + Number(row[kind]), 0);
+        }, 0);
+        const sourcesAtDate = (kind: "revenue" | "spend") => (kind === "revenue" ? e.revenueSources : e.spendSources)
+          .filter(source => (snapshot.rows[kind + "Records"] || []).some(row => row[kind + "SourceId"] === source.id && row.date <= date));
+        const hasSpend = sourcesAtDate("spend").length > 0;
+        inputs = {
+          revenue: { available: true, value: days.reduce((sum, row) => sum + Number(row.revenue), 0) + atDate("revenue"), sources: ["ga4", ...sourcesAtDate("revenue").map(source => `revenue-source:${source.id}`)] },
+          conversions: { available: true, value: days.reduce((sum, row) => sum + Number(row.conversions), 0), sources: ["ga4"] },
+          spend: { available: hasSpend, value: hasSpend ? atDate("spend") : null, sources: hasSpend ? ["canonical_spend_sources"] : [] },
+        };
+      }
+      for (const metric of ["revenue", "spend", "conversions"]) {
+        const wanted = inputs[metric], value = financial?.inputs?.[metric];
+        flag(`${side}_${metric}_AVAILABILITY`, typeof wanted?.available === "boolean" && value?.available === wanted.available
+          && (wanted.available || value?.value === null));
+        flag(`${side}_${metric}_SOURCE_IDENTITIES`, Array.isArray(wanted?.sources) && Array.isArray(value?.sources)
+          && JSON.stringify([...wanted.sources].sort()) === JSON.stringify([...value.sources].sort()));
+        if (wanted?.available) checks.push(compareNumber(section, `${side}_${metric}`, wanted.value, value?.value,
+          { decimals: metric === "conversions" ? undefined : 2, conversions: metric === "conversions", operations: 10000 }));
+      }
+    }
+  }
+  return checks;
+}
 
 // Independent target bands for the currently supported GA4 metric definitions.
 // Unsupported/custom definitions remain explicit gaps, never guessed targets.

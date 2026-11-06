@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { checkApplicationOutputs, expectedOutputNumbers, expectedTargetNumbers } from "./live-number-output-checks";
+import { checkApplicationOutputs, checkFinancialComparisonOutputs, monitorComparisonWindows, expectedOutputNumbers, expectedTargetNumbers } from "./live-number-output-checks";
 import { monitorReadQueryAllowed, outputReportReadAllowed, outputReportAuthorization } from "../scripts/check-live-number-outputs";
 import type { LiveNumberSnapshot } from "./live-number-checks";
-import { checkDiagnosticReportText, checkGeneratedReportText, checkReportDetailText } from "./live-number-generated-report-checks";
+import { checkConfiguredReportText, checkDiagnosticReportText, checkGeneratedReportText, checkReportDetailText } from "./live-number-generated-report-checks";
 import { checkApplicationOutputProcess } from "../scripts/check-live-number-run";
 
 const now = new Date("2026-11-05T13:00:00Z");
@@ -22,6 +22,103 @@ const summary = () => ({ campaignId: "a", sources: [{ id: "ga4", connected: true
   totals: Object.fromEntries(Object.entries({ users: 10, sessions: 20, conversions: 1.5, revenue: 100, spend: 40, roas: 2.5, roi: 150, cpa: 26.67, cvr: 7.5 })
     .map(([key, value]) => [key, { value, available: true }])) });
 const sectionChecks = (section: string, outputs: any, snapshot = fixture()) => checkApplicationOutputs(snapshot, outputs, now).filter(check => check.section === section);
+
+describe("remaining live monitor selections", () => {
+  it("keeps exact days separate from calendar-month clamping, including leap years", () => {
+    expect(monitorComparisonWindows("2024-03-31").find(item => item.key === "comparisonMonth")?.date).toBe("2024-02-29");
+    expect(monitorComparisonWindows("2026-03-31").find(item => item.key === "comparisonMonth")?.date).toBe("2026-02-28");
+    expect(monitorComparisonWindows("2026-03-31").find(item => item.key === "comparison30d")?.date).toBe("2026-03-01");
+    expect(monitorComparisonWindows("2026-11-04").map(item => item.key)).toEqual(["comparison1d", "comparison7d", "comparison14d", "comparison30d", "comparison90d", "comparisonMonth"]);
+    expect(() => monitorComparisonWindows("2026-02-30")).toThrow();
+  });
+  const financial = (date: string, revenue = 0, spend = 0, conversions = 0) => ({ id: date, campaignId: "a", snapshotType: "financial_daily", reportingDate: date,
+    metrics: { financialDaily: { version: "financial_daily_snapshot_v1", currency: "EUR", currentValueWindow: {
+      mode: "initial_import_to_latest_completed_day", startDate: date < "2026-11-04" ? "1900-01-01" : "2026-11-04", endDate: date, dataThroughDate: date, reportingTimeZone: "Europe/Amsterdam" },
+    inputs: { revenue: { value: revenue, available: true, sources: ["ga4"] }, spend: { value: spend, available: true, sources: ["canonical_spend_sources"] }, conversions: { value: conversions, available: true, sources: ["ga4"] } } } } });
+  it("checks stored propagation and independently summed exact-date fallback inputs", () => {
+    const snapshot = fixture(), current = financial("2026-11-04", 100, 40, 1.5), previous = financial("2026-11-03");
+    previous.metrics.financialDaily.inputs.spend = { value: null as any, available: false, sources: [] };
+    snapshot.rows.metricSnapshots = [current];
+    const outputs = { comparison1d: { current: structuredClone(current), previous, comparisonDate: "2026-11-03" } };
+    const checks = () => checkFinancialComparisonOutputs(snapshot, outputs, now).filter(check => check.section.endsWith("comparison1d"));
+    expect(checks().every(check => check.status === "passed")).toBe(true);
+    previous.metrics.financialDaily.inputs.revenue.value = 10;
+    expect(checks()).toContainEqual(expect.objectContaining({ code: "previous_revenue", status: "difference" }));
+    outputs.comparison1d.current.metrics.financialDaily.currency = "USD";
+    expect(checks()).toContainEqual(expect.objectContaining({ code: "current_SCOPE", status: "difference" }));
+    previous.campaignId = "other";
+    expect(checks()).toContainEqual(expect.objectContaining({ code: "previous_SCOPE", status: "difference" }));
+  });
+  it("never passes missing responses, incomplete history or duplicate saved snapshots", () => {
+    const snapshot = fixture();
+    expect(checkFinancialComparisonOutputs(snapshot, {}, now).every(check => check.status === "unverified")).toBe(true);
+    snapshot.rows.metricSnapshots = [financial("2026-11-04"), financial("2026-11-04")];
+    expect(checkFinancialComparisonOutputs(snapshot, { comparison1d: { comparisonDate: "2026-11-03", current: financial("2026-11-04") } }, now))
+      .toContainEqual(expect.objectContaining({ code: "current_DUPLICATE_SNAPSHOTS", status: "unverified" }));
+    snapshot.rows.metricSnapshots = []; snapshot.rows.ga4DailyMetrics = [];
+    expect(checkFinancialComparisonOutputs(snapshot, { comparison1d: { comparisonDate: "2026-11-03", current: financial("2026-11-04") } }, now))
+      .toContainEqual(expect.objectContaining({ code: "current_DATED_INPUTS_UNVERIFIED", status: "unverified" }));
+  });
+  it("preserves historical currency while verifying that the display rejects incompatible history", () => {
+    const snapshot = fixture(), current = financial("2026-11-04", 100, 40, 1.5), previous = financial("2026-11-03");
+    previous.metrics.financialDaily.currency = "USD";
+    snapshot.rows.metricSnapshots = [current, previous];
+    const checks = checkFinancialComparisonOutputs(snapshot, { comparison1d: { current, previous, comparisonDate: "2026-11-03" } }, now)
+      .filter(check => check.section.endsWith("comparison1d"));
+    expect(checks.every(check => check.status === "passed")).toBe(true);
+    expect(checks).toContainEqual(expect.objectContaining({ code: "previous_DISPLAY_COMPATIBILITY", status: "passed" }));
+  });
+  it("distinguishes a recorded zero spend from having no dated spend record", () => {
+    const snapshot = fixture(), current = financial("2026-11-04", 100, 40, 1.5), previous = financial("2026-11-03");
+    snapshot.rows.metricSnapshots = [current];
+    snapshot.rows.spendRecords.push({ ...snapshot.rows.spendRecords[0], date: "2026-11-03", spend: "0" });
+    const outputs = { comparison1d: { current, previous, comparisonDate: "2026-11-03" } };
+    expect(checkFinancialComparisonOutputs(snapshot, outputs, now).filter(check => check.section.endsWith("comparison1d")).every(check => check.status === "passed")).toBe(true);
+    previous.metrics.financialDaily.inputs.spend.available = false;
+    expect(checkFinancialComparisonOutputs(snapshot, outputs, now)).toContainEqual(expect.objectContaining({ code: "previous_spend_AVAILABILITY", status: "difference" }));
+  });
+  const custom = (configuration: any) => ({ id: "report-a", campaignId: "a", platformType: "google_analytics", reportType: "custom", configuration });
+  const summaryText = "Performance Overview\nSummary\nSESSIONS\n20\nUSERS\n10\nCONVERSIONS\n1.5\nENGAGEMENT RATE\n50.0%\nCONV. RATE\n7.5%";
+  it("checks summary-only custom reports without requiring unselected financial cards", () => {
+    const report = custom({ sections: { overview: true }, subsections: { overview: { summary: true } } });
+    const checks = checkConfiguredReportText(fixture(), summaryText, report, now);
+    expect(checks).toHaveLength(5); expect(checks.every(check => check.status === "passed")).toBe(true);
+    expect(checkConfiguredReportText(fixture(), summaryText.replace("20", "21"), report, now)).toContainEqual(expect.objectContaining({ code: "SESSIONS", status: "difference" }));
+  });
+  it("uses only explicitly selected target IDs and rejects missing or duplicate selections", () => {
+    const snapshot = fixture(); snapshot.rows.kpis = [{ id: "k1", platformType: "google_analytics", name: "Sessions", currentValue: "20", targetValue: "30" },
+      { id: "k2", platformType: "google_analytics", name: "Revenue", currentValue: "100", targetValue: "200" }];
+    const report = custom({ sections: { kpis: true }, subsections: { kpis: { items: true } }, selectedKpiIds: ["k1"] });
+    expect(checkConfiguredReportText(snapshot, "Key Performance Indicators\nSessions 20 30", report, now).every(check => check.status === "passed")).toBe(true);
+    report.configuration.selectedKpiIds.push("unknown");
+    expect(checkConfiguredReportText(snapshot, "Sessions 20 30", report, now)).toContainEqual(expect.objectContaining({ code: "kpis_SELECTION_UNVERIFIED", status: "unverified" }));
+    report.configuration.selectedKpiIds = ["k1", "k1"];
+    expect(checkConfiguredReportText(snapshot, "Sessions 20 30", report, now)).toContainEqual(expect.objectContaining({ code: "kpis_SELECTION_UNVERIFIED", status: "unverified" }));
+  });
+  it("checks selected missing-spend cards instead of dropping their availability check", () => {
+    const snapshot = fixture(); snapshot.rows.spendSources = []; snapshot.rows.spendRecords = [];
+    const report = custom({ sections: { overview: true }, subsections: { overview: { spend: true } } });
+    expect(checkConfiguredReportText(snapshot, "TOTAL SPEND\nUnavailable", report, now)).toEqual([
+      expect.objectContaining({ code: "TOTAL_SPEND_UNAVAILABLE", status: "passed" }),
+    ]);
+    expect(checkConfiguredReportText(snapshot, "TOTAL SPEND\nEUR 0.00", report, now).every(check => check.status === "passed")).toBe(false);
+  });
+  it("fails closed on foreign reports, invalid JSON and unknown selected content", () => {
+    expect(checkConfiguredReportText(fixture(), "", { ...custom({}), campaignId: "other" }, now)[0].status).toBe("difference");
+    expect(checkConfiguredReportText(fixture(), "", custom("{"), now)[0].code).toBe("REPORT_CONFIGURATION_UNVERIFIED");
+    expect(checkConfiguredReportText(fixture(), summaryText, custom({ sections: { futureMetric: true } }), now))
+      .toContainEqual(expect.objectContaining({ code: "REPORT_SELECTION_SCHEMA_UNVERIFIED", status: "unverified" }));
+  });
+  it.each(["users", "conversions", "revenue", "conversionRate"])("checks Comparison chart totals and values for %s", metric => {
+    const snapshot = fixture(); snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [{ campaign: "search", sessions: 20, users: 8, conversions: 1.5, revenue: 100, sessionKeyEventRate: 0.05 }];
+    const labels: any = { users: ["Users", "TOTAL USERS", "8"], conversions: ["Conversions", "TOTAL CONVERSIONS", "1.5"], revenue: ["Revenue", "CAMPAIGN BREAKDOWN REVENUE", "EUR 100.00"], conversionRate: ["Conversion Rate", "OVERALL CONVERSION RATE", "5%"] };
+    const [label, total, value] = labels[metric];
+    const text = `Top Campaigns by ${label}\n${value}\nsearch\n${total}\n${value}\nCAMPAIGNS COMPARED\n1`;
+    const report = custom({ sections: { ads: true }, subsections: { ads: { topCampaigns: true } }, adComparisonMetric: metric });
+    expect(checkConfiguredReportText(snapshot, text, report, now).every(check => check.status === "passed")).toBe(true);
+    expect(checkConfiguredReportText(snapshot, text.replace(value + "\nsearch", "999\nsearch"), report, now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_CHART_VALUE", status: "difference" }));
+  });
+});
 
 describe("actual application output comparisons", () => {
   it("checks Pipeline Proxy selected-source identity and values without mixing confirmed revenue", () => {

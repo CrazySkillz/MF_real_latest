@@ -10,7 +10,7 @@ import { syncBuiltinESMExports } from "node:module";
 import express from "express";
 import { readOnlyMonitorDatabaseUrl, readOnlyMonitorFetch } from "./check-live-numbers";
 import { snapshotFingerprint, resolveMonitorScope, parseMonitorMapping, type NumberCheck } from "../server/live-number-checks";
-import { checkApplicationOutputs } from "../server/live-number-output-checks";
+import { checkApplicationOutputs, checkFinancialComparisonOutputs, monitorComparisonWindows } from "../server/live-number-output-checks";
 
 export function monitorReadQueryAllowed(sql: string): boolean {
   // Reject multiple statements, SQL comments, setting changes and explicit write
@@ -54,9 +54,9 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
     if (input instanceof Request) return blocked();
     const url = new URL(String(input));
     if (origin && url.origin === origin && (options?.method || "GET") === "GET") return originalFetch(input, { ...options, redirect: "error", signal: AbortSignal.timeout(45_000) });
-    // Ten report variants plus exact-date fallbacks require up to thirteen reads
-    // in the enrolled campaigns. Retain a bounded allowance for those reads.
-    if (propertyScope && outputReportReadAllowed(url, options, propertyScope, currencyScope) && ++reportReads <= 20) return providerRead(input, outputReportAuthorization(options, reportToken));
+    // Ten standard variants, six exact-date comparisons and at most twenty
+    // saved report selections. Retain a fixed provider-read ceiling.
+    if (propertyScope && outputReportReadAllowed(url, options, propertyScope, currencyScope) && ++reportReads <= 60) return providerRead(input, outputReportAuthorization(options, reportToken));
     return blocked();
   };
   globalThis.fetch = replayFetch;
@@ -124,6 +124,7 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
       if (!source.isActive || source.platformContext !== "ga4" || source.sourceType !== provider) return false;
       try { return parseMonitorMapping(source.mappingConfig).pipelineEnabled === true; } catch { return false; }
     })) paths[provider + "Pipeline"] = `/api/${provider}/${id}/pipeline-proxy?platformContext=ga4`;
+    for (const window of monitorComparisonWindows(scope.endDate)) paths[window.key] = `${prefix}/snapshots/comparison?type=${window.type}&snapshotType=financial_daily&comparisonDate=${window.date}`;
     const capability = randomBytes(32).toString("hex"), allowed = new Set(Object.values(paths));
     const app = express();
     app.use((req, res, next) => {
@@ -148,8 +149,13 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
       } catch { checks.push({ section: "Application output safety", code: `READ_${name}_UNVERIFIED`, status: "unverified" }); }
     }
     checks.push(...checkApplicationOutputs(before, outputs));
+    checks.push(...checkFinancialComparisonOutputs(before, outputs));
     const { checkGeneratedReportNumbers } = await import("../server/live-number-generated-report-checks");
     checks.push(...await checkGeneratedReportNumbers(before, () => writes + external, outputs.outcome?.performanceSummary?.sources));
+    // These paths are not executed by an isolated HTTP/PDF replay. Keep the
+    // coverage gap visible in recurring receipts, not only in documentation.
+    for (const code of ["BROWSER_RENDER_AND_EXPORT_UNVERIFIED", "NARRATIVE_AND_CHART_PRESENTATION_UNVERIFIED", "MISSING_NOTIFICATION_AND_EMAIL_UNVERIFIED"])
+      checks.push({ section: "Monitoring coverage", code, status: "unverified" });
     const after = await storage.getLiveNumberCheckSnapshot(campaignHash);
     if (snapshotFingerprint(after) !== expectedFingerprint) return [{ section: "scope", code: "OUTPUT_INPUTS_CHANGED", status: "unverified" as const }];
     checks.push({ section: "Application output safety", code: "DATABASE_READ_ONLY_ENFORCED", status: "passed" });

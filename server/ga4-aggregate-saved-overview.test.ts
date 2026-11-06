@@ -68,6 +68,7 @@ describe("ordered GA4 campaign snapshot saved financial inputs", () => {
     expect(totals.conversions.value).toBe(5);
     expect(snapshot).toMatchObject({ campaignId, snapshotType: "platform_sync", totalSpend: "20.00", totalConversions: 5 });
     expect(snapshot.metrics.ga4).toMatchObject({ sessions: 30, conversions: 5, revenue: 100 });
+    expect(snapshot.metrics.performanceSummaryVerification).toMatchObject({ campaignId, propertyId, nativeFinancialWindow: { startDate: "2026-10-15", endDate: date }, financialConversions: { value: 5, available: true } });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
     expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });

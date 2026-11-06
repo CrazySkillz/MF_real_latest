@@ -24,7 +24,7 @@ export function expectedTargetNumbers(snapshot: LiveNumberSnapshot, now = new Da
     const ratio = lower ? current > 0 ? target / current : 0 : current / target;
     const benchmarkStatus = ratio <= 1e-9 ? "behind" : delta >= -5 - 1e-9 || Math.abs(current - target) <= absolute + 1e-9
       ? "on_track" : ratio + 1e-9 < 0.7 ? "behind" : "needs_attention";
-    return { kind, row, verified: true as const, identity, current, target, delta, band, benchmarkStatus, attainment: Math.min(ratio * 100, 100) };
+    return { kind, row, verified: true as const, identity, current, target, delta, band, benchmarkStatus, attainment: kind === "benchmarks" ? Math.max(0, Math.min(ratio * 100, 100)) : Math.min(ratio * 100, 100) };
   }));
 }
 

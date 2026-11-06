@@ -307,7 +307,7 @@ requires a separate application change that captures the exact generation inputs
 with the saved artifact. Re-fetching current settings after PDF generation would
 not prove its inputs and is not implemented as a shortcut here.
 
-Follow-up validation before hosted release: TypeScript passed and 149 focused
+Follow-up validation before hosted release: TypeScript passed and 150 focused
 tests passed. Deliberately wrong rates, currency, stage, campaign, source amounts,
 duplicate/truncated provider pages, campaign cent allocation, target status,
 trajectory boundaries and SQL/network mutations are covered. A captured live

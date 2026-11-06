@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkApplicationOutputs, expectedOutputNumbers } from "./live-number-output-checks";
+import { checkApplicationOutputs, expectedOutputNumbers, expectedTargetNumbers } from "./live-number-output-checks";
 import { monitorReadQueryAllowed, outputReportReadAllowed, outputReportAuthorization } from "../scripts/check-live-number-outputs";
 import type { LiveNumberSnapshot } from "./live-number-checks";
 import { checkDiagnosticReportText, checkGeneratedReportText, checkReportDetailText } from "./live-number-generated-report-checks";
@@ -246,6 +246,13 @@ describe("actual report detail values", () => {
     expect(checkReportDetailText(snapshot, text, "ads", now).every(check => check.status === "passed")).toBe(true);
     expect(checkReportDetailText(snapshot, text.replace("MOST KEY EVENTS\na", "MOST KEY EVENTS\nb"), "ads", now)).toContainEqual(expect.objectContaining({ code: "KEY_EVENT_LEADER", status: "difference" }));
     expect(checkReportDetailText(snapshot, text.replace("50\nb", "51\nb"), "ads", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_CHART_VALUE", status: "difference" }));
+    expect(checkReportDetailText(snapshot, text.replace("COMPARED\n2", "COMPARED\n20"), "ads", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_COUNT", status: "difference" }));
+    expect(checkReportDetailText(snapshot, text.replace("50\nb", "50\nbother"), "ads", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_CHART_VALUE", status: "difference" }));
+  });
+  it("keeps a negative revenue benchmark's visual progress at zero", () => {
+    const snapshot = fixture(); snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.totals.revenue = -50;
+    snapshot.rows.benchmarks = [{ id: "b", name: "Revenue", metric: "revenue", unit: "EUR", applyTo: "all", platformType: "google_analytics", benchmarkValue: "100" }];
+    expect(expectedTargetNumbers(snapshot, now)[0]).toMatchObject({ verified: true, current: -50, benchmarkStatus: "behind", attainment: 0 });
   });
   it("checks campaign allocation, weighted rates and cent ties without allocating unrelated revenue", () => {
     const snapshot = fixture();

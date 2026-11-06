@@ -184,7 +184,8 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
       const integer = (value: number) => value.toLocaleString("en-US", { maximumFractionDigits: 0 });
       const checkText = (code: string, title: string, detail: string) => {
         const index = lines.indexOf(title);
-        checks.push({ section, code, status: index < 0 ? "unverified" : lines.slice(index + 1, index + 4).join(" ").startsWith(detail) ? "passed" : "difference" });
+        const actual = lines.slice(index + 1, index + 4).join(" ");
+        checks.push({ section, code, status: index < 0 ? "unverified" : actual.startsWith(detail) && (actual.length === detail.length || actual[detail.length] === " ") ? "passed" : "difference" });
       };
       checkText("CAMPAIGN_COUNT", "CAMPAIGNS COMPARED", String(rows.length));
       checkText("CAMPAIGN_SESSIONS", "TOTAL SESSIONS", integer(rows.reduce((sum, item) => sum + item.sessions, 0)));
@@ -204,7 +205,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
       const start = lines.indexOf("Top Campaigns by Sessions"), end = lines.indexOf("TOTAL SESSIONS", start);
       const chart = lines.slice(start + 1, end).join(" ");
       for (const item of [...rows].sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.name.localeCompare(b.name, "en", { sensitivity: "variant" })).slice(0, 10)) {
-        checks.push({ section, code: "CAMPAIGN_CHART_VALUE", subject: monitorHash(item.name), status: start < 0 || end <= start ? "unverified" : chart.includes(`${integer(item.sessions)} ${item.name}`) ? "passed" : "difference" });
+        checks.push({ section, code: "CAMPAIGN_CHART_VALUE", subject: monitorHash(item.name), status: start < 0 || end <= start ? "unverified" : new RegExp(`(?:^| )${escape(integer(item.sessions) + " " + item.name)}(?: |$)`).test(chart) ? "passed" : "difference" });
       }
     }
   }

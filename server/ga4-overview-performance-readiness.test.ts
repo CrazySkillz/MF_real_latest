@@ -91,9 +91,9 @@ describe("GA4 Overview Performance readiness contract", () => {
   });
 
   it("keeps downstream Insights report zero-denominator formatting unavailable", () => {
-    expect(overview).toContain('["ROAS", financialSpend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"]');
+    expect(overview).toContain('["ROAS", financialSpend > 0 ? `${formatRoasRatio(Number(financialROAS || 0))}x` : "—"]');
     expect(overview).toContain('["ROI", financialSpend > 0 ? fP(Number(financialROI || 0)) : "—"]');
-    expect(scheduledOverviewPdf).toContain('["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"]');
+    expect(scheduledOverviewPdf).toContain('["ROAS", payload.financialSpend > 0 ? `${formatRoasRatio(Number(payload.financialROAS || 0))}x` : "—"]');
     expect(scheduledOverviewPdf).toContain('payload.financialSpend > 0 && payload.financialConversions > 0 ? [["CPA", formatMoney(payload.financialCPA), ""]] : []');
   });
 });

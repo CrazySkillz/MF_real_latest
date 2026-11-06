@@ -13,7 +13,7 @@ The traced paths are source records -> existing storage range totals -> campaign
 
 ## Validation
 
-The exact defects failed regression tests before correction. The focused packet passes 108 tests: empty versus explicit-zero spend, stale aggregate fallback in both affected PDF builders, decimal half-way/adjacent/negative ROAS cases, executed expressions from the actual affected screen/PDF code, existing Overview rounding and neighboring financial/Insights/report contracts. Full release-gate and hosted verification receipts belong in the release PR; local passing tests alone are not a deployment or whole-section certification.
+The exact defects failed regression tests before correction. The focused packets pass 541 tests: empty versus explicit-zero spend, failed queries, publication readers and refresh jobs, stale aggregate fallback in both affected PDF builders, decimal half-way/adjacent/negative ROAS cases, executed expressions and rendered actual screen sections, existing Overview rounding and neighboring financial/Insights/report contracts. Existing source-extraction tests now bind the actual formatter and preserve their availability, source and zero-denominator assertions. Read-only candidate output runs pass 965 screen/browser-PDF comparisons and 882 test-campaign server-PDF/API comparisons, plus 1,132 and 994 server-PDF/API comparisons for the two affected live campaigns; all four runs have no findings and unchanged input fingerprints. Full release-gate and hosted verification receipts belong in the release PR; local passing tests alone are not a deployment or whole-section certification.
 
 ## The forty unverified comparisons
 

@@ -131,7 +131,7 @@ This is a section-level monitoring inventory, not an exhaustive value-by-value c
 | Performance Summary | Independent ROAS/ROI/CPA/conversion-rate arithmetic over saved available inputs; extension compares the real aggregate response, availability, campaign/window and source values | Old `platform_sync` snapshots without `currentValueWindow` remain unverified. Additional paid/custom platform aggregates are not substituted with GA4-only expectations. |
 | Budget & Financial Analysis | Snapshot currency/window/availability and inputs; configured period spend; generated budget, used/remaining/utilization, daily burn/target/status and source contribution amounts | Browser presentation, comparative-period fallback outputs and any separately configured estimate are not newly certified. |
 | Trend Analysis | Underlying GA4 daily input reconciliation/date completeness; actual Trend response window, property, GA4 daily series and daily financial ratios; existing financial-ratio helper against independent arithmetic | Trend charts, comparative-period presentation, additional daily financial transforms and explanatory text are not directly rendered by the monitor. |
-| Executive Summary | Snapshot scope and core metrics; actual outcome response consumed by the page; legacy zero-sentinel availability guard; KPI/Benchmark current/target/status/progress; seven-day trajectory arithmetic/band, including complete dated revenue reconstruction after source changes; generated exception names/status/values | Missing/incomplete history and unsupported fallback evidence remain unverified. Narrative/risk/recommendation text and browser presentation are not directly checked. |
+| Executive Summary | Snapshot scope and core metrics; actual outcome response consumed by the page; legacy zero-sentinel availability guard; KPI/Benchmark current/target/status/progress; seven-day trajectory arithmetic/band, including complete dated revenue reconstruction after source changes and the native-GA4 financial fallback; generated exception names/status/values | Missing/incomplete history and unsupported fallback evidence remain unverified. Narrative/risk/recommendation text and browser presentation are not directly checked. |
 | GA4 and Campaign Diagnostics reports | Saved artifact scope/window checks; supported historical PDF arithmetic; actual library identities; ten temporary PDF variants including core cards, target tables and the detailed fields listed above | Historical source definitions/CPA conversion basis/session-rate basis cannot be reconstructed. Arbitrary custom selections, browser exports and remaining non-card narrative/comparison content are unchecked. Temporary PDFs are never saved or emailed. |
 | Alerts and notifications | Related supported KPI/Benchmark current values; threshold-decision and unavailable-input suppression helpers; extension checks returned visible alert current value, threshold, breached condition, target identity and destination | Creation, missing-notification detection, historical breach context and delivered email contents remain outside this read-only replay. |
 
@@ -317,7 +317,12 @@ pipeline provider parity when its credential is expired. The full run exposed a
 ten-read ceiling (thirteen legitimate calls) and Insights history starting at
 campaign creation; both monitor assumptions were corrected. Source-change
 trajectory reconstruction now checks both independently summed cutoffs and exact
-source identities, and rejects incomplete history. Final source/output and
+source identities, and rejects incomplete history. Hosted test verification then
+identified a missing Executive-snapshot fallback; a targeted follow-up checks
+native-GA4-only revenue from complete dated records against the same seven-day
+cutoff without manufacturing a saved snapshot. Its captured test data passed, and
+all 63 output-check tests passed. Imported-source or incomplete history cannot use
+this exception. Final source/output and
 hosted results are retained in `.local-test/phased-number-live-result.json` and
 the rollout/hosted receipts, with no raw credentials in checked-in documentation.
 

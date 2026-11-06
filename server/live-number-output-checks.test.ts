@@ -168,6 +168,22 @@ describe("actual application output comparisons", () => {
     snapshot.rows.ga4DailyMetrics.pop();
     expect(sectionChecks("Executive trajectory response", { trajectory }, snapshot)).toContainEqual(expect.objectContaining({ code: "CHANGED_SOURCE_HISTORY_UNVERIFIED", status: "unverified" }));
   });
+  it("verifies the GA4-only trajectory fallback without inventing an old Executive snapshot", () => {
+    const snapshot = fixture(); snapshot.rows.ga4Connections[0].importStartDate = "2026-10-28";
+    snapshot.rows.ga4OverviewSnapshots[0].windowStart = "2026-10-28";
+    snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.totals.revenue = 80;
+    snapshot.rows.ga4DailyMetrics = Array.from({ length: 8 }, (_, index) => ({ ...snapshot.rows.ga4DailyMetrics[0], date: new Date(Date.parse("2026-10-28") + index * 86400000).toISOString().slice(0, 10), revenue: "10" }));
+    snapshot.rows.metricSnapshots = [{ campaignId: "a", snapshotType: "executive_summary_daily", reportingDate: "2026-11-04", metrics: { executiveSummaryDaily: {
+      currency: "EUR", ga4PropertyId: "123", ga4CampaignFilter: '["search"]', sourceSignature: ["ga4:web_analytics:revenue"],
+      currentValueWindow: { mode: "initial_import_to_latest_completed_day", startDate: "2026-10-28", endDate: "2026-11-04", reportingTimeZone: "Europe/Amsterdam" }, totals: { revenue: { available: true, value: 80, sources: ["ga4"] } },
+    } } }];
+    const trajectory = { reportingDate: "2026-11-04", comparisonDate: "2026-10-28", available: true, reason: null, trajectory: "accelerating", trendPercentage: 700, source: "financial_daily_fallback" };
+    expect(sectionChecks("Executive trajectory response", { trajectory }, snapshot).every(check => check.status === "passed")).toBe(true);
+    trajectory.trendPercentage = 699;
+    expect(sectionChecks("Executive trajectory response", { trajectory }, snapshot)).toContainEqual(expect.objectContaining({ code: "FALLBACK_REVENUE_CHANGE_PERCENT", status: "difference" }));
+    snapshot.rows.ga4DailyMetrics.pop();
+    expect(sectionChecks("Executive trajectory response", { trajectory }, snapshot)).toContainEqual(expect.objectContaining({ code: "FALLBACK_HISTORY_UNVERIFIED", status: "unverified" }));
+  });
 });
 
 describe("current generated PDF values", () => {

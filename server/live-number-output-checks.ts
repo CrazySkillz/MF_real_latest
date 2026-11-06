@@ -209,7 +209,26 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
     const current = currentRows.length === 1 ? currentRows[0].metrics?.executiveSummaryDaily : null;
     const previous = previousRows.length === 1 ? previousRows[0].metrics?.executiveSummaryDaily : null;
     if (!current || !previous) {
-      if (actual.available === false) flag(section, "MISSING_HISTORY_UNAVAILABLE", actual.trajectory === null && actual.trendPercentage === null && actual.reason === "not_enough_history");
+      const daily = expected.daily;
+      const fallbackVerified = current && !previous && expected.revenueSources.length === 0 && previousDate >= scope.startDate
+        && currentRows[0].campaignId === campaign.id && current.currency === scope.currency && current.ga4PropertyId === scope.connection.propertyId
+        && current.ga4CampaignFilter === String(campaign.ga4CampaignFilter).trim()
+        && current.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+        && current.currentValueWindow?.startDate === scope.startDate && current.currentValueWindow?.endDate === scope.endDate
+        && current.currentValueWindow?.reportingTimeZone === scope.reportingTimeZone && current.totals?.revenue?.available === true
+        && JSON.stringify(current.totals.revenue.sources) === '["ga4"]' && !current.sourceSignature?.some((id: string) => id.startsWith("revenue_source:"))
+        && daily.length === (Date.parse(scope.endDate) - Date.parse(scope.startDate)) / 86400000 + 1 && new Set(daily.map(day => day.date)).size === daily.length
+        && daily.every(day => day.campaignId === campaign.id && !day.isSimulated && dateIsValid(day.date) && numberOrNull(day.revenue) !== null)
+        && expected.native !== null && Math.abs(Number(current.totals.revenue.value) - expected.native) < 0.005
+        && Math.abs(daily.reduce((sum, day) => sum + Number(day.revenue), 0) - expected.native) < 0.005;
+      const prior = daily.filter(day => day.date <= previousDate).reduce((sum, day) => sum + Number(day.revenue), 0);
+      if (fallbackVerified && prior > 0) {
+        const percentage = (expected.native! - prior) / prior * 100;
+        value(section, "FALLBACK_REVENUE_CHANGE_PERCENT", percentage, actual.trendPercentage, 8);
+        flag(section, "FALLBACK_TRAJECTORY_BAND", actual.available === true && actual.reason === null && actual.source === "financial_daily_fallback"
+          && actual.trajectory === (percentage > 10 ? "accelerating" : percentage < -10 ? "declining" : "stable"));
+      }
+      else if (actual.available === false) flag(section, "MISSING_HISTORY_UNAVAILABLE", actual.trajectory === null && actual.trendPercentage === null && actual.reason === "not_enough_history");
       else checks.push({ section, code: "FALLBACK_HISTORY_UNVERIFIED", status: "unverified" });
     } else {
       flag(section, "HISTORY_CAMPAIGN_SCOPE", [currentRows[0], previousRows[0]].every(row => row.campaignId === campaign.id)

@@ -32,7 +32,7 @@ export async function checkApplicationOutputProcess(campaignHash: string, databa
       { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, env: environment });
     activeChildren.add(child); child.once("close", () => activeChildren.delete(child)); child.once("error", () => activeChildren.delete(child));
     let output = "", tooLarge = false;
-    const timer = setTimeout(() => child.kill(), 190_000).unref();
+    const timer = setTimeout(() => child.kill(), 310_000).unref();
     child.stdout.on("data", chunk => { if (output.length + chunk.length > 2_000_000) { tooLarge = true; child.kill(); } else output += chunk; });
     child.once("error", () => { clearTimeout(timer); resolve(unverified("OUTPUT_PROCESS_UNVERIFIED")); });
     child.once("close", code => {
@@ -99,7 +99,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const deadline = setTimeout(() => {
     for (const child of activeChildren) child.kill();
     writeSync(1, JSON.stringify({ status: "unverified", code: "MONITOR_PHASE_DEADLINE_EXCEEDED" }) + "\n"); process.exit(1);
-  }, 10 * 60_000).unref();
+  }, 18 * 60_000).unref();
   try {
     if (process.argv.length !== 3 && !(process.argv.length === 4 && process.argv[3] === "--scheduled")) throw new Error();
     process.exitCode = await runNumberMonitorPhases(process.argv[2], process.argv[3] === "--scheduled");

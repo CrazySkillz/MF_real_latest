@@ -1,6 +1,23 @@
 # Live-number monitoring
 
-## Consolidated follow-up — 6 November
+## Browser, PDF and notification extension — 6 November
+
+The remaining static browser/notification coverage warnings are replaced by executable checks. This release extends only the existing Render monitor; neither hosted application is deployed and no customer record is written.
+
+- An isolated Chromium instance renders the actual styled GA4 Overview, KPIs, Benchmarks, Campaign Comparison and Insights components, all four Campaign Diagnostic pages, the Reports library and Notifications. It compares displayed numeric cards, selected target values, individual financial-source amounts, five comparison chart series, daily chart data and narrative window denominators with independently calculated captured inputs. Charts must also render an SVG.
+- The actual browser download function generates and parses all five standard GA4 PDFs, a combined custom PDF, and up to twenty saved GA4 definitions. Existing server-generator checks retain the ten GA4/Diagnostic PDF variants and saved Diagnostic definitions. Every unsupported or excess configuration remains unverified.
+- Notification checks independently identify missing required alerts, duplicate active alerts, inappropriate alerts after a threshold clears or is disabled, and explicit dismissals. The actual screen's title, campaign, numeric current/threshold values, condition and destination link are checked. Empty lists must render the successful empty state. The real email template is rendered with captured target values while its transport is replaced in the private monitor process; nothing is sent. Delivery audit checks distinguish confirmed delivery from provider acceptance and detect failed/stuck sends.
+- Client components use a private fixture identity and an owner-scoped handler replay, not a customer sign-in session. Every browser read goes through the existing read-only boundary. The browser process receives no database/provider credentials; writes, external requests and actual notification reconciliation are blocked. Alert absence is assessed independently rather than creating alerts as part of monitoring.
+- Source-list reads require an existing application `SELECT ... FOR SHARE` query. Only that exact single-campaign query is adapted to a plain SELECT in the monitor's private database adapter. PostgreSQL read-only mode, the SQL barrier and before/after capture fingerprints remain mandatory.
+- Chromium is installed from the existing locked Playwright dependency by `scripts/install-monitor-browser.cjs`; its launch is verified during the monitor build. The existing 2 GiB plan remains unchanged. The browser has a 384 MiB heap and a three-minute deadline; the full output process has a five-minute deadline and the coordinator eighteen minutes. The existing health checks continue every ten minutes even while an accuracy pass is running. Browser reads are capped at 160 unique scoped requests; selected-property provider reads retain the sixty-read ceiling.
+
+Validation before release: 285 styled-browser checks passed against captured live-campaign responses. A separate synthetic breached-alert fixture exercises the populated notification screen and campaign link without creating any alert. Focused tests cover incorrect values/currency, unavailable versus zero, fractional conversions, weighted conversion rates, missing/duplicate/dismissed alerts, delivery evidence and blocked email transport. Chromium installed and launched successfully on the existing Render monitor in isolated preflight job `job-dbn13fei0phs73d2ivhg`. Final CI and hosted verification receipts are maintained in [PR 4](https://github.com/CrazySkillz/MF_real_latest/pull/4).
+
+**Scope limits and findings remain explicit:** original historical generation inputs that were never retained cannot be reconstructed; unavailable provider access and unsupported custom/source definitions fail visibly. The separately detected app PDF availability/ROAS issues are not repaired by this monitor. Live authentication, arbitrary narrative/forecast semantics and every possible custom configuration are not certified by these checks. A missing prerequisite or failed check is never converted into a passing result. This is monitoring coverage, not a new production-readiness certification.
+
+## Previous release evidence — revision 76fc917a, 6 November
+
+The following records describe earlier releases; their browser/notification implementation gaps are superseded by the extension above.
 
 This update closes the remaining bounded API/report checks in one monitor release:
 

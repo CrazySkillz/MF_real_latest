@@ -12,6 +12,29 @@ import { readOnlyMonitorDatabaseUrl, readOnlyMonitorFetch } from "./check-live-n
 import { snapshotFingerprint, resolveMonitorScope, parseMonitorMapping, type NumberCheck } from "../server/live-number-checks";
 import { checkApplicationOutputs, checkFinancialComparisonOutputs, monitorComparisonWindows } from "../server/live-number-output-checks";
 
+export function browserReadPath(path: string, campaignId: string, propertyId: string, targetIds: string[]): string | null {
+  const url = new URL(path, "http://monitor");
+  if (url.origin !== "http://monitor" || url.hash || !path.startsWith("/api/") || path.length > 1500) return null;
+  const prefix = `/api/campaigns/${encodeURIComponent(campaignId)}`;
+  const name = url.pathname.slice(prefix.length + 1);
+  const endpoints = ["ga4-daily", "ga4-to-date", "ga4-breakdown", "ga4-landing-pages", "ga4-conversion-events", "ga4-connections", "ga4-geographic",
+    "revenue-to-date", "revenue-breakdown", "revenue-sources", "revenue-daily", "spend-to-date", "spend-breakdown", "spend-sources", "spend-daily",
+    "outcome-totals", "executive-summary", "executive-summary/trajectory", "trend-analysis", "financial-daily-snapshot", "snapshots", "snapshots/comparison", "connected-platforms", "google-sheets-data", "linkedin-daily", "daily-financials"];
+  const global = ["/api/campaigns", "/api/clients", "/api/notifications", "/api/industry-benchmarks", "/api/reports"];
+  const platforms = [...["kpis", "benchmarks", "reports"].map(kind => `/api/platforms/google_analytics/${kind}`), "/api/platforms/campaign_deepdive/reports"];
+  const target = targetIds.some(id => ["kpis", "benchmarks"].some(kind => url.pathname === `/api/${kind}/${encodeURIComponent(id)}/analytics`));
+  const provider = ["meta", "google-ads", "custom-integration", "hubspot", "salesforce"].some(p => ["analytics", "daily-metrics", "changes", "pipeline-proxy"].some(s => url.pathname === `/api/${p}/${encodeURIComponent(campaignId)}/${s}`));
+  if (!(url.pathname === prefix || url.pathname.startsWith(prefix + "/") && endpoints.includes(name) || global.includes(url.pathname) || target || provider
+    || url.pathname === `/api/ga4/check-connection/${encodeURIComponent(campaignId)}` || platforms.includes(url.pathname) && url.searchParams.get("campaignId") === campaignId)) return null;
+  if (url.searchParams.has("campaignId") && url.searchParams.get("campaignId") !== campaignId || url.searchParams.has("propertyId") && url.searchParams.get("propertyId") !== propertyId) return null;
+  const keys = ["campaignId", "propertyId", "days", "readOnly", "includeMonthly", "statusOnly", "insightsScope", "window", "overviewCampaignBreakdown", "adComparisonCampaignBreakdown", "insightsChannelAttribution", "snapshotEndDate", "limit", "dateRange", "platformContext", "startDate", "endDate", "throughDate", "reportingDate", "type", "snapshotType", "comparisonDate", "period", "timeframe", "ga4Scope", "start", "end"];
+  if ([...url.searchParams.keys()].some(key => !keys.includes(key))) return null;
+  if (url.searchParams.has("days") && !/^(?:[1-9]|[1-9]\d|[12]\d\d|3[0-6]\d)$/.test(url.searchParams.get("days")!)) return null;
+  if (name.startsWith("ga4-") || url.pathname.includes("check-connection") || url.pathname === "/api/notifications") url.searchParams.set("readOnly", "1");
+  if (name === "outcome-totals") url.searchParams.set("persistedOnly", "1");
+  url.searchParams.sort(); return url.pathname + url.search;
+}
+
 export function monitorReadQueryAllowed(sql: string): boolean {
   // Reject multiple statements, SQL comments, setting changes and explicit write
   // transactions. PostgreSQL read-only is the second, authoritative barrier.
@@ -44,7 +67,7 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
   process.env.DATABASE_URL = readOnlyMonitorDatabaseUrl(process.env.DATABASE_URL || "", databaseFingerprint);
   const originalFetch = globalThis.fetch, originalHttp = http.request, originalHttps = https.request;
   const originalHttpGet = http.get, originalHttpsGet = https.get;
-  let origin = "", propertyScope = "", currencyScope = "", reportToken = "", writes = 0, external = 0, reportReads = 0;
+  let origin = "", campaignScope = "", propertyScope = "", currencyScope = "", reportToken = "", writes = 0, external = 0, reportReads = 0;
   const providerRead = readOnlyMonitorFetch(originalFetch);
   const blocked = () => { external++; throw new Error("OUTPUT_EXTERNAL_REQUEST_BLOCKED"); };
   // Provider SDKs may use node:http instead of fetch. Both are blocked.
@@ -71,6 +94,11 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
         if (typeof callback === "function") { queueMicrotask(() => callback(error)); return; }
         return Promise.reject(error);
       }
+      // The source-list publication read takes a campaign SHARE lock. The
+      // read-only replay cannot lock rows; omit only that exact lock, with the
+      // same campaign parameter. Stable before/after fingerprints remain required.
+      if (/^select "id" from "campaigns" where "campaigns"\."id" = \$1 for share$/i.test(sql)
+        && args[1]?.length === 1 && args[1][0] === campaignScope) args[0] = typeof args[0] === "string" ? sql.replace(/ for share$/i, "") : { ...args[0], text: sql.replace(/ for share$/i, "") };
       return (query as any)(...args);
     }) as any;
   });
@@ -82,6 +110,7 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
     const before = await storage.getLiveNumberCheckSnapshot(campaignHash);
     if (snapshotFingerprint(before) !== expectedFingerprint) throw new Error("OUTPUT_INPUTS_CHANGED");
     const scope = resolveMonitorScope(before), id = encodeURIComponent(before.campaign.id), property = scope.connection.propertyId;
+    campaignScope = before.campaign.id;
     propertyScope = property; currencyScope = scope.currency;
     if (scope.connection.method === "service_account") {
       // The existing helper requests analytics.readonly only and caches the JWT
@@ -150,12 +179,34 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
     }
     checks.push(...checkApplicationOutputs(before, outputs));
     checks.push(...checkFinancialComparisonOutputs(before, outputs));
+    const { checkNotificationCoverage, checkNotificationEmailContent } = await import("../server/live-number-notification-checks");
+    checks.push(...checkNotificationCoverage(before, outputs.notifications));
+    checks.push(...await checkNotificationEmailContent(before));
     const { checkGeneratedReportNumbers } = await import("../server/live-number-generated-report-checks");
     checks.push(...await checkGeneratedReportNumbers(before, () => writes + external, outputs.outcome?.performanceSummary?.sources));
-    // These paths are not executed by an isolated HTTP/PDF replay. Keep the
-    // coverage gap visible in recurring receipts, not only in documentation.
-    for (const code of ["BROWSER_RENDER_AND_EXPORT_UNVERIFIED", "NARRATIVE_AND_CHART_PRESENTATION_UNVERIFIED", "MISSING_NOTIFICATION_AND_EMAIL_UNVERIFIED"])
-      checks.push({ section: "Monitoring coverage", code, status: "unverified" });
+    const { runBrowserProcess } = await import("./live-number-browser-process");
+    const browserCache = new Map<string, Promise<{ status: number; body: any }>>();
+    const ids = [...(before.rows.kpis || []), ...(before.rows.benchmarks || [])].map(row => row.id);
+    checks.push(...await runBrowserProcess(before, outputs, async requested => {
+      const path = browserReadPath(requested, before.campaign.id, property, ids);
+      if (!path) throw new Error("BROWSER_READ_SCOPE_BLOCKED");
+      if (!browserCache.has(path)) {
+        if (browserCache.size >= 160) throw new Error("BROWSER_READ_LIMIT");
+        allowed.add(path);
+        browserCache.set(path, (async () => {
+          const response = await fetch(origin + path, { headers: { "x-output-monitor": capability } });
+          const text = await response.text(); if (text.length > 5_000_000) throw new Error("BROWSER_READ_SIZE");
+          let body = JSON.parse(text);
+          // The isolated browser only receives this campaign/client, even when
+          // the real list route returns other records owned by the same actor.
+          if (path.split("?")[0] === "/api/campaigns" && Array.isArray(body)) body = body.filter(row => row.id === before.campaign.id);
+          if (path.split("?")[0] === "/api/clients" && Array.isArray(body)) body = body.filter(row => row.id === before.campaign.clientId);
+          if (path.startsWith("/api/notifications") && Array.isArray(body)) body = body.filter(row => row.campaignId === before.campaign.id);
+          return { status: response.status, body };
+        })());
+      }
+      return browserCache.get(path)!;
+    }));
     const after = await storage.getLiveNumberCheckSnapshot(campaignHash);
     if (snapshotFingerprint(after) !== expectedFingerprint) return [{ section: "scope", code: "OUTPUT_INPUTS_CHANGED", status: "unverified" as const }];
     checks.push({ section: "Application output safety", code: "DATABASE_READ_ONLY_ENFORCED", status: "passed" });
@@ -172,7 +223,7 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   console.log = console.warn = console.error = () => {};
-  const deadline = setTimeout(() => { writeSync(1, JSON.stringify([{ section: "Application outputs", code: "OUTPUT_DEADLINE", status: "unverified" }])); process.exit(1); }, 180_000).unref();
+  const deadline = setTimeout(() => { writeSync(1, JSON.stringify([{ section: "Application outputs", code: "OUTPUT_DEADLINE", status: "unverified" }])); process.exit(1); }, 300_000).unref();
   try { writeSync(1, JSON.stringify(await runApplicationOutputMonitor(process.argv[2], process.argv[3], process.argv[4]))); }
   catch { writeSync(1, JSON.stringify([{ section: "Application outputs", code: "OUTPUT_REPLAY_UNVERIFIED", status: "unverified" }])); process.exitCode = 1; }
   finally { clearTimeout(deadline); }

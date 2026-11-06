@@ -715,7 +715,7 @@ export class DatabaseStorage implements IStorage {
       const tables = { ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, revenueSources, revenueRecords,
         spendSources, spendRecords, googleSheetsConnections, hubspotConnections, salesforceConnections,
         shopifyConnections, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics, kpis, benchmarks,
-        metricSnapshots, linkedinReports, reportSnapshots, ga4RefreshWork };
+        metricSnapshots, linkedinReports, reportSnapshots, ga4RefreshWork, notifications, emailAlertEvents };
       for (const [name, table] of Object.entries(tables)) {
         rows[name] = await tx.select().from(table as any).where(eq(table.campaignId, campaign.id)).limit(10001);
         if (rows[name].length > 10000) throw new Error("MONITOR_INPUT_LIMIT_EXCEEDED");

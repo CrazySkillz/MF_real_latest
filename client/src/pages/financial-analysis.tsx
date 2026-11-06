@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
 import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialBudgetPeriodSpend, resolveFinancialPacingCalendar, resolveFinancialPaidMediaEfficiencyCompatibility } from "@/lib/financial-executive-actions";
-import { formatPct } from "@shared/metric-math";
+import { formatPct, formatRoasRatio } from "@shared/metric-math";
 
 interface Campaign {
   id: string;
@@ -758,12 +758,12 @@ export default function FinancialAnalysis() {
     executiveFinancialActions.push(financialRoasMetric.value < 1 || financialRoiMetric.value < 0
       ? {
           title: "Return below break-even",
-          body: `ROAS is ${financialRoasMetric.value.toFixed(2)}x and ROI is ${formatPercentage(financialRoiMetric.value)}. Review revenue attribution, conversion efficiency, and spend before adding budget.`,
+          body: `ROAS is ${formatRoasRatio(financialRoasMetric.value)}x and ROI is ${formatPercentage(financialRoiMetric.value)}. Review revenue attribution, conversion efficiency, and spend before adding budget.`,
           tone: "warning",
         }
       : {
           title: financialRoiMetric.value === 0 ? "Financial return at break-even" : "Positive financial return",
-          body: `ROAS is ${financialRoasMetric.value.toFixed(2)}x and ROI is ${formatPercentage(financialRoiMetric.value)}. ${financialRoiMetric.value === 0 ? "Revenue equals spend. Monitor efficiency before increasing budget." : "Protect current returns while monitoring pacing and source capacity."}`,
+          body: `ROAS is ${formatRoasRatio(financialRoasMetric.value)}x and ROI is ${formatPercentage(financialRoiMetric.value)}. ${financialRoiMetric.value === 0 ? "Revenue equals spend. Monitor efficiency before increasing budget." : "Protect current returns while monitoring pacing and source capacity."}`,
           tone: financialRoiMetric.value === 0 ? "info" : "success",
         });
   } else {
@@ -857,7 +857,7 @@ export default function FinancialAnalysis() {
                     },
                     {
                       label: "ROAS",
-                      value: financialRoasMetric.available ? `${financialRoasMetric.value.toFixed(2)}x` : "Unavailable",
+                      value: financialRoasMetric.available ? `${formatRoasRatio(financialRoasMetric.value)}x` : "Unavailable",
                       available: financialRoasMetric.available,
                       helper: overviewMetricUnavailableText(financialRoasMetric, "ROAS requires compatible revenue and spend"),
                     },
@@ -2361,7 +2361,7 @@ export default function FinancialAnalysis() {
                             <h4 className={insightTitleClass[financialPerformanceTone]}>Performance Summary</h4>
                             <p className={insightBodyClass[financialPerformanceTone]}>
                               {financialRoasMetric.available && financialRoiMetric.available
-                                ? `Your campaign is generating a ${financialRoasMetric.value.toFixed(2)}x ROAS with ${formatPercentage(financialRoiMetric.value)} ROI.`
+                                ? `Your campaign is generating a ${formatRoasRatio(financialRoasMetric.value)}x ROAS with ${formatPercentage(financialRoiMetric.value)} ROI.`
                                 : overviewMetricUnavailableText(financialRoasMetric.available ? financialRoiMetric : financialRoasMetric, "ROAS and ROI require available revenue and spend.")}
                             </p>
                           </div>
@@ -2461,7 +2461,7 @@ export default function FinancialAnalysis() {
                                 <div>
                                   <p className="font-medium text-yellow-900 dark:text-yellow-100">Budget Underutilized</p>
                                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                    Only {formatPercentage(overviewBudgetUtilization)} of budget is utilized while ROAS is {financialRoasMetric.value.toFixed(2)}x. Review pacing and consider increasing spend only if campaign goals and source capacity support it.
+                                    Only {formatPercentage(overviewBudgetUtilization)} of budget is utilized while ROAS is {formatRoasRatio(financialRoasMetric.value)}x. Review pacing and consider increasing spend only if campaign goals and source capacity support it.
                                   </p>
                                 </div>
                               </div>

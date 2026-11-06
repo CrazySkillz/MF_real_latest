@@ -56,7 +56,7 @@ describe("campaign current-value financial source contract", () => {
       importStartDate: "2026-07-01",
     }]);
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0 });
-    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100 });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100, sourceIds: ["spend-1"] });
     storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
     storageMock.getRevenueSources.mockResolvedValue([]);
     storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
@@ -155,6 +155,15 @@ describe("campaign current-value financial source contract", () => {
     expect(saved).toMatchObject({ inputs: {
       conversions: { available: true, value: 40 }, revenue: { available: true, value: "1300.00" }, spend: { available: true, value: "100.00" },
     } });
+  });
+
+  it.each([
+    [0, [], false], [0, ["spend-1"], true], [100, ["spend-1"], true],
+  ])("distinguishes missing spend from recorded zero: %s / %j", async (amount, sourceIds, available) => {
+    storageMock.getGA4Connections.mockResolvedValue([]);
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: amount, sourceIds });
+    const totals = await getCampaignMetricTotals("campaign-1");
+    expect(totals).toMatchObject({ spend: amount, spendAvailable: available });
   });
 
   it("uses saved aggregate revenue rather than a later provider revision, preserving daily cent rounding and external revenue", async () => {

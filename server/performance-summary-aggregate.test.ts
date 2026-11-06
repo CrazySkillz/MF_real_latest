@@ -6,6 +6,14 @@ import {
 import { formatPct } from "../shared/metric-math";
 
 describe("Performance Summary aggregate contract", () => {
+  it.each([[28501.50, 285.02], [25882.50, 258.83], [25882.49, 258.82]])("keeps ROAS decimal rounding consistent for revenue %s", (revenue, expected) => {
+    const aggregate = buildPerformanceSummaryAggregate({ campaignId: "campaign-1", dateRange: "30days",
+      ga4: { connected: true, revenue }, revenue: { totalRevenue: revenue },
+      spend: { unifiedSpend: 100, sourceIds: ["spend-1"], available: true } });
+    expect(aggregate.totals.roas).toMatchObject({ value: expected, available: true });
+    expect(aggregate.totals.revenue.value).toBe(revenue);
+    expect(aggregate.totals.spend.value).toBe(100);
+  });
   it("defines main Connected Platform sources through the aggregate adapter registry", () => {
     expect(getPerformanceSummaryMainSourceAdapterIds()).toEqual(["ga4", "linkedin", "meta", "custom_integration"]);
   });

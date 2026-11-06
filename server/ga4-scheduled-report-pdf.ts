@@ -1,5 +1,5 @@
 import { buildGA4InsightsRollups, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, selectUniqueLowestGA4InsightsConversionRateChannel, addGA4InsightsDateDays } from "../shared/ga4-insights";
-import { conversionCreditsMatch, computeProgress } from "../shared/metric-math";
+import { conversionCreditsMatch, computeProgress, formatRoasRatio } from "../shared/metric-math";
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
@@ -346,7 +346,7 @@ const buildInsightsItems = (payload: any) => {
       recommendation: "Confirm revenue attribution, then review conversion rate, AOV, and spend allocation before judging performance.",
       category: "finance", dataBasis: "Connected-source revenue/spend totals", confidence: "High" });
     if (roas < 1) items.push({ severity: "medium", title: "ROAS is below 1.0x to date",
-      description: `ROAS is ${roas.toFixed(2)}x for the connected-source financial window.`,
+      description: `ROAS is ${formatRoasRatio(roas)}x for the connected-source financial window.`,
       recommendation: "Check the conversion funnel, traffic mix, revenue source, and campaign filter before treating ROAS as a performance diagnosis.",
       category: "finance", dataBasis: "Connected-source revenue/spend totals", confidence: "High" });
   }
@@ -1739,7 +1739,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["Revenue", formatMoney(payload.financialRevenue)],
         ["Spend", payload.financialSpendAvailable ? formatMoney(payload.financialSpend) : "Unavailable"],
         ["Profit", payload.financialSpendAvailable ? formatMoney(payload.financialRevenue - payload.financialSpend) : "Unavailable"],
-        ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROAS", payload.financialSpend > 0 ? `${formatRoasRatio(Number(payload.financialROAS || 0))}x` : "—"],
         ["ROI", payload.financialSpendAvailable && payload.financialSpend > 0 ? formatPct(payload.financialROI) : "—"],
         ["Days of Data", formatNumber(payload.insightsRollups.availableDays || 0)],
       ], 3);

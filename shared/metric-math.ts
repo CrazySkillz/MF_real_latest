@@ -1,5 +1,10 @@
 export type ProgressStatus = "on_track" | "needs_attention" | "behind";
 
+/** Match the existing Overview decimal rounding without rounding source amounts. */
+export function formatRoasRatio(value: number): string {
+  return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
+}
+
 /** Conversion credit is fractional; display the JS number without count rounding. */
 export function formatConversionCredit(value: number): string {
   if (!Number.isFinite(value)) return "Unavailable";

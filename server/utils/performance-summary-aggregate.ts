@@ -1,3 +1,5 @@
+import { formatRoasRatio } from "../../shared/metric-math";
+
 type SourceCategory = "web_analytics" | "paid_media" | "financial" | "custom";
 
 type MetricAvailability = {
@@ -386,7 +388,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const cpc = costSpendAvailable && costClicks > 0 ? round2(costSpendValue / costClicks) : null;
   const cpa = spendValue > 0 && cpaConversions > 0 && cpaConversionsAvailable ? round2(spendValue / cpaConversions) : null;
   const cpm = costSpendAvailable && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
-  const roas = hasRevenue && hasSpend && spendValue > 0 ? round2(revenueValue / spendValue) : null;
+  const roas = hasRevenue && hasSpend && spendValue > 0 ? Number(formatRoasRatio(revenueValue / spendValue)) : null;
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
   const ctr = totalImpressions > 0 && clicksSources.length > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
   const webConversionsAvailable = Boolean(webSource && hasSourceMetric(input.webAnalytics, "conversions"));

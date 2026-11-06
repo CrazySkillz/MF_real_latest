@@ -12,6 +12,7 @@ const storageMock = vi.hoisted(() => ({
   getPlatformKPIs: vi.fn(),
   getPlatformBenchmarks: vi.fn(),
   getPrimaryGA4Connection: vi.fn(),
+  getExecutiveSummaryDailyComparisonData: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   getComparisonData: vi.fn(),
   getGA4PublicationVersion: vi.fn().mockResolvedValue(null),
@@ -291,6 +292,19 @@ describe("scheduled Performance Summary PDF", () => {
     })).rejects.toThrow("Performance Summary UI-aligned values are unavailable");
 
     expect(pdfTextCalls).not.toContain("- Total Sessions: 1,179");
+  });
+
+  it.each(["performance-summary", "executive-summary"])("preserves missing spend and recorded zero in the %s PDF", async reportType => {
+    storageMock.getExecutiveSummaryDailyComparisonData.mockResolvedValue({ current: null, previous: null });
+    const totals = await getCampaignMetricTotalsMock();
+    for (const available of [false, true]) {
+      pdfTextCalls.length = 0;
+      getCampaignMetricTotalsMock.mockResolvedValue({ ...totals, spend: 0, spendAvailable: available });
+      await buildPdfAttachmentForReport({ report: { id: "report-1", name: "Availability report", platformType: "campaign_deepdive", campaignId: "campaign-1", reportType: "custom",
+        configuration: { reportType, selectedSections: [`${reportType}:overview`] } }, windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "Campaign", isTest: true });
+      expect(pdfTextCalls.some(text => text.includes(available ? "$0.00" : "Unavailable"))).toBe(true);
+      expect(pdfTextCalls.some(text => text.includes("$2,699.75"))).toBe(false);
+    }
   });
 
   it("does not fall back to a differing aggregate revenue value", async () => {

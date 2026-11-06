@@ -45,12 +45,13 @@ vi.mock("jspdf", () => ({
       (Array.isArray(value) ? value : [value]).forEach((item) => pdfText.push(String(item)));
     }
     output(kind: string) {
-      return kind === "nodebuffer" ? Buffer.from("x".repeat(256)) : new ArrayBuffer(256);
+      return kind === "nodebuffer" ? Buffer.from("%PDF-1.7\n" + "x".repeat(256)) : new ArrayBuffer(256);
     }
   },
 }));
 
 import { buildGA4ScheduledPdfAttachment } from "./ga4-scheduled-report-pdf";
+import { createReportPdfArtifact, readReportVerification } from "./utils/report-pdf-artifact";
 
 const campaign = {
   id: "conversion-events-campaign",
@@ -117,6 +118,18 @@ describe("GA4 Overview Conversion Events scheduled PDF value parity", () => {
   });
 
   afterEach(() => vi.useRealTimers());
+
+  it("retains the actual selected scope and reporting dates with new PDF artifacts", async () => {
+    const result = await buildGA4ScheduledPdfAttachment({ report, windowStart: "2026-08-01", windowEnd: "2026-09-14", campaignName: campaign.name });
+    const payload = { reportId: report.id, campaignId: campaign.id, platformType: report.platformType, reportType: report.reportType,
+      windowStart: "2026-08-01", windowEnd: "2026-09-14", pdfArtifact: createReportPdfArtifact(result!) };
+    const inputs = readReportVerification(payload)!;
+    expect(inputs.scope).toMatchObject({ campaignId: campaign.id, propertyId: connection.propertyId, currency: "USD", reportingTimeZone: "Europe/Amsterdam" });
+    expect(inputs.trafficWindow).toMatchObject({ startDate: "2026-08-01", endDate: "2026-09-14" });
+    expect(inputs.report.configuration.subsections.overview.conversionEvents).toBe(true);
+    expect(JSON.stringify(inputs)).not.toContain('"accessToken"');
+    expect(inputs.financial).toHaveProperty("conversions");
+  });
 
   it("renders the exact first 25 API rows, preserves fractional credit, and excludes revenue", async () => {
     const result = await buildGA4ScheduledPdfAttachment({

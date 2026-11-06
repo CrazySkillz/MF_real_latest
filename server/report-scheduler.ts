@@ -27,7 +27,7 @@ import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-v
 import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
 import { getLatestCompleteReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
-import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
+import { createReportPdfArtifact, readReportPdfArtifact, attachReportVerification } from "./utils/report-pdf-artifact";
 import { randomUUID } from "node:crypto";
 import { getGA4AlignedRefreshState, isGA4AlignedRefreshReady } from "./ga4-daily-scheduler";
 import { existsSync, readFileSync } from "node:fs";
@@ -1389,6 +1389,16 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     ? await buildCampaignDeepDiveReportContext(campaignId, selectedSections)
     : { campaign: null, performanceSummary: null, budgetPacing: null, financialDecisionContext: null, financialInputs: null, executiveSummary: null, trendAnalysis: null, kpis: [], benchmarks: [], aggregateSources: [] };
   const { campaign, performanceSummary, budgetPacing, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;
+  const verifiedPdf = () => attachReportVerification(coercePdfBufferFromDoc(doc), {
+    report: { id: String(report.id || ""), campaignId, platformType: "campaign_deepdive", reportType: String(report.reportType || ""),
+      configuration: { reportType, selectedSections, selectedMetrics } },
+    reportWindow: { startDate: windowStart, endDate: windowEnd },
+    scope: { campaignId, currency: campaign?.currency, reportingTimeZone: campaign?.reportingTimeZone, campaignFilter: campaign?.ga4CampaignFilter },
+    performanceSummary, financialInputs, budgetPacing, financialDecisionContext, executiveSummary, trendAnalysis,
+    cumulativeGA4Window, performancePageTrafficTotals, performancePageTotals,
+    trendWindowStart, trendWindowEnd, trendWindowRows, trendPreviousWindowRows, compatibleTrendFinancialDaily, executiveTrajectory,
+    targets: { kpis, benchmarks },
+  });
   const cumulativeGA4Connection = campaignId && aggregateSources.length === 1 && aggregateSources[0]?.id === "ga4"
     ? await storage.getPrimaryGA4Connection(campaignId).catch(() => null)
     : null;
@@ -2850,7 +2860,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         y += actionHeight + 4;
       });
       drawFooter();
-      return coercePdfBufferFromDoc(doc);
+      return verifiedPdf();
     }
 
     if (reportType === "trend-analysis") {
@@ -3273,7 +3283,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         });
       }
       drawFooter();
-      return coercePdfBufferFromDoc(doc);
+      return verifiedPdf();
     }
 
     if (reportType === "executive-summary") {
@@ -3466,7 +3476,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         drawText("Available campaign data and configured targets do not support a reliable recommendation yet.", margin + 6, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 12 });
       }
       drawFooter();
-      return coercePdfBufferFromDoc(doc);
+      return verifiedPdf();
     }
 
     sectionHeading("Performance Summary", 28);
@@ -3567,7 +3577,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       });
     }
     drawFooter();
-    return coercePdfBufferFromDoc(doc);
+    return verifiedPdf();
   }
 
   addText(String(report?.name || "Campaign Report"), { size: 18, bold: true });
@@ -3599,7 +3609,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     selectedSections.forEach(addSelectedSectionBody);
   }
 
-  return coercePdfBufferFromDoc(doc);
+  return verifiedPdf();
 }
 
 const GOOGLE_SHEETS_REPORT_DATE_COLUMN_PATTERN = /^(date|week|day|time|timestamp|period|month|year)/i;

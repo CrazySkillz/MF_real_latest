@@ -3,7 +3,7 @@ import { financialDailySnapshotInputSchema } from "../shared/schema";
 import { conversionCreditsMatch } from "../shared/metric-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { getLatestCompleteReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
-import { readReportPdfArtifact } from "./utils/report-pdf-artifact";
+import { readReportPdfArtifact, readReportVerification } from "./utils/report-pdf-artifact";
 import { parseExecutiveSummaryDailySnapshot } from "./utils/executive-summary-daily-snapshot";
 import { buildGA4InsightsRollups, buildGA4InsightsMonthlySeries } from "../shared/ga4-insights";
 import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
@@ -221,17 +221,39 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
     const summary = sync.metrics.performanceSummary, values = summary.totals;
     // Arithmetic is independently checkable even when a legacy snapshot omitted its source-window metadata.
     const available = (key: string) => values[key]?.available === true ? numberOrNull(values[key].value) : null;
+    const verification = sync.metrics.performanceSummaryVerification;
     const rev = available("revenue"), cost = available("spend"), conv = available("conversions"), sessions = available("sessions");
+    const cpaConversions = verification?.version === 1 ? (verification.financialConversions?.available === true ? numberOrNull(verification.financialConversions.value) : null) : conv;
     const calculated = { roas: cost! > 0 && rev !== null ? rev / cost! : null,
       roi: cost! > 0 && rev !== null ? (rev - cost!) / cost! * 100 : null,
-      cpa: conv! > 0 && cost !== null ? cost / conv! : null,
+      cpa: cpaConversions! > 0 && cost !== null ? cost / cpaConversions! : null,
       cvr: sessions! > 0 && conv !== null ? conv / sessions! * 100 : null };
     for (const [metric, expected] of Object.entries(calculated)) {
       if (expected === null && values[metric]?.available === false) continue;
       push("Performance Summary", metric, expected, available(metric), 2);
     }
     const window = summary.currentValueWindow;
-    if (!window || window.mode !== "initial_import_to_latest_completed_day" || window.startDate !== startDate
+    if (verification?.version === 1) {
+      const trafficWindow = verification.trafficWindow, financialWindow = verification.nativeFinancialWindow;
+      const inputs = verification.trafficRows;
+      const valid = verification.campaignId === campaign.id && verification.propertyId === connection.propertyId && verification.currency === currency
+        && verification.campaignFilter === campaign.ga4CampaignFilter && dateIsValid(trafficWindow?.startDate) && dateIsValid(trafficWindow?.endDate)
+        && trafficWindow.startDate <= trafficWindow.endDate && financialWindow?.startDate === startDate && financialWindow?.endDate === endDate
+        && financialWindow?.reportingTimeZone === reportingTimeZone && verification.importedFinancialWindow?.startDate === "1900-01-01"
+        && verification.importedFinancialWindow?.endDate === endDate && Array.isArray(inputs) && inputs.length > 0
+        && new Set(inputs.map((r: any) => r.date)).size === inputs.length && inputs.every((r: any) => dateIsValid(r.date) && r.date >= trafficWindow.startDate && r.date <= trafficWindow.endDate);
+      checks.push({ section: "Performance Summary", code: "SAVED_INPUT_SCOPE", status: valid ? "passed" : "unverified" });
+      if (valid) {
+        for (const metric of ["sessions", "users", "conversions"]) {
+          const numbers = inputs.map((r: any) => numberOrNull(r[metric]));
+          push("Performance Summary", `SAVED_INPUT_${metric}`, numbers.every((n: any) => n !== null && n >= 0) ? numbers.reduce<number>((a, b) => a + b!, 0) : null, available(metric));
+        }
+        const native = numberOrNull(verification.nativeRevenue);
+        const amounts: Array<number | null> = Array.isArray(verification.revenueSources) ? verification.revenueSources.map((s: any) => numberOrNull(s.value)) : [null];
+        push("Performance Summary", "SAVED_INPUT_revenue", native !== null && amounts.every((n: any) => n !== null) ? native + amounts.reduce<number>((a, b) => a + b!, 0) : null, rev, 2);
+        if (cost !== null) push("Performance Summary", "SAVED_INPUT_spend", verification.spendSourceIds?.length ? verification.spend : verification.fallbackSpend, cost, 2);
+      }
+    } else if (!window || window.mode !== "initial_import_to_latest_completed_day" || window.startDate !== startDate
       || window.endDate !== endDate || window.dataThroughDate !== endDate || window.reportingTimeZone !== reportingTimeZone) {
       checks.push({ section: "Performance Summary", code: "SAVED_SOURCE_WINDOW_UNVERIFIED", status: "unverified" });
     } else {
@@ -299,8 +321,9 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
         && payload.campaignId === campaign.id && payload.reportId === report.reportId && payload.platformType === report.platformType
         && payload.windowStart === report.windowStart && payload.windowEnd === report.windowEnd && readReportPdfArtifact(payload);
       checks.push({ section: "Reports", code: "SAVED_ARTIFACT_SCOPE", subject, status: valid ? "passed" : "difference" });
-      if (!definition) checks.push({ section: "Reports", code: "REPORT_DEFINITION_RETIRED", subject, status: "unverified" });
-      checks.push({ section: "Reports", code: "HISTORICAL_SOURCE_SETTINGS_NOT_RECORDED", subject, status: "unverified" });
+      const verification = readReportVerification(payload);
+      if (!definition && !verification) checks.push({ section: "Reports", code: "REPORT_DEFINITION_RETIRED", subject, status: "unverified" });
+      checks.push({ section: "Reports", code: verification ? "SAVED_VERIFICATION_INPUTS" : "HISTORICAL_SOURCE_SETTINGS_NOT_RECORDED", subject, status: verification ? "passed" : "unverified" });
     } catch { checks.push({ section: "Reports", code: "SAVED_ARTIFACT_INVALID", subject, status: "difference" }); }
   }
   return checks;

@@ -7,6 +7,7 @@ import * as insightCalculations from "../shared/ga4-insights";
 import * as kpiCalculations from "../shared/ga4-kpi-live-value";
 import * as alertCalculations from "./utils/alert-decision";
 import * as trendCalculations from "../client/src/lib/trend-analysis-cumulative";
+import { attachReportVerification, createReportPdfArtifact } from "./utils/report-pdf-artifact";
 
 const now = new Date("2026-11-05T13:30:00Z");
 
@@ -104,6 +105,39 @@ const fixture = (): LiveNumberSnapshot => {
 };
 
 describe("live-number comparisons", () => {
+  it("verifies a saved report after its definition is retired, while preserving legacy and altered-input findings", () => {
+    const snapshot = fixture(), pdf = Buffer.concat([Buffer.from("%PDF-1.7\n"), Buffer.alloc(128, 65)]);
+    const report = { id: "retired-report", campaignId: snapshot.campaign.id, platformType: "google_analytics", reportType: "overview", configuration: {} };
+    const window = { startDate: "2026-11-03", endDate: "2026-11-04" };
+    const artifact = createReportPdfArtifact(attachReportVerification(Buffer.from(pdf), { report, reportWindow: window,
+      scope: { campaignId: snapshot.campaign.id, currency: "EUR", reportingTimeZone: "Europe/Amsterdam" },
+      financial: {}, summary: {}, trafficWindow: window, sourceSettings: { revenue: [], spend: [] } })!);
+    const payload = { reportId: report.id, campaignId: report.campaignId, platformType: report.platformType, reportType: report.reportType,
+      windowStart: window.startDate, windowEnd: window.endDate, pdfArtifact: artifact };
+    const row = { id: "saved-report", ...payload, snapshotJson: JSON.stringify(payload) }; snapshot.rows.reportSnapshots = [row];
+    expect(checkStoredNumbers(snapshot, now).filter(c => c.section === "Reports").map(c => c.status)).toEqual(["passed", "passed"]);
+    artifact!.verification!.inputs.scope.currency = "USD"; row.snapshotJson = JSON.stringify(payload);
+    expect(checkStoredNumbers(snapshot, now)).toContainEqual(expect.objectContaining({ code: "SAVED_ARTIFACT_INVALID", status: "difference" }));
+    row.snapshotJson = JSON.stringify({ ...payload, pdfArtifact: createReportPdfArtifact(pdf) });
+    expect(checkStoredNumbers(snapshot, now).filter(c => c.section === "Reports" && c.status === "unverified").map(c => c.code))
+      .toEqual(["REPORT_DEFINITION_RETIRED", "HISTORICAL_SOURCE_SETTINGS_NOT_RECORDED"]);
+  });
+  it("verifies saved summary inputs in their actual window without changing its calculations", () => {
+    const snapshot = fixture(), sync = snapshot.rows.metricSnapshots.find(r => r.snapshotType === "platform_sync")!;
+    delete sync.metrics.performanceSummary.currentValueWindow;
+    sync.metrics.performanceSummaryVerification = { version: 1, campaignId: snapshot.campaign.id, propertyId: "123", currency: "EUR",
+      campaignFilter: snapshot.campaign.ga4CampaignFilter, trafficWindow: { startDate: "2026-08-06", endDate: "2026-11-05" },
+      nativeFinancialWindow: { startDate: "2026-11-03", endDate: "2026-11-04", reportingTimeZone: "Europe/Amsterdam" },
+      importedFinancialWindow: { startDate: "1900-01-01", endDate: "2026-11-04" }, trafficRows: snapshot.rows.ga4DailyMetrics,
+      nativeRevenue: 100, revenueSources: [], spend: 100, spendSourceIds: ["spend-a"], fallbackSpend: 0,
+      financialConversions: { value: 2, available: true } };
+    sync.metrics.performanceSummary.totals.cpa = { value: 50, available: true };
+    expect(checkStoredNumbers(snapshot, now).filter(c => c.section === "Performance Summary" && c.status !== "passed")).toEqual([]);
+    sync.metrics.performanceSummaryVerification.trafficRows = [{ date: "2026-11-04", sessions: 999, users: 16, conversions: 1.5 }];
+    expect(checkStoredNumbers(snapshot, now)).toContainEqual(expect.objectContaining({ code: "SAVED_INPUT_sessions", status: "difference" }));
+    sync.metrics.performanceSummaryVerification.campaignId = "other";
+    expect(checkStoredNumbers(snapshot, now)).toContainEqual(expect.objectContaining({ code: "SAVED_INPUT_SCOPE", status: "unverified" }));
+  });
   it("checks fractional credits and daily summed users without equating them to unique window users", () => {
     const before = fixture(), fingerprint = snapshotFingerprint(before);
     const checks = checkStoredNumbers(before, now);

@@ -406,6 +406,8 @@ export function checkConfiguredReportText(snapshot: LiveNumberSnapshot, text: st
 export async function checkGeneratedReportNumbers(snapshot: LiveNumberSnapshot, blockedOperations: () => number = () => 0, diagnosticSources?: any[]): Promise<NumberCheck[]> {
   const { buildGA4ScheduledPdfAttachment } = await import("./ga4-scheduled-report-pdf");
   const { buildPdfAttachmentForReport } = await import("./report-scheduler");
+  const { createReportPdfArtifact, readReportVerification } = await import("./utils/report-pdf-artifact");
+  const { checkReportTextNumbers } = await import("./live-number-report-checks");
   const { scope } = expectedOutputNumbers(snapshot), checks: NumberCheck[] = [];
   const generated = new Map<string, string>();
   for (const reportType of ["overview", "kpis", "benchmarks", "ads", "insights", "custom", ...diagnosticTypes]) {
@@ -425,6 +427,9 @@ export async function checkGeneratedReportNumbers(snapshot: LiveNumberSnapshot, 
       if (diagnostic) Object.assign(report, { platformType: "campaign_deepdive", reportType: "custom", configuration: { reportType, selectedSections: [`${reportType}:overview`] } });
       const buffer = await (diagnostic ? buildPdfAttachmentForReport : buildGA4ScheduledPdfAttachment)({ report, campaignName: snapshot.campaign.name, windowStart: scope.startDate, windowEnd: scope.endDate });
       if (!buffer || buffer.length > 5_000_000) throw new Error();
+      const verification = readReportVerification({ reportId: "", campaignId: report.campaignId, platformType: report.platformType, reportType: report.reportType,
+        windowStart: scope.startDate, windowEnd: scope.endDate, pdfArtifact: createReportPdfArtifact(buffer) });
+      checks.push({ section: `Generated ${reportType} PDF`, code: "VERIFICATION_INPUTS_RETAINED", status: verification ? "passed" : "difference" });
       const parser = new PDFParse({ data: buffer });
       try {
         const info = await parser.getInfo(); if (info.total > 100) throw new Error();
@@ -432,6 +437,8 @@ export async function checkGeneratedReportNumbers(snapshot: LiveNumberSnapshot, 
         generated.set(JSON.stringify([report.platformType, report.reportType, report.configuration || {}]), result.text);
         checks.push(...(diagnostic ? checkDiagnosticReportText : checkGeneratedReportText)(snapshot, result.text, reportType));
         checks.push(...checkReportDetailText(snapshot, result.text, reportType));
+        if (reportType === "overview" && verification) checks.push(...checkReportTextNumbers(result.text, reportType, verification)
+          .filter(check => ["FINANCIAL_CPA", "FINANCIAL_CPA_UNAVAILABLE", "CAMPAIGN_SESSION_KEY_EVENT_RATE"].includes(check.code)));
       } finally { await parser.destroy(); }
     } catch { checks.push({ section: `Generated ${reportType} PDF`, code: "PDF_GENERATION_UNVERIFIED", status: "unverified" }); }
     if (blockedOperations() !== blockedBefore) checks.push({ section: `Generated ${reportType} PDF`, code: "PDF_AUXILIARY_READ_OR_WRITE_BLOCKED", status: "unverified" });

@@ -51,6 +51,17 @@ describe("numbers in the saved PDF, without regeneration", () => {
     expect(checkReportTextNumbers(text, "overview").some(check => check.status === "difference")).toBe(false);
     expect(status(text, "CAMPAIGN_SESSION_KEY_EVENT_RATE_BASIS_UNVERIFIED")).toBe("unverified");
   });
+  it("checks saved financial conversion and session-key-event bases without using today's settings", () => {
+    const basis = { scope: { currency: "EUR" }, financial: { spend: 100, spendAvailable: true, conversions: 20 },
+      campaignRows: [{ name: "campaign one", sessions: 100, sessionKeyEventRateWeighted: 1 }] };
+    const text = overview.replace("EUR 8.00", "EUR 5.00").replace("12.5 12.5%", "12.5 1.0%");
+    const checks = checkReportTextNumbers(text, "overview", basis);
+    expect(checks.filter(c => c.status !== "passed")).toEqual([]);
+    expect(checks).toContainEqual(expect.objectContaining({ code: "FINANCIAL_CPA", status: "passed" }));
+    expect(checkReportTextNumbers(text.replace("EUR 5.00", "EUR 8.00"), "overview", basis)).toContainEqual(expect.objectContaining({ code: "FINANCIAL_CPA", status: "difference" }));
+    expect(checkReportTextNumbers(text.replace("12.5 1.0%", "12.5 12.5%"), "overview", basis)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_SESSION_KEY_EVENT_RATE", status: "difference" }));
+    expect(checkReportTextNumbers(text, "overview").filter(c => c.status === "unverified")).toHaveLength(2);
+  });
   it("does not mistake rounded input uncertainty for a proved difference", () => {
     const text = overview.replace("EUR 250.00", "EUR 28,501.50").replace("2.50x", "285.01x");
     expect(status(text, "FINANCIAL_ROAS")).toBe("unverified");

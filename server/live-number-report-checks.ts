@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse";
 import { compareNumber, monitorHash, numberOrNull, parseMonitorMapping, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
-import { readReportPdfArtifact } from "./utils/report-pdf-artifact";
+import { readReportPdfArtifact, readReportVerification } from "./utils/report-pdf-artifact";
 
 // The PDF is evidence of what was actually published. Never regenerate it and
 // never substitute today's source configuration for missing historical evidence.
@@ -13,7 +13,7 @@ const parseValue = (value: string | undefined, unit: "money" | "rate" | "ratio" 
   return match ? { value: numberOrNull(match[unit === "money" ? 2 : 1].replaceAll(",", "")), currency: unit === "money" ? match[1] : null } : null;
 };
 
-export function checkReportTextNumbers(text: string, reportType: string): NumberCheck[] {
+export function checkReportTextNumbers(text: string, reportType: string, verification?: Record<string, any> | null): NumberCheck[] {
   const section = "Reports / PDF numbers", checks: NumberCheck[] = [];
   const lines = text.split(/\r?\n/).map(line => line.replace(/\s+/g, " ").trim()).filter(Boolean);
   const valueAfter = (label: string, subset = lines) => {
@@ -59,13 +59,29 @@ export function checkReportTextNumbers(text: string, reportType: string): Number
     }
     // CPA's conversion basis was not saved in historical PDF metadata; do not
     // silently equate its financial window with the Summary traffic window.
-    checks.push({ section, code: "CPA_HISTORICAL_CONVERSION_BASIS_UNVERIFIED", status: "unverified" });
+    if (verification) {
+      const financial = verification.financial, cost = numberOrNull(financial?.spend), conversions = numberOrNull(financial?.conversions);
+      const raw = valueAfter("CPA"), actual = parseValue(raw, "money");
+      const expected = financial?.spendAvailable === true && cost !== null && cost > 0 && conversions !== null && conversions > 0 ? cost / conversions : null;
+      if (expected === null && raw && missingValue.test(raw)) checks.push({ section, code: "FINANCIAL_CPA_UNAVAILABLE", status: "passed" });
+      else push("FINANCIAL_CPA", expected, actual && actual.currency === verification.scope?.currency ? actual.value : null, 2);
+    } else checks.push({ section, code: "CPA_HISTORICAL_CONVERSION_BASIS_UNVERIFIED", status: "unverified" });
     const tableStart = lines.indexOf("CAMPAIGN SESSIONS USERS CONVERSIONS CONV. RATE REVENUE");
     if (tableStart >= 0) {
       // This column is GA4 sessionKeyEventRate (sessions containing a key event),
       // not the printed key-event count divided by sessions. Its numerator was
       // not retained in the historical artifact; never flag that intentional difference.
-      checks.push({ section, code: "CAMPAIGN_SESSION_KEY_EVENT_RATE_BASIS_UNVERIFIED", status: "unverified" });
+      if (verification && Array.isArray(verification.campaignRows)) {
+        const end = lines.findIndex((line, i) => i > tableStart && ["Landing Pages", "Conversion Events"].includes(line));
+        const table = lines.slice(tableStart + 1, end < 0 ? undefined : end).join(" ");
+        for (const row of verification.campaignRows) {
+          const escaped = String(row.name).replace(/\s+/g, " ").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const matches = Array.from(table.matchAll(new RegExp(`(?:^|\\s)${escaped}\\s+${numericText}\\s+${numericText}\\s+${numericText}\\s+(${numericText})%`, "g")));
+          const sessions = numberOrNull(row.sessions), weighted = numberOrNull(row.sessionKeyEventRateWeighted);
+          const expected = sessions !== null && weighted !== null ? sessions > 0 ? weighted / sessions * 100 : 0 : null;
+          push("CAMPAIGN_SESSION_KEY_EVENT_RATE", expected, matches.length === 1 ? Number(matches[0][1].replaceAll(",", "")) : null, 1);
+        }
+      } else checks.push({ section, code: "CAMPAIGN_SESSION_KEY_EVENT_RATE_BASIS_UNVERIFIED", status: "unverified" });
     }
   } else if (reportType === "ads" && lines[0] === "GA4 Ad Comparison Report") {
     const start = lines.indexOf("Revenue Breakdown"), header = lines.indexOf("SOURCE AMOUNT", start);
@@ -108,7 +124,7 @@ export async function checkSavedReportNumbers(snapshot: LiveNumberSnapshot): Pro
         if (info.total > 100) throw new Error();
         const result = await parser.getText();
         if (result.text.length > 1_000_000) throw new Error();
-        checks.push(...checkReportTextNumbers(result.text, report.reportType).map(check => ({ ...check, subject })));
+        checks.push(...checkReportTextNumbers(result.text, report.reportType, readReportVerification(payload)).map(check => ({ ...check, subject })));
       } finally { await parser.destroy(); }
     } catch { checks.push({ section: "Reports / PDF numbers", code: "PDF_CONTENT_UNVERIFIED", subject, status: "unverified" }); }
   }

@@ -1,0 +1,7 @@
+{
+  "databaseEnvironmentVariable": "TEST_NUMBER_DATABASE_URL",
+  "databaseFingerprint": "fc066f25bdffb1d06de0e780c5baa06aecb27708088271004daa9e4f35af0051",
+  "credentialsEnvironmentPrefix": "TEST_NUMBER_",
+  "application": { "baseUrl": "https://marketforensics-test.onrender.com", "expectedCommit": "a5d078d60404f592b01bfb5728dbb5d831e7f7af" },
+  "campaigns": [{ "campaignIdHash": "2e353d874c51", "reportingTimeZone": "Europe/Amsterdam" }]
+}

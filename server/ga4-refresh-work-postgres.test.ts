@@ -221,6 +221,7 @@ describe.skipIf(!testUrl)("durable GA4 work with real PostgreSQL", () => {
     ["campaigns", "ga4_campaign_filter", "other-sale"], ["campaigns", "reporting_time_zone", "UTC"],
     ["ga4_connections", "property_id", "other-property"], ["ga4_connections", "import_start_date", "2026-09-05"],
     ["ga4_connections", "is_primary", false], ["ga4_connections", "method", "service_account"],
+    ["ga4_connections", "service_account_binding_id", "new-client-identity"],
     ["ga4_connections", "lookback_days", 30], ["ga4_connections", "connected_at", "2020-01-01"],
   ])("invalidates old work after %s.%s changes", async (table, column, value) => {
     const work = (await claim((await ensure())!.id))!;

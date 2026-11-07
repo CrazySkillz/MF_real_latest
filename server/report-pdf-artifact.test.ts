@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
 import { createReportPdfArtifact, readReportPdfArtifact, attachReportVerification, readReportVerification, reportSourceSettings } from "./utils/report-pdf-artifact";
 
 describe("Custom Report immutable PDF artifacts", () => {
@@ -42,5 +43,25 @@ describe("Custom Report immutable PDF artifacts", () => {
 
   it("keeps malformed source configuration unavailable without breaking PDF generation", () => {
     expect(reportSourceSettings({ id: "source-a", mappingConfig: "broken json" }).configuration).toBeNull();
+  });
+  it("survives JSONB object-key reordering but rejects changed values and array order", () => {
+    const report = { id: "r", campaignId: "c", platformType: "google_analytics", reportType: "overview", configuration: {} };
+    const input = { report, reportWindow: { startDate: "2026-10-01", endDate: "2026-11-06" },
+      scope: { campaignId: "c", currency: "EUR", reportingTimeZone: "Europe/Amsterdam" }, financial: { spend: 100, conversions: 20 },
+      summary: { rows: [{ z: 1, a: 2 }, { z: 3, a: 4 }] }, trafficWindow: {}, sourceSettings: { revenue: [], spend: [] } };
+    const payload = { reportId: "r", campaignId: "c", platformType: "google_analytics", reportType: "overview", windowStart: "2026-10-01", windowEnd: "2026-11-06",
+      pdfArtifact: createReportPdfArtifact(attachReportVerification(Buffer.from(pdf), input)!) };
+    const reorder = (v: any): any => Array.isArray(v) ? v.map(reorder) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).reverse().map(k => [k, reorder(v[k])])) : v;
+    const reordered = reorder(payload);
+    expect(payload.pdfArtifact!.verification!.version).toBe(2);
+    expect(readReportVerification(reordered)).toEqual(input);
+    reordered.pdfArtifact.verification.inputs.financial.spend = 101;
+    expect(() => readReportVerification(reordered)).toThrow("REPORT_VERIFICATION_INVALID");
+    const reversed = reorder(payload); reversed.pdfArtifact.verification.inputs.summary.rows.reverse();
+    expect(() => readReportVerification(reversed)).toThrow("REPORT_VERIFICATION_INVALID");
+    payload.pdfArtifact!.verification!.version = 1;
+    payload.pdfArtifact!.verification!.inputsSha256 = createHash("sha256").update(JSON.stringify(payload.pdfArtifact!.verification!.inputs)).digest("hex");
+    expect(readReportVerification(payload)).toEqual(input);
+    expect(() => readReportVerification(reorder(payload))).toThrow("REPORT_VERIFICATION_INVALID");
   });
 });

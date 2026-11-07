@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 const MAX_REPORT_PDF_BYTES = 25 * 1024 * 1024;
 const verificationKey = Symbol("report-verification");
 const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
+const stableInputs = (value: any): any => Array.isArray(value) ? value.map(stableInputs)
+  : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stableInputs(value[key])])) : value;
 
 export function reportTargetInputs(items: any[]) {
   const keys = ["id", "name", "metric", "metricType", "unit", "platformType", "campaignId", "applyTo", "specificCampaignId", "currentValue", "targetValue", "benchmarkValue", "targetPeriod", "targetDate", "targetStartDate", "calculationConfig", "status"];
@@ -25,7 +27,7 @@ export function reportSourceSettings(source: any) {
 export function attachReportVerification(buffer: Buffer | null, inputs: Record<string, any>): Buffer | null {
   if (!buffer) return buffer;
   const saved = JSON.parse(JSON.stringify(inputs, (key, value) => /token|secret|password|credential|authorization|recipients/i.test(key) ? undefined : value instanceof Map ? Object.fromEntries(value) : value));
-  Object.defineProperty(buffer, verificationKey, { value: { version: 1, pdfSha256: digest(buffer), inputsSha256: digest(JSON.stringify(saved)), inputs: saved } });
+  Object.defineProperty(buffer, verificationKey, { value: { version: 2, pdfSha256: digest(buffer), inputsSha256: digest(JSON.stringify(stableInputs(saved))), inputs: saved } });
   return buffer;
 }
 
@@ -33,8 +35,8 @@ export function readReportVerification(payload: any): Record<string, any> | null
   const receipt = payload?.pdfArtifact?.verification;
   if (!receipt) return null;
   const buffer = readReportPdfArtifact(payload), input = receipt.inputs;
-  if (receipt.version !== 1 || !buffer || !input || receipt.pdfSha256 !== digest(buffer)
-    || receipt.inputsSha256 !== digest(JSON.stringify(input)) || input.report?.id !== payload.reportId
+  if (![1, 2].includes(receipt.version) || !buffer || !input || receipt.pdfSha256 !== digest(buffer)
+    || receipt.inputsSha256 !== digest(JSON.stringify(receipt.version === 2 ? stableInputs(input) : input)) || input.report?.id !== payload.reportId
     || input.report?.campaignId !== payload.campaignId || input.report?.platformType !== payload.platformType
     || input.report?.reportType !== payload.reportType || input.reportWindow?.startDate !== payload.windowStart
     || input.reportWindow?.endDate !== payload.windowEnd) throw new Error("REPORT_VERIFICATION_INVALID");

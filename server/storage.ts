@@ -202,6 +202,7 @@ export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { e
 
 export interface IStorage {
   getLiveNumberCheckSnapshot(campaignHash: string): Promise<{ campaign: Campaign; rows: Record<string, any[]> }>;
+  getMonitorCampaigns(): Promise<Array<{ campaignIdHash: string; reportingTimeZone: string; monitorFrom: string }>>;
   withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T>;
   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
@@ -701,6 +702,24 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Monitor-only discovery: no hydration, writes or dependency on successful refresh markers.
+  async getMonitorCampaigns() {
+    return db.transaction(async (tx: any) => {
+      const rows = await tx.select({
+        campaignIdHash: sql<string>`left(encode(sha256(${campaigns.id}::bytea), 'hex'), 12)`,
+        reportingTimeZone: campaigns.reportingTimeZone, ownerId: campaigns.ownerId, clientOwnerId: clients.ownerId,
+        monitorFrom: sql<string>`greatest(${campaigns.createdAt} at time zone 'UTC',
+          (select max(w.completed_at) from ga4_refresh_work w where w.campaign_id = ${campaigns.id}
+            and w.status = 'completed' and w.scope->>'kind' = 'initial_import'))`,
+      }).from(campaigns).leftJoin(clients, eq(clients.id, campaigns.clientId))
+        .where(and(sql`lower(trim(${campaigns.status})) = 'active'`, sql`${campaigns.clientId} is not null`)).limit(101);
+      if (rows.length > 100) throw new Error("MONITOR_CAMPAIGN_LIMIT_EXCEEDED");
+      if (rows.some((row: any) => !row.ownerId || row.ownerId !== row.clientOwnerId)) throw new Error("MONITOR_SCOPE_INVALID");
+      return rows.map(({ campaignIdHash, reportingTimeZone, monitorFrom }: any) => ({ campaignIdHash, reportingTimeZone,
+        monitorFrom: new Date(monitorFrom).toISOString() })).sort((a: any, b: any) => a.campaignIdHash.localeCompare(b.campaignIdHash));
+    }, { isolationLevel: "repeatable read", readOnly: true });
+  }
+
   // Operator-only monitoring input. No credential hydration, lazy migration, refresh or writes.
   async getLiveNumberCheckSnapshot(campaignHash: string): Promise<{ campaign: Campaign; rows: Record<string, any[]> }> {
     if (!/^[a-f0-9]{12}$/.test(campaignHash)) throw new Error("MONITOR_SCOPE_INVALID");

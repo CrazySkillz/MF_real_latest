@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { getExpectedScheduledRefreshAt, getLatestCompleteReportingDate, normalizeReportingTimeZone } from "../server/utils/reporting-timezone";
 
-const configSchema = z.object({
+export const configSchema = z.object({
   baseUrl: z.string().url().refine(value => {
     const url = new URL(value);
     return url.protocol === "https:" && !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash;
@@ -13,11 +13,13 @@ const configSchema = z.object({
   expectedCommit: z.string().regex(/^[a-f0-9]{40}$/),
   graceMinutes: z.number().int().min(5).max(60),
   maxResponseMilliseconds: z.number().int().min(100).max(15000).default(5000),
+  enrollmentResolved: z.literal(true).optional(),
   campaigns: z.array(z.object({
     campaignIdHash: z.string().regex(/^[a-f0-9]{12}$/),
     reportingTimeZone: z.string().min(1).refine(value => normalizeReportingTimeZone(value) === value),
-  })).min(1).refine(rows => new Set(rows.map(row => row.campaignIdHash)).size === rows.length),
-});
+    monitorFrom: z.string().datetime({ offset: true }).optional(),
+  })).max(100).refine(rows => new Set(rows.map(row => row.campaignIdHash)).size === rows.length),
+}).refine(config => config.campaigns.length > 0 || config.enrollmentResolved === true);
 const stamp = z.string().datetime({ offset: true });
 const schedulerSchema = z.object({
   status: z.enum(["healthy", "unhealthy"]), timestamp: stamp,
@@ -61,6 +63,10 @@ export function assessHostedHealth(health: unknown, scheduler: unknown, input: u
         reportingDate = new Date(Date.parse(reportingDate + "T00:00:00Z") - 86_400_000).toISOString().slice(0, 10);
         due = getExpectedScheduledRefreshAt(reportingDate, schedule, cutoff)!;
       }
+      if (campaign.monitorFrom && Date.parse(campaign.monitorFrom) > due.getTime()) {
+        pending.push(`FIRST_SCHEDULED_REFRESH_PENDING:${campaign.campaignIdHash}`);
+        continue;
+      }
       const markers = ga4.alignedRefreshCampaigns.filter(row => row.campaignIdHash === campaign.campaignIdHash);
       const marker = markers[0];
       const dateValid = marker && /^\d{4}-\d{2}-\d{2}$/.test(marker.reportingDate)
@@ -77,7 +83,7 @@ export function assessHostedHealth(health: unknown, scheduler: unknown, input: u
   return { checkedAt: now.toISOString(), origin: new URL(config.baseUrl).origin,
     status: failures.length ? "failed" : pending.length ? "pending" : "passed", failures, pending,
     monitoredCampaigns: config.campaigns.length,
-    scope: "Availability and refresh evidence for explicitly listed campaigns; not metric accuracy certification." };
+    scope: "Availability and refresh evidence for enrolled campaigns; not metric accuracy certification." };
 }
 
 export async function checkHostedHealth(input: unknown, request: typeof fetch = fetch) {

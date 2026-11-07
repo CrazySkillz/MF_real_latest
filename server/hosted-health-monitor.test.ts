@@ -17,6 +17,14 @@ function fixture(at = "2026-11-05T11:30:00Z", completedAt = "2026-11-05T07:00:24
 }
 const assess = (f: ReturnType<typeof fixture>, c: any = config) => assessHostedHealth(f.health, f.scheduler, c, f.now);
 describe("read-only hosted operations monitor", () => {
+  it("waits for a new campaign's first slot, then detects a missed refresh", () => {
+    const c = { ...config, campaigns: [{ ...config.campaigns[0], monitorFrom: "2026-11-05T10:00:00Z" }] };
+    const first = fixture(); first.scheduler.ga4DailyScheduler.alignedRefreshCampaigns = [];
+    expect(assess(first, c)).toMatchObject({ status: "pending", failures: [], pending: ["FIRST_SCHEDULED_REFRESH_PENDING:2e353d874c51"] });
+    const later = fixture("2026-11-05T13:20:00Z"); later.scheduler.ga4DailyScheduler.nextRunAt = "2026-11-05T19:00:00Z";
+    later.scheduler.ga4DailyScheduler.alignedRefreshCampaigns = [];
+    expect(assess(later, c).failures).toContain("REFRESH_UNCONFIRMED:2e353d874c51");
+  });
   it("accepts restored completion evidence with idle process counters", () => expect(assess(fixture()).status).toBe("passed"));
   it("rejects an unexpected deployed commit", () => {
     const f = fixture(); f.health.commit = "other";

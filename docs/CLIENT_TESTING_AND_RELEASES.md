@@ -8,6 +8,14 @@ Use the hosted test app to check changes before releasing the same reviewed code
 
 ## Current work
 
+**7 November update:** campaign enrollment is now automatic in the hosted monitor.
+Active campaigns belonging to a valid client join on its next run, using their
+saved timezone; drafts, paused/inactive/deleted campaigns and legacy orphan tests
+are excluded. The earlier manual-enrollment instructions below are superseded.
+See [automatic enrollment](LIVE_NUMBER_MONITORING.md#automatic-campaign-enrollment--7-november)
+for scope and validation. This is a monitor-only change; application release
+checks and the existing refresh/accuracy schedules remain in place.
+
 Status on November 5, 2026:
 
 **Current release:** all three approved corrections are live as `706a7bac`

@@ -1,5 +1,42 @@
 # Live-number monitoring
 
+## Automatic campaign enrollment — 7 November
+
+The hosted monitor now discovers active client campaigns from each pinned database
+at the start of every run. This supersedes manual campaign enrollment instructions
+below. Both refresh health and the existing source/screen/PDF/notification number
+checks use the same discovered membership and current saved timezones. Existing
+config entries retain only their exact campaign's historical evidence exceptions;
+new campaigns inherit none. Expected application revisions still change as part
+of an approved application release.
+
+Discovery lives in `DatabaseStorage.getMonitorCampaigns` and the isolated
+`scripts/discover-monitor-campaigns.ts` process. PostgreSQL enforces read-only mode;
+the monitor verifies database identity and matching app configuration. Active
+campaigns with a client must have matching campaign/client owners. Broken ownership
+fails the monitor. Legacy records with no client, drafts, paused, inactive and
+deleted campaigns are excluded. Missing source connections do not exclude an
+otherwise eligible campaign or falsely make its checks pass.
+
+Enrollment begins on the next monitor run; number comparisons keep their existing
+08:20/14:20/20:20 campaign-local windows. Refresh health waits until the first
+scheduled slot after creation/completed initial import, plus the existing grace.
+It then checks actual completion. No metrics, reports, credentials, application
+deployments or refresh schedules are written by enrollment. Generated membership
+files are temporary and removed at job completion.
+
+Existing query, time and memory limits remain: discovery alerts above 100 active
+client campaigns; a number pass that exceeds its request/time limits fails visibly,
+never silently certifies omitted work. This change automates membership, not capacity
+scaling or the separately deferred independent outage/browser-error monitoring.
+
+Validation covers new activation without refresh evidence, multiple owners,
+timezone edits, draft/paused/inactive/soft/hard deletion, invalid ownership,
+first-slot grace, empty inventory, history isolation, duplicate hashes, capacity
+overflow, read-only PostgreSQL and discovery failure without losing other checks.
+The isolated PostgreSQL tests run in required CI; hosted verification checks the
+same discovery and health commands without repeating prior PDF/source audits.
+
 ## Combined verification request budget - 7 November
 
 Hosted tracing confirmed that V1 Batch 5 Test's combined PDF/browser pass reached

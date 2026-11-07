@@ -17,13 +17,14 @@ export const liveNumberConfigSchema = z.object({
   databaseFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   credentialsEnvironmentPrefix: z.string().regex(/^[A-Z][A-Z0-9_]*_$/).optional(),
   application: outputApplicationSchema.optional(),
+  enrollmentResolved: z.literal(true).optional(),
   campaigns: z.array(z.object({ campaignIdHash: z.string().regex(/^[a-f0-9]{12}$/),
     historicalReports: z.array(z.object({ snapshotHash: z.string().regex(/^[a-f0-9]{12}$/), payloadSha256: z.string().regex(/^[a-f0-9]{64}$/),
       replacementHash: z.string().regex(/^[a-f0-9]{12}$/), replacementPdfSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict()).max(100)
       .refine(rows => new Set(rows.map(row => row.snapshotHash)).size === rows.length).optional(),
-    reportingTimeZone: z.string().min(1).refine(value => normalizeReportingTimeZone(value) === value) }).strict()).min(1).max(100)
+    reportingTimeZone: z.string().min(1).refine(value => normalizeReportingTimeZone(value) === value) }).strict()).max(100)
     .refine(rows => new Set(rows.map(row => row.campaignIdHash)).size === rows.length),
-}).strict();
+}).strict().refine(config => config.campaigns.length > 0 || config.enrollmentResolved === true);
 
 export function liveNumberCheckIsDue(timeZone: string, now = new Date()): boolean {
   if (normalizeReportingTimeZone(timeZone) !== timeZone) return false;

@@ -4,7 +4,7 @@
   "credentialsEnvironmentPrefix": "TEST_NUMBER_",
   "application": {
     "baseUrl": "https://marketforensics-test.onrender.com",
-    "expectedCommit": "af94b0d639a9f43b4442dfbb92c10efa8c6cc667"
+    "expectedCommit": "906ca0fce4d323fdad73fd32558c184924313948"
   },
   "campaigns": [
     {

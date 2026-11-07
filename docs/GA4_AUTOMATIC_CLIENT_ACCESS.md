@@ -138,3 +138,9 @@ in its isolated fixture and verifies exact-property, primary/fallback and list
 reads, cross-campaign isolation and unchanged records. All 13 account database
 checks and 47 refresh-ownership checks pass. No live database migration is required
 for the monitor compatibility correction.
+
+The monitor snapshot reader uses the same optional-field projection. Two real
+PostgreSQL cases prove old/new snapshot reads, read-only enforcement and exact
+client ownership. The 72 provider/HTTP-guard checks and 12 monitor-run checks pass.
+Test monitor revision expectations are paired with app `af94b0d6`; live revision,
+database fingerprints, cadence, campaign enrollment and alert recipients are unchanged.

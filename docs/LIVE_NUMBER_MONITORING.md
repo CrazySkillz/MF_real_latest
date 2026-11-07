@@ -1,5 +1,15 @@
 # Live-number monitoring
 
+## Combined verification request budget - 7 November
+
+Hosted tracing confirmed that V1 Batch 5 Test's combined PDF/browser pass reached
+the monitor's sixty-read ceiling. The isolated output process now reuses only
+byte-identical GA4 report requests within that run. Each consumer receives its
+own response clone. The sixty-unique-query limit, selected property/currency,
+fixed dates, blocked writes, capture fingerprints and revision checks remain.
+Provider errors remain errors; responses are never shared across runs or campaigns.
+Application calculations, saved reports and refresh schedules are unchanged.
+
 ## Reviewed historical reports - 7 November
 
 Current source, section, browser, PDF and notification checks remain alerting.

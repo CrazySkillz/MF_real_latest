@@ -65,12 +65,26 @@ export function outputReportAuthorization(options: RequestInit | undefined, toke
   return { ...options, headers };
 }
 
+export function createOutputReportReader(propertyId: string, currency: string, token: string, request: typeof fetch, denied: () => never): typeof fetch {
+  const responses = new Map<string, Promise<Response>>();
+  return async (input, options) => {
+    if (input instanceof Request || !outputReportReadAllowed(new URL(String(input)), options, propertyId, currency)) return denied();
+    const key = JSON.stringify([String(input), String(options?.body)]);
+    if (!responses.has(key)) {
+      if (responses.size >= 60) return denied();
+      responses.set(key, request(input, outputReportAuthorization(options, token)));
+    }
+    return (await responses.get(key)!).clone();
+  };
+}
+
 export async function runApplicationOutputMonitor(campaignHash: string, databaseFingerprint: string, expectedFingerprint: string) {
   if (!/^[a-f0-9]{12}$/.test(campaignHash) || !/^[a-f0-9]{64}$/.test(expectedFingerprint)) throw new Error("OUTPUT_CONFIGURATION_INVALID");
   process.env.DATABASE_URL = readOnlyMonitorDatabaseUrl(process.env.DATABASE_URL || "", databaseFingerprint);
   const originalFetch = globalThis.fetch, originalHttp = http.request, originalHttps = https.request;
   const originalHttpGet = http.get, originalHttpsGet = https.get;
-  let origin = "", campaignScope = "", propertyScope = "", currencyScope = "", reportToken = "", writes = 0, external = 0, reportReads = 0;
+  let origin = "", campaignScope = "", propertyScope = "", currencyScope = "", reportToken = "", writes = 0, external = 0;
+  let readReport: typeof fetch | undefined;
   const providerRead = readOnlyMonitorFetch(originalFetch);
   const blocked = () => { external++; throw new Error("OUTPUT_EXTERNAL_REQUEST_BLOCKED"); };
   // Provider SDKs may use node:http instead of fetch. Both are blocked.
@@ -82,7 +96,7 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
     if (origin && url.origin === origin && (options?.method || "GET") === "GET") return originalFetch(input, { ...options, redirect: "error", signal: AbortSignal.timeout(45_000) });
     // Ten standard variants, six exact-date comparisons and at most twenty
     // saved report selections. Retain a fixed provider-read ceiling.
-    if (propertyScope && outputReportReadAllowed(url, options, propertyScope, currencyScope) && ++reportReads <= 60) return providerRead(input, outputReportAuthorization(options, reportToken));
+    if (readReport && outputReportReadAllowed(url, options, propertyScope, currencyScope)) return readReport(input, options);
     return blocked();
   };
   globalThis.fetch = replayFetch;
@@ -137,6 +151,7 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
       const { googleMonitorCredential } = await import("../server/live-number-provider-checks");
       reportToken = await googleMonitorCredential({ ...scope.connection, expiresAt: "1970-01-01T00:00:00Z" }, providerRead);
     }
+    readReport = createOutputReportReader(propertyScope, currencyScope, reportToken, providerRead, blocked);
     const prefix = `/api/campaigns/${id}`;
     const paths: Record<string, string> = {
       daily: `${prefix}/ga4-daily?days=60&propertyId=${property}&readOnly=1`,

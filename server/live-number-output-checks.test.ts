@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { checkApplicationOutputs, checkFinancialComparisonOutputs, monitorComparisonWindows, expectedOutputNumbers, expectedTargetNumbers } from "./live-number-output-checks";
-import { monitorReadQueryAllowed, outputReportReadAllowed, outputReportAuthorization } from "../scripts/check-live-number-outputs";
+import { monitorReadQueryAllowed, outputReportReadAllowed, outputReportAuthorization, createOutputReportReader } from "../scripts/check-live-number-outputs";
 import type { LiveNumberSnapshot } from "./live-number-checks";
 import { checkConfiguredReportText, checkDiagnosticReportText, checkGeneratedReportText, checkReportDetailText } from "./live-number-generated-report-checks";
 import { checkApplicationOutputProcess } from "../scripts/check-live-number-run";
@@ -464,6 +464,33 @@ describe("output report network boundary", () => {
   });
   const url = new URL("https://analyticsdata.googleapis.com/v1beta/properties/123:runReport");
   const options = { method: "POST", body: JSON.stringify({ currencyCode: "EUR", dateRanges: [{ startDate: "2026-10-06", endDate: "2026-11-04" }] }) };
+  it("reuses identical reads with independently consumable responses while retaining the sixty-query ceiling", async () => {
+    const request = vi.fn(async () => new Response('{"value":123}'));
+    const denied = () => { throw new Error("BLOCKED"); };
+    const read = createOutputReportReader("123", "EUR", "fresh", request, denied);
+    const responses = await Promise.all(Array.from({ length: 80 }, () => read(url, options)));
+    expect(await Promise.all(responses.map(response => response.json()))).toEqual(Array.from({ length: 80 }, () => ({ value: 123 })));
+    expect(request).toHaveBeenCalledTimes(1);
+    for (let offset = 1; offset < 60; offset++) await read(url, { ...options, body: JSON.stringify({ ...JSON.parse(options.body), offset }) });
+    expect(request).toHaveBeenCalledTimes(60);
+    await expect(read(url, { ...options, body: JSON.stringify({ ...JSON.parse(options.body), offset: 60 }) })).rejects.toThrow("BLOCKED");
+    expect(await (await read(url, options)).json()).toEqual({ value: 123 });
+    expect(request).toHaveBeenCalledTimes(60);
+    await expect(read(url, { ...options, body: options.body.replace("EUR", "USD") })).rejects.toThrow("BLOCKED");
+    await expect(read(new URL(url.href.replace("123", "456")), options)).rejects.toThrow("BLOCKED");
+    await expect(read(url, { ...options, method: "DELETE" })).rejects.toThrow("BLOCKED");
+    await expect(read(new Request(url, options))).rejects.toThrow("BLOCKED");
+  });
+  it("does not turn provider errors into successful data or share responses between runs", async () => {
+    const request = vi.fn(async () => new Response("unavailable", { status: 503 }));
+    const denied = () => { throw new Error("BLOCKED"); };
+    for (let run = 0; run < 2; run++) {
+      const read = createOutputReportReader("123", "EUR", "fresh", request, denied);
+      expect((await read(url, options)).status).toBe(503);
+      expect((await read(url, options)).ok).toBe(false);
+    }
+    expect(request).toHaveBeenCalledTimes(2);
+  });
   it("allows only the selected property's currency-qualified fixed-date report read", () => expect(outputReportReadAllowed(url, options, "123", "EUR")).toBe(true));
   it("blocks another property, currency, operation, relative window and credential renewal", () => {
     expect(outputReportReadAllowed(url, options, "456", "EUR")).toBe(false);

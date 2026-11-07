@@ -33,7 +33,7 @@ describe("campaign Custom Report regression guard", () => {
   });
 
   it("fails closed on unsourced standalone report creation", () => {
-    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8").replace(/\r\n/g, "\n");
 
     expect(reports).toContain("{campaignContextId && (\n                  <Button onClick={openCreateReport}>");
     expect(reports).toContain("Try adjusting your filters or create a new report from a campaign page.");

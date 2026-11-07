@@ -57,6 +57,12 @@ export function readOnlyMonitorFetch(request: typeof fetch): typeof fetch {
       allowed = (host === "analyticsdata.googleapis.com" && /^\/v1beta\/properties\/\d+:runReport$/.test(path))
         || (host === "api.hubapi.com" && path === "/crm/v3/objects/deals/search")
         || (host === "oauth2.googleapis.com" && path === "/token" && new URLSearchParams(String(options.body)).get("grant_type") === "refresh_token");
+      if (host === "iamcredentials.googleapis.com" && /^\/v1\/projects\/-\/serviceAccounts\/\d+:generateAccessToken$/.test(path)) {
+        try {
+          allowed = z.object({ scope: z.tuple([z.literal("https://www.googleapis.com/auth/analytics.readonly")]),
+            lifetime: z.literal("3600s") }).strict().safeParse(JSON.parse(String(options.body))).success;
+        } catch { allowed = false; }
+      }
       if (/\.(salesforce\.com|force\.com)$/.test(host) && /^\/services\/Soap\/u\/\d+\.\d+$/.test(path)) {
         // Permit only the existing utility's exact read-only getUserInfo envelope.
         allowed = /^<\?xml version="1\.0" encoding="UTF-8"\?><env:Envelope xmlns:xsd="http:\/\/www\.w3\.org\/2001\/XMLSchema" xmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance" xmlns:env="http:\/\/schemas\.xmlsoap\.org\/soap\/envelope\/">\s*<env:Header><SessionHeader xmlns="urn:partner\.soap\.sforce\.com"><sessionId>[^<>&]+<\/sessionId><\/SessionHeader><\/env:Header><env:Body><getUserInfo xmlns="urn:partner\.soap\.sforce\.com" \/><\/env:Body><\/env:Envelope>$/.test(String(options.body));
@@ -78,7 +84,7 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
   if (!dueCampaigns.length) return [{ campaignIdHash: "none", checkedAt: new Date().toISOString(), status: "not_due", checks: [] as NumberCheck[],
     scope: "No accuracy check scheduled for this slot; no database or provider queries made." }];
   if (config.credentialsEnvironmentPrefix) {
-    for (const key of ["TOKEN_ENCRYPTION_KEY", "ENCRYPTION_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GA4_SERVICE_ACCOUNT_JSON",
+    for (const key of ["TOKEN_ENCRYPTION_KEY", "ENCRYPTION_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GA4_SERVICE_ACCOUNT_JSON", "GA4_CLIENT_SERVICE_ACCOUNT_JSON",
       "GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS", "GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON", "SERVICE_ACCOUNT_RESOURCE_GRANTS", "SHOPIFY_API_VERSION", "SALESFORCE_API_VERSION"]) {
       const value = process.env[config.credentialsEnvironmentPrefix + key];
       if (value === undefined) delete process.env[key]; else process.env[key] = value;

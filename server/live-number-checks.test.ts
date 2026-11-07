@@ -413,6 +413,21 @@ describe("source reads", () => {
 });
 
 describe("operator safety", () => {
+  it("permits only bounded read-only GA4 impersonation and never account creation or broader credentials", async () => {
+    const raw = vi.fn(async () => new Response("{}")), request = readOnlyMonitorFetch(raw);
+    const url = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/111:generateAccessToken";
+    const body = { scope: ["https://www.googleapis.com/auth/analytics.readonly"], lifetime: "3600s" };
+    await request(url, { method: "POST", body: JSON.stringify(body) });
+    expect(raw).toHaveBeenCalledTimes(1); raw.mockClear();
+    for (const payload of [{ ...body, scope: ["https://www.googleapis.com/auth/cloud-platform"] }, { ...body, delegates: ["another-account"] },
+      { ...body, lifetime: "7200s" }, { ...body, scope: [...body.scope, "extra"] }]) {
+      await expect(request(url, { method: "POST", body: JSON.stringify(payload) })).rejects.toThrow("MONITOR_PROVIDER_WRITE_OR_HOST_BLOCKED");
+    }
+    for (const target of [url.replace("111", "client@project.iam.gserviceaccount.com"), "https://iam.googleapis.com/v1/projects/project/serviceAccounts"]) {
+      await expect(request(target, { method: "POST", body: JSON.stringify(body) })).rejects.toThrow("MONITOR_PROVIDER_WRITE_OR_HOST_BLOCKED");
+    }
+    expect(raw).not.toHaveBeenCalled();
+  });
   it("blocks SOAP mutations before making a network request", async () => {
     const raw = vi.fn();
     await expect(readOnlyMonitorFetch(raw)("https://tenant.my.salesforce.com/services/Soap/u/59.0", { method: "POST", body: '<env:Body><create /></env:Body>' })).rejects.toThrow("MONITOR_PROVIDER_WRITE_OR_HOST_BLOCKED");

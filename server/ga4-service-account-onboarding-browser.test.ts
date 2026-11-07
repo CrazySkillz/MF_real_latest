@@ -24,7 +24,7 @@ describe("GA4 service-account onboarding choice", () => {
   }, 60_000);
   afterAll(async () => { await browser?.close(); });
 
-  async function fixture(options: { enabled?: boolean; statusCode?: number; delayed?: boolean; connectCode?: number; mode?: string } = {}) {
+  async function fixture(options: { enabled?: boolean; statusCode?: number; delayed?: boolean; connectCode?: number; mode?: string; selfService?: boolean; delayedPrepare?: boolean } = {}) {
     const context = await browser.newContext({ serviceWorkers: "block" });
     const page = await context.newPage();
     page.setDefaultTimeout(5000);
@@ -42,7 +42,11 @@ describe("GA4 service-account onboarding choice", () => {
         statusReads.push(url.pathname);
         if (options.delayed && url.pathname.includes("/a/")) await pending;
         status = options.statusCode || 200;
-        data = { enabled: !url.pathname.includes("/b/") && options.enabled !== false, email: "fixture-reader@example.invalid" };
+        data = { enabled: !url.pathname.includes("/b/") && options.enabled !== false, email: options.selfService ? null : "fixture-reader@example.invalid", selfService: options.selfService };
+      } else if (request.method() === "POST" && url.pathname === "/api/campaigns/a/ga4-service-account/prepare") {
+        posts.push({ path: url.pathname, body: request.postDataJSON() });
+        if (options.delayedPrepare) await pending;
+        data = { success: true, email: "acme-123456789@fixture-project.iam.gserviceaccount.com", propertyId: request.postDataJSON().propertyId };
       } else if (request.method() === "POST" && url.pathname === "/api/campaigns/a/ga4-service-account/connect") {
         posts.push({ path: url.pathname, body: request.postDataJSON() });
         status = options.connectCode || 200;
@@ -67,6 +71,65 @@ describe("GA4 service-account onboarding choice", () => {
       f.release();
       await browserExpect(f.page.getByRole("button", { name: "Use service-account access" })).toBeEnabled();
       expect(f.posts).toEqual([]);
+    } finally { await f.close(); }
+  });
+
+  it("generates the client email and only connects after the client explicitly confirms Google access", async () => {
+    const f = await fixture({ selfService: true });
+    try {
+      await f.page.getByRole("button", { name: "Use service-account access" }).click();
+      await f.page.getByLabel("GA4 Property ID").fill("123456789");
+      await browserExpect(f.page.getByRole("button", { name: "Connect Google Analytics", exact: true })).toBeDisabled();
+      await f.page.getByRole("button", { name: "Generate access email" }).click();
+      await browserExpect(f.page.getByText("acme-123456789@fixture-project.iam.gserviceaccount.com", { exact: true })).toBeVisible();
+      await browserExpect(f.page.getByText(/Property access management/)).toBeVisible();
+      expect(f.posts).toEqual([{ path: "/api/campaigns/a/ga4-service-account/prepare", body: { propertyId: "123456789" } }]);
+      await f.page.getByRole("button", { name: "Connect Google Analytics", exact: true }).click();
+      await browserExpect(f.page.getByText("Continue to property selection")).toBeVisible();
+      expect(f.posts[1]).toEqual({ path: "/api/campaigns/a/ga4-service-account/connect", body: { propertyId: "123456789", lookbackDays: 30 } });
+    } finally { await f.close(); }
+  });
+
+  it("clears the generated email when the property changes", async () => {
+    const f = await fixture({ selfService: true });
+    try {
+      await f.page.getByRole("button", { name: "Use service-account access" }).click();
+      await f.page.getByLabel("GA4 Property ID").fill("123456789");
+      await f.page.getByRole("button", { name: "Generate access email" }).click();
+      await browserExpect(f.page.getByText("acme-123456789@fixture-project.iam.gserviceaccount.com", { exact: true })).toBeVisible();
+      await f.page.getByLabel("GA4 Property ID").fill("987654321");
+      await browserExpect(f.page.getByText("acme-123456789@fixture-project.iam.gserviceaccount.com", { exact: true })).toHaveCount(0);
+      await browserExpect(f.page.getByRole("button", { name: "Connect Google Analytics", exact: true })).toBeDisabled();
+      await browserExpect(f.page.getByRole("button", { name: "Generate access email" })).toBeEnabled();
+    } finally { await f.close(); }
+  });
+
+  it("ignores a previous campaign's delayed provision response", async () => {
+    const f = await fixture({ selfService: true, delayedPrepare: true });
+    try {
+      await f.page.getByRole("button", { name: "Use service-account access" }).click();
+      await f.page.getByLabel("GA4 Property ID").fill("123456789");
+      await f.page.getByRole("button", { name: "Generate access email" }).click();
+      await expect.poll(() => f.posts.length).toBe(1);
+      const pending = f.page.waitForResponse(r => r.url().endsWith("/prepare"));
+      await f.page.getByRole("button", { name: "Change campaign" }).click();
+      f.release(); await pending;
+      await browserExpect(f.page.getByText("acme-123456789@fixture-project.iam.gserviceaccount.com", { exact: true })).toHaveCount(0);
+      await browserExpect(f.page.getByText("Continue to property selection")).toHaveCount(0);
+    } finally { await f.close(); }
+  });
+
+  it("retains the access email and blocks advancement when Google rejects the dedicated connection", async () => {
+    const f = await fixture({ selfService: true, connectCode: 403 });
+    try {
+      await f.page.getByRole("button", { name: "Use service-account access" }).click();
+      await f.page.getByLabel("GA4 Property ID").fill("123456789");
+      await f.page.getByRole("button", { name: "Generate access email" }).click();
+      await browserExpect(f.page.getByText("acme-123456789@fixture-project.iam.gserviceaccount.com", { exact: true })).toBeVisible();
+      await f.page.getByRole("button", { name: "Connect Google Analytics", exact: true }).click();
+      await browserExpect(f.page.getByRole("status")).toContainText("not approved");
+      await browserExpect(f.page.getByText("Continue to property selection")).toHaveCount(0);
+      await browserExpect(f.page.getByText("acme-123456789@fixture-project.iam.gserviceaccount.com", { exact: true })).toBeVisible();
     } finally { await f.close(); }
   });
 

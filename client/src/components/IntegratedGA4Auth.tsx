@@ -19,10 +19,15 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
   const [isConnecting, setIsConnecting] = useState(false);
   const [isServiceAccountConnecting, setIsServiceAccountConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
-  const [serviceAccountStatus, setServiceAccountStatus] = useState<{ enabled: boolean; email: string | null }>({ enabled: false, email: null });
+  const [serviceAccountStatus, setServiceAccountStatus] = useState<{ enabled: boolean; email: string | null; selfService?: boolean }>({ enabled: false, email: null });
   const [serviceAccountStatusLoaded, setServiceAccountStatusLoaded] = useState(false);
   const [showServiceAccountFlow, setShowServiceAccountFlow] = useState(false);
   const [serviceAccountPropertyId, setServiceAccountPropertyId] = useState("");
+  const [preparedEmail, setPreparedEmail] = useState<string | null>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const serviceRequest = useRef(0);
+  const currentCampaign = useRef(campaignId);
+  currentCampaign.current = campaignId;
   const popupRef = useRef<Window | null>(null);
 
   const cleanupPopup = useCallback(() => {
@@ -57,13 +62,17 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
     setServiceAccountStatus({ enabled: false, email: null });
     setShowServiceAccountFlow(false);
     setServiceAccountPropertyId("");
+    serviceRequest.current++;
+    setPreparedEmail(null);
+    setIsPreparing(false);
+    setIsServiceAccountConnecting(false);
     if (!campaignId) return;
     fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4-service-account/status`, { credentials: "include" })
       .then(async (response) => response.ok ? response.json() : null)
-      .then((data) => { if (!cancelled) setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null }); })
+      .then((data) => { if (!cancelled) setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null, selfService: data?.selfService === true }); })
       .catch(() => { if (!cancelled) setServiceAccountStatus({ enabled: false, email: null }); })
       .finally(() => { if (!cancelled) setServiceAccountStatusLoaded(true); });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; serviceRequest.current++; };
   }, [campaignId, connectionMode]);
 
   useEffect(() => {
@@ -149,20 +158,40 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
       return;
     }
     setIsServiceAccountConnecting(true);
+    const requestId = ++serviceRequest.current;
     try {
       const response = await apiRequest("POST", `/api/campaigns/${campaignId}/ga4-service-account/connect`, {
         propertyId,
         lookbackDays: 30,
       });
       const data = await response.json();
+      if (requestId !== serviceRequest.current || currentCampaign.current !== campaignId) return;
       if (!response.ok || data?.success !== true) throw new Error(data?.message || "Google Analytics connection failed");
       onSuccess();
     } catch (error: any) {
-      onError(error?.message || "Google Analytics connection failed");
+      if (requestId === serviceRequest.current && currentCampaign.current === campaignId) onError(error?.message || "Google Analytics connection failed");
     } finally {
-      setIsServiceAccountConnecting(false);
+      if (requestId === serviceRequest.current && currentCampaign.current === campaignId) setIsServiceAccountConnecting(false);
     }
   }, [campaignId, onError, onSuccess, serviceAccountPropertyId]);
+
+  const prepareServiceAccount = async () => {
+    const propertyId = serviceAccountPropertyId.trim().replace(/^properties\//i, "");
+    if (!/^\d{1,20}$/.test(propertyId)) { onError("Enter the numeric GA4 Property ID."); return; }
+    const requestId = ++serviceRequest.current;
+    setIsPreparing(true);
+    try {
+      const response = await apiRequest("POST", `/api/campaigns/${campaignId}/ga4-service-account/prepare`, { propertyId });
+      const data = await response.json();
+      if (requestId !== serviceRequest.current || currentCampaign.current !== campaignId) return;
+      if (data?.success !== true || data?.propertyId !== propertyId || !data?.email) throw new Error(data?.message || "Could not generate the access email.");
+      setPreparedEmail(data.email);
+    } catch (error: any) {
+      if (requestId === serviceRequest.current && currentCampaign.current === campaignId) onError(error?.message || "Could not generate the access email. Please retry.");
+    } finally {
+      if (requestId === serviceRequest.current && currentCampaign.current === campaignId) setIsPreparing(false);
+    }
+  };
 
   return (
     <Card className="w-full border border-border">
@@ -246,8 +275,9 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Add {serviceAccountStatus.email} as a Viewer in Google Analytics, then enter the numeric GA4 Property ID.
-              {" "}The property must also be approved for this client by MimoSaaS.
+              {serviceAccountStatus.selfService
+                ? "Enter your numeric GA4 Property ID and generate your client's access email. Then give that email Viewer access to this property in Google Analytics."
+                : <>Add {serviceAccountStatus.email} as a Viewer in Google Analytics, then enter the numeric GA4 Property ID. The property must also be approved for this client by MimoSaaS.</>}
             </p>
             <div className="space-y-2">
               <Label htmlFor="ga4-service-account-property">GA4 Property ID</Label>
@@ -256,14 +286,25 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
                 inputMode="numeric"
                 placeholder="123456789"
                 value={serviceAccountPropertyId}
-                onChange={(event) => setServiceAccountPropertyId(event.target.value)}
+                disabled={isPreparing || isServiceAccountConnecting}
+                onChange={(event) => { serviceRequest.current++; setPreparedEmail(null); setServiceAccountPropertyId(event.target.value); }}
               />
             </div>
+            {serviceAccountStatus.selfService && <div className="space-y-2">
+              <Button type="button" variant="outline" className="w-full" onClick={prepareServiceAccount}
+                disabled={isPreparing || isServiceAccountConnecting || !serviceAccountPropertyId.trim() || !!preparedEmail}>
+                {isPreparing ? "Generating access email…" : "Generate access email"}
+              </Button>
+              {preparedEmail && <div className="rounded-md border p-3 space-y-2">
+                <p className="text-sm font-medium break-all select-all">{preparedEmail}</p>
+                <p className="text-sm text-muted-foreground">In Google Analytics, select this property, open Admin → Property access management → Add users, and add this email with the Viewer role. Then click Connect Google Analytics below.</p>
+              </div>}
+            </div>}
             <Button
               type="button"
               className="w-full"
               onClick={connectWithServiceAccount}
-              disabled={isServiceAccountConnecting || !serviceAccountPropertyId.trim()}
+              disabled={isPreparing || isServiceAccountConnecting || !serviceAccountPropertyId.trim() || (serviceAccountStatus.selfService && !preparedEmail)}
             >
               {isServiceAccountConnecting ? (
                 <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Validating property...</>
@@ -276,7 +317,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
             type="button"
             variant="outline"
             className="w-full"
-            disabled={isConnecting || isServiceAccountConnecting || !serviceAccountStatusLoaded || !serviceAccountStatus.enabled}
+            disabled={isConnecting || isPreparing || isServiceAccountConnecting || !serviceAccountStatusLoaded || !serviceAccountStatus.enabled}
             onClick={() => setShowServiceAccountFlow((show) => !show)}
           >
             {showServiceAccountFlow ? "Use Google sign-in" : "Use service-account access"}

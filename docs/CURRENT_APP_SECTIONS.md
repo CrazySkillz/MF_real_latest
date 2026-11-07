@@ -138,6 +138,14 @@ the UI does not grant access. OAuth does not require those shared-resource grant
 The [current launch assessment](fixes/v1-batch-8/LAUNCH_ACCEPTANCE_2026-11-01.md)
 distinguishes local UI validation from deployment and fresh-client acceptance.
 
+The optional November 7 automatic-client-access implementation adds a gated
+variant of this same Auth form: enter Property ID → Generate access email → add
+that email as Viewer in Google Analytics → Connect. It reserves one identity
+per exact owner/Client/property; it does not require manual per-client app
+approval. Existing shared-account connections retain the allowlist/grant flow
+above. This new variant is not yet activated on the hosted app. Setup, rollout
+and validation status are in [Automatic client access](GA4_AUTOMATIC_CLIENT_ACCESS.md).
+
 Closing before final Create may clean up only the unsubmitted persisted draft.
 Once Create is accepted, closing preserves the import. The server rejects stale
 wizard cleanup after acceptance or activation. Confirmed campaign deletion

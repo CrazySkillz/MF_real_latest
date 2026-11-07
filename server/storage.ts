@@ -10,8 +10,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, encryptString, type EncryptedTokens } from "./utils/tokenVault";
 import { isDeepStrictEqual } from "node:util";
-import { inboundWebhookReceipts, serviceAccountResourceGrants, campaignCreationRequests } from "@shared/schema";
-import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
+import { inboundWebhookReceipts, serviceAccountResourceGrants, campaignCreationRequests, ga4ClientServiceAccounts, type GA4ClientServiceAccount } from "@shared/schema";
+import { assertGA4ServiceAccountConnectionAccess, getGA4ClientServiceAccountEmail, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, getGoogleAdsServiceAccountLoginCustomerId, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
@@ -203,6 +203,9 @@ export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { e
 export interface IStorage {
   withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T>;
   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
+  getGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId?: string): Promise<GA4ClientServiceAccount | undefined>;
+  reserveGA4ClientServiceAccount(campaignId: string, propertyId: string, ownerId: string): Promise<GA4ClientServiceAccount>;
+  completeGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified?: boolean): Promise<GA4ClientServiceAccount>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
   getGA4PublicationVersion(campaignId: string): Promise<string | null>;
   isGA4NativeRecoveryEligible(campaignId: string, options?: { includeFinancialSources?: boolean; revenueChange?: boolean }): Promise<boolean>;
@@ -761,6 +764,50 @@ export class DatabaseStorage implements IStorage {
     throw Object.assign(new Error("This provider resource is not approved for this customer"), { code: "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" });
   }
 
+  async getGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId?: string): Promise<GA4ClientServiceAccount | undefined> {
+    const [row] = await db.select({ binding: ga4ClientServiceAccounts }).from(ga4ClientServiceAccounts)
+      .innerJoin(campaigns, and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ga4ClientServiceAccounts.ownerId), eq(campaigns.clientId, ga4ClientServiceAccounts.clientId)))
+      .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+      .where(and(eq(ga4ClientServiceAccounts.propertyId, propertyId), sql`${campaigns.status} <> 'deleted'`,
+        ...(bindingId ? [eq(ga4ClientServiceAccounts.id, bindingId)] : []))).limit(1);
+    return row?.binding;
+  }
+
+  async reserveGA4ClientServiceAccount(campaignId: string, propertyId: string, ownerId: string): Promise<GA4ClientServiceAccount> {
+    return db.transaction(async (tx: any) => {
+      const [scope] = await tx.select({ campaign: campaigns, client: clients }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), eq(campaigns.status, "draft"))).for("update");
+      if (!scope) throw Object.assign(new Error("Start a new campaign to configure Google access."), { status: 409 });
+      const identity = and(eq(ga4ClientServiceAccounts.ownerId, scope.campaign.ownerId!), eq(ga4ClientServiceAccounts.clientId, scope.client.id), eq(ga4ClientServiceAccounts.propertyId, propertyId));
+      const [existing] = await tx.select().from(ga4ClientServiceAccounts).where(identity);
+      if (existing) return existing;
+      const reserved = await tx.select({ id: ga4ClientServiceAccounts.id }).from(ga4ClientServiceAccounts)
+        .where(and(eq(ga4ClientServiceAccounts.ownerId, scope.campaign.ownerId!), eq(ga4ClientServiceAccounts.clientId, scope.client.id))).limit(20);
+      if (reserved.length >= 20) throw Object.assign(new Error("This client has reached the automatic property setup limit. Contact support."), { status: 409 });
+      const email = getGA4ClientServiceAccountEmail(scope.client.name, propertyId);
+      await tx.insert(ga4ClientServiceAccounts).values({ ownerId: scope.campaign.ownerId!, clientId: scope.client.id, propertyId, email }).onConflictDoNothing();
+      const [binding] = await tx.select().from(ga4ClientServiceAccounts).where(identity);
+      if (!binding) throw Object.assign(new Error("This access email is already reserved for another client. Contact support."), { status: 409 });
+      return binding;
+    });
+  }
+
+  async completeGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified = false): Promise<GA4ClientServiceAccount> {
+    return db.transaction(async (tx: any) => {
+      const [scope] = await tx.select({ campaign: campaigns }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), eq(campaigns.status, "draft"))).for("share");
+      if (!scope || !/^\d+$/.test(googleUniqueId)) throw Object.assign(new Error("Campaign setup is no longer available."), { status: 409 });
+      const [binding] = await tx.update(ga4ClientServiceAccounts).set({ googleUniqueId, ...(verified ? { verifiedAt: new Date() } : {}) }).where(and(
+        eq(ga4ClientServiceAccounts.id, bindingId), eq(ga4ClientServiceAccounts.propertyId, propertyId), eq(ga4ClientServiceAccounts.ownerId, scope.campaign.ownerId!),
+        eq(ga4ClientServiceAccounts.clientId, scope.campaign.clientId!), sql`(${ga4ClientServiceAccounts.googleUniqueId} IS NULL OR ${ga4ClientServiceAccounts.googleUniqueId} = ${googleUniqueId})`,
+      )).returning();
+      if (!binding) throw Object.assign(new Error("The client's Google access identity has changed. Contact support."), { status: 409 });
+      return binding;
+    });
+  }
+
   // Campaign methods
   async getCampaigns(): Promise<Campaign[]> {
     return db.select().from(campaigns).orderBy(campaigns.createdAt);
@@ -1252,6 +1299,7 @@ export class DatabaseStorage implements IStorage {
       const sameProperty = existing?.propertyId === propertyId;
       const [saved] = await tx.update(ga4Connections).set({
         propertyId, propertyName, method: 'access_token', isActive: true, isPrimary: true,
+        serviceAccountBindingId: null,
         encryptedTokens: pending.encryptedTokens, accessToken: null, refreshToken: null, clientSecret: null,
         clientId: pending.clientId, expiresAt: pending.expiresAt, lookbackDays: 30,
         importStartDate: sameProperty ? existing.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : importStartDate,
@@ -1265,8 +1313,7 @@ export class DatabaseStorage implements IStorage {
 
   async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
     if (String(connection.method || "").trim().toLowerCase() === GA4_SERVICE_ACCOUNT_METHOD) {
-      assertGA4ServiceAccountPropertyAllowed(connection.propertyId);
-      await this.assertServiceAccountResourceAccess(connection.campaignId, "ga4", connection.propertyId);
+      await assertGA4ServiceAccountConnectionAccess(connection);
     }
     // Check if this is the first connection for this campaign
     const existingConnections = await this.getGA4Connections(connection.campaignId, { resolveRuntimeCredentials: false });
@@ -1308,8 +1355,7 @@ export class DatabaseStorage implements IStorage {
     if (!existing) return undefined;
     const nextMethod = String(connection.method ?? existing.method ?? "").trim().toLowerCase();
     if (nextMethod === GA4_SERVICE_ACCOUNT_METHOD) {
-      assertGA4ServiceAccountPropertyAllowed(connection.propertyId ?? existing.propertyId);
-      await this.assertServiceAccountResourceAccess(existing.campaignId, "ga4", connection.propertyId ?? existing.propertyId);
+      await assertGA4ServiceAccountConnectionAccess({ ...existing, ...connection, campaignId: existing.campaignId });
     }
 
     const tokenFieldsProvided =
@@ -1361,7 +1407,7 @@ export class DatabaseStorage implements IStorage {
     if ("publicationVersion" in options) {
       const expected = options.expectedConnection;
       const current = hydrateDecryptedTokens(existing) as any;
-      if (!expected || ["id", "campaignId", "propertyId", "method", "clientId", "accessToken", "refreshToken", "clientSecret"]
+      if (!expected || ["id", "campaignId", "propertyId", "method", "serviceAccountBindingId", "clientId", "accessToken", "refreshToken", "clientSecret"]
         .some(field => (current[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
 
@@ -1494,6 +1540,7 @@ export class DatabaseStorage implements IStorage {
     const connections = await tx.select({ id: ga4Connections.id, propertyId: ga4Connections.propertyId,
       importStartDate: ga4Connections.importStartDate, isPrimary: ga4Connections.isPrimary,
       method: ga4Connections.method, lookbackDays: ga4Connections.lookbackDays, connectedAt: ga4Connections.connectedAt,
+      serviceAccountBindingId: ga4Connections.serviceAccountBindingId,
     }).from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
       .orderBy(ga4Connections.id).for("share");
     if (!connections.length || connections.some((connection: any) => !connection.propertyId.trim())) return undefined;
@@ -1509,6 +1556,8 @@ export class DatabaseStorage implements IStorage {
         if (source) return undefined;
       }
     }
+    // Preserve existing durable scope hashes for every connection that predates client identities.
+    for (const connection of connections) if (!connection.serviceAccountBindingId) delete (connection as any).serviceAccountBindingId;
     const scope = { version: 1, campaign: Object.fromEntries([
       "id", "createdAt", "ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone",
     ].map(key => [key, campaign[key] ?? null])), connections, ...(initialImport ? { kind: "initial_import" } : revenueChange ? { kind: "revenue_change" } : {}) };

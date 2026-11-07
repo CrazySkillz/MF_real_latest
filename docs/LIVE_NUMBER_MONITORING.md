@@ -1,5 +1,43 @@
 # Live-number monitoring
 
+## Reviewed historical reports - 7 November
+
+Current source, section, browser, PDF and notification checks remain alerting.
+The ten specifically reviewed old GA4 artifacts now have exact payload hashes
+in the live monitor configuration, linked to three verified replacement snapshots
+using current settings and data through 6 November. Seven old PDFs lacked complete
+historical inputs; three had additional backup evidence. Originals are unchanged.
+
+Only four known missing-history findings can be reported separately as
+`historicalChecks`, retaining `status: unverified`. A run with all current checks
+passing and only these reviewed gaps returns `historical_limitations` and does
+not repeatedly send a failure alert. This is not a pass or certification of old
+figures. Missing or changed originals/replacements, incorrect scope, invalid
+verification receipts, new unknown gaps and every numerical difference still
+fail the monitor. The linked replacement must pass its own saved-input and PDF
+checks on each run. No report is deleted, rewritten or hidden by this behavior.
+
+Scheduled delivery audit metadata uses PostgreSQL JSONB, which reorders object
+keys. New report verification receipts use version 2 with an order-independent
+input hash (array order and all values remain significant). Existing version 1
+receipts remain supported. The monitor can restore a legacy receipt's key order
+in a private copy using a verified same-campaign/type template, but accepts it
+only if the ORIGINAL saved SHA-256 matches exactly. No source value is borrowed
+from the template and no persisted record is rewritten. This fixes the confirmed
+7 November scheduled Overview verification failure without changing its PDF.
+
+Coverage remains the three explicitly enrolled live campaigns (Promo, V1 Batch 5
+Test and Batch 1 Provider Check), plus the isolated test campaign. A new client
+campaign must be added to both health and number-monitor configurations during
+onboarding; its exact campaign, timezone and ownership must be checked first.
+No broad automatic enrollment of historical/test campaigns is implied.
+Sentry/browser-error collection and independent outage monitoring remain deferred.
+
+The original five-step workflow remains: automatic backups; isolated hosted test
+app; required release tests; Render checks and failure emails; one feedback issue
+at a time through reproduce, fix, test, release and verify. PDF replacement was
+verification work within monitoring, not a new task for the user to operate.
+
 ## Browser, PDF and notification extension — 6 November
 
 The remaining static browser/notification coverage warnings are replaced by executable checks. This release extends only the existing Render monitor; neither hosted application is deployed and no customer record is written.

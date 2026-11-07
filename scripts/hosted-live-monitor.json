@@ -1,11 +1,20 @@
 {
   "baseUrl": "https://app.mimosaas.app",
-  "expectedCommit": "a9a7ce3732de99b5273ba89687c696a50b5dc6f3",
+  "expectedCommit": "f108e45feb1cfc07c4f949520f63ed54bb1bd3fa",
   "graceMinutes": 20,
   "maxResponseMilliseconds": 5000,
   "campaigns": [
-    { "campaignIdHash": "b85505d40a0a", "reportingTimeZone": "Europe/Amsterdam" },
-    { "campaignIdHash": "de4775c3b435", "reportingTimeZone": "Europe/Amsterdam" },
-    { "campaignIdHash": "156b23ba019e", "reportingTimeZone": "Europe/Amsterdam" }
+    {
+      "campaignIdHash": "b85505d40a0a",
+      "reportingTimeZone": "Europe/Amsterdam"
+    },
+    {
+      "campaignIdHash": "de4775c3b435",
+      "reportingTimeZone": "Europe/Amsterdam"
+    },
+    {
+      "campaignIdHash": "156b23ba019e",
+      "reportingTimeZone": "Europe/Amsterdam"
+    }
   ]
 }

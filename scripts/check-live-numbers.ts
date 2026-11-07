@@ -18,6 +18,9 @@ export const liveNumberConfigSchema = z.object({
   credentialsEnvironmentPrefix: z.string().regex(/^[A-Z][A-Z0-9_]*_$/).optional(),
   application: outputApplicationSchema.optional(),
   campaigns: z.array(z.object({ campaignIdHash: z.string().regex(/^[a-f0-9]{12}$/),
+    historicalReports: z.array(z.object({ snapshotHash: z.string().regex(/^[a-f0-9]{12}$/), payloadSha256: z.string().regex(/^[a-f0-9]{64}$/),
+      replacementHash: z.string().regex(/^[a-f0-9]{12}$/), replacementPdfSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict()).max(100)
+      .refine(rows => new Set(rows.map(row => row.snapshotHash)).size === rows.length).optional(),
     reportingTimeZone: z.string().min(1).refine(value => normalizeReportingTimeZone(value) === value) }).strict()).min(1).max(100)
     .refine(rows => new Set(rows.map(row => row.campaignIdHash)).size === rows.length),
 }).strict();
@@ -86,20 +89,21 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
   process.env.DATABASE_URL = readOnlyMonitorDatabaseUrl(raw, config.databaseFingerprint);
   const { pool } = await import("../server/db");
   if (!pool) throw new Error("MONITOR_DATABASE_NOT_CONFIGURED");
-  const results: Array<ReturnType<typeof summarizeNumberChecks> & { inputFingerprint?: string }> = [];
+  const results: Array<ReturnType<typeof summarizeNumberChecks> & { inputFingerprint?: string; historicalChecks?: NumberCheck[] }> = [];
   try {
     const guard = await pool.query("SELECT current_setting('default_transaction_read_only') AS read_only");
     if (guard.rows[0]?.read_only !== "on") throw new Error("MONITOR_READ_ONLY_GUARD_FAILED");
     const { storage } = await import("../server/storage");
     const { checkGA4ProviderNumbers, checkFinancialProviderNumbers, checkPipelineProviderNumbers } = await import("../server/live-number-provider-checks");
-    const { checkSavedReportNumbers } = await import("../server/live-number-report-checks");
-    for (const { campaignIdHash, reportingTimeZone } of dueCampaigns) {
+    const { checkSavedReportNumbers, separateReviewedReportHistory, restoreLegacyReportInputOrder } = await import("../server/live-number-report-checks");
+    for (const { campaignIdHash, reportingTimeZone, historicalReports } of dueCampaigns) {
       const now = new Date();
       try {
         const before = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         if (before.campaign.reportingTimeZone !== reportingTimeZone) throw new Error("MONITOR_TIMEZONE_CHANGED");
-        const checks = checkStoredNumbers(before, now);
-        checks.push(...await checkSavedReportNumbers(before));
+        const reportRead = restoreLegacyReportInputOrder(before);
+        const checks = checkStoredNumbers(reportRead, now);
+        checks.push(...await checkSavedReportNumbers(reportRead));
         if (!checks.some(check => check.section === "scope")) {
           try { checks.push(...await checkGA4ProviderNumbers(before, now)); }
           catch { checks.push({ section: "GA4 provider", code: "GA4_SOURCE_COMPARISON_UNVERIFIED", status: "unverified" }); }
@@ -109,7 +113,12 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
         const after = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         // Re-reading is essential: add/edit/delete/refresh during the provider query invalidates the comparison.
         const fingerprint = snapshotFingerprint(before), stable = fingerprint === snapshotFingerprint(after);
-        results.push({ ...summarizeNumberChecks(campaignIdHash, checks, stable), ...(stable ? { inputFingerprint: fingerprint } : {}) });
+        const reviewed = stable ? separateReviewedReportHistory(before, checks, historicalReports) : { checks, historicalChecks: [] };
+        const summary = summarizeNumberChecks(campaignIdHash, reviewed.checks, stable);
+        results.push({ ...summary, ...(reviewed.historicalChecks.length ? { historicalChecks: reviewed.historicalChecks,
+          ...(summary.status === "passed" ? { status: "historical_limitations" } : {}),
+          scope: "Current checks are separate from reviewed immutable historical evidence gaps. Historical checks remain unverified, not passed." } : {}),
+          ...(stable ? { inputFingerprint: fingerprint } : {}) });
       } catch {
         results.push(summarizeNumberChecks(campaignIdHash, [{ section: "scope", code: "CAMPAIGN_READ_UNVERIFIED", status: "unverified" }], true));
       }
@@ -141,7 +150,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       }
       process.stdout.write(JSON.stringify({ ...result, checks: Array.from(groups.values()) }) + "\n");
     }
-    if (results.some(result => result.status !== "passed" && result.status !== "not_due")) process.exitCode = 1;
+    if (results.some(result => !["passed", "not_due", "historical_limitations"].includes(result.status))) process.exitCode = 1;
   } catch {
     process.stdout.write(JSON.stringify({ status: "unverified", code: "MONITOR_CONFIGURATION_OR_DATABASE_UNVERIFIED" }) + "\n");
     process.exitCode = 1;

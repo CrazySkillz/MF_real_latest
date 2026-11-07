@@ -448,4 +448,13 @@ describe("operator safety", () => {
     expect(liveNumberConfigSchema.safeParse({ ...config, campaigns: [campaign] }).success).toBe(true);
     expect(liveNumberConfigSchema.safeParse({ ...config, campaigns: [campaign, campaign] }).success).toBe(false);
   });
+  it("requires exact unique artifact hashes for optional historical reviews", () => {
+    const review = { snapshotHash: "a".repeat(12), payloadSha256: "b".repeat(64), replacementHash: "c".repeat(12), replacementPdfSha256: "d".repeat(64) };
+    const parse = (historicalReports: any[]) => liveNumberConfigSchema.safeParse({ databaseEnvironmentVariable: "MONITOR_DB", databaseFingerprint: "0".repeat(64),
+      campaigns: [{ campaignIdHash: "e".repeat(12), reportingTimeZone: "Europe/Amsterdam", historicalReports }] }).success;
+    expect(parse([review])).toBe(true);
+    expect(parse([review, review])).toBe(false);
+    expect(parse([{ ...review, payloadSha256: "*" }])).toBe(false);
+    expect(parse([{ ...review, ignoreAllFailures: true }])).toBe(false);
+  });
 });

@@ -1,6 +1,73 @@
 import { PDFParse } from "pdf-parse";
+import { createHash } from "node:crypto";
 import { compareNumber, monitorHash, numberOrNull, parseMonitorMapping, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 import { readReportPdfArtifact, readReportVerification } from "./utils/report-pdf-artifact";
+
+export type HistoricalReportReview = { snapshotHash: string; payloadSha256: string; replacementHash: string; replacementPdfSha256: string };
+
+// Older scheduled-send audit JSONB reordered object keys before publication.
+// Recover order only in the monitor's private copy, and only when the ORIGINAL
+// SHA-256 matches exactly. A template supplies key order, never any input value.
+export function restoreLegacyReportInputOrder(snapshot: LiveNumberSnapshot): LiveNumberSnapshot {
+  const reports = snapshot.rows.reportSnapshots || [];
+  if (reports.length > 100) return snapshot;
+  const templates: any[] = [];
+  for (const row of reports) {
+    try { const payload = parseMonitorMapping(row.snapshotJson); if (payload.pdfArtifact?.verification?.version === 1 && readReportVerification(payload)) templates.push(payload); } catch { /* Invalid receipts cannot be templates. */ }
+  }
+  const order = (value: any, template: any): any => Array.isArray(value) ? value.map((item, index) => order(item, template?.[index] || template?.[0]))
+    : value && typeof value === "object" ? Object.fromEntries([...Object.keys(template || {}).filter(key => Object.hasOwn(value, key)),
+      ...Object.keys(value).filter(key => !Object.hasOwn(template || {}, key))].map(key => [key, order(value[key], template?.[key])])) : value;
+  return { ...snapshot, rows: { ...snapshot.rows, reportSnapshots: reports.map(row => {
+    try {
+      const payload = parseMonitorMapping(row.snapshotJson), receipt = payload.pdfArtifact?.verification;
+      if (receipt?.version !== 1 || receipt.inputsSha256 === createHash("sha256").update(JSON.stringify(receipt.inputs)).digest("hex")) return row;
+      for (const template of templates.filter(item => item.campaignId === payload.campaignId && item.platformType === payload.platformType && item.reportType === payload.reportType)) {
+        const inputs = order(receipt.inputs, template.pdfArtifact.verification.inputs);
+        if (createHash("sha256").update(JSON.stringify(inputs)).digest("hex") !== receipt.inputsSha256) continue;
+        receipt.inputs = inputs;
+        if (readReportVerification(payload)) return { ...row, snapshotJson: JSON.stringify(payload) };
+      }
+    } catch { /* Keep the original invalid record so ordinary checks still fail. */ }
+    return row;
+  }) } };
+}
+
+// A reviewed legacy evidence gap is not a new live-data incident or a numeric pass.
+// Pin both immutable artifacts; never acknowledge differences, new gaps or other checks.
+export function separateReviewedReportHistory(snapshot: LiveNumberSnapshot, checks: NumberCheck[], reviews: HistoricalReportReview[] = []) {
+  const current = [...checks], historical: NumberCheck[] = [];
+  const allowed = new Set(["Reports:HISTORICAL_SOURCE_SETTINGS_NOT_RECORDED", "Reports:REPORT_DEFINITION_RETIRED",
+    "Reports / PDF numbers:CPA_HISTORICAL_CONVERSION_BASIS_UNVERIFIED", "Reports / PDF numbers:CAMPAIGN_SESSION_KEY_EVENT_RATE_BASIS_UNVERIFIED"]);
+  for (const review of reviews) {
+    try {
+      const find = (hash: string) => { const rows = (snapshot.rows.reportSnapshots || []).filter(row => monitorHash(String(row.id)) === hash); if (rows.length !== 1) throw new Error(); return rows[0]; };
+      const original = find(review.snapshotHash), replacement = find(review.replacementHash);
+      const oldPayload = parseMonitorMapping(original.snapshotJson), newPayload = parseMonitorMapping(replacement.snapshotJson);
+      const input = readReportVerification(newPayload), pdf = readReportPdfArtifact(newPayload);
+      if (original.id === replacement.id || !input || !pdf
+        || createHash("sha256").update(original.snapshotJson).digest("hex") !== review.payloadSha256
+        || createHash("sha256").update(pdf).digest("hex") !== review.replacementPdfSha256
+        || ![original, replacement].every(row => row.campaignId === snapshot.campaign.id && row.platformType === "google_analytics")
+        || original.reportType !== replacement.reportType || original.windowEnd > replacement.windowEnd
+        || !Number.isFinite(Date.parse(original.generatedAt)) || !Number.isFinite(Date.parse(replacement.generatedAt))
+        || Date.parse(original.generatedAt) >= Date.parse(replacement.generatedAt)
+        || ![[original, oldPayload], [replacement, newPayload]].every(([row, payload]) => payload.campaignId === row.campaignId
+          && payload.reportId === row.reportId && payload.platformType === row.platformType && payload.reportType === row.reportType
+          && payload.windowStart === row.windowStart && payload.windowEnd === row.windowEnd)
+        || !checks.some(check => check.subject === review.replacementHash && check.code === "SAVED_VERIFICATION_INPUTS" && check.status === "passed")
+        || !checks.some(check => check.subject === review.replacementHash && check.section === "Reports / PDF numbers" && check.status === "passed")
+        || checks.some(check => check.subject === review.replacementHash && check.status !== "passed")) throw new Error();
+      for (let index = current.length - 1; index >= 0; index--) {
+        const check = current[index];
+        if (check.subject === review.snapshotHash && check.status === "unverified" && allowed.has(`${check.section}:${check.code}`)) {
+          historical.unshift(check); current.splice(index, 1);
+        }
+      }
+    } catch { current.push({ section: "Reports", code: "HISTORICAL_REVIEW_LINK_INVALID", subject: review.snapshotHash, status: "unverified" }); }
+  }
+  return { checks: current, historicalChecks: historical };
+}
 
 // The PDF is evidence of what was actually published. Never regenerate it and
 // never substitute today's source configuration for missing historical evidence.

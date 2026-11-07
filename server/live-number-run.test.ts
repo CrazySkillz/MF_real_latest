@@ -43,6 +43,15 @@ describe("memory-bounded monitoring phases", () => {
     await vi.waitFor(() => expect(children).toHaveLength(2));
     finish(1, [{ section: "Output", code: "MATCH", status: "passed" }]); expect(await run).toBe(1);
   });
+  it("retains reviewed historical warnings and still runs every output check", async () => {
+    const run = runNumberMonitorPhases("config.json");
+    const historicalChecks = [{ section: "Reports", code: "HISTORICAL_SOURCE_SETTINGS_NOT_RECORDED", status: "unverified", subject: "e".repeat(12) }];
+    finish(0, { ...receipt("historical_limitations"), historicalChecks });
+    await vi.waitFor(() => expect(children).toHaveLength(2));
+    finish(1, [{ section: "Output", code: "MATCH", status: "passed" }]);
+    expect(await run).toBe(0);
+    expect(mocks.write.mock.calls.some(call => String(call[0]).includes('"historicalChecks"') && String(call[0]).includes('"status":"unverified"'))).toBe(true);
+  });
   it.each(["missing", "foreign"])("does not replay an unproven %s source capture", async mode => {
     const run = runNumberMonitorPhases("config.json");
     finish(0, mode === "missing" ? { campaignIdHash: hash, status: "unverified" } : { ...receipt(), campaignIdHash: "f".repeat(12) });

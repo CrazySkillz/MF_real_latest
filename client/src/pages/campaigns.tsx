@@ -1799,6 +1799,7 @@ export default function Campaigns() {
                       {selectedWizardPlatform === 'google-analytics' && ga4ConfigSubStep === 'campaigns' && (
                         <div className="space-y-4">
                           <p className="text-sm text-muted-foreground">Select which GA4 campaigns (UTM campaign values) to track.</p>
+                          <p className="text-sm font-medium">Campaigns found in the last 30 days</p>
                           {isGA4CampaignLoading ? (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
@@ -1834,8 +1835,9 @@ export default function Campaigns() {
                           ) : null}
                           {ga4CampaignDiscoveryError && <p role="alert" className="text-sm text-destructive">{ga4CampaignDiscoveryError}</p>}
                             <div className="space-y-2">
-                              <Label>GA4 campaignName</Label>
+                              <Label htmlFor="wizard-ga4-campaign-name">GA4 Campaign Name</Label>
                               <Input
+                                id="wizard-ga4-campaign-name"
                                 value={selectedGA4CampaignValues.join(", ")}
                                 onChange={(e) => setSelectedGA4CampaignValues(
                                   e.target.value
@@ -1846,6 +1848,18 @@ export default function Campaigns() {
                                 placeholder="e.g., brand_awareness, paid_social_q2"
                               />
                               <p className="text-xs text-muted-foreground">If GA4 reporting is delayed, enter one or more expected UTM campaign values, separated by commas.</p>
+                              {selectedGA4CampaignValues.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium">Selected campaigns</p>
+                                  <ul aria-label="Selected GA4 campaigns" className="flex flex-wrap gap-2">
+                                    {selectedGA4CampaignValues.map((name, index) => (
+                                      <li key={`${index}-${name}`} className="max-w-full">
+                                        <Badge variant="secondary" className="max-w-full whitespace-normal break-all">{name}</Badge>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setGa4ConfigSubStep('property')}>

@@ -7,7 +7,7 @@ import { ga4RefreshWork, ga4ConnectionLifecycleEvents, type GA4RefreshWork, type
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
+import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne, getTableColumns } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, encryptString, type EncryptedTokens } from "./utils/tokenVault";
 import { isDeepStrictEqual } from "node:util";
 import { inboundWebhookReceipts, serviceAccountResourceGrants, campaignCreationRequests, ga4ClientServiceAccounts, type GA4ClientServiceAccount } from "@shared/schema";
@@ -1164,8 +1164,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean }): Promise<GA4Connection[]> {
+    // The read-only monitor also reads live databases before the additive rollout reaches them.
     const rows = await db
-      .select()
+      .select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` })
       .from(ga4Connections)
       .where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
       .orderBy(ga4Connections.connectedAt);
@@ -1202,7 +1203,7 @@ export class DatabaseStorage implements IStorage {
 
   async getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined> {
     if (propertyId) {
-      const [connection] = await db.select().from(ga4Connections)
+      const [connection] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
         .where(and(
           eq(ga4Connections.campaignId, campaignId),
           eq(ga4Connections.propertyId, propertyId),
@@ -1212,7 +1213,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Return the primary connection if no propertyId specified
-    const [primary] = await db.select().from(ga4Connections)
+    const [primary] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
       .where(and(
         eq(ga4Connections.campaignId, campaignId),
         eq(ga4Connections.isPrimary, true),
@@ -1222,7 +1223,7 @@ export class DatabaseStorage implements IStorage {
     if (primary) return await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(primary) as any) as any;
 
     // If no primary, return the first active connection
-    const [first] = await db.select().from(ga4Connections)
+    const [first] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
       .where(and(
         eq(ga4Connections.campaignId, campaignId),
         eq(ga4Connections.isActive, true)
@@ -1233,7 +1234,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
-    const [primary] = await db.select().from(ga4Connections)
+    const [primary] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
       .where(and(
         eq(ga4Connections.campaignId, campaignId),
         eq(ga4Connections.isPrimary, true),
@@ -1243,7 +1244,7 @@ export class DatabaseStorage implements IStorage {
     if (primary) return await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(primary) as any) as any;
 
     // If no primary, return the first active connection
-    const [first] = await db.select().from(ga4Connections)
+    const [first] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
       .where(and(
         eq(ga4Connections.campaignId, campaignId),
         eq(ga4Connections.isActive, true)

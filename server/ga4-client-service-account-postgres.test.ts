@@ -148,4 +148,20 @@ describe.skipIf(!testUrl)("client service-account PostgreSQL boundaries", () => 
     expect((await pool.query("SELECT to_jsonb(t) AS row FROM ga4_client_service_accounts t")).rows).toEqual(identities.rows);
     expect(before.rows[0].row.service_account_binding_id).toBeNull();
   });
+  it("keeps legacy connection reads working before the binding column is deployed", async () => {
+    await database.current.insert(schema.ga4Connections).values({ campaignId: "a", propertyId: "123456789", method: "access_token", propertyName: "Existing", accessToken: "synthetic" });
+    await pool.query("ALTER TABLE ga4_connections DROP COLUMN service_account_binding_id");
+    try {
+      const before = (await pool.query("SELECT to_jsonb(t) AS row FROM ga4_connections t")).rows;
+      for (const primary of [true, false]) {
+        await pool.query("UPDATE ga4_connections SET is_primary=$1", [primary]);
+        for (const connection of [await storage.getGA4Connection("a", "123456789"), await storage.getGA4Connection("a"), await storage.getPrimaryGA4Connection("a"), ...(await storage.getGA4Connections("a", { migrateLegacyTokens: false }))]) {
+          expect(connection).toMatchObject({ campaignId: "a", propertyId: "123456789", accessToken: "synthetic", serviceAccountBindingId: null });
+        }
+        expect(await storage.getGA4Connection("b", "123456789")).toBeUndefined();
+      }
+      await pool.query("UPDATE ga4_connections SET is_primary=$1", [before[0].row.is_primary]);
+      expect((await pool.query("SELECT to_jsonb(t) AS row FROM ga4_connections t")).rows).toEqual(before);
+    } finally { await pool.query("ALTER TABLE ga4_connections ADD COLUMN service_account_binding_id varchar"); }
+  });
 });

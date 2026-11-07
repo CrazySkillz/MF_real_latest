@@ -1,6 +1,7 @@
 // Lightweight coordinator: never imports db, storage, PDF or application code.
 // A source process must exit before an output process is started.
-import { readFileSync, writeSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import type { Writable } from "node:stream";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -9,6 +10,9 @@ import type { NumberCheck } from "../server/live-number-checks";
 type Application = { baseUrl: string; expectedCommit: string };
 const activeChildren = new Set<ReturnType<typeof spawn>>();
 const unverified = (code: string): NumberCheck[] => [{ section: "Application outputs", code, status: "unverified" }];
+export function writeMonitorOutput(value: string, output: Pick<Writable, "write"> = process.stdout): Promise<void> {
+  return new Promise((resolve, reject) => output.write(value, error => error ? reject(error) : resolve()));
+}
 export function validOutputChecks(value: unknown): value is NumberCheck[] {
   return Array.isArray(value) && value.length > 0 && value.length <= 20000 && value.every(check => check && typeof check === "object"
     && Object.keys(check).every(key => ["section", "code", "status", "subject"].includes(key))
@@ -58,11 +62,12 @@ export async function runNumberMonitorPhases(configPath: string, scheduledOnly =
     const timer = setTimeout(() => child.kill(), 610_000).unref();
     child.stdout.on("data", chunk => {
       if (output.length + chunk.length > 2_000_000) { tooLarge = true; child.kill(); }
-      else { output += chunk; writeSync(1, chunk); }
+      else output += chunk;
     });
     child.once("error", () => { clearTimeout(timer); resolve({ code: 1, output: "" }); });
     child.once("close", code => { clearTimeout(timer); resolve({ code: tooLarge ? 1 : code ?? 1, output: tooLarge ? "" : output }); });
   });
+  await writeMonitorOutput(source.output);
   let code = source.code === 0 ? 0 : 1;
   const records = source.output.trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
   if (!records.length) return 1;
@@ -89,7 +94,7 @@ export async function runNumberMonitorPhases(configPath: string, scheduledOnly =
     // Render truncates a log line at 64 KiB. Preserve every finding in bounded
     // chunks, aggregating passing row identities while retaining their count.
     const grouped = Array.from(groups.values()), parts = Math.ceil(grouped.length / 64);
-    for (let part = 0; part < parts; part++) writeSync(1, JSON.stringify({ campaignIdHash: record.campaignIdHash, checkedAt: new Date().toISOString(), phase: "application_outputs", status,
+    for (let part = 0; part < parts; part++) await writeMonitorOutput(JSON.stringify({ campaignIdHash: record.campaignIdHash, checkedAt: new Date().toISOString(), phase: "application_outputs", status,
       part: part + 1, parts, checks: grouped.slice(part * 64, (part + 1) * 64), scope: "Actual handler and generated PDF comparisons; unverified paths are not passing." }) + "\n");
   }
   return code;
@@ -98,11 +103,12 @@ export async function runNumberMonitorPhases(configPath: string, scheduledOnly =
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const deadline = setTimeout(() => {
     for (const child of activeChildren) child.kill();
-    writeSync(1, JSON.stringify({ status: "unverified", code: "MONITOR_PHASE_DEADLINE_EXCEEDED" }) + "\n"); process.exit(1);
+    setTimeout(() => process.exit(1), 1000).unref();
+    void writeMonitorOutput(JSON.stringify({ status: "unverified", code: "MONITOR_PHASE_DEADLINE_EXCEEDED" }) + "\n").then(() => process.exit(1), () => process.exit(1));
   }, 18 * 60_000).unref();
   try {
     if (process.argv.length !== 3 && !(process.argv.length === 4 && process.argv[3] === "--scheduled")) throw new Error();
     process.exitCode = await runNumberMonitorPhases(process.argv[2], process.argv[3] === "--scheduled");
-  } catch { writeSync(1, JSON.stringify({ status: "unverified", code: "MONITOR_PHASE_COORDINATION_UNVERIFIED" }) + "\n"); process.exitCode = 1; }
+  } catch { process.exitCode = 1; await writeMonitorOutput(JSON.stringify({ status: "unverified", code: "MONITOR_PHASE_COORDINATION_UNVERIFIED" }) + "\n"); }
   finally { clearTimeout(deadline); }
 }

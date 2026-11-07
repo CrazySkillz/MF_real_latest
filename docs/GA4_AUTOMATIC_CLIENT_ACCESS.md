@@ -127,3 +127,14 @@ The follow-up test and credential receipts use `.local-test/ga4-client-*.log` an
 `.local-test/ga4-client-issuer-preflight.json`. No secret values are in these receipts.
 The app-only release branch is based on live `f108e45f` and contains the dedicated
 GA4 setup plus the two test corrections; it does not include monitor-only history.
+
+The first GitHub attempt passed TypeScript and build, then stopped before tests
+because `ubuntu-latest` selected Ubuntu 26.04, unsupported by the pinned Playwright
+1.58.2. The workflow now explicitly uses supported Ubuntu 24.04; no dependency or
+test exemption changed. Connection getters read the optional binding via row JSON,
+so the shared read-only monitor can continue reading an older live schema while
+the test app receives migration 0028. A real PostgreSQL case removes that column
+in its isolated fixture and verifies exact-property, primary/fallback and list
+reads, cross-campaign isolation and unchanged records. All 13 account database
+checks and 47 refresh-ownership checks pass. No live database migration is required
+for the monitor compatibility correction.

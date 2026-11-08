@@ -64,6 +64,14 @@ export function readOnlyMonitorFetch(request: typeof fetch): typeof fetch {
             lifetime: z.literal("3600s") }).strict().safeParse(JSON.parse(String(options.body))).success;
         } catch { allowed = false; }
       }
+      if (host === "googleads.googleapis.com" && /^\/v25\/customers\/\d{10}\/googleAds:searchStream$/.test(path)) {
+        try {
+          const body = JSON.parse(String(options.body));
+          allowed = Object.keys(body).length === 1 && typeof body.query === "string"
+            && (body.query === "SELECT customer.id, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1"
+              || /^SELECT campaign\.id, segments\.date, metrics\.cost_micros FROM campaign WHERE segments\.date BETWEEN '\d{4}-\d{2}-\d{2}' AND '\d{4}-\d{2}-\d{2}' AND campaign\.status != 'REMOVED' AND campaign\.id IN \(\d+(?:, \d+)*\) ORDER BY segments\.date$/.test(body.query));
+        } catch { allowed = false; }
+      }
       if (/\.(salesforce\.com|force\.com)$/.test(host) && /^\/services\/Soap\/u\/\d+\.\d+$/.test(path)) {
         // Permit only the existing utility's exact read-only getUserInfo envelope.
         allowed = /^<\?xml version="1\.0" encoding="UTF-8"\?><env:Envelope xmlns:xsd="http:\/\/www\.w3\.org\/2001\/XMLSchema" xmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance" xmlns:env="http:\/\/schemas\.xmlsoap\.org\/soap\/envelope\/">\s*<env:Header><SessionHeader xmlns="urn:partner\.soap\.sforce\.com"><sessionId>[^<>&]+<\/sessionId><\/SessionHeader><\/env:Header><env:Body><getUserInfo xmlns="urn:partner\.soap\.sforce\.com" \/><\/env:Body><\/env:Envelope>$/.test(String(options.body));
@@ -86,7 +94,9 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
     scope: "No accuracy check scheduled for this slot; no database or provider queries made." }];
   if (config.credentialsEnvironmentPrefix) {
     for (const key of ["TOKEN_ENCRYPTION_KEY", "ENCRYPTION_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GA4_SERVICE_ACCOUNT_JSON", "GA4_CLIENT_SERVICE_ACCOUNT_JSON",
-      "GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS", "GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON", "SERVICE_ACCOUNT_RESOURCE_GRANTS", "SHOPIFY_API_VERSION", "SALESFORCE_API_VERSION"]) {
+      "GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS", "GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON", "SERVICE_ACCOUNT_RESOURCE_GRANTS", "SHOPIFY_API_VERSION", "SALESFORCE_API_VERSION",
+      "GOOGLE_ADS_SERVICE_ACCOUNT_JSON", "GOOGLE_ADS_SERVICE_ACCOUNT_ALLOWED_CUSTOMER_IDS", "GOOGLE_ADS_SERVICE_ACCOUNT_LOGIN_CUSTOMER_ID",
+      "GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_DEVELOPER_TOKEN"]) {
       const value = process.env[config.credentialsEnvironmentPrefix + key];
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }

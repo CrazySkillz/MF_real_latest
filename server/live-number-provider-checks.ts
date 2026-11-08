@@ -2,6 +2,7 @@ import { checkGA4SourceNumbers } from "./ga4-source-verification";
 import { decryptTokens } from "./utils/tokenVault";
 import { hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
+import { hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { normalizeFinancialSourceDateKey } from "./utils/csv";
 import { validateHubspotSearchPage, nextHubspotPageCursor, MAX_HUBSPOT_PAGES } from "./utils/hubspot-pagination";
 import { fetchCompleteSalesforceQuery } from "./utils/salesforce-pagination";
@@ -133,6 +134,55 @@ export async function readFinancialSourceValues(snapshot: LiveNumberSnapshot, so
     const headers = json.values[0].map(String);
     if (new Set(headers).size !== headers.length || [mapping[kind + "Column"], mapping.dateColumn, mapping.campaignColumn].filter(Boolean).some(key => !headers.includes(key))) throw new Error("SHEET_COLUMNS_UNVERIFIED");
     return selectedTableRows(json.values.slice(1).map((row: any[]) => Object.fromEntries(headers.map((key: string, index: number) => [key, row[index] ?? ""]))), mapping, kind);
+  }
+  if (source.sourceType === "ad_platforms" && mapping.platform === "google_ads" && kind === "spend") {
+    let connection = uniqueConnection(snapshot, "ga4GoogleAdsSpendConnections", source, mapping);
+    const ids = mapping.selectedCampaignIds;
+    const publication = (snapshot.rows.ga4OverviewSnapshots || []).filter(row => row.campaignId === snapshot.campaign.id);
+    const campaignStart = snapshot.campaign.startDate ? new Date(snapshot.campaign.startDate) : new Date("2000-01-01T00:00:00Z");
+    const start = Number.isFinite(campaignStart.getTime()) ? campaignStart.toISOString().slice(0, 10) : "";
+    const end = publication.length === 1 ? publication[0].windowEnd : "";
+    if (source.campaignId !== snapshot.campaign.id || !connection.spendOnly || !["oauth", "service_account"].includes(connection.method)
+      || !/^\d{10}$/.test(connection.customerId) || (connection.managerAccountId && !/^\d{10}$/.test(connection.managerAccountId))
+      || !Array.isArray(ids) || !ids.length || ids.some(id => typeof id !== "string" || !/^\d+$/.test(id)) || new Set(ids).size !== ids.length
+      || !dateIsValid(start) || !dateIsValid(end) || start > end
+      || (snapshot.rows.spendRecords || []).some(row => row.spendSourceId === source.id && row.date < start && numberOrNull(row.spend) !== 0)) {
+      throw new Error("GOOGLE_ADS_SCOPE_UNVERIFIED");
+    }
+    if (connection.method === "service_account") connection = await hydrateGoogleAdsServiceAccountConnection(connection);
+    const credentials = connection.encryptedTokens ? decryptTokens(connection.encryptedTokens) : connection;
+    const token = connection.method === "service_account" ? connection.accessToken : await googleMonitorCredential({ ...connection, ...credentials,
+      encryptedTokens: undefined, clientId: connection.clientId || process.env.GOOGLE_ADS_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
+      clientSecret: credentials.clientSecret || process.env.GOOGLE_ADS_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET }, request);
+    const search = async (query: string): Promise<any[]> => {
+      const developerToken = connection.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+      const response = await request(`https://googleads.googleapis.com/v25/customers/${connection.customerId}/googleAds:searchStream`, {
+        method: "POST", redirect: "error", signal: AbortSignal.timeout(120_000),
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json",
+          ...(developerToken ? { "developer-token": developerToken } : {}),
+          ...(connection.managerAccountId ? { "login-customer-id": connection.managerAccountId } : {}) }, body: JSON.stringify({ query }) });
+      if (!response.ok) throw new Error("GOOGLE_ADS_PROVIDER_UNVERIFIED");
+      const batches = await response.json();
+      if (!Array.isArray(batches) || batches.some(batch => !batch || typeof batch !== "object" || batch.error || batch.nextPageToken
+        || (batch.results !== undefined && !Array.isArray(batch.results)))) throw new Error("GOOGLE_ADS_RESPONSE_UNVERIFIED");
+      return batches.flatMap(batch => batch.results || []);
+    };
+    const accounts = await search("SELECT customer.id, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1");
+    const account = accounts.length === 1 ? accounts[0].customer : null;
+    if (!account || String(account.id) !== connection.customerId || account.manager === true || account.currencyCode !== source.currency
+      || account.timeZone !== snapshot.campaign.reportingTimeZone) throw new Error("GOOGLE_ADS_ACCOUNT_UNVERIFIED");
+    const rows = await search(`SELECT campaign.id, segments.date, metrics.cost_micros FROM campaign WHERE segments.date BETWEEN '${start}' AND '${end}' AND campaign.status != 'REMOVED' AND campaign.id IN (${ids.join(", ")}) ORDER BY segments.date`);
+    const seen = new Set<string>(), daily = new Map<string, bigint>();
+    for (const row of rows) {
+      const id = String(row?.campaign?.id || ""), date = row?.segments?.date, raw = row?.metrics?.costMicros;
+      if (!ids.includes(id) || !dateIsValid(date) || date < start || date > end || seen.has(`${id}:${date}`)
+        || !["number", "string"].includes(typeof raw) || !/^\d+$/.test(String(raw))) throw new Error("GOOGLE_ADS_ROW_UNVERIFIED");
+      seen.add(`${id}:${date}`);
+      const micros = (daily.get(date) || BigInt(0)) + BigInt(raw);
+      if (micros > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("GOOGLE_ADS_PRECISION_UNVERIFIED");
+      daily.set(date, micros);
+    }
+    return { startDate: start, values: Array.from(daily, ([date, micros]) => ({ date, value: Number(micros) / 1_000_000 })) };
   }
   if (source.sourceType === "shopify" && kind === "revenue") {
     const connection = uniqueConnection(snapshot, "shopifyConnections", source, mapping), accessToken = monitorCredential(connection);
@@ -289,7 +339,9 @@ export async function checkFinancialProviderNumbers(snapshot: LiveNumberSnapshot
       const aggregate = all.filter(row => !row.subCampaignUrn), selected = aggregate.length ? aggregate : all;
       const expected = aggregateDatedValues(values, endDate), actual = aggregateDatedValues(selected.map(row => ({ date: row.date, value: numberOrNull(row[kind]) })), endDate);
       // Zero-only materialization rows carry no value; compare the union of nonzero daily inputs.
-      checks.push(...compareProviderRows(section, expected.filter(r => r.value !== 0), actual.filter(r => r.value !== 0), ["date"], ["value"], subject));
+      const googleAds = kind === "spend" && source.sourceType === "ad_platforms" && parseMonitorMapping(source.mappingConfig).platform === "google_ads";
+      const compared = (rows: any[]) => rows.filter(row => row.value !== 0).map(row => googleAds ? { date: row.date, costMicros: Math.round(row.value * 1_000_000) } : row);
+      checks.push(...compareProviderRows(section, compared(expected), compared(actual), ["date"], [googleAds ? "costMicros" : "value"], subject));
     } catch (error) {
       const code = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : "PROVIDER_CHECK_UNVERIFIED";
       checks.push({ section, code, subject, status: "unverified" });

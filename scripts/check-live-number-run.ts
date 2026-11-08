@@ -79,7 +79,9 @@ export async function runNumberMonitorPhases(configPath: string, scheduledOnly =
   const environment = { ...process.env };
   environment.DATABASE_URL = environment[config.databaseEnvironmentVariable];
   if (config.credentialsEnvironmentPrefix) for (const key of ["TOKEN_ENCRYPTION_KEY", "ENCRYPTION_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GA4_SERVICE_ACCOUNT_JSON", "GA4_CLIENT_SERVICE_ACCOUNT_JSON",
-    "GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS", "GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON", "SERVICE_ACCOUNT_RESOURCE_GRANTS", "SHOPIFY_API_VERSION", "SALESFORCE_API_VERSION"]) {
+    "GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS", "GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON", "SERVICE_ACCOUNT_RESOURCE_GRANTS", "SHOPIFY_API_VERSION", "SALESFORCE_API_VERSION",
+    "GOOGLE_ADS_SERVICE_ACCOUNT_JSON", "GOOGLE_ADS_SERVICE_ACCOUNT_ALLOWED_CUSTOMER_IDS", "GOOGLE_ADS_SERVICE_ACCOUNT_LOGIN_CUSTOMER_ID",
+    "GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_DEVELOPER_TOKEN"]) {
     const value = environment[config.credentialsEnvironmentPrefix + key];
     if (value === undefined) delete environment[key]; else environment[key] = value;
   }

@@ -1,5 +1,31 @@
 # Live-number monitoring
 
+## Google Ads spend comparison — 8 November
+
+The financial provider checker now reads Google Ads directly for each active GA4
+Google Ads Spend source. Previously `ad_platforms` had no provider adapter and
+returned `PROVIDER_ADAPTER_NOT_VERIFIED`; stored-number/output checks were not
+proof of a comparison with Ads. The new path checks the connected customer,
+currency and timezone, then queries only the saved selected Ads campaign IDs,
+from the campaign start (2000-01-01 when absent) through the published completed
+day. It compares daily cost micros with the source's materialized spend records.
+No importer, application calculation, schedule, source selection or record is changed.
+
+Missing permissions, incomplete/invalid responses, duplicate campaign/date rows,
+foreign campaigns, mismatched account/currency/timezone and unsafe precision fail
+closed. Google OAuth renewal stays in memory; service-account access retains the
+existing customer allowlist and exact owner/client resource grant. The monitor's
+HTTP guard permits only the two exact Ads read queries. Ads credentials use the
+existing per-application environment prefixes, with absent credentials cleared.
+
+Focused validation: 31 new Ads cases and 97 affected existing monitor cases pass;
+TypeScript passes. Read-only live comparison for `Batch 1 Provider Check` found
+`Campaign #1` (24273140790), EUR 4.89 on 2026-09-25, matching the saved EUR 4.890000
+through 2026-11-07; before/after snapshots were identical. This proves that
+configured service-account case, not a new OAuth consent or all future accounts.
+Google Sheets spend and the hosted release receipt remain separate validation
+steps; no completion claim for them follows from this Ads check.
+
 ## Automatic campaign enrollment — 7 November
 
 The hosted monitor now discovers active client campaigns from each pinned database

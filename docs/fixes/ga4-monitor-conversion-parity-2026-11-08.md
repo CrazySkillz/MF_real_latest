@@ -3,7 +3,7 @@
 Scope: the test app's Overview and Campaign Comparison conversion-rate correction,
 including browser and generated PDF output. Live application code is unchanged.
 
-- Test application revision: `8a81c483d08b6f3db430f568a86e50d5d3fe2874`.
+- Test application revision: `b359cd24283f63c789e008a49f9338706537612a`.
 - Test current-output expectations use conversions / sessions * 100. Zero sessions
   make the overall rate unavailable. Fractional counts and rates over 100% remain valid.
 - Live current-output expectations retain their deployed native session-rate definition.

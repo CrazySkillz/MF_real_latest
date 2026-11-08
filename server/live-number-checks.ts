@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { financialDailySnapshotInputSchema } from "../shared/schema";
 import { conversionCreditsMatch } from "../shared/metric-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
-import { getLatestCompleteReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getExpectedScheduledRefreshAt, getLatestCompleteReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { ga4VerificationInputHash } from "./ga4-source-verification";
 import { readReportPdfArtifact, readReportVerification } from "./utils/report-pdf-artifact";
 import { parseExecutiveSummaryDailySnapshot } from "./utils/executive-summary-daily-snapshot";
 import { buildGA4InsightsRollups, buildGA4InsightsMonthlySeries } from "../shared/ga4-insights";
@@ -201,12 +202,28 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
       }
     }
   }
+  // Initial import publishes source values, not scheduled summary snapshots.
+  // Accept their absence only for that verified publication before its first due refresh.
+  const initial = (rows.ga4RefreshWork || []).filter(r => r.scope?.kind === "initial_import" && r.status === "completed");
+  const work = initial.length === 1 ? initial[0] : null, receipt = work?.scope?.initialImportVerification;
+  const proof = receipt?.properties?.length === 1 ? receipt.properties[0] : null;
+  const completed = Date.parse(work?.completedAt), created = Date.parse(campaign.createdAt);
+  const due = getExpectedScheduledRefreshAt(endDate, { reportingTimeZone, hour: 8, hours: [8, 14, 20], minute: 0 }, now)!;
+  const awaitingFirstSummary = campaign.status === "active" && work?.campaignId === campaign.id && work.reportingDate === endDate
+    && !String(work.scopeHash || "").startsWith("invalidated:") && receipt?.version === 1
+    && ["id", "ownerId", "clientId", "currency", "reportingTimeZone", "ga4CampaignFilter"].every(key => work.scope.campaign?.[key] === campaign[key])
+    && created <= completed && completed <= now.getTime() && (due > now || completed > due.getTime())
+    && proof?.connectionId === connection.id && proof.propertyId === connection.propertyId && proof.startDate === startDate && proof.endDate === endDate
+    && proof.comparedValues > 0 && Date.parse(proof.checkedAt) >= created && Date.parse(proof.checkedAt) <= completed
+    && proof.inputHash === ga4VerificationInputHash(publication, (rows.ga4DailyMetrics || []).filter(r => r.propertyId === connection.propertyId && r.date >= startDate && r.date <= endDate))
+    && !(rows.ga4RefreshWork || []).some(r => r.scope?.kind !== "initial_import" && (r.startedAt || r.status === "completed"));
   const executiveRows = (rows.metricSnapshots || []).filter(r => r.snapshotType === "executive_summary_daily" && r.reportingDate === endDate);
   const executive = executiveRows.length === 1 ? parseExecutiveSummaryDailySnapshot(executiveRows[0] as any) : null;
   if (!executive || executive.campaignId !== campaign.id || executive.currency !== currency || executive.ga4PropertyId !== connection.propertyId
     || executive.ga4CampaignFilter !== String(campaign.ga4CampaignFilter).trim() || executive.currentValueWindow.startDate !== startDate
     || executive.currentValueWindow.reportingTimeZone !== reportingTimeZone) {
-    checks.push({ section: "Executive Summary", code: "EXECUTIVE_SNAPSHOT_SCOPE_UNVERIFIED", status: "unverified" });
+    const pending = awaitingFirstSummary && !(rows.metricSnapshots || []).some(r => r.snapshotType === "executive_summary_daily");
+    checks.push({ section: "Executive Summary", code: pending ? "FIRST_SCHEDULED_SNAPSHOT_NOT_YET_DUE" : "EXECUTIVE_SNAPSHOT_SCOPE_UNVERIFIED", status: pending ? "passed" : "unverified" });
   } else {
     for (const [metric, input] of Object.entries(executive.totals)) {
       const expected = metric === "spend" ? spend : metric === "cvr" ? metricValues.conversion_rate : metricValues[metric];
@@ -263,7 +280,7 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
         push("Performance Summary", `INPUT_${metric}`, expected, available(metric), ["revenue", "spend"].includes(metric) ? 2 : undefined);
       }
     }
-  } else checks.push({ section: "Performance Summary", code: "SAVED_OUTPUT_UNVERIFIED", status: "unverified" });
+  } else checks.push({ section: "Performance Summary", code: awaitingFirstSummary && !sync ? "FIRST_SCHEDULED_SNAPSHOT_NOT_YET_DUE" : "SAVED_OUTPUT_UNVERIFIED", status: awaitingFirstSummary && !sync ? "passed" : "unverified" });
   for (const section of ["kpis", "benchmarks"]) for (const row of rows[section] || []) {
     if (row.status === "inactive") continue;
     const identity = resolveGA4KpiMetricIdentity(row.metric, row.name);

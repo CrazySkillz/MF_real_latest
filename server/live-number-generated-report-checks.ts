@@ -277,7 +277,10 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
     const days = (snapshot.rows.ga4DailyMetrics || []).filter(day => day.propertyId === expected.scope.connection.propertyId && historyStart && day.date >= historyStart && day.date >= first && day.date <= expected.scope.endDate)
       .sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
     const rows = lines.slice(tableStart + 1, tableEnd).filter(line => /^\d{4}-\d{2}-\d{2} /.test(line));
-    checks.push({ section, code: "INSIGHTS_TREND_DATES", status: !validCreated || tableStart < 0 || tableEnd <= tableStart ? "unverified"
+    const emptyNewHistory = validCreated && created <= now && historyStart > expected.scope.endDate && !days.length && tableStart < 0
+      && start >= 0 && end > start && lines.indexOf("DAYS OF DATA") >= 0 && lines[lines.indexOf("DAYS OF DATA") + 1] === "0"
+      && !lines.some(line => /^\d{4}-\d{2}-\d{2} /.test(line));
+    checks.push({ section, code: "INSIGHTS_TREND_DATES", status: emptyNewHistory ? "passed" : !validCreated || tableStart < 0 || tableEnd <= tableStart ? "unverified"
       : JSON.stringify(rows.map(line => line.slice(0, 10))) === JSON.stringify(days.map(day => day.date).sort()) ? "passed" : "difference" });
     for (const day of days) row("INSIGHTS_TREND", day.date, [[day.sessions, 0], [numberOrNull(day.revenue), 2, "money"], [day.conversions, 8]], rows);
   }

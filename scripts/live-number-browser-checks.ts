@@ -119,7 +119,7 @@ export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: strin
   }
   const e = expectedOutputNumbers(snapshot, now), section = "Browser insights PDF";
   const lines = text.split(/\r?\n/).map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
-  const start = lines.indexOf("Executive Financials"), end = lines.indexOf("Trends", start);
+  const start = lines.indexOf("Executive Financials"), end = lines.findIndex((line, index) => index > start && ["Trends", "Data Summary"].includes(line));
   const financial = start >= 0 && end > start ? ["Executive Summary", ...lines.slice(start + 1, end), "Data Summary"].join("\n") : "";
   const checks = checkGeneratedReportText(snapshot, financial, type, now);
   const summaryStart = lines.indexOf("Data Summary"), summary = summaryStart < 0 ? [] : lines.slice(summaryStart + 1);
@@ -140,7 +140,13 @@ export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: strin
     const daily = byDate.get(match[1]);
     checks.push(checkDisplayedNumber(section, "TREND_SESSIONS", daily ? Number(daily.sessions) : null, match[2], 0));
   }
-  checks.push({ section, code: "TREND_TABLE_OR_EXPLICIT_HISTORY_STATE", status: dates.length || /comparison unavailable|Need at least|No daily history/i.test(text) ? "passed" : "unverified" });
+  const created = new Date(snapshot.campaign.createdAt), validCreated = Number.isFinite(created.getTime()) && created <= now;
+  const historyStart = validCreated ? new Intl.DateTimeFormat("en-CA", { timeZone: e.scope.reportingTimeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(created) : "";
+  const expectedDates = e.daily.filter(row => historyStart && row.date >= historyStart && row.date <= e.scope.endDate).map(row => row.date).sort().slice(-14);
+  const emptyNewHistory = validCreated && historyStart > e.scope.endDate && summaryStart > start && start >= 0 && !lines.includes("Trends");
+  checks.push({ section, code: "TREND_TABLE_OR_EXPLICIT_HISTORY_STATE", status: !validCreated ? "unverified"
+    : dates.length ? JSON.stringify(dates.map(match => match[1]).sort()) === JSON.stringify(expectedDates) ? "passed" : "difference"
+    : expectedDates.length ? "unverified" : emptyNewHistory || /comparison unavailable|Need at least|No daily history/i.test(text) ? "passed" : "unverified" });
   return checks;
 }
 

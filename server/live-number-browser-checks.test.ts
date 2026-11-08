@@ -21,6 +21,18 @@ const fixture = (): LiveNumberSnapshot => ({
 const alert = () => ({id:"alert",campaignId:"a",metadata:JSON.stringify({kpiId:"target"})});
 
 describe("isolated browser monitoring boundaries", () => {
+  it("verifies actual Insights/custom financial cards without a Trends heading for a new campaign", () => {
+    const snapshot = fixture(); snapshot.campaign.createdAt = "2026-11-05T12:00:00Z";
+    const text = "Executive Financials\nREVENUE\nEUR 100.00\nSPEND\nUnavailable\nPROFIT\nUnavailable\nROAS\n—\nROI\n—\nData Summary\nSESSIONS\n20\nCONVERSIONS\n1.5\nREVENUE\n€100.00";
+    expect(checkBrowserReportText(snapshot, text, "insights", now).every(c => c.status === "passed")).toBe(true);
+    expect(checkBrowserReportText(snapshot, text.replace("EUR 100.00", "EUR 99.00"), "insights", now)).toContainEqual(expect.objectContaining({ code: "REVENUE", status: "difference" }));
+    expect(checkBrowserReportText(snapshot, text.replace("REVENUE\nEUR 100.00", ""), "insights", now)).toContainEqual(expect.objectContaining({ code: "REVENUE", status: "unverified" }));
+    expect(checkBrowserReportText(snapshot, text + "\n2026-11-04 20 +0%", "insights", now)).toContainEqual(expect.objectContaining({ code: "TREND_TABLE_OR_EXPLICIT_HISTORY_STATE", status: "difference" }));
+    snapshot.campaign.createdAt = "2026-11-04";
+    expect(checkBrowserReportText(snapshot, text + "\nNo daily history", "insights", now)).toContainEqual(expect.objectContaining({ code: "TREND_TABLE_OR_EXPLICIT_HISTORY_STATE", status: "unverified" }));
+    snapshot.campaign.createdAt = "invalid";
+    expect(checkBrowserReportText(snapshot, text, "insights", now)).toContainEqual(expect.objectContaining({ code: "TREND_TABLE_OR_EXPLICIT_HISTORY_STATE", status: "unverified" }));
+  });
   it("transfers every result through a backpressured pipe before completing", async () => {
     const checks = Array.from({ length: 4000 }, (_, index) => ({ section: "Screen GA4 Overview", code: "VALUE", status: "passed" as const, subject: index.toString(16).padStart(12, "0") }));
     const pipe = new PassThrough({ highWaterMark: 1024 });

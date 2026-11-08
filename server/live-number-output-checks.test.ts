@@ -419,6 +419,16 @@ describe("actual report detail values", () => {
     snapshot.campaign.createdAt = "2026-11-04T23:30:00Z"; // November 5 in Amsterdam.
     expect(checkReportDetailText(snapshot, text, "insights", now)).toContainEqual(expect.objectContaining({ code: "INSIGHTS_TREND_DATES", status: "difference" }));
   });
+  it("verifies the server PDF's zero eligible trend days without accepting lost or fabricated history", () => {
+    const snapshot = fixture(); snapshot.campaign.createdAt = "2026-11-05T12:00:00Z";
+    const text = "DAYS OF DATA\n0\nData Summary\nSessions 20 Current GA4 total\nUsers 10 Sum of daily users\nConversions 1.5\nRevenue EUR 100.00 Total across revenue sources\nWhat to investigate next";
+    expect(checkReportDetailText(snapshot, text, "insights", now).every(c => c.status === "passed")).toBe(true);
+    for (const altered of [text.replace("DAYS OF DATA\n0", "DAYS OF DATA\n1"), text + "\n2026-11-04 20 EUR 100.00 1.5"]) {
+      expect(checkReportDetailText(snapshot, altered, "insights", now)).toContainEqual(expect.objectContaining({ code: "INSIGHTS_TREND_DATES", status: "unverified" }));
+    }
+    snapshot.campaign.createdAt = "2026-11-04";
+    expect(checkReportDetailText(snapshot, text, "insights", now)).toContainEqual(expect.objectContaining({ code: "INSIGHTS_TREND_DATES", status: "unverified" }));
+  });
   it("checks the separate Trend website table", () => {
     const text = "Website Engagement & Conversion Summary\nSESSIONS\n20\nENGAGED SESSIONS\n10\nCONVERSIONS\n1.5\nENGAGEMENT RATE\n50.0%\nCONVERSIONS PER 100 SESSIONS\n7.5\nExecutive Recommendations";
     expect(checkReportDetailText(fixture(), text, "trend-analysis", now).every(check => check.status === "passed")).toBe(true);

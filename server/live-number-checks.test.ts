@@ -8,6 +8,7 @@ import * as kpiCalculations from "../shared/ga4-kpi-live-value";
 import * as alertCalculations from "./utils/alert-decision";
 import * as trendCalculations from "../client/src/lib/trend-analysis-cumulative";
 import { attachReportVerification, createReportPdfArtifact } from "./utils/report-pdf-artifact";
+import { ga4VerificationInputHash } from "./ga4-source-verification";
 
 const now = new Date("2026-11-05T13:30:00Z");
 
@@ -105,6 +106,28 @@ const fixture = (): LiveNumberSnapshot => {
 };
 
 describe("live-number comparisons", () => {
+  it.each(["valid", "overdue", "hash", "owner", "property", "invalidated", "old", "refresh", "damaged", "missing"])("allows absent new-campaign summaries only with exact pre-schedule evidence: %s", problem => {
+    const snapshot = fixture(); snapshot.campaign.createdAt = "2026-11-05T13:05:00Z";
+    snapshot.rows.metricSnapshots = [];
+    const proof = { connectionId: "connection-a", propertyId: "123", startDate: "2026-11-03", endDate: "2026-11-04", comparedValues: 20,
+      checkedAt: "2026-11-05T13:10:00Z", inputHash: ga4VerificationInputHash(snapshot.rows.ga4OverviewSnapshots[0], snapshot.rows.ga4DailyMetrics) };
+    const work = { campaignId: snapshot.campaign.id, status: "completed", completedAt: "2026-11-05T13:10:01Z", reportingDate: "2026-11-04", scopeHash: "valid",
+      scope: { kind: "initial_import", campaign: { ...snapshot.campaign }, initialImportVerification: { version: 1, properties: [proof] } } };
+    snapshot.rows.ga4RefreshWork = [work];
+    if (problem === "hash") proof.inputHash = "wrong";
+    if (problem === "owner") work.scope.campaign.ownerId = "foreign";
+    if (problem === "property") proof.propertyId = "456";
+    if (problem === "invalidated") work.scopeHash = "invalidated:old";
+    if (problem === "old") work.completedAt = "2026-11-05T12:00:00Z";
+    if (problem === "refresh") snapshot.rows.ga4RefreshWork.push({ scope: {}, startedAt: now });
+    if (problem === "damaged") snapshot.rows.metricSnapshots.push({ snapshotType: "executive_summary_daily" }, { snapshotType: "platform_sync" });
+    if (problem === "missing") snapshot.rows.ga4RefreshWork = [];
+    const checks = checkStoredNumbers(snapshot, problem === "overdue" ? new Date("2026-11-05T19:00:00Z") : now)
+      .filter(c => ["Executive Summary", "Performance Summary"].includes(c.section));
+    expect(checks).toHaveLength(2);
+    expect(checks.every(c => c.status === (problem === "valid" ? "passed" : "unverified"))).toBe(true);
+    if (problem === "valid") expect(checks.every(c => c.code === "FIRST_SCHEDULED_SNAPSHOT_NOT_YET_DUE")).toBe(true);
+  });
   it("verifies a saved report after its definition is retired, while preserving legacy and altered-input findings", () => {
     const snapshot = fixture(), pdf = Buffer.concat([Buffer.from("%PDF-1.7\n"), Buffer.alloc(128, 65)]);
     const report = { id: "retired-report", campaignId: snapshot.campaign.id, platformType: "google_analytics", reportType: "overview", configuration: {} };

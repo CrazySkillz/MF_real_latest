@@ -1848,10 +1848,12 @@ export default function Campaigns() {
                                 placeholder="e.g., brand_awareness, paid_social_q2"
                               />
                               <p className="text-xs text-muted-foreground">If GA4 reporting is delayed, enter one or more expected UTM campaign values, separated by commas.</p>
-                              {selectedGA4CampaignValues.length > 0 && (
                                 <div className="space-y-2">
                                   <p className="text-sm font-medium">Selected campaigns</p>
-                                  <ul aria-label="Selected GA4 campaigns" className="flex flex-wrap gap-2">
+                                  <ul aria-label="Selected GA4 campaigns" className="flex h-16 flex-wrap content-start items-start gap-2 overflow-y-auto [scrollbar-gutter:stable]">
+                                    {selectedGA4CampaignValues.length === 0 && (
+                                      <li className="text-sm text-muted-foreground">No campaigns selected</li>
+                                    )}
                                     {selectedGA4CampaignValues.map((name, index) => (
                                       <li key={`${index}-${name}`} className="max-w-full">
                                         <Badge variant="secondary" className="max-w-full whitespace-normal break-all">{name}</Badge>
@@ -1859,13 +1861,12 @@ export default function Campaigns() {
                                     ))}
                                   </ul>
                                 </div>
-                              )}
                             </div>
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setGa4ConfigSubStep('property')}>
                               <ArrowLeft className="w-4 h-4 mr-2" /> Back
                             </Button>
-                            <Button type="button" className="flex-1" onClick={handleWizardSaveGA4Filter} disabled={selectedGA4CampaignValues.length === 0}>
+                            <Button type="button" className="min-w-0 flex-1" onClick={handleWizardSaveGA4Filter} disabled={selectedGA4CampaignValues.length === 0}>
                               {selectedGA4CampaignValues.length > 1 ? `Save ${selectedGA4CampaignValues.length} campaigns` : "Save & Continue"}
                             </Button>
                           </div>

@@ -27,3 +27,13 @@ and repeated conversions, unavailable zero-session summaries, preserving older
 PDF definitions, rejecting altered source, and coordinator version selection.
 The app's twelve browser timing cases also pass. Required release CI and hosted
 deployment/replay evidence are recorded separately with the release receipt.
+
+## Live promotion
+
+Live merge `673153c98ab4b651e72ad23fe2f1b7ee7f3bce3c` has the exact Git tree of
+the tested app revision. Its SHA is explicitly pinned as source-equivalent in
+the replay manifest; unknown commits and changed source hashes still fail closed.
+Live and test current-output checks now use the same conversions/session formula.
+Source queries, schedules, historical PDF receipts and reviewed historical
+limitations are unchanged. The 15 focused source/coordinator tests and TypeScript
+pass for this promotion; final CI and hosted results are recorded in the release receipt.

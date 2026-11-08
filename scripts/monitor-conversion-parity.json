@@ -16,5 +16,8 @@
       "before": "53c136ffec1baa6f92c3d5df66abbbfb2f62a6d4a79a78ca7277bd3a941324d9",
       "after": "b0dfffef42c0285abb26615cb8d6b2f605a8f451701caa23e182dbd3677e40b8"
     }
+  ],
+  "equivalentCommits": [
+    "673153c98ab4b651e72ad23fe2f1b7ee7f3bce3c"
   ]
 }

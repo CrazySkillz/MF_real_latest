@@ -25,6 +25,12 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory({ expectedCommit: "b".repeat(40) }, root)).toBe(root);
   for (const file of files) { expect(readFileSync(join(root, file), "utf8")).toBe("old\n"); expect(readFileSync(join(prepared, file), "utf8").replaceAll("\r\n", "\n")).toBe("new\n"); }
   expect(() => monitorApplicationDirectory({ ...app, expectedCommit: "b".repeat(40) }, root)).toThrow();
+  const manifestPath = join(root, "scripts/monitor-conversion-parity.json"), manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  manifest.equivalentCommits = ["b".repeat(40)]; writeFileSync(manifestPath, JSON.stringify(manifest));
+  expect(monitorApplicationDirectory({ ...app, expectedCommit: "b".repeat(40) }, root)).toBe(prepared);
+  manifest.equivalentCommits = ["unverified"]; writeFileSync(manifestPath, JSON.stringify(manifest));
+  expect(() => monitorApplicationDirectory(app, root)).toThrow("MONITOR_SOURCE_MANIFEST_INVALID");
+  manifest.equivalentCommits = ["b".repeat(40)]; writeFileSync(manifestPath, JSON.stringify(manifest));
   expect(() => monitorApplicationDirectory({ ...app, comparisonRateDefinition: "unknown" }, root)).toThrow();
   writeFileSync(join(prepared, files[0]), "tampered\n"); expect(() => monitorApplicationDirectory(app, root)).toThrow();
   writeFileSync(join(root, files[0]), "tampered\n"); expect(() => prepareMonitorApplication(root)).toThrow("MONITOR_SOURCE_BASE_CHANGED");

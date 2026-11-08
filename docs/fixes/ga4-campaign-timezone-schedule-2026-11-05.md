@@ -1,20 +1,22 @@
 # Campaign timezone refresh schedule — November 5, 2026
 
-Status: the user authorized the combined live release on November 5. The same
+Status: deployed live as `706a7bac` on November 5 at 16:02 Amsterdam, after 7,409
+tests and required checks passed. [Live verification](ga4-live-release-2026-11-05.md).
+The same
 runtime is deployed to the hosted test app as
 `5ed8e816adfed6e7174c9687a0c9e18df01bb34d`. Its restart preserved all 65 compared
 tables, and its natural 14:00 Amsterdam refresh completed at 13:00:29.997Z,
 through November 4, with the next slot at 19:00Z (20:00 Amsterdam).
-The live release must pass the combined revision's required checks. This is a bounded scheduler correction,
+This is a bounded scheduler correction,
 not a whole-platform production-readiness certificate.
 
 ## Current release queue
 
 | Correction | Test status | Live status |
 | --- | --- | --- |
-| Overview ROAS display rounding (`258.825` displays as `258.83x`) | Hosted; focused checks passed | Not deployed |
-| Restart discovery incorrectly attempted an older, superseded publication | Hosted; restart and regression checks passed | Not deployed |
-| GA4 refreshes at 08:00 / 14:00 / 20:00 in each campaign's selected timezone | Hosted; natural 14:00 completion verified | Release authorized; checks pending |
+| Overview ROAS display rounding (`258.825` displays as `258.83x`) | Hosted; focused checks passed | Deployed |
+| Restart discovery incorrectly attempted an older, superseded publication | Hosted; restart and regression checks passed | Deployed; checked production publications preserved |
+| GA4 refreshes at 08:00 / 14:00 / 20:00 in each campaign's selected timezone | Hosted; natural 14:00 completion verified | Deployed; next Amsterdam slot 20:00 |
 
 The hosted release passed 606 checks across 11 files, TypeScript and both builds.
 The current cross-task checklist is [Client testing and releases](../CLIENT_TESTING_AND_RELEASES.md).
@@ -23,7 +25,9 @@ The earlier restart investigation is documented in
 [ga4-restart-recovery-2026-11-05.md](ga4-restart-recovery-2026-11-05.md).
 Existing live legacy-credential failures remain a separate boundary documented
 in [ga4-live-refresh-investigation-2026-11-05.md](ga4-live-refresh-investigation-2026-11-05.md).
-No production data, credentials, schedules or campaign statuses were changed.
+The implementation/test observations below predate that release. The release
+changed application scheduling behavior; saved campaign configuration, the
+checked data and production environment values were preserved.
 
 ## Root cause and traced path
 

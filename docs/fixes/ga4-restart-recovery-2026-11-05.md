@@ -1,5 +1,11 @@
 # GA4 restart recovery — November 5, 2026
 
+**Release update:** deployed live as `706a7bac` at 16:02 Amsterdam on November 5.
+The production restart restored the three monitored campaigns' completion markers,
+ran no bootstrap, and preserved all 27 compared data sets. The original local
+investigation below is historical; its deployment-pending wording is superseded
+by the [live release evidence](ga4-live-release-2026-11-05.md).
+
 ## Result and scope
 
 The isolated local test app now restarts without attempting an obsolete refresh

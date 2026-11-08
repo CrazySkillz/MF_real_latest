@@ -1943,7 +1943,7 @@ export default function Campaigns() {
                       {initialImportRequested && (
                         <div className="text-sm space-y-2" role="status">
                           <p>{initialImport?.state === "failed"
-                            ? initialImport.error?.includes("TOKEN_EXPIRED") ? "Google access expired. Go back to reconnect Google, then retry the import." : "The import could not finish. Your campaign setup is saved. Retry the import or go back to review your connection."
+                            ? initialImport.error?.startsWith("GA4_INITIAL_VERIFICATION_") ? "The imported figures could not be verified against Google Analytics. Your campaign setup is saved. Retry verification before using these figures." : initialImport.error?.includes("TOKEN_EXPIRED") ? "Google access expired. Go back to reconnect Google, then retry the import." : "The import could not finish. Your campaign setup is saved. Retry the import or go back to review your connection."
                             : initialImport === null ? "The import has not started. Try Create Campaign again."
                             : "Your campaign is being prepared. You can close this window and reopen it from All Campaigns. It becomes active when the import finishes."}</p>
                           {importQuery.isError && <p>Import status is temporarily unavailable. Your saved setup is preserved.</p>}

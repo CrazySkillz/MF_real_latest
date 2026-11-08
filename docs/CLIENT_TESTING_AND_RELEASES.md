@@ -8,13 +8,41 @@ Use the hosted test app to check changes before releasing the same reviewed code
 
 ## Current work
 
+**7 November update:** campaign enrollment is now automatic in the hosted monitor.
+Active campaigns belonging to a valid client join on its next run, using their
+saved timezone; drafts, paused/inactive/deleted campaigns and legacy orphan tests
+are excluded. The earlier manual-enrollment instructions below are superseded.
+See [automatic enrollment](LIVE_NUMBER_MONITORING.md#automatic-campaign-enrollment--7-november)
+for scope and validation. This is a monitor-only change; application release
+checks and the existing refresh/accuracy schedules remain in place.
+
 Status on November 5, 2026:
+
+**Current release:** all three approved corrections are live as `706a7bac`
+(ROAS rounding, restart recovery and campaign-timezone scheduling). Required
+checks passed 7,409 tests. The checked production data and all environment
+settings were preserved; the updated monitor passed for both apps.
+**There is no pending deployment for these three corrections.**
+[Release evidence and precise remaining limits](fixes/ga4-live-release-2026-11-05.md).
+
+**Obsolete-campaign cleanup complete:** the five user-identified historical
+campaigns were deleted at 17:21 Amsterdam after backup and restore rehearsal.
+The other 32 campaigns remain; the three monitored campaigns' 27 checked data
+sets are unchanged. No application deployment was needed.
+[Cleanup and recovery evidence](fixes/obsolete-campaign-cleanup-2026-11-05.md).
+
+**Live-number monitoring added, with partial coverage:** the existing Render
+monitor now compares configured live/test campaign inputs and saved section
+values with source reads. Full checks of every displayed section and PDF are
+still incomplete; missing source access/history is explicitly unverified.
+The app deployments and data were not changed by this installation.
+[Current coverage, findings and activation evidence](LIVE_NUMBER_MONITORING.md).
 
 | Original step | Status | What remains |
 | --- | --- | --- |
 | 1. Confirm automatic backups | Confirmed: Render shows a 3-day recovery window. Historical restoration and encryption-key recovery evidence are retained. | Maintain backups and the saved encryption key. This does not claim a new production restore drill. |
 | 2. Create a separate test version | Complete: hosted test app and isolated database; 65 restored tables matched and remained unchanged across restart. | Use this app to validate changes before live release. The laptop can be off. |
-| 3. Make number checks mandatory before release | COMPLETE for the current release workflow: GitHub requires passing tests and an up-to-date PR; Render waits for CI. Seven current spend checks are now blocking. Final validation passed 7,287 tests, TypeScript and build; [PR 2](https://github.com/CrazySkillz/MF_real_latest/pull/2) is merged. | Use this protected workflow for future changes. The live app was not deployed; calculations and client data were unchanged. [Exact scope and evidence](fixes/step3-release-guard-2026-11-05.md). |
+| 3. Make number checks mandatory before release | COMPLETE: GitHub requires passing tests and an up-to-date PR; Render waits for CI. Seven current spend checks are blocking. The safeguard was merged in [PR 2](https://github.com/CrazySkillz/MF_real_latest/pull/2); the subsequent live release passed 7,409 tests. | Use this protected workflow for future changes. [Safeguard evidence](fixes/step3-release-guard-2026-11-05.md); [completed live release](fixes/ga4-live-release-2026-11-05.md). |
 | 4. Set up operational alerts | The current agreed direction is to retain the configured Render monitor for now. Live/test health, slow responses, recorded job failures and explicitly configured refresh completion are monitored; failure email receipt is verified. | Keep Render active and maintain campaign/revision configuration. Sentry and Better Stack are deferred. Render operational checks do not compare every metric with provider data or replace Step 3. |
 | 5. Process feedback one issue at a time | Workflow documented below: reproduce → fix → test → release → verify. Step 3 now enforces passing checks. | Apply this workflow to every change. |
 
@@ -24,7 +52,7 @@ The user asked to retain the already configured Render option; the recommendatio
 
 ## Current scope
 
-The user's original five-step list above is the governing checklist, with the later choice to retain Render monitoring for now. All metric values across all enabled sections remain part of the accuracy requirement. Reuse completed evidence; do not confuse avoiding unnecessary repeat manual certification with omitting accuracy checks. Existing readiness records retain their scope and limitations. The three test-only application fixes and five historical live campaign warnings remain recorded separately below.
+The user's original five-step list above is the governing checklist, with the later choice to retain Render monitoring for now. All metric values across all enabled sections remain part of the accuracy requirement. Reuse completed evidence; do not confuse avoiding unnecessary repeat manual certification with omitting accuracy checks. Existing readiness records retain their scope and limitations. The three application corrections are now live; the user-authorized deletion of the five obsolete campaigns is complete.
 
 Accuracy coverage reference: the [input/calculation matrix](validation/stage1-completion-2026-11-02/STAGE1_VALUE_MATRIX.md), [18-family screen/output matrix](validation/stage2-outputs-2026-11-02/STAGE2_OUTPUT_MATRIX.md) and [source/refresh lifecycle matrix](validation/stage3-lifecycle-2026-11-02/STAGE3_LIFECYCLE_MATRIX.md) include more than Overview. They cover GA4 KPIs, Benchmarks, Campaign Comparison, Insights, Reports; Campaign Diagnostics; source lists and row values; exports, snapshots, alerts and notifications. The [Step 3 record](fixes/step3-release-guard-2026-11-05.md) maps these existing value families to the enforced full suite and records the exact seven corrected exemptions. Existing detailed evidence retains its boundaries; no new unrestricted whole-app/provider-data certification is claimed.
 
@@ -36,11 +64,15 @@ Accuracy coverage reference: the [input/calculation matrix](validation/stage1-co
 4. Deploy the reviewed revision to the test app. Confirm the original problem is fixed and neighboring values still agree with the same source scope and reporting period.
 5. After acceptance, release only that reviewed change set to the live app. Record its commit, check the affected page and source values, and confirm refresh health. Keep the compatible previous release available for recovery.
 
-A passing GitHub run is a release requirement, not automatic permission to publish. The November 5 safeguard requires the GitHub Actions `unit-tests` check on an up-to-date PR and makes Render wait for CI. Step 3 is merged as `fc681f59` after its full checks passed, using `[skip render]`; the live app remains on `9744d9a6`. Existing changes must incorporate the current release branch and pass its checks before a subsequent release. Privileged manual deployment/rollback must not be used to bypass failed validation.
+A passing GitHub run is a release requirement, not automatic permission to publish. The November 5 safeguard requires the GitHub Actions `unit-tests` check on an up-to-date PR and makes Render wait for CI. Step 3 merged as `fc681f59` with `[skip render]`. The subsequently authorized application release is now live as `706a7bac` after passing those checks. Future changes must incorporate current `main` and pass its checks. Privileged manual deployment/rollback must not be used to bypass failed validation.
 
 If validation fails, hold the release and investigate. Do not overwrite client data to make a test pass. A code rollback and a database restore are different recovery actions; follow the existing [recovery procedure](fixes/v1-batch-8/MINIMUM_RECOVERY_2026-11-01.md) before either.
 
-## Next live release — prepared, not deployed
+## Historical release preparation — completed
+
+The preparation record below describes the pre-release baseline. It is retained
+for traceability; its pending wording is superseded by the completed
+[live release record](fixes/ga4-live-release-2026-11-05.md).
 
 This is a separate application release, after the completed Step 3 safeguard. The natural 14:00 Amsterdam test refresh completed successfully on November 5: started at 13:00:00.009 UTC, completed at 13:00:29.997 UTC, reporting date November 4, next slot 19:00 UTC (20:00 Amsterdam), with no recorded refresh failure. The three application changes are ROAS display rounding, restart discovery of superseded work, and refresh selection in each campaign's saved timezone. The CSV correction changed the automated test only; it adds no fourth application fix.
 
@@ -66,11 +98,24 @@ This verifies code/schema compatibility and identifies the fallback deploy. It i
 
 ## Monitor configuration
 
+Current deployed monitor revision: `7b29a8e2`, branch `codex/live-number-checks`;
+expected live application revision: `706a7bac`. It retains operational checks
+and adds read-only source comparisons after the three campaign-local refresh
+slots, with additional section-calculation and supported saved-PDF checks. It has
+separately prefixed database/provider read-access configuration.
+[Coverage is partial; read the current evidence and open findings](LIVE_NUMBER_MONITORING.md).
+
 Run the checker manually with:
 
 ```text
-node --import tsx scripts/check-hosted-health.ts scripts/hosted-live-monitor.json scripts/hosted-test-monitor.json
+node --import tsx scripts/check-hosted-monitors.ts
 ```
+
+### Historical operational-only activation
+
+The paragraphs below record the earlier health-only monitor, before live-number
+read access was added. Their original revisions and credential boundary are
+historical; the current configuration is documented above.
 
 The existing [Render monitor](https://dashboard.render.com/cron/crn-dbm6oql6e07s73bar4eg), still named `marketforensics-test-monitor`, now checks both live and test apps every ten minutes (`*/10 * * * *`, UTC), independently of the laptop. It makes two anonymous GET requests per app: `/api/health` and `/health/scheduler`. It receives no database or provider credentials and never starts a refresh or changes data. Monitor revision `6fc1bd8acc72452454fe2f0aa43350ecc9db20e3` was deployed as `dep-dbm7uflbedkc73bgfo5g` on November 5. Live app revision remains `9744d9a6df2c319890c0a9ebd596ce7400aad67c`; test app remains `5ed8e816adfed6e7174c9687a0c9e18df01bb34d`. Monitor and test-app automatic deployment are off; live `main` automatic deployment remains on. No additional service was purchased.
 
@@ -113,7 +158,7 @@ No tests were removed, skipped or relaxed to conceal these failures. The product
 - The first natural 14:00 scheduled completion on the hosted test revision is verified, including completion time, reporting date and next slot.
 - Recurring live/test monitoring is configured on the existing paid service. Render failure-email delivery is verified. Independent external uptime monitoring remains outside this activation.
 - Item 1 is complete: the reproduced CSV test timing failure is corrected and full current-release CI passed. No application runtime change or deployment was needed for this test-only correction.
-- Browser error reporting, continuous provider-versus-app reconciliation and CPU/memory threshold alerts are not installed by this change. Slow public health-response alerts are configured at five seconds.
+- Browser error reporting and CPU/memory threshold alerts remain deferred. Periodic provider-versus-app checks are now installed with [partial coverage and open findings](LIVE_NUMBER_MONITORING.md); this is not a full numerical certification. Slow public health-response alerts remain configured at five seconds.
 - Minimum backup recovery evidence is historical; independent-machine recovery and a current production point-in-time restore drill are not newly proven.
 - The current release is GA4-first. Broader platform and section certification remains governed by the existing readiness matrices; this checklist does not replace them.
 

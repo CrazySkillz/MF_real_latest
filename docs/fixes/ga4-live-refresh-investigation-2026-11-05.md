@@ -1,5 +1,15 @@
 # GA4 live refresh investigation — November 5, 2026
 
+## Subsequent resolution
+
+The investigation below is historical. The three application corrections are
+[deployed](ga4-live-release-2026-11-05.md). At the user's explicit request, the
+five named obsolete campaigns were [backed up and deleted](obsolete-campaign-cleanup-2026-11-05.md)
+on November 5 at 17:21 Amsterdam. Their linked records are absent, five deletion
+audit events are retained, and unrelated campaigns are preserved. The old
+pending/deletion-restriction wording below records the earlier investigation;
+it does not describe the current disposition.
+
 ## Finding
 
 At deployed revision `9744d9a6df2c319890c0a9ebd596ce7400aad67c`, the global

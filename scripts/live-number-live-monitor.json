@@ -1,0 +1,87 @@
+{
+  "databaseEnvironmentVariable": "LIVE_NUMBER_DATABASE_URL",
+  "databaseFingerprint": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "credentialsEnvironmentPrefix": "LIVE_NUMBER_",
+  "application": {
+    "baseUrl": "https://app.mimosaas.app",
+    "expectedCommit": "f108e45feb1cfc07c4f949520f63ed54bb1bd3fa"
+  },
+  "campaigns": [
+    {
+      "campaignIdHash": "b85505d40a0a",
+      "reportingTimeZone": "Europe/Amsterdam",
+      "historicalReports": [
+        {
+          "snapshotHash": "0ffb34813e0f",
+          "payloadSha256": "e98b6ab6f61f5b49c23f303da1fcff3ca29b15a5ecf4abd6f125e9441fd29f6c",
+          "replacementHash": "587f2b346952",
+          "replacementPdfSha256": "9b8a29bd269d080fdd75833da2a71296fdbef942d7e3cfb3d6a60cbf64a37778"
+        },
+        {
+          "snapshotHash": "144236980d3e",
+          "payloadSha256": "a06a5236c0f2ee6c179077fe2f437dafafb3d674e8c95100321c48c4dba2603d",
+          "replacementHash": "587f2b346952",
+          "replacementPdfSha256": "9b8a29bd269d080fdd75833da2a71296fdbef942d7e3cfb3d6a60cbf64a37778"
+        },
+        {
+          "snapshotHash": "23d13578e29c",
+          "payloadSha256": "5a9bc7746a8e791178e51465b593a80d2accf61eb110a929c5917c094f1752a5",
+          "replacementHash": "587f2b346952",
+          "replacementPdfSha256": "9b8a29bd269d080fdd75833da2a71296fdbef942d7e3cfb3d6a60cbf64a37778"
+        },
+        {
+          "snapshotHash": "2fd79fb360c9",
+          "payloadSha256": "7394e3e51be34f123718be3f327b02b914433932511d9210c9b97669f988fed0",
+          "replacementHash": "587f2b346952",
+          "replacementPdfSha256": "9b8a29bd269d080fdd75833da2a71296fdbef942d7e3cfb3d6a60cbf64a37778"
+        },
+        {
+          "snapshotHash": "38700bfba099",
+          "payloadSha256": "bac564480a130eb74204046eca30b6981795c4b4af3a4683a632542c3342a9cb",
+          "replacementHash": "587f2b346952",
+          "replacementPdfSha256": "9b8a29bd269d080fdd75833da2a71296fdbef942d7e3cfb3d6a60cbf64a37778"
+        },
+        {
+          "snapshotHash": "7b10c4704c24",
+          "payloadSha256": "f38d35a39b324a4b2b6cd6414de1e93bd2c28266eaf35177d4d7f01e6fb1852f",
+          "replacementHash": "587f2b346952",
+          "replacementPdfSha256": "9b8a29bd269d080fdd75833da2a71296fdbef942d7e3cfb3d6a60cbf64a37778"
+        },
+        {
+          "snapshotHash": "ff500034f7c1",
+          "payloadSha256": "6f15c75bbbec7c2235d2aa941087840a3f8c8a0ff67cb1a49f966b4e8c90eb63",
+          "replacementHash": "587f2b346952",
+          "replacementPdfSha256": "9b8a29bd269d080fdd75833da2a71296fdbef942d7e3cfb3d6a60cbf64a37778"
+        }
+      ]
+    },
+    {
+      "campaignIdHash": "de4775c3b435",
+      "reportingTimeZone": "Europe/Amsterdam",
+      "historicalReports": [
+        {
+          "snapshotHash": "57adb8588fd7",
+          "payloadSha256": "1aa0835db4748f5d6ddbdf23ab39e78172f38a9aafc4cb7617e6ee9d307db5be",
+          "replacementHash": "65c3e40c5e83",
+          "replacementPdfSha256": "d69d8b4d29c4f1c29e8ace31a6e1d756430b52f825879e6b82664367869e41aa"
+        },
+        {
+          "snapshotHash": "ad7b600c87b6",
+          "payloadSha256": "3295503b5fc21f47788f82050a9efad26f05a05d4d5337c4bb576b205447735d",
+          "replacementHash": "068b94c5d978",
+          "replacementPdfSha256": "a367b0e9f424a2138ce8b0148be71ac1d9872a51c621bcc5a39fffd1d445b7e7"
+        },
+        {
+          "snapshotHash": "d0d2ef39f900",
+          "payloadSha256": "6ccf0c39803f4fb2b0283f15a5821c14978132f4d759da3e9e47915df23b99a3",
+          "replacementHash": "068b94c5d978",
+          "replacementPdfSha256": "a367b0e9f424a2138ce8b0148be71ac1d9872a51c621bcc5a39fffd1d445b7e7"
+        }
+      ]
+    },
+    {
+      "campaignIdHash": "156b23ba019e",
+      "reportingTimeZone": "Europe/Amsterdam"
+    }
+  ]
+}

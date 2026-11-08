@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { Pool } from "pg";
@@ -13,6 +13,7 @@ const database = vi.hoisted(() => ({ current: null as any }));
 vi.mock("./db", () => ({ get db() { return database.current; }, pool: null }));
 import { DatabaseStorage } from "./storage";
 import { getLatestCompleteReportingDate } from "./utils/reporting-timezone";
+import { ga4VerificationInputHash } from './ga4-source-verification';
 
 const testUrl = String(process.env.GA4_TEST_DATABASE_URL || "").trim();
 if (testUrl) {
@@ -74,6 +75,7 @@ async function publish(work: any, propertyId = "123", connectionId = "connection
 }
 
 describe.skipIf(!testUrl)("durable initial imports with real PostgreSQL", () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeAll(async () => {
     admin = new Pool({ connectionString: testUrl, max: 2 });
     await admin.query(`CREATE SCHEMA "${schemaName}"`); created = true;
@@ -146,6 +148,50 @@ describe.skipIf(!testUrl)("durable initial imports with real PostgreSQL", () => 
     expect(await storage.getGA4InitialImportStatus("a", "owner-a")).toMatchObject({ state: "completed", canRetry: false });
     expect(await finish(work)).toBeUndefined();
     expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(true);
+  });
+  const verification = async (work: any) => {
+    const overview = await storage.getGA4OverviewSnapshot('a', '123');
+    const daily = await storage.getGA4DailyMetrics('a', '123', date, date);
+    return [{ connectionId: 'connection-a', propertyId: '123', inputHash: ga4VerificationInputHash(overview, daily),
+      checkedAt: new Date().toISOString(), startDate: date, endDate: date, comparedValues: 20, unavailable: ['eventCount'] }];
+  };
+  const verificationScope = (work: any) => ({ campaignId: 'a', ownerId: 'owner-a', reportingDate: date, work: { id: work.id, leaseToken: work.leaseToken } });
+  it('requires a verification receipt for the current lease and preserves the numeric inputs', async () => {
+    vi.stubEnv('GA4_INITIAL_IMPORT_VERIFICATION_ENABLED', 'true');
+    const work = (await claim((await request())!.id))!; await publish(work);
+    const receipt = await verification(work);
+    expect(await finish(work)).toBeUndefined();
+    await storage.recordGA4InitialImportVerification(verificationScope(work), receipt);
+    expect(await verification(work)).toEqual([expect.objectContaining({ inputHash: receipt[0].inputHash })]);
+    const completed = await finish(work);
+    expect(completed?.status).toBe('completed');
+    expect((completed?.scope as any).initialImportVerification.properties[0]).toMatchObject(receipt[0]);
+    expect((await storage.getCampaign('a'))?.status).toBe('active');
+  });
+  it('rejects cross-owner, stale-data, wrong-property and incomplete verification receipts', async () => {
+    vi.stubEnv('GA4_INITIAL_IMPORT_VERIFICATION_ENABLED', 'true');
+    const work = (await claim((await request())!.id))!; await publish(work);
+    const receipt = await verification(work), scope = verificationScope(work);
+    await expect(storage.recordGA4InitialImportVerification({ ...scope, ownerId: 'owner-b' }, receipt)).rejects.toThrow('OWNERSHIP_LOST');
+    await expect(storage.recordGA4InitialImportVerification(scope, [])).rejects.toThrow('VERIFICATION_UNVERIFIED');
+    await expect(storage.recordGA4InitialImportVerification(scope, [{ ...receipt[0], propertyId: '456' }])).rejects.toThrow('VERIFICATION_UNVERIFIED');
+    await publish(work, '123', 'connection-a', 21);
+    await expect(storage.recordGA4InitialImportVerification(scope, receipt)).rejects.toThrow('INPUT_CHANGED');
+    expect(await finish(work)).toBeUndefined();
+    expect((await storage.getCampaign('a'))?.status).toBe('draft');
+  });
+  it('invalidates verification when the same attempt republishes and when a new attempt claims the work', async () => {
+    vi.stubEnv('GA4_INITIAL_IMPORT_VERIFICATION_ENABLED', 'true');
+    const work = (await claim((await request())!.id))!; await publish(work);
+    await storage.recordGA4InitialImportVerification(verificationScope(work), await verification(work));
+    await publish(work);
+    expect(await finish(work)).toBeUndefined();
+    await storage.recordGA4InitialImportVerification(verificationScope(work), await verification(work));
+    await storage.updateGA4RefreshWorkLease('a', 'owner-a', work.id, work.leaseToken!, 'release');
+    const next = (await claim(work.id))!;
+    expect(next.leaseToken).not.toBe(work.leaseToken);
+    expect(await finish(next)).toBeUndefined();
+    await expect(storage.recordGA4InitialImportVerification(verificationScope(work), await verification(work))).rejects.toThrow('OWNERSHIP_LOST');
   });
   it.each([7653.96, 0, -15.25])("publishes initial native revenue %s and fractional conversions before activation", async revenue => {
     const work = (await claim((await request())!.id))!;

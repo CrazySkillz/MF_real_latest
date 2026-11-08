@@ -193,6 +193,11 @@ describe("Ad Comparison precision through the real Reports page", () => {
       await page.getByRole("button", { name: "Create Report", exact: true }).click();
       await page.getByRole("dialog").getByText("Ad Comparison", { exact: true }).click();
     };
+    const refreshPublication = async () => {
+      await page.evaluate(() => (window as any).fixtureStatus());
+      // Flush the mocked clock's query notifications before asserting the rendered receipt.
+      await page.clock.runFor(100);
+    };
     const downloadReport = async (saved = false) => {
       if (promo && downloads.length === 0) {
         await page.getByRole("button", { name: "Generate & Download Report", exact: true }).click();
@@ -235,7 +240,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
           await browserExpect(page.getByRole("button", { name: "Generate & Download Report" })).toBeDisabled();
           await page.getByRole("button", { name: "Cancel", exact: true }).click();
           publicationGap = false; generation++;
-          await page.evaluate(() => (window as any).fixtureStatus());
+          await refreshPublication();
         }
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
         await page.getByRole("tab", { name: "Overview", exact: true }).click();
@@ -329,14 +334,14 @@ describe("Ad Comparison precision through the real Reports page", () => {
       holdInsights = false; releaseInsights();
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       failed = "insights"; generation++;
-      await page.evaluate(() => (window as any).fixtureStatus());
+      await refreshPublication();
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await openReport(); await downloadReport();
       failed = "";
       if (independentKind) {
         holdIndependent = true; generation++;
         const before = independentRequests;
-        await page.evaluate(() => (window as any).fixtureStatus());
+        await refreshPublication();
         await browserExpect.poll(() => independentRequests).toBeGreaterThan(before);
         if (contextKind !== "report-library") await browserExpect(page.getByRole("button", { name: "Download", exact: true })).toBeDisabled();
         await openReport();
@@ -358,7 +363,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
         }
         await downloadReport();
         failed = "";
-        await page.evaluate(() => (window as any).fixtureStatus());
+        await refreshPublication();
         await browserExpect.poll(async () => (await page.evaluate(() => (window as any).fixtureQueries())).some((query: any) => String(query.error).includes("fixture independent detail failure"))).toBe(false);
         if (contextKind !== "report-library") {
           await browserExpect(page.getByRole("button", { name: "Download", exact: true })).toBeEnabled();
@@ -370,7 +375,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       }
       for (const failure of ["daily", "status"]) {
         failed = failure; generation++;
-        await page.evaluate(() => (window as any).fixtureStatus());
+        await refreshPublication();
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("could not refresh");
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText(failure === "status" ? "refresh status" : "daily");
         if (contextKind === "initial-reports" && failure === "daily") {
@@ -384,13 +389,13 @@ describe("Ad Comparison precision through the real Reports page", () => {
         await browserExpect(page.getByText("The latest displayed figures are still being checked. Please try the report again once the update finishes.")).toHaveCount(0);
         expect(downloads.length).toBe(previousDownloads);
         failed = "";
-        await page.evaluate(() => (window as any).fixtureStatus());
+        await refreshPublication();
         await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
         await downloadReport();
       }
       financialMismatch = true; generation++;
       const beforeMismatchedRead = financialRequests;
-      await page.evaluate(() => (window as any).fixtureStatus());
+      await refreshPublication();
       await browserExpect.poll(() => financialRequests).toBeGreaterThan(beforeMismatchedRead);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await openReport();
@@ -400,7 +405,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       expect(downloads.length).toBe(beforeMismatch);
       financialMismatch = false; generation++;
       const beforeRecoveredRead = financialRequests;
-      await page.evaluate(() => (window as any).fixtureStatus());
+      await refreshPublication();
       await browserExpect.poll(() => financialRequests).toBeGreaterThan(beforeRecoveredRead);
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
       await downloadReport();

@@ -228,6 +228,22 @@ describe("actual application output comparisons", () => {
     trend.trendAnalysis.dailyTotals[0].metrics.cpa = 40;
     expect(sectionChecks("Trend daily ratio response", { trend })).toContainEqual(expect.objectContaining({ code: "cpa", status: "difference" }));
   });
+  it.each(["missing", "native zero", "imported zero", "inactive source", "foreign campaign", "wrong currency"])("checks daily Trend revenue availability independently (%s)", condition => {
+    const snapshot = fixture(), date = "2026-09-25", measured = condition === "native zero" || condition === "imported zero";
+    if (condition === "native zero") snapshot.rows.ga4DailyMetrics.push({ ...snapshot.rows.ga4DailyMetrics[0], date, revenue: "0" });
+    if (condition !== "missing" && condition !== "native zero") {
+      snapshot.rows.revenueSources = [{ id: "revenue", campaignId: "a", isActive: condition !== "inactive source", currency: "EUR", platformContext: "ga4" }];
+      snapshot.rows.revenueRecords = [{ revenueSourceId: "revenue", campaignId: condition === "foreign campaign" ? "other" : "a", currency: condition === "wrong currency" ? "USD" : "EUR", date, revenue: "0" }];
+    }
+    const metrics: any = { spend: 4.89, revenue: 0, roas: measured ? 0 : null, roi: measured ? -100 : null, cpa: null, cvr: null };
+    const trend = { trendAnalysis: { startDate: date, dailyTotals: [{ date, metrics }] } };
+    const ratios = () => sectionChecks("Trend daily ratio response", { trend }, snapshot).filter(check => /^(roas|roi)/.test(check.code));
+    expect(ratios()).toHaveLength(2); expect(ratios().every(check => check.status === "passed")).toBe(true);
+    metrics.roas = measured ? null : 0; metrics.roi = measured ? null : -100;
+    expect(ratios().every(check => check.status === "passed")).toBe(false);
+    delete metrics.roas; delete metrics.roi;
+    expect(ratios().every(check => check.status === "passed")).toBe(false);
+  });
   it("checks notification numbers, live threshold, breach and destination", () => {
     const snapshot = fixture(); snapshot.rows.kpis = [{ id: "k", name: "Sessions", campaignId: "a", platformType: "google_analytics", metric: "sessions",
       applyTo: "all", alertsEnabled: true, alertThreshold: "30", alertCondition: "below" }];

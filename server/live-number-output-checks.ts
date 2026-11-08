@@ -402,12 +402,20 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
     flag("Trend response", "CAMPAIGN_PROPERTY_WINDOW", trend.campaignId === campaign.id && trend.endDate === scope.endDate && source?.freshness?.propertyId === scope.connection.propertyId);
     const selected = (rows.ga4DailyMetrics || []).filter(row => row.propertyId === scope.connection.propertyId && row.date >= trend.startDate && row.date <= scope.endDate);
     table("Trend GA4 series response", selected, source?.dailyRows?.map((row: any) => ({ date: row.date, ...row.metrics })), "date", ["users", "sessions", "conversions", "revenue", "engagementRate"]);
-    for (const row of trend.dailyTotals || []) for (const [metric, wanted] of Object.entries({
-      roas: row.metrics?.spend > 0 && numberOrNull(row.metrics?.revenue) !== null ? row.metrics.revenue / row.metrics.spend : null,
-      roi: row.metrics?.spend > 0 && numberOrNull(row.metrics?.revenue) !== null ? (row.metrics.revenue - row.metrics.spend) / row.metrics.spend * 100 : null,
+    for (const row of trend.dailyTotals || []) {
+      // Trend's total defaults revenue to zero even on dates with only spend.
+      // A measured zero requires a native or eligible imported revenue record.
+      const revenue = numberOrNull(row.metrics?.revenue), revenueKnown = revenue !== null && (revenue !== 0
+        || selected.some(item => item.date === row.date && numberOrNull(item.revenue) !== null)
+        || (rows.revenueRecords || []).some(item => item.date === row.date && item.campaignId === campaign.id && item.currency === scope.currency
+          && expected.revenueSources.some(source => source.id === item.revenueSourceId) && numberOrNull(item.revenue) !== null));
+      for (const [metric, wanted] of Object.entries({
+      roas: row.metrics?.spend > 0 && revenueKnown ? revenue! / row.metrics.spend : null,
+      roi: row.metrics?.spend > 0 && revenueKnown ? (revenue! - row.metrics.spend) / row.metrics.spend * 100 : null,
       cpa: row.metrics?.conversions > 0 && (row.metrics?.spend > 0 || (row.metrics?.spend === 0 && (rows.spendRecords || []).some(record => record.date === row.date && expected.spendSources.some(source => source.id === record.spendSourceId)))) ? row.metrics.spend / row.metrics.conversions : null,
       cvr: row.metrics?.sessions > 0 && numberOrNull(row.metrics?.conversions) !== null ? row.metrics.conversions / row.metrics.sessions * 100 : null,
     })) value("Trend daily ratio response", metric, wanted, row.metrics?.[metric], 2, monitorHash(String(row.date)));
+    }
   }
   if (outputs.reports) {
     const saved = (rows.linkedinReports || []).filter(row => row.platformType === "google_analytics");

@@ -26,6 +26,17 @@ configured service-account case, not a new OAuth consent or all future accounts.
 Google Sheets spend and the hosted release receipt remain separate validation
 steps; no completion claim for them follows from this Ads check.
 
+Hosted follow-up also verified Sheets spend EUR 120 on each of 2026-01-02 and
+2026-01-03 (selected `yesop_brand_search`), giving EUR 244.89 combined spend.
+The affected output run passed 1,281 checks and exposed two monitor availability
+warnings for Trend ROAS/ROI on the Ads spend date, 2026-09-25. No native/imported
+revenue record exists on that date. Trend correctly returns unavailable; its
+raw daily revenue accumulator defaults to zero, which the monitor had mistaken
+for measured zero. The checker now requires dated revenue evidence for zero.
+Measured zero still requires ROAS 0 and ROI -100 with positive spend. Missing,
+foreign, wrong-currency or inactive-source records cannot manufacture that basis.
+This changes monitoring expectations only; application values and PDFs are unchanged.
+
 ## Automatic campaign enrollment — 7 November
 
 The hosted monitor now discovers active client campaigns from each pinned database

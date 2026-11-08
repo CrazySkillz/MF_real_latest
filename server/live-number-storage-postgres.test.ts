@@ -39,6 +39,7 @@ describe.skipIf(!testUrl)("monitor snapshots during additive access rollout", ()
     await db.insert(schema.clients).values([{ id: "ca", ownerId: "oa", name: "A" }, { id: "cb", ownerId: "ob", name: "B" }]);
     await db.insert(schema.campaigns).values([{ id: "a", ownerId: "oa", clientId: "ca", name: "A", status: "active" }, { id: "b", ownerId: "ob", clientId: "cb", name: "B", status: "active" }]);
     await writer.query("INSERT INTO ga4_connections (campaign_id,property_id,property_name,method) VALUES ('a','123','A','access_token'),('b','456','B','access_token')");
+    await writer.query("INSERT INTO ga4_google_ads_spend_connections (campaign_id,customer_id,method) VALUES ('a','4951281615','oauth'),('b','1234567890','oauth')");
   });
   afterAll(async () => { await reader?.end(); await writer?.end(); if (created) await admin.query(`DROP SCHEMA "${namespace}" CASCADE`); await admin?.end(); });
   it("reads a legacy schema without adding columns, changing data or crossing clients", async () => {
@@ -46,11 +47,16 @@ describe.skipIf(!testUrl)("monitor snapshots during additive access rollout", ()
     const snapshot = await storage.getLiveNumberCheckSnapshot(hash("a"));
     expect(snapshot.rows.ga4Connections).toHaveLength(1);
     expect(snapshot.rows.ga4Connections[0]).toMatchObject({ campaignId: "a", propertyId: "123", serviceAccountBindingId: null });
+    expect(snapshot.rows.ga4GoogleAdsSpendConnections).toHaveLength(1);
+    expect(snapshot.rows.ga4GoogleAdsSpendConnections[0]).toMatchObject({ campaignId: "a", customerId: "4951281615", serviceAccountBindingId: null });
     expect((await writer.query("SELECT to_jsonb(t) AS row FROM ga4_connections t ORDER BY campaign_id")).rows).toEqual(before);
     await expect(reader.query("UPDATE ga4_connections SET property_id='999'")).rejects.toMatchObject({ code: "25006" });
   });
   it("reads the exact new binding after migration and preserves campaign ownership checks", async () => {
     await writer.query("ALTER TABLE ga4_connections ADD COLUMN service_account_binding_id varchar; UPDATE ga4_connections SET service_account_binding_id='binding-a' WHERE campaign_id='a'");
+    await writer.query("ALTER TABLE ga4_google_ads_spend_connections ADD COLUMN service_account_binding_id varchar; UPDATE ga4_google_ads_spend_connections SET service_account_binding_id='ads-binding-a' WHERE campaign_id='a'");
+    expect((await storage.getLiveNumberCheckSnapshot(hash("a"))).rows.ga4GoogleAdsSpendConnections[0].serviceAccountBindingId).toBe("ads-binding-a");
+    expect((await storage.getLiveNumberCheckSnapshot(hash("b"))).rows.ga4GoogleAdsSpendConnections[0].serviceAccountBindingId).toBeNull();
     expect((await storage.getLiveNumberCheckSnapshot(hash("a"))).rows.ga4Connections[0].serviceAccountBindingId).toBe("binding-a");
     expect((await storage.getLiveNumberCheckSnapshot(hash("b"))).rows.ga4Connections[0].serviceAccountBindingId).toBeNull();
     await writer.query("UPDATE clients SET owner_id='wrong-owner' WHERE id='ca'");

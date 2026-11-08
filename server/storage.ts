@@ -763,8 +763,8 @@ export class DatabaseStorage implements IStorage {
         shopifyConnections, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics, kpis, benchmarks,
         metricSnapshots, linkedinReports, reportSnapshots, ga4RefreshWork, notifications, emailAlertEvents };
       for (const [name, table] of Object.entries(tables)) {
-        rows[name] = await tx.select(name === "ga4Connections" ? { ...getTableColumns(ga4Connections),
-          serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` } : undefined).from(table as any).where(eq(table.campaignId, campaign.id)).limit(10001);
+        rows[name] = await tx.select(name === "ga4Connections" || name === "ga4GoogleAdsSpendConnections" ? { ...getTableColumns(table),
+          serviceAccountBindingId: sql<string | null>`to_jsonb(${table})->>'service_account_binding_id'` } : undefined).from(table as any).where(eq(table.campaignId, campaign.id)).limit(10001);
         if (rows[name].length > 10000) throw new Error("MONITOR_INPUT_LIMIT_EXCEEDED");
         rows[name].sort((a, b) => String(a.id).localeCompare(String(b.id)));
       }

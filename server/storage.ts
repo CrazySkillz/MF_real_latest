@@ -189,6 +189,8 @@ export type GA4OverviewSnapshotInput = {
   };
 };
 
+import { ga4VerificationInputHash, type GA4InitialVerificationReceipt } from './ga4-source-verification';
+
 // Internal refresh metadata; never part of a persisted metric or API response.
 export type GA4RefreshWriteInput = {
   refreshScope?: { campaignId: string; ownerId: string; reportingDate: string; work: { id: string; leaseToken: string } };
@@ -215,6 +217,7 @@ export interface IStorage {
   requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry?: boolean): Promise<GA4RefreshWork | undefined>;
   getGA4InitialImportWork(campaignId: string, ownerId: string, workId?: string): Promise<GA4RefreshWork | undefined>;
   getGA4InitialImportStatus(campaignId: string, ownerId: string): Promise<GA4InitialImportStatus | null>;
+  recordGA4InitialImportVerification(scope: NonNullable<GA4RefreshWriteInput['refreshScope']>, receipts: GA4InitialVerificationReceipt[]): Promise<void>;
   retireGA4RefreshWork(campaignId: string): Promise<void>;
   writeGA4DerivedChange<T>(campaignId: string | null | undefined, options: GA4RefreshWriteInput, write: (tx: any) => Promise<T>): Promise<T>;
   // Campaigns
@@ -1846,6 +1849,28 @@ export class DatabaseStorage implements IStorage {
     return row?.work;
   }
 
+  async recordGA4InitialImportVerification(scope: NonNullable<GA4RefreshWriteInput['refreshScope']>, receipts: GA4InitialVerificationReceipt[]): Promise<void> {
+    await this.writeWithGA4RefreshOwnership(scope, async tx => {
+      const [work] = await tx.select().from(ga4RefreshWork).where(eq(ga4RefreshWork.id, scope.work.id));
+      const connections = work?.scope?.connections;
+      if (work?.scope?.kind !== 'initial_import' || !Array.isArray(connections) || !connections.length
+        || receipts.length !== connections.length || new Set(receipts.map(r => r.connectionId)).size !== receipts.length) throw new Error('GA4_INITIAL_VERIFICATION_UNVERIFIED');
+      for (const connection of connections) {
+        const receipt = receipts.find(r => r.connectionId === connection.id && r.propertyId === connection.propertyId);
+        if (!receipt || receipt.startDate !== connection.importStartDate || receipt.endDate !== scope.reportingDate
+          || !/^[a-f0-9]{64}$/.test(receipt.inputHash) || !Number.isSafeInteger(receipt.comparedValues) || receipt.comparedValues <= 0
+          || !Number.isFinite(Date.parse(receipt.checkedAt)) || Date.parse(receipt.checkedAt) > Date.now()
+          || !Array.isArray(receipt.unavailable)) throw new Error('GA4_INITIAL_VERIFICATION_UNVERIFIED');
+        const [overview] = await tx.select().from(ga4OverviewSnapshots).where(and(eq(ga4OverviewSnapshots.campaignId, scope.campaignId), eq(ga4OverviewSnapshots.propertyId, connection.propertyId))).for('share');
+        const daily = await tx.select().from(ga4DailyMetrics).where(and(eq(ga4DailyMetrics.campaignId, scope.campaignId), eq(ga4DailyMetrics.propertyId, connection.propertyId),
+          gte(ga4DailyMetrics.date, receipt.startDate), lte(ga4DailyMetrics.date, receipt.endDate))).orderBy(ga4DailyMetrics.date).for('share');
+        if (ga4VerificationInputHash(overview, daily) !== receipt.inputHash) throw new Error('GA4_INITIAL_VERIFICATION_INPUT_CHANGED');
+      }
+      const verification = { version: 1, leaseReceipt: createHash('sha256').update(scope.work.leaseToken).digest('hex'), properties: receipts };
+      await tx.update(ga4RefreshWork).set({ scope: sql`jsonb_set(${ga4RefreshWork.scope}, '{initialImportVerification}', ${JSON.stringify(verification)}::jsonb)` }).where(eq(ga4RefreshWork.id, scope.work.id));
+    });
+  }
+
   async getGA4InitialImportStatus(campaignId: string, ownerId: string): Promise<GA4InitialImportStatus | null> {
     const work = await this.getGA4InitialImportWork(campaignId, ownerId);
     if (!work) return null;
@@ -1946,6 +1971,8 @@ export class DatabaseStorage implements IStorage {
       if (action === "complete_initial_import") {
         const receipt = createHash("sha256").update(leaseToken).digest("hex");
         if (!scope.scope.connections.every((connection: any) => work.scope?.initialImportPublications?.[connection.id] === receipt)) return undefined;
+        if (process.env.GA4_INITIAL_IMPORT_VERIFICATION_ENABLED === 'true'
+          && work.scope?.initialImportVerification?.leaseReceipt !== receipt) return undefined;
         // Native-only creation must publish the card's financial input in the same activation transaction.
         const primary = scope.scope.connections.find((connection: any) => connection.isPrimary)
           || [...scope.scope.connections].sort((a: any, b: any) => new Date(a.connectedAt).getTime() - new Date(b.connectedAt).getTime())[0];
@@ -2190,7 +2217,7 @@ export class DatabaseStorage implements IStorage {
         const scope = overviewSnapshot!.refreshScope!;
         if ("work" in scope && scope.work) {
           const receipt = createHash("sha256").update(scope.work.leaseToken).digest("hex");
-          await tx.update(ga4RefreshWork).set({ scope: sql`jsonb_set(${ga4RefreshWork.scope}, '{initialImportPublications}',
+          await tx.update(ga4RefreshWork).set({ scope: sql`jsonb_set(${ga4RefreshWork.scope} - 'initialImportVerification', '{initialImportPublications}',
             COALESCE(${ga4RefreshWork.scope}->'initialImportPublications', '{}'::jsonb) || jsonb_build_object(${String(scope.connection.id)}::text, ${receipt}::text))` })
             .where(and(workOwnership, sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`));
         }

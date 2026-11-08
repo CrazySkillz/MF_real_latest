@@ -28,7 +28,7 @@ financial calculation, permissions, database or existing PDF records changed.
 
 Validation before deployment:
 
-- 181 focused tests passed across the source/stored, API/report, browser-parser and
+- 182 focused tests passed across the source/stored, API/report, browser-parser and
   actual-PDF suites, including wrong totals/currency, missing cards, foreign owners,
   changed input hashes, invalidated work, overdue snapshots and lost history.
 - The new integration tests generate and parse real Insights and Custom PDF bytes

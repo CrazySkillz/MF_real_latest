@@ -106,7 +106,7 @@ const fixture = (): LiveNumberSnapshot => {
 };
 
 describe("live-number comparisons", () => {
-  it.each(["valid", "overdue", "hash", "owner", "property", "invalidated", "old", "refresh", "damaged", "missing"])("allows absent new-campaign summaries only with exact pre-schedule evidence: %s", problem => {
+  it.each(["valid", "database-dates", "overdue", "hash", "owner", "property", "invalidated", "old", "refresh", "damaged", "missing"])("allows absent new-campaign summaries only with exact pre-schedule evidence: %s", problem => {
     const snapshot = fixture(); snapshot.campaign.createdAt = "2026-11-05T13:05:00Z";
     snapshot.rows.metricSnapshots = [];
     const proof = { connectionId: "connection-a", propertyId: "123", startDate: "2026-11-03", endDate: "2026-11-04", comparedValues: 20,
@@ -114,6 +114,10 @@ describe("live-number comparisons", () => {
     const work = { campaignId: snapshot.campaign.id, status: "completed", completedAt: "2026-11-05T13:10:01Z", reportingDate: "2026-11-04", scopeHash: "valid",
       scope: { kind: "initial_import", campaign: { ...snapshot.campaign }, initialImportVerification: { version: 1, properties: [proof] } } };
     snapshot.rows.ga4RefreshWork = [work];
+    if (problem === "database-dates") {
+      snapshot.campaign.createdAt = new Date(snapshot.campaign.createdAt);
+      proof.checkedAt = "2026-11-05T13:10:00.600Z"; work.completedAt = new Date("2026-11-05T13:10:00.700Z") as any;
+    }
     if (problem === "hash") proof.inputHash = "wrong";
     if (problem === "owner") work.scope.campaign.ownerId = "foreign";
     if (problem === "property") proof.propertyId = "456";
@@ -125,8 +129,9 @@ describe("live-number comparisons", () => {
     const checks = checkStoredNumbers(snapshot, problem === "overdue" ? new Date("2026-11-05T19:00:00Z") : now)
       .filter(c => ["Executive Summary", "Performance Summary"].includes(c.section));
     expect(checks).toHaveLength(2);
-    expect(checks.every(c => c.status === (problem === "valid" ? "passed" : "unverified"))).toBe(true);
-    if (problem === "valid") expect(checks.every(c => c.code === "FIRST_SCHEDULED_SNAPSHOT_NOT_YET_DUE")).toBe(true);
+    const valid = ["valid", "database-dates"].includes(problem);
+    expect(checks.every(c => c.status === (valid ? "passed" : "unverified"))).toBe(true);
+    if (valid) expect(checks.every(c => c.code === "FIRST_SCHEDULED_SNAPSHOT_NOT_YET_DUE")).toBe(true);
   });
   it("verifies a saved report after its definition is retired, while preserving legacy and altered-input findings", () => {
     const snapshot = fixture(), pdf = Buffer.concat([Buffer.from("%PDF-1.7\n"), Buffer.alloc(128, 65)]);

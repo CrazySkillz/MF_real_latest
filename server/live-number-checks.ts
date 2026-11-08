@@ -207,7 +207,7 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
   const initial = (rows.ga4RefreshWork || []).filter(r => r.scope?.kind === "initial_import" && r.status === "completed");
   const work = initial.length === 1 ? initial[0] : null, receipt = work?.scope?.initialImportVerification;
   const proof = receipt?.properties?.length === 1 ? receipt.properties[0] : null;
-  const completed = Date.parse(work?.completedAt), created = Date.parse(campaign.createdAt);
+  const completed = new Date(work?.completedAt).getTime(), created = new Date(campaign.createdAt).getTime();
   const due = getExpectedScheduledRefreshAt(endDate, { reportingTimeZone, hour: 8, hours: [8, 14, 20], minute: 0 }, now)!;
   const awaitingFirstSummary = campaign.status === "active" && work?.campaignId === campaign.id && work.reportingDate === endDate
     && !String(work.scopeHash || "").startsWith("invalidated:") && receipt?.version === 1

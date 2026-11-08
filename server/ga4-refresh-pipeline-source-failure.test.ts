@@ -24,11 +24,12 @@ const mocks = vi.hoisted(() => ({
     getLandingPagesReport: vi.fn(), getConversionEventsReport: vi.fn(),
     getTotalsWithRevenue: vi.fn(),
   },
-  totals: vi.fn(), recompute: vi.fn(), aggregate: vi.fn(), executive: vi.fn(),
+  verifyInitialImport: vi.fn(), totals: vi.fn(), recompute: vi.fn(), aggregate: vi.fn(), executive: vi.fn(),
   kpiAlerts: vi.fn(), benchmarkAlerts: vi.fn(), globalKpiAlerts: vi.fn(), globalBenchmarkAlerts: vi.fn(),
   reportClaim: vi.fn(), reportInsert: vi.fn(), reportSelect: vi.fn(), sendEmail: vi.fn(),
 }));
 vi.mock("./storage", () => ({ storage: mocks.storage }));
+vi.mock('./ga4-source-verification', () => ({ verifyGA4InitialImport: mocks.verifyInitialImport }));
 vi.mock("./analytics", () => ({ ga4Service: mocks.provider, GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION: "test-v1" }));
 vi.mock("./db", () => ({ db: { insert: mocks.reportInsert, select: mocks.reportSelect }, pool: null }));
 vi.mock("./services/email-service", () => ({ emailService: { sendEmail: mocks.sendEmail } }));
@@ -374,6 +375,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === 'complete')).toBe(false);
     });
     describe("accepted draft initial imports", () => {
+      afterEach(() => vi.unstubAllEnvs());
       const initialOptions = () => ({ ...options(), initialImportWorkId: "work-a" });
       beforeEach(() => {
         campaigns[0].status = "draft";
@@ -389,6 +391,21 @@ describe("GA4 ordered refresh source-discovery failures", () => {
         expect(mocks.storage.replaceGA4DailyMetricsWindow.mock.calls[0][5].refreshScope.work).toEqual(scope.work);
         expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", "work-a", "owner-token", "complete_initial_import");
         expect(mocks.recompute).not.toHaveBeenCalled(); expect(mocks.kpiAlerts).not.toHaveBeenCalled(); expect(mocks.executive).not.toHaveBeenCalled();
+      });
+      it('verifies the saved import before activation when enabled', async () => {
+        vi.stubEnv('GA4_INITIAL_IMPORT_VERIFICATION_ENABLED', 'true');
+        mocks.verifyInitialImport.mockResolvedValue(undefined);
+        await runGA4DailyRefreshPipelineForTrigger('recovery', initialOptions());
+        expect(mocks.verifyInitialImport).toHaveBeenCalledWith(mocks.storage, scope, expect.any(Function), expect.any(AbortSignal));
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === 'complete_initial_import')).toBe(true);
+      });
+      it.each(['DIFFERENCE', 'UNVERIFIED', 'INPUT_CHANGED'])('keeps a %s verification failure unactivated and retryable', async code => {
+        vi.stubEnv('GA4_INITIAL_IMPORT_VERIFICATION_ENABLED', 'true');
+        mocks.verifyInitialImport.mockRejectedValue(new Error(`GA4_INITIAL_VERIFICATION_${code}`));
+        await expect(runGA4DailyRefreshPipelineForTrigger('recovery', initialOptions())).rejects.toThrow(`GA4_INITIAL_VERIFICATION_${code}`);
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === 'complete_initial_import')).toBe(false);
+        expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith('campaign-a', 'campaign-a-owner', 'work-a', 'owner-token', 'release', 120_000, undefined,
+          { retryable: true, code: `GA4_INITIAL_VERIFICATION_${code}` });
       });
       it.each(["pending", "running"])("discovers %s initial work after midnight using its original reporting window", async status => {
         const work = { ...await mocks.storage.getGA4InitialImportWork(), status };

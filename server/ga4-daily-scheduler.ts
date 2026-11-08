@@ -14,6 +14,7 @@ import { getAutoRefreshRunFailure, runDailyAutoRefreshOnce } from "./auto-refres
 import { recordCampaignMetrics } from "./scheduler";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { getCampaignMetricTotals } from "./utils/campaign-current-values";
+import { verifyGA4InitialImport } from './ga4-source-verification';
 
 type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
@@ -732,6 +733,9 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       const failure = getGA4DailyRefreshFailure(imported, campaignId);
       if (failure) throw new Error(failure);
       await checkOwnership();
+      if (process.env.GA4_INITIAL_IMPORT_VERIFICATION_ENABLED === 'true') {
+        await withGA4DailyStage('initial_import_verification', verifyGA4InitialImport(storage, refreshWriteInput.refreshScope!, checkOwnership, controller?.signal), controller?.signal);
+      }
       if (heartbeat) clearTimeout(heartbeat);
       closing = true;
       await renewal;
@@ -1050,7 +1054,8 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     if (!scheduleDiscovered) e.ga4ScheduleDiscoveryFailed = true;
     const message = String(e?.message || "");
     const transient = /GA4_TRANSIENT_ERROR|GA4_TEMPORARY_UNAVAILABLE|timeout|WORK_DEADLINE_EXCEEDED|WORK_STOPPED|\b(40001|40P01|53300|57014|57P0[123]|ECONNRESET|ECONNREFUSED|ETIMEDOUT)\b/i.test(`${message} ${e?.code || ""} ${e?.cause?.code || ""}`);
-    attemptFailure = { retryable: transient, code: transient ? "GA4_TRANSIENT_ERROR" : getGA4DailyFailureReason(e),
+    const initialVerificationFailure = opts.initialImportWorkId && /^GA4_INITIAL_VERIFICATION_(DIFFERENCE|UNVERIFIED|INPUT_CHANGED)$/.test(message);
+    attemptFailure = { retryable: transient || Boolean(initialVerificationFailure), code: initialVerificationFailure ? message : transient ? "GA4_TRANSIENT_ERROR" : getGA4DailyFailureReason(e),
       ...(e?.retryAfterMs !== undefined ? { retryAfterMs: e.retryAfterMs, code: "GA4_PROVIDER_BACKOFF" } : {}) };
     if (!parentRun && completedCampaignIds === alignedCampaignIdsInCurrentRun) {
       ga4DailySchedulerStatus.lastRunStatus = "failed";

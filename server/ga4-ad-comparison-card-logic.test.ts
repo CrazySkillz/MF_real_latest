@@ -13,17 +13,17 @@ const row = (name: string, sessions: number, users: number, conversions: number,
 });
 
 describe("GA4 Ad Comparison leader-card logic", () => {
-  it("ranks the provider's session key event rate, not key event count per session", () => {
+  it("ranks conversions per session consistently with Overview", () => {
     const merged = mergeGA4OverviewCampaignRevenueRows([
       { campaign: "high event count", sessions: 76, conversions: 76, sessionKeyEventRate: 0.25 },
       { campaign: "more converting sessions", sessions: 40, conversions: 10, sessionKeyEventRate: 0.5 },
     ], [], ["high event count", "more converting sessions"]);
-    const rows = merged.map((item) => ({ name: item.campaign, ...item, conversionRate: item.sessionKeyEventRate * 100 }));
+    const rows = merged.map((item) => ({ name: item.campaign, ...item, conversionRate: item.conversions / item.sessions * 100 }));
     const cards = selectGA4AdComparisonLeaderCards(rows, "conversionRate");
     expect(cards.bestPerforming?.name).toBe("high event count");
-    expect(cards.mostEfficient?.name).toBe("more converting sessions");
-    expect(cards.needsAttention?.name).toBe("high event count");
-    expect(cards.bestPerforming?.conversionRate).toBe(25);
+    expect(cards.mostEfficient?.name).toBe("high event count");
+    expect(cards.needsAttention?.name).toBe("more converting sessions");
+    expect(cards.bestPerforming?.conversionRate).toBe(100);
   });
   it("ranks Best Performing by conversions regardless of the dropdown metric", () => {
     const rows = [

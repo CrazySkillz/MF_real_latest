@@ -220,7 +220,9 @@ describe("Ad Comparison precision through the real Reports page", () => {
         expect(bytes.toString("latin1")).not.toContain("EUR 80,433.86");
       }
       if (pipelineJourney) {
-        expect(bytes.toString("latin1")).toContain("CAMPAIGN BREAKDOWN REVENUE");
+        expect(bytes.toString("latin1")).toContain("OVERALL CONVERSION RATE");
+        expect(bytes.toString("latin1")).toContain("6.6%");
+        expect(bytes.toString("latin1")).toContain("5.49%");
         expect(bytes.toString("latin1")).not.toContain("EUR 7,653.95");
       }
       const artifact = "docs/fixes/v1-batch-7/validation-2026-10-26/precision2-ui-download.pdf";
@@ -305,13 +307,21 @@ describe("Ad Comparison precision through the real Reports page", () => {
         for (const [label, campaign, detail] of [
           ["Most Key Events", "yesop_paid_social", "21 Key Events"],
           ["Highest Conversion Rate", "yesop_paid_social", "8.14%"],
-          ["Needs Attention", "yesop_prospecting", "4.62%"],
+          ["Needs Attention", "yesop_prospecting", "5.49%"],
         ]) {
           const card = page.getByText(label, { exact: true }).locator("../..");
           await browserExpect(card).toContainText(campaign);
           await browserExpect(card).toContainText(detail);
         }
         await browserExpect(page.getByText("€3,200.00", { exact: true })).toHaveCount(0);
+        await page.getByRole("combobox").click();
+        await page.getByRole("option", { name: "Conversions (High to Low)", exact: true }).click();
+        await browserExpect(page.getByText("Total Conversions", { exact: true }).locator("..")).toContainText("40");
+        await page.getByRole("combobox").click();
+        await page.getByRole("option", { name: "Conversion Rate (High to Low)", exact: true }).click();
+        await browserExpect(page.getByText("Overall Conversion Rate", { exact: true }).locator("..")).toContainText("6.6%");
+        await page.getByRole("tab", { name: "Overview", exact: true }).click();
+        await browserExpect(page.getByText("Conv. Rate", { exact: true }).first().locator("..")).toContainText("6.6%");
       }
       await page.getByRole("tab", { name: "Reports", exact: true }).click();
       await openReport();

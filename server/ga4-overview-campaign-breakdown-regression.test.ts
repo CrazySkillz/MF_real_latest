@@ -227,10 +227,10 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(analytics).toContain('value: `.*[?&]utm_campaign=${escapeRegex(candidate)}(?:[&#].*)?$`');
   });
 
-  it("keeps the exact UI columns, native session rate, and current row ordering", () => {
+  it("keeps the exact UI columns, Overview conversion-rate definition, and current row ordering", () => {
     const table = between(client, "{/* Campaign Breakdown */}", "{/* Landing Pages */}");
     expect(table).toMatch(/Campaign[\s\S]*Sessions[\s\S]*Users[\s\S]*Conversions[\s\S]*Conv\. Rate[\s\S]*Revenue/);
-    expect(client).toContain("conversionRate: sessions > 0 ? (c.sessionKeyEventRateWeighted / sessions) * 100 : 0");
+    expect(client).toContain("conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0");
     expect(client).toContain(".sort((a, b) => b.sessions - a.sessions)");
     expect(table).toContain("adComparisonChartRows.map");
   });

@@ -49,6 +49,20 @@ export const ga4ClientServiceAccounts = pgTable("ga4_client_service_accounts", {
   uniqueIndex("ga4_client_service_accounts_email_idx").on(table.email)]);
 export type GA4ClientServiceAccount = typeof ga4ClientServiceAccounts.$inferSelect;
 
+// Separate Ads identities retain the same owner/client isolation and retired-name protection as GA4.
+export const googleAdsClientServiceAccounts = pgTable("google_ads_client_service_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
+  clientId: text("client_id").notNull(),
+  customerId: text("customer_id").notNull(),
+  email: text("email").notNull(),
+  googleUniqueId: text("google_unique_id"),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [uniqueIndex("google_ads_client_service_accounts_scope_idx").on(table.ownerId, table.clientId, table.customerId),
+  uniqueIndex("google_ads_client_service_accounts_email_idx").on(table.email)]);
+export type GoogleAdsClientServiceAccount = typeof googleAdsClientServiceAccounts.$inferSelect;
+
 export const insertClientSchema = createInsertSchema(clients).pick({
   ownerId: true,
   name: true,
@@ -1124,6 +1138,7 @@ export const financialDailySnapshotInputSchema = z.object({
 
 export const ga4GoogleAdsSpendConnections = pgTable("ga4_google_ads_spend_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serviceAccountBindingId: varchar("service_account_binding_id"),
   campaignId: text("campaign_id").notNull(),
   customerId: text("customer_id").notNull(),
   customerName: text("customer_name"),

@@ -2,6 +2,8 @@ import { type Client, type InsertClient, type Campaign, type InsertCampaign, typ
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
 import { randomUUID, createHash } from "crypto";
+import { googleAdsClientServiceAccounts, type GoogleAdsClientServiceAccount } from "@shared/schema";
+import { getGoogleAdsClientServiceAccountEmail } from "./utils/google-ads-service-account";
 import { sumSpendAmounts } from "../shared/currency";
 import { ga4RefreshWork, ga4ConnectionLifecycleEvents, type GA4RefreshWork, type GA4InitialImportStatus } from "@shared/schema";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
@@ -209,6 +211,9 @@ export interface IStorage {
   withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T>;
   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
   getGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId?: string): Promise<GA4ClientServiceAccount | undefined>;
+  getGoogleAdsClientServiceAccount(campaignId: string, customerId: string, bindingId?: string): Promise<GoogleAdsClientServiceAccount | undefined>;
+  reserveGoogleAdsClientServiceAccount(campaignId: string, customerId: string, ownerId: string): Promise<GoogleAdsClientServiceAccount>;
+  completeGoogleAdsClientServiceAccount(campaignId: string, customerId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified?: boolean): Promise<GoogleAdsClientServiceAccount>;
   reserveGA4ClientServiceAccount(campaignId: string, propertyId: string, ownerId: string): Promise<GA4ClientServiceAccount>;
   completeGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified?: boolean): Promise<GA4ClientServiceAccount>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
@@ -442,8 +447,8 @@ export interface IStorage {
   upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }>;
   replaceGoogleAdsDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGoogleAdsDailyMetric[], options?: GA4RefreshGoogleAdsWriteInput): Promise<{ replaced: number }>;
   updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
-  getGA4GoogleAdsSpendConnection(campaignId: string): Promise<GA4GoogleAdsSpendConnection | undefined>;
-  replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<GA4GoogleAdsSpendConnection>;
+  getGA4GoogleAdsSpendConnection(campaignId: string, options?: { hydrateCredentials?: boolean }): Promise<GA4GoogleAdsSpendConnection | undefined>;
+  replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[], expectedOwnerId?: string): Promise<GA4GoogleAdsSpendConnection>;
   updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>, options?: GA4RefreshConnectionWriteInput): Promise<GA4GoogleAdsSpendConnection | undefined>;
   getGA4GoogleAdsSpendDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GA4GoogleAdsSpendDailyMetric[]>;
   replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGA4GoogleAdsSpendDailyMetric[], options?: GA4RefreshGoogleAdsWriteInput): Promise<{ replaced: number }>;
@@ -868,6 +873,51 @@ export class DatabaseStorage implements IStorage {
         eq(ga4ClientServiceAccounts.clientId, scope.campaign.clientId!), sql`(${ga4ClientServiceAccounts.googleUniqueId} IS NULL OR ${ga4ClientServiceAccounts.googleUniqueId} = ${googleUniqueId})`,
       )).returning();
       if (!binding) throw Object.assign(new Error("The client's Google access identity has changed. Contact support."), { status: 409 });
+      return binding;
+    });
+  }
+
+  async getGoogleAdsClientServiceAccount(campaignId: string, customerId: string, bindingId?: string): Promise<GoogleAdsClientServiceAccount | undefined> {
+    const [row] = await db.select({ binding: googleAdsClientServiceAccounts }).from(googleAdsClientServiceAccounts)
+      .innerJoin(campaigns, and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, googleAdsClientServiceAccounts.ownerId), eq(campaigns.clientId, googleAdsClientServiceAccounts.clientId)))
+      .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+      .where(and(eq(googleAdsClientServiceAccounts.customerId, customerId), sql`${campaigns.status} <> 'deleted'`,
+        ...(bindingId ? [eq(googleAdsClientServiceAccounts.id, bindingId)] : []))).limit(1);
+    return row?.binding;
+  }
+
+  async reserveGoogleAdsClientServiceAccount(campaignId: string, customerId: string, ownerId: string): Promise<GoogleAdsClientServiceAccount> {
+    if (!/^\d{10}$/.test(customerId)) throw Object.assign(new Error("Enter a valid 10-digit Google Ads Customer ID"), { status: 400 });
+    return db.transaction(async (tx: any) => {
+      const [scope] = await tx.select({ campaign: campaigns, client: clients }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), sql`${campaigns.status} <> 'deleted'`)).for("update");
+      if (!scope) throw Object.assign(new Error("Campaign access is no longer available."), { status: 409 });
+      const identity = and(eq(googleAdsClientServiceAccounts.ownerId, ownerId), eq(googleAdsClientServiceAccounts.clientId, scope.client.id), eq(googleAdsClientServiceAccounts.customerId, customerId));
+      const [existing] = await tx.select().from(googleAdsClientServiceAccounts).where(identity);
+      if (existing) return existing;
+      const reserved = await tx.select({ id: googleAdsClientServiceAccounts.id }).from(googleAdsClientServiceAccounts)
+        .where(and(eq(googleAdsClientServiceAccounts.ownerId, ownerId), eq(googleAdsClientServiceAccounts.clientId, scope.client.id))).limit(20);
+      if (reserved.length >= 20) throw Object.assign(new Error("This client has reached the automatic Ads account setup limit. Contact support."), { status: 409 });
+      const email = getGoogleAdsClientServiceAccountEmail(scope.client.name, customerId);
+      await tx.insert(googleAdsClientServiceAccounts).values({ ownerId, clientId: scope.client.id, customerId, email }).onConflictDoNothing();
+      const [binding] = await tx.select().from(googleAdsClientServiceAccounts).where(identity);
+      if (!binding) throw Object.assign(new Error("This access email is already reserved for another client. Contact support."), { status: 409 });
+      return binding;
+    });
+  }
+
+  async completeGoogleAdsClientServiceAccount(campaignId: string, customerId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified = false): Promise<GoogleAdsClientServiceAccount> {
+    return db.transaction(async (tx: any) => {
+      const [scope] = await tx.select({ campaign: campaigns }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), sql`${campaigns.status} <> 'deleted'`)).for("share");
+      if (!scope || !/^\d+$/.test(googleUniqueId)) throw Object.assign(new Error("Campaign access is no longer available."), { status: 409 });
+      const [binding] = await tx.update(googleAdsClientServiceAccounts).set({ googleUniqueId, ...(verified ? { verifiedAt: new Date() } : {}) }).where(and(
+        eq(googleAdsClientServiceAccounts.id, bindingId), eq(googleAdsClientServiceAccounts.customerId, customerId), eq(googleAdsClientServiceAccounts.ownerId, ownerId),
+        eq(googleAdsClientServiceAccounts.clientId, scope.campaign.clientId!), sql`(${googleAdsClientServiceAccounts.googleUniqueId} IS NULL OR ${googleAdsClientServiceAccounts.googleUniqueId} = ${googleUniqueId})`,
+      )).returning();
+      if (!binding) throw Object.assign(new Error("The client's Google Ads access identity has changed. Contact support."), { status: 409 });
       return binding;
     });
   }
@@ -5606,26 +5656,27 @@ export class DatabaseStorage implements IStorage {
     if (connections.length !== 1) fail();
     const current = hydrateDecryptedTokens(connections[0]) as any;
     const expected = { ...scope!.connection };
-    if (current.method === 'service_account') {
+    if (current.method === 'service_account' && !current.serviceAccountBindingId) {
       const managerAccountId = getGoogleAdsServiceAccountLoginCustomerId();
       current.managerAccountId ||= managerAccountId;
       expected.managerAccountId ||= managerAccountId;
     }
-    const fields = ['id', 'campaignId', 'customerId', 'customerName', 'managerAccountId', 'method', 'spendOnly', 'selectedCampaignIds', 'clientId', 'developerToken', 'connectedAt', 'createdAt', 'lastRefreshAt'];
+    const fields = ['id', 'campaignId', 'customerId', 'customerName', 'managerAccountId', 'method', 'serviceAccountBindingId', 'spendOnly', 'selectedCampaignIds', 'clientId', 'developerToken', 'connectedAt', 'createdAt', 'lastRefreshAt'];
     if (current.method !== 'service_account') fields.push('accessToken', 'refreshToken', 'clientSecret');
     if (fields.some(key => !isDeepStrictEqual(current[key] ?? null, expected[key] ?? null))) fail();
   }
 
   // GA4 Google Ads Spend connection and daily facts stay separate from the main Google Ads platform.
-  async getGA4GoogleAdsSpendConnection(campaignId: string): Promise<GA4GoogleAdsSpendConnection | undefined> {
-    const [connection] = await db.select().from(ga4GoogleAdsSpendConnections)
+  async getGA4GoogleAdsSpendConnection(campaignId: string, options: { hydrateCredentials?: boolean } = {}): Promise<GA4GoogleAdsSpendConnection | undefined> {
+    const [connection] = await db.select({ ...getTableColumns(ga4GoogleAdsSpendConnections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4GoogleAdsSpendConnections})->>'service_account_binding_id'` }).from(ga4GoogleAdsSpendConnections)
       .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId));
+    if (options.hydrateCredentials === false) return connection;
     return connection
       ? await hydrateGoogleAdsServiceAccountConnection(hydrateDecryptedTokens(connection) as any) as any
       : undefined;
   }
 
-  async replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<GA4GoogleAdsSpendConnection> {
+  async replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[], expectedOwnerId?: string): Promise<GA4GoogleAdsSpendConnection> {
     assertProductionTokenEncryptionConfigured();
     const isServiceAccount = String((connection as any).method || "").trim().toLowerCase() === GOOGLE_ADS_SERVICE_ACCOUNT_METHOD;
     const encryptedTokens = buildEncryptedTokens({
@@ -5634,6 +5685,24 @@ export class DatabaseStorage implements IStorage {
       clientSecret: isServiceAccount ? null : (connection as any).clientSecret,
     });
     return await this.writeGA4RefreshInputChange(connection.campaignId, async (tx: any) => {
+      if (connection.serviceAccountBindingId) {
+        const [scope] = await tx.select({ binding: googleAdsClientServiceAccounts }).from(googleAdsClientServiceAccounts)
+          .innerJoin(campaigns, and(eq(campaigns.id, connection.campaignId), eq(campaigns.ownerId, googleAdsClientServiceAccounts.ownerId), eq(campaigns.clientId, googleAdsClientServiceAccounts.clientId)))
+          .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+          .where(and(eq(googleAdsClientServiceAccounts.id, connection.serviceAccountBindingId), eq(googleAdsClientServiceAccounts.customerId, connection.customerId),
+            eq(campaigns.ownerId, expectedOwnerId || ""), sql`${campaigns.status} <> 'deleted'`)).for("share");
+        if (!isServiceAccount || !scope?.binding.verifiedAt || !scope.binding.googleUniqueId) throw new Error("Google Ads identity is not verified for this client.");
+        const [existing] = await tx.select().from(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, connection.campaignId));
+        if (existing) {
+          if (existing.method !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD || existing.serviceAccountBindingId !== connection.serviceAccountBindingId || existing.customerId !== connection.customerId) throw new Error("Existing Google Ads connection has changed. Reopen setup.");
+          return hydrateDecryptedTokens(existing) as any;
+        }
+        const sources = await tx.select().from(spendSources).where(and(eq(spendSources.campaignId, connection.campaignId), or(isNull(spendSources.platformContext), eq(spendSources.platformContext, "ga4")), eq(spendSources.isActive, true), eq(spendSources.sourceType, "ad_platforms")));
+        if (sources.some((source: any) => {
+          if (String(source.displayName || "").trim() === "Google Ads") return true;
+          try { return String(JSON.parse(source.mappingConfig || "{}")?.platform || "").trim().toLowerCase() === "google_ads"; } catch { return false; }
+        })) throw new Error("Existing Google Ads Spend source must be disconnected before changing accounts.");
+      }
       await tx.delete(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, connection.campaignId));
       await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(eq(ga4GoogleAdsSpendDailyMetrics.campaignId, connection.campaignId));
       const [saved] = await tx.insert(ga4GoogleAdsSpendConnections).values({
@@ -5662,7 +5731,7 @@ export class DatabaseStorage implements IStorage {
       const expected = options.expectedConnection;
       if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
         && ["accessToken", "refreshToken", "clientSecret"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
-      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
+      const fields = ["id", "campaignId", "encryptedTokens", "method", "serviceAccountBindingId", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
       if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
         || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
         || fields.some(field => field === "encryptedTokens" ? !isDeepStrictEqual(existing[field] ?? null, expected[field] ?? null) : (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
@@ -5712,7 +5781,7 @@ export class DatabaseStorage implements IStorage {
         const [connection] = await tx.select().from(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId)).for("update");
         if (!source || source.isActive === false || source.sourceType !== "ad_platforms" || (source.platformContext || "ga4") !== "ga4"
           || source.mappingConfig !== options.expectedSource.mappingConfig || !connection || connection.isActive === false || !connection.spendOnly
-          || ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method", "selectedCampaignIds"].some(field => (connection[field] ?? null) !== (options.expectedConnection![field] ?? null))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+          || ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method", "serviceAccountBindingId", "selectedCampaignIds"].some(field => (connection[field] ?? null) !== (options.expectedConnection![field] ?? null))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       }
       await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(and(
         eq(ga4GoogleAdsSpendDailyMetrics.campaignId, campaignId),

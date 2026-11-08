@@ -205,6 +205,7 @@ export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { e
 export interface IStorage {
   getLiveNumberCheckSnapshot(campaignHash: string): Promise<{ campaign: Campaign; rows: Record<string, any[]> }>;
   getMonitorCampaigns(): Promise<Array<{ campaignIdHash: string; reportingTimeZone: string; monitorFrom: string }>>;
+  getInitialImportVerificationFailures(): Promise<string[]>;
   withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T>;
   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
   getGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId?: string): Promise<GA4ClientServiceAccount | undefined>;
@@ -708,6 +709,21 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async getInitialImportVerificationFailures(): Promise<string[]> {
+    return db.transaction(async (tx: any) => {
+      const rows = await tx.selectDistinct({ campaignIdHash: sql<string>`left(encode(sha256(${campaigns.id}::bytea), 'hex'), 12)` })
+        .from(ga4RefreshWork).innerJoin(campaigns, eq(campaigns.id, ga4RefreshWork.campaignId))
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.status, 'draft'), ne(ga4RefreshWork.status, 'completed'),
+          sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`, sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`,
+          sql`${ga4RefreshWork.lastError} ~ '^GA4_INITIAL_VERIFICATION_(DIFFERENCE|UNVERIFIED|INPUT_CHANGED)$'`,
+          sql`(NOT ${ga4RefreshWork.retryable} OR ${ga4RefreshWork.attemptCount} >= 3)`,
+          sql`(${ga4RefreshWork.status} <> 'running' OR ${ga4RefreshWork.leaseExpiresAt} <= clock_timestamp())`)).limit(101);
+      if (rows.length > 100) throw new Error('MONITOR_CAMPAIGN_LIMIT_EXCEEDED');
+      return rows.map((row: any) => row.campaignIdHash).sort();
+    }, { isolationLevel: 'repeatable read', readOnly: true });
+  }
+
   // Monitor-only discovery: no hydration, writes or dependency on successful refresh markers.
   async getMonitorCampaigns() {
     return db.transaction(async (tx: any) => {

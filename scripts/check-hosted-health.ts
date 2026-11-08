@@ -14,6 +14,7 @@ export const configSchema = z.object({
   graceMinutes: z.number().int().min(5).max(60),
   maxResponseMilliseconds: z.number().int().min(100).max(15000).default(5000),
   enrollmentResolved: z.literal(true).optional(),
+  initialImportVerificationFailures: z.array(z.string().regex(/^[a-f0-9]{12}$/)).max(100).optional(),
   campaigns: z.array(z.object({
     campaignIdHash: z.string().regex(/^[a-f0-9]{12}$/),
     reportingTimeZone: z.string().min(1).refine(value => normalizeReportingTimeZone(value) === value),
@@ -36,6 +37,7 @@ export type MonitorConfig = z.infer<typeof configSchema>;
 export function assessHostedHealth(health: unknown, scheduler: unknown, input: unknown, now = new Date()) {
   const config = configSchema.parse(input);
   const failures: string[] = [], pending: string[] = [];
+  for (const hash of config.initialImportVerificationFailures || []) failures.push(`INITIAL_IMPORT_VERIFICATION_FAILED:${hash}`);
   const app = z.object({ ok: z.boolean(), commit: z.string(), nodeEnv: z.string(), ts: stamp }).safeParse(health);
   const parsed = schedulerSchema.safeParse(scheduler);
   if (!app.success || !app.data.ok || app.data.nodeEnv !== "production") failures.push("APP_HEALTH_INVALID");

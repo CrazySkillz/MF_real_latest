@@ -17,6 +17,13 @@ function fixture(at = "2026-11-05T11:30:00Z", completedAt = "2026-11-05T07:00:24
 }
 const assess = (f: ReturnType<typeof fixture>, c: any = config) => assessHostedHealth(f.health, f.scheduler, c, f.now);
 describe("read-only hosted operations monitor", () => {
+  it('alerts on a durable first-import verification failure even after scheduler state resets', () => {
+    const f = fixture();
+    expect(assess(f, { ...config, initialImportVerificationFailures: ['a'.repeat(12)] })).toMatchObject({
+      status: 'failed', failures: ['INITIAL_IMPORT_VERIFICATION_FAILED:aaaaaaaaaaaa'],
+    });
+    expect(assess(f, { ...config, initialImportVerificationFailures: [] }).status).toBe('passed');
+  });
   it("waits for a new campaign's first slot, then detects a missed refresh", () => {
     const c = { ...config, campaigns: [{ ...config.campaigns[0], monitorFrom: "2026-11-05T10:00:00Z" }] };
     const first = fixture(); first.scheduler.ga4DailyScheduler.alignedRefreshCampaigns = [];

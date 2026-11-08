@@ -22,6 +22,7 @@ describe.skipIf(!testUrl)("monitor enrollment against read-only PostgreSQL", () 
     reader = new Pool({ connectionString: testUrl, options: `-c search_path=${namespace} -c default_transaction_read_only=on`, max: 1 });
     database.current = drizzle(reader);
     await writer.query("CREATE TABLE clients(id text primary key, owner_id text); CREATE TABLE campaigns(id text primary key, owner_id text, client_id text, status text, reporting_time_zone text, created_at timestamp); CREATE TABLE ga4_refresh_work(campaign_id text, status text, scope jsonb, completed_at timestamptz)");
+    await writer.query('ALTER TABLE ga4_refresh_work ADD COLUMN scope_hash text, ADD COLUMN last_error text, ADD COLUMN retryable boolean DEFAULT true, ADD COLUMN attempt_count integer DEFAULT 0, ADD COLUMN lease_expires_at timestamptz');
   });
   afterAll(async () => {
     await reader?.end(); await writer?.end();
@@ -36,6 +37,18 @@ describe.skipIf(!testUrl)("monitor enrollment against read-only PostgreSQL", () 
     await writer.query("UPDATE campaigns SET status='active' WHERE id='b'");
     expect((await storage.getMonitorCampaigns()).map(c => c.campaignIdHash).sort()).toEqual([hash("a"), hash("b")].sort());
     await expect(reader.query("UPDATE campaigns SET status='paused'")).rejects.toMatchObject({ code: "25006" });
+  });
+  it('finds only current exhausted verification failures using read-only access', async () => {
+    await writer.query(`INSERT INTO ga4_refresh_work(campaign_id,status,scope,scope_hash,last_error,attempt_count) VALUES ('b','pending','{"kind":"initial_import"}','scope','GA4_INITIAL_VERIFICATION_DIFFERENCE',3)`);
+    expect(await storage.getInitialImportVerificationFailures()).toEqual([hash('b')]);
+    expect((await storage.getMonitorCampaigns()).map(c => c.campaignIdHash)).toEqual([hash('a')]);
+    for (const update of ["attempt_count=1", "scope_hash='invalidated:scope'", "status='completed'", "status='running',lease_expires_at=clock_timestamp()+interval '1 hour'"]) {
+      await writer.query("UPDATE ga4_refresh_work SET status='pending',scope_hash='scope',attempt_count=3");
+      await writer.query(`UPDATE ga4_refresh_work SET ${update}`);
+      expect(await storage.getInitialImportVerificationFailures()).toEqual([]);
+    }
+    await writer.query("UPDATE ga4_refresh_work SET status='pending',scope_hash='scope',attempt_count=3; UPDATE campaigns SET status='deleted' WHERE id='b'");
+    expect(await storage.getInitialImportVerificationFailures()).toEqual([]);
   });
   it.each(["draft", "paused", "inactive", "deleted"])("removes %s campaigns without changing their data", async status => {
     await writer.query("UPDATE campaigns SET status=$1 WHERE id='a'", [status]);

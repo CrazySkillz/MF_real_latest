@@ -1,4 +1,4 @@
-import { GoogleAnalytics4Service, type GA4DailyTrafficCapture } from "./analytics";
+import { checkGA4SourceNumbers } from "./ga4-source-verification";
 import { decryptTokens } from "./utils/tokenVault";
 import { hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
@@ -62,60 +62,8 @@ export async function checkGA4ProviderNumbers(snapshot: LiveNumberSnapshot, now 
   let connection = scope.connection;
   if (connection.method === "service_account") connection = await hydrateGA4ServiceAccountConnection(connection);
   else connection = { ...connection, accessToken: await googleMonitorCredential(connection) };
-  const facade = { getGA4Connection: async (id: string, property: string) => {
-    if (id !== campaignId || property !== connection.propertyId) throw new Error("PROVIDER_SCOPE_CHANGED");
-    return { ...connection, refreshToken: null, serviceAccountKey: null };
-  } };
-  const service = new GoogleAnalytics4Service(AbortSignal.timeout(240_000));
-  const capture: GA4DailyTrafficCapture = { campaignId };
-  const daily = await service.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, scope.startDate,
-    scope.filter, scope.endDate, scope.currency, capture);
-  const byDate = new Map(daily.map(row => [row.date, row]));
-  if (byDate.size !== daily.length || daily.some(row => !dateIsValid(row.date) || row.date < scope.startDate || row.date > scope.endDate)) throw new Error("PROVIDER_DATE_SCOPE_UNVERIFIED");
-  // Complete GA4 reports omit zero-activity dates. The API helper rejects partial/thresholded/sampled reports first.
-  const expectedDaily: any[] = [];
-  for (let date = scope.startDate; date <= scope.endDate; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) {
-    expectedDaily.push(byDate.get(date) || { date, sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0, engagedSessions: 0, engagementRate: 0 });
-  }
-  const savedDaily = (snapshot.rows.ga4DailyMetrics || []).filter(r => r.propertyId === connection.propertyId && r.date >= scope.startDate && r.date <= scope.endDate);
-  const checks = compareProviderRows("GA4 daily inputs / Insights / Trend Analysis", expectedDaily, savedDaily, ["date"],
-    ["sessions", "users", "pageviews", "conversions", "revenue", "engagedSessions", "engagementRate"]);
-  const provider = await service.getAcquisitionBreakdown(campaignId, facade, scope.startDate, connection.propertyId,
-    2000, scope.filter, scope.endDate, true, false, scope.currency, true, capture);
-  const saved = scope.publication.campaignBreakdown;
-  if (provider.meta.currencyCode !== scope.currency || provider.meta.revenueMetric !== saved.meta.revenueMetric
-    || JSON.stringify(provider.meta.dimensions) !== JSON.stringify(saved.meta.dimensions)) {
-    checks.push({ section: "Overview / Campaign Comparison", code: "PROVIDER_METRIC_DEFINITION_CHANGED", status: "unverified" });
-  } else {
-    for (const metric of ["sessions", "sessionsRaw", "users", "conversions", "revenue", "engagedSessions", "engagementRate"]) {
-      checks.push(compareNumber("Overview / Campaign Comparison", `SOURCE_TOTAL_${metric}`, (provider.totals as any)[metric], saved.totals?.[metric],
-        { decimals: metric === "revenue" ? 2 : metric === "engagementRate" ? 4 : undefined, conversions: metric === "conversions" }));
-    }
-    checks.push(...compareProviderRows("Campaign Comparison", provider.rows, saved.rows, ["campaign", "source", "medium", "channel", "device", "country", "date"],
-      ["sessions", "users", "conversions", "revenue", "engagedSessions", "sessionKeyEventRate"]));
-  }
-  for (const part of ["landingPages", "conversionEvents"] as const) {
-    try {
-      const result = part === "landingPages" ? await service.getLandingPagesReport(campaignId, facade, scope.startDate, connection.propertyId, 50, scope.filter, scope.endDate, true)
-        : await service.getConversionEventsReport(campaignId, facade, scope.startDate, connection.propertyId, 50, scope.filter, scope.endDate, true,
-          Object.fromEntries(expectedDaily.map(row => [row.date, row.conversions])));
-      const stored = scope.publication[part];
-      // The current UI and Overview PDFs display counts/rates from these tables,
-      // not their internal revenue field (which has no saved currency metadata).
-      if (!stored || stored.propertyId !== result.propertyId || stored.revenueMetric !== result.revenueMetric) throw new Error("SOURCE_DETAIL_SCOPE_UNVERIFIED");
-      checks.push(...compareProviderRows(`Overview / ${part}`, result.rows, stored.rows,
-        part === "landingPages" ? ["landingPage", "source", "medium"] : ["eventName"],
-        part === "landingPages" ? ["sessions", "users", "conversions"] : ["conversions"]));
-      if (part === "conversionEvents") {
-        for (const metric of ["eventCount", "users"]) {
-          if (result.rows.every((row: any) => row[metric] == null) && stored.rows.every((row: any) => row[metric] == null)) {
-            checks.push({ section: "Overview / conversionEvents", code: `${metric}_UNAVAILABLE`, status: "passed" });
-          } else checks.push(...compareProviderRows("Overview / conversionEvents", result.rows, stored.rows, ["eventName"], [metric]));
-        }
-      }
-    } catch { checks.push({ section: `Overview / ${part}`, code: "SOURCE_DETAIL_UNVERIFIED", status: "unverified" }); }
-  }
-  return checks;
+  return checkGA4SourceNumbers({ ...scope, campaignId, connection }, (snapshot.rows.ga4DailyMetrics || [])
+    .filter(r => r.propertyId === connection.propertyId && r.date >= scope.startDate && r.date <= scope.endDate));
 }
 
 function uniqueConnection(snapshot: LiveNumberSnapshot, table: string, source: any, mapping: any) {

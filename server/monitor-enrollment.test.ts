@@ -11,6 +11,12 @@ const numbers = { databaseEnvironmentVariable: "MONITOR_DB", databaseFingerprint
 const enroll = (rows: typeof a[]) => resolveMonitorEnrollment(numbers, health, rows, new Date("2026-11-07T14:00:00Z"));
 
 describe("automatic monitor enrollment", () => {
+  it('carries failed initial verification into health alerts without stopping active campaign checks', () => {
+    const result = resolveMonitorEnrollment(numbers, health, [a], new Date('2026-11-07T14:00:00Z'), [b.campaignIdHash]);
+    expect(result.health.initialImportVerificationFailures).toEqual([b.campaignIdHash]);
+    expect(result.numbers.campaigns).toEqual(numbers.campaigns);
+    expect(enroll([a]).health.initialImportVerificationFailures).toEqual([]);
+  });
   it("adds a newly discovered campaign to both monitors without inheriting another campaign's history", () => {
     const result = enroll([a, b]);
     expect(result.health.campaigns).toEqual([a, b]);

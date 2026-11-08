@@ -7,7 +7,7 @@ import { configSchema } from "./check-hosted-health";
 
 export function resolveMonitorEnrollment(numberInput: unknown, healthInput: unknown, campaigns: Array<{
   campaignIdHash: string; reportingTimeZone: string; monitorFrom: string;
-}>, now = new Date()) {
+}>, now = new Date(), initialImportVerificationFailures: string[] = []) {
   const numbers = liveNumberConfigSchema.parse(numberInput), health = configSchema.parse(healthInput);
   if (!numbers.application || new URL(numbers.application.baseUrl).origin !== new URL(health.baseUrl).origin
     || numbers.application.expectedCommit !== health.expectedCommit) throw new Error("MONITOR_APPLICATION_IDENTITY_MISMATCH");
@@ -17,7 +17,7 @@ export function resolveMonitorEnrollment(numberInput: unknown, healthInput: unkn
       campaigns: campaigns.map(({ campaignIdHash, reportingTimeZone }) => ({ campaignIdHash, reportingTimeZone,
         ...(numbers.campaigns.find(c => c.campaignIdHash === campaignIdHash)?.historicalReports
           ? { historicalReports: numbers.campaigns.find(c => c.campaignIdHash === campaignIdHash)!.historicalReports } : {}) })) }),
-    health: configSchema.parse({ ...health, enrollmentResolved: true, campaigns }),
+    health: configSchema.parse({ ...health, enrollmentResolved: true, campaigns, initialImportVerificationFailures }),
   };
 }
 
@@ -30,7 +30,7 @@ export async function discoverMonitorEnrollment(numberInput: unknown, healthInpu
     const guard = await pool.query("SELECT current_setting('default_transaction_read_only') AS read_only");
     if (guard.rows[0]?.read_only !== "on") throw new Error("MONITOR_READ_ONLY_GUARD_FAILED");
     const { storage } = await import("../server/storage");
-    return resolveMonitorEnrollment(config, healthInput, await storage.getMonitorCampaigns());
+    return resolveMonitorEnrollment(config, healthInput, await storage.getMonitorCampaigns(), new Date(), await storage.getInitialImportVerificationFailures());
   } finally { await pool.end(); }
 }
 

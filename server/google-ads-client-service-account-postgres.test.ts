@@ -26,7 +26,7 @@ describe.skipIf(!testUrl)('Google Ads dedicated identity PostgreSQL boundaries',
     admin = new Pool({ connectionString: testUrl, max: 1 }); await admin.query(`CREATE SCHEMA "${namespace}"`); created = true;
     pool = new Pool({ connectionString: testUrl, options: `-c search_path=${namespace}`, max: 5 }); database.current = drizzle(pool, { schema });
     const dialect = new PgDialect();
-    for (const table of [schema.clients, schema.campaigns, schema.ga4GoogleAdsSpendConnections, schema.ga4GoogleAdsSpendDailyMetrics, schema.spendSources]) {
+    for (const table of [schema.clients, schema.campaigns, schema.ga4GoogleAdsSpendConnections, schema.ga4GoogleAdsSpendDailyMetrics, schema.spendSources, schema.ga4RefreshWork, schema.metricSnapshots]) {
       const columns = Object.values(getTableColumns(table)).filter(c => c.name !== 'service_account_binding_id').map((column: any) => {
         const value = column.default, d = value instanceof SQL ? dialect.sqlToQuery(value).sql : typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : String(value);
         return `"${column.name}" ${column.getSQLType()}${column.notNull ? ' NOT NULL' : ''}${value !== undefined ? ` DEFAULT ${d}` : ''}${column.primary ? ' PRIMARY KEY' : ''}`;
@@ -37,7 +37,7 @@ describe.skipIf(!testUrl)('Google Ads dedicated identity PostgreSQL boundaries',
   afterAll(async () => { await pool?.end(); if (created) await admin.query(`DROP SCHEMA "${namespace}" CASCADE`); await admin?.end(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
   beforeEach(async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ accessToken: 'dedicated-ads-token', expireTime: new Date(Date.now() + 3600000).toISOString() }))));
-    await pool.query('TRUNCATE google_ads_client_service_accounts,ga4_google_ads_spend_connections,ga4_google_ads_spend_daily_metrics,spend_sources,campaigns,clients');
+    await pool.query('TRUNCATE google_ads_client_service_accounts,ga4_google_ads_spend_connections,ga4_google_ads_spend_daily_metrics,spend_sources,campaigns,clients,ga4_refresh_work,metric_snapshots');
     await database.current.insert(schema.clients).values([{ id: 'client-a', ownerId: 'owner-a', name: 'Acme' }, { id: 'client-b', ownerId: 'owner-b', name: 'Beta' }]);
     await database.current.insert(schema.campaigns).values([{ id: 'a', ownerId: 'owner-a', clientId: 'client-a', name: 'A', status: 'active' }, { id: 'a2', ownerId: 'owner-a', clientId: 'client-a', name: 'A2', status: 'draft' }, { id: 'b', ownerId: 'owner-b', clientId: 'client-b', name: 'B', status: 'active' }]);
   });
@@ -61,8 +61,11 @@ describe.skipIf(!testUrl)('Google Ads dedicated identity PostgreSQL boundaries',
   });
   it('persists only the binding, hydrates short-lived credentials and preserves data on retries', async () => {
     const a = await reserve(); await complete(a); const first = await save(a);
+    await database.current.insert(schema.ga4RefreshWork).values({ campaignId: 'a', dueAt: new Date(), reportingDate: '2026-11-07', scopeHash: 'existing-scheduled-work', scope: { version: 1 }, status: 'pending' });
+    const workBefore = (await pool.query('SELECT to_jsonb(t) AS row FROM ga4_refresh_work t')).rows;
     const before = (await pool.query('SELECT to_jsonb(t) AS row FROM ga4_google_ads_spend_daily_metrics t')).rows;
     expect((await save(a)).id).toBe(first.id); expect((await pool.query('SELECT to_jsonb(t) AS row FROM ga4_google_ads_spend_daily_metrics t')).rows).toEqual(before);
+    expect((await pool.query('SELECT to_jsonb(t) AS row FROM ga4_refresh_work t')).rows).toEqual(workBefore);
     expect((await storage.getGA4GoogleAdsSpendConnection('a'))?.accessToken).toBe('dedicated-ads-token');
     expect((await pool.query('SELECT access_token,refresh_token,client_secret,encrypted_tokens FROM ga4_google_ads_spend_connections')).rows[0]).toEqual({ access_token: null, refresh_token: null, client_secret: null, encrypted_tokens: { v: 1, accessToken: null, refreshToken: null, clientSecret: null } });
     await pool.query('UPDATE google_ads_client_service_accounts SET verified_at=NULL'); await expect(storage.getGA4GoogleAdsSpendConnection('a')).rejects.toThrow('not verified');

@@ -5617,6 +5617,7 @@ export class DatabaseStorage implements IStorage {
 
   async replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[], expectedOwnerId?: string): Promise<GA4GoogleAdsSpendConnection> {
     assertProductionTokenEncryptionConfigured();
+    let unchangedDedicatedConnection = false;
     const isServiceAccount = String((connection as any).method || "").trim().toLowerCase() === GOOGLE_ADS_SERVICE_ACCOUNT_METHOD;
     const encryptedTokens = buildEncryptedTokens({
       accessToken: isServiceAccount ? null : (connection as any).accessToken,
@@ -5634,6 +5635,7 @@ export class DatabaseStorage implements IStorage {
         const [existing] = await tx.select().from(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, connection.campaignId));
         if (existing) {
           if (existing.method !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD || existing.serviceAccountBindingId !== connection.serviceAccountBindingId || existing.customerId !== connection.customerId) throw new Error("Existing Google Ads connection has changed. Reopen setup.");
+          unchangedDedicatedConnection = true;
           return hydrateDecryptedTokens(existing) as any;
         }
         const sources = await tx.select().from(spendSources).where(and(eq(spendSources.campaignId, connection.campaignId), or(isNull(spendSources.platformContext), eq(spendSources.platformContext, "ga4")), eq(spendSources.isActive, true), eq(spendSources.sourceType, "ad_platforms")));
@@ -5656,7 +5658,7 @@ export class DatabaseStorage implements IStorage {
         impressions: row.impressions, clicks: row.clicks, spend: row.spend,
       })) as any);
       return hydrateDecryptedTokens(saved) as any;
-    });
+    }, 0, false, true, () => unchangedDedicatedConnection);
   }
 
   async updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GA4GoogleAdsSpendConnection | undefined> {

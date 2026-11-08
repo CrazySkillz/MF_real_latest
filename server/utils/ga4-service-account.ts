@@ -132,7 +132,7 @@ function clientAccountError(message: string, status = 503) {
   return Object.assign(new Error(message), { code: "GA4_CLIENT_SERVICE_ACCOUNT_ERROR", status });
 }
 
-function clientAccountConfig() {
+export function clientAccountConfig() {
   let config: any;
   try { config = JSON.parse(process.env.GA4_CLIENT_SERVICE_ACCOUNT_JSON || "null"); } catch { /* Fail closed below. */ }
   if (config?.type !== "service_account" || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(config?.project_id || "") ||
@@ -159,7 +159,7 @@ export function getGA4ClientServiceAccountEmail(clientName: string, property: un
 
 let clientIssuer: { fingerprint: string; jwt: JWT } | undefined;
 const clientTokens = new Map<string, { accessToken: string; expiresAt: Date }>();
-async function clientAccountRequest(url: string, body?: unknown): Promise<Response> {
+export async function clientAccountRequest(url: string, body?: unknown): Promise<Response> {
   const config = clientAccountConfig();
   const fingerprint = createHash("sha256").update(`${config.email}\n${config.key}`).digest("hex");
   if (clientIssuer?.fingerprint !== fingerprint) clientIssuer = { fingerprint, jwt: new JWT({

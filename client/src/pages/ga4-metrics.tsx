@@ -4130,12 +4130,11 @@ export default function GA4Metrics() {
         current.users += Number(row?.users || 0);
         current.conversions += Number(row?.conversions || 0);
         current.revenue += Number(row?.revenue || 0);
-        current.conversionRate = Number(current.conversionRate || 0) + Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
         chartSummaryByCampaign.set(key, current);
       }
       const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
         ...row,
-        conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversionRate || 0) / Number(row.sessions) : 0,
+        conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversions || 0) / Number(row.sessions) * 100 : 0,
       }));
       const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
@@ -4145,8 +4144,8 @@ export default function GA4Metrics() {
       const totalMetric = selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
         ? (() => {
             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
-            const weightedRates = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversionRate || 0) * Number(c?.sessions || 0), 0);
-            return totalSessions > 0 ? weightedRates / totalSessions : 0;
+            const totalConversions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversions || 0), 0);
+            return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
           })()
         : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
       if (rows.length === 0 && chartSummaryRows.length === 0) {
@@ -4241,7 +4240,7 @@ export default function GA4Metrics() {
           }
 
           const adSummaryCards: [string, string][] = [
-            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
             ["Campaigns Compared", String(sortedByMetric.length)],
           ];
           const sumW = (CW - 4) / 2;
@@ -6291,7 +6290,7 @@ export default function GA4Metrics() {
           revenue,
           unroundedRevenue: c.revenue,
           users,
-          conversionRate: sessions > 0 ? (c.sessionKeyEventRateWeighted / sessions) * 100 : 0,
+          conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
           revenuePerSession: sessions > 0 ? revenue / sessions : 0,
         };
       })

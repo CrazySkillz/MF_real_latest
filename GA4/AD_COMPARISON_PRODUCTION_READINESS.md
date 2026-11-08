@@ -4,6 +4,13 @@
 
 ## Controlling Current Status
 
+November 8 conversion-rate requirement: Campaign Comparison must use Overview's
+`Conversions / Sessions * 100` definition in chart rows, leaders, the overall
+summary, browser PDFs and server PDFs. Native GA4 conversion imports are unchanged.
+Local correction and evidence: [conversion parity](../docs/fixes/ga4-conversion-parity-2026-11-08.md).
+Hosted acceptance and the matching monitor expectation update are release gates;
+this narrow correction does not certify the whole tab.
+
 **Status: UNVERIFIED. Ad Comparison is not currently certified production-ready.**
 The new Revenue Breakdown `TOTAL` row has passed focused local tests, but its
 exact revision has not yet been deployed and validated at runtime.
@@ -231,14 +238,14 @@ certification evidence remains revision-specific.
 | Sessions | GA4 acquisition rows -> campaign aggregation | Sum every exact-scope row; never silently truncate |
 | Users | Same acquisition rows | Same window/property/filter as sessions |
 | Conversions | Same acquisition rows | Same window/property/filter as sessions |
-| Conversion rate | GA4 sessionKeyEventRate * 100 | Zero only for a proven zero denominator; unavailable when the native rate is missing or invalid |
+| Conversion rate | GA4 conversions / sessions * 100, matching Overview | Zero conversions with sessions gives zero; overall rate without sessions is unavailable |
 | Native row revenue | GA4 totalRevenue, with purchaseRevenue compatibility fallback | Same import-to-latest-completed row scope; valid zero/negative retained |
 | Imported source revenue | Exact materialized source breakdown | All-mapped-record provenance only; excluded from native ranking |
 | Native comparison row revenue | Native GA4 row revenue | Used by Revenue Breakdown; no imported merge, stale fallback, invented row, or proportional allocation |
 | Overview-based chart row revenue | Native GA4 row plus uniquely mapped confirmed imported revenue | Imported revenue cannot create a campaign row; ambiguous/unavailable mapping fails closed |
 | Leader cards | `selectGA4AdComparisonLeaderCards` | Conversion-based rules are independent of the selected dropdown metric; Revenue detail uses the Overview-based row |
 | Chart | Selected-metric sort of normalized Overview-based rows | Show at most the top 10; selected Revenue may include uniquely mapped imported revenue |
-| Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate is weighted by sessions across campaign rows |
+| Selected-metric summary | Normalized comparison rows | Sum the selected metric; overall conversion rate is total conversions / total sessions * 100 |
 | Campaigns Compared | Normalized comparison rows | Exact normalized row count |
 | Retired All Campaigns | No live-tab render path | Must remain absent from the live tab and new standard reports; explicit legacy report behavior is Reports-owned |
 | Revenue Breakdown | Import-to-latest-completed native row sum plus confirmed nonzero imported source totals through the latest completed reporting day | Exact source ID/value; omit confirmed zero rows; no undated saved-config detail rows or same-type/config fallback; `TOTAL` equals native GA4 plus every confirmed imported amount and is unavailable when any active imported amount is unknown |

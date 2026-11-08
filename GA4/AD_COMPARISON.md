@@ -166,7 +166,7 @@ Row rules:
   which is a secondary filter rather than the provider's exact-match rule
 - start at the selected connection's saved initial historical import boundary
 - end at the latest completed reporting day in the campaign timezone
-- take conversion rate from GA4's native `sessionKeyEventRate` and convert its fraction to a percentage
+- calculate conversion rate as `conversions / sessions * 100`, matching Overview; retain the native `sessionKeyEventRate` only as provider data, not this displayed metric
 - use only native GA4 row revenue in the separate native comparison rows
 - never create a comparison row from imported-source configuration
 - never infer, merge, or proportionally allocate all-mapped-record imported revenue into the
@@ -244,7 +244,7 @@ Display rule:
 
 Card selection uses exact numeric values, not rounded display strings. Validate close decisions with row-level inputs:
 
-- `conversionRate = GA4 sessionKeyEventRate * 100`; key events count and sessions alone cannot establish how many sessions contained a key event
+- `conversionRate = conversions / sessions * 100`, matching Overview for the same campaigns and dates; compute the overall rate from total conversions and total sessions, not an average of campaign percentages. The overall rate is unavailable with no sessions. Repeated/fractional conversions are preserved and the rate may exceed 100%.
 - `Most Key Events` equals the row with the most GA4 key events, or has no winner
   when every row has zero conversions
 - `Highest Conversion Rate` equals the highest positive exact conversion rate

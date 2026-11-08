@@ -60,6 +60,38 @@ function renderRevenueBreakdown(
 }
 
 describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
+  it("matches Overview's unavailable overall rate when no sessions exist", () => {
+    const rows = [{ ...nativeRows[0], sessions: 0 }];
+    const html = renderRevenueBreakdown("ready", [], rows, rows, 0, { selectedMetric: "conversionRate" });
+    expect(html).toMatch(/Overall Conversion Rate<\/div><div[^>]*>Unavailable<\/div>/);
+  });
+  it.each([0, 0.125, 2])("matches Overview conversion counts and rates, including fractional and repeated conversions (factor %s)", factor => {
+    const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
+    const start = page.indexOf("const campaignBreakdownAgg = useMemo(() => {");
+    const end = page.indexOf("const sourceRevenueBreakdowns = useMemo(() => {", start);
+    const rows = [
+      { campaign: "sale", sessions: 40, users: 20, conversions: 30 * factor, revenue: 10, sessionKeyEventRate: 0.1 },
+      { campaign: "sale", sessions: 10, users: 5, conversions: 10 * factor, revenue: 5, sessionKeyEventRate: 0.2 },
+      { campaign: "SALE", sessions: 50, users: 25, conversions: 20 * factor, revenue: 10, sessionKeyEventRate: 0.3 },
+      { campaign: "empty", sessions: 0, users: 0, conversions: 0, revenue: 0, sessionKeyEventRate: 0 },
+      { campaign: "unselected", sessions: 1000, conversions: 1000, revenue: 1000, sessionKeyEventRate: 1 },
+    ];
+    const before = JSON.stringify(rows);
+    const bindings = { useMemo: (fn: () => unknown) => fn(), ga4Breakdown: { rows }, breakdownPlaceholder: false,
+      adComparisonBreakdown: { rows }, adComparisonBreakdownPlaceholder: false,
+      importedGA4CampaignNames: new Set(["sale", "empty"]), normalizeCampaignKey: (name: string) => name.trim().toLowerCase(),
+      campaignCurrency: "EUR", revenueDisplaySources: [], resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay };
+    const aggregate = new Function(...Object.keys(bindings), ts.transpileModule(page.slice(start, end) +
+      "return adComparisonChartRows;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
+    expect(aggregate.map((row: any) => row.conversionRate)).toEqual([80 * factor, 40 * factor, 0]);
+    expect(aggregate.reduce((sum: number, row: any) => sum + row.conversions, 0)).toBe(60 * factor);
+    const html = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversionRate" });
+    expect(html).toMatch(new RegExp(`Overall Conversion Rate</div><div[^>]*>${60 * factor}%</div>`));
+    const countHtml = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversions" });
+    expect(countHtml).toMatch(new RegExp(`Total Conversions</div><div[^>]*>${60 * factor}</div>`));
+    expect(html).not.toContain("unselected");
+    expect(JSON.stringify(rows)).toBe(before);
+  });
   it("reconciles Promo's displayed campaign rows to its precise total with an unmapped CSV", () => {
     const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
     const start = page.indexOf("const campaignBreakdownAgg = useMemo(() => {");

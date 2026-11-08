@@ -23,10 +23,11 @@ vi.mock("jspdf", () => ({ jsPDF: class {
   getTextWidth(value: unknown) { return String(value).length * 2; }
   addPage() {} splitTextToSize(value: unknown) { return [String(value)]; }
   text(value: unknown) { pdfText.push(String(value)); }
-  output() { return Buffer.from("x".repeat(256)); }
+  output() { return Buffer.from("%PDF" + "x".repeat(256)); }
 } }));
 
 import { buildGA4ScheduledPdfAttachment } from "./ga4-scheduled-report-pdf";
+import { createReportPdfArtifact } from "./utils/report-pdf-artifact";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -59,6 +60,25 @@ beforeEach(() => {
 });
 
 afterEach(() => vi.useRealTimers());
+
+it.each(["ads", "custom"].flatMap(reportType => [0, 10].map(sessions => ({ reportType, sessions }))))("matches Overview conversion rate in the scheduled $reportType PDF with $sessions sessions", async ({ reportType, sessions }) => {
+  const snapshot = await storageMock.getGA4OverviewSnapshot();
+  snapshot.campaignBreakdown.rows[0].sessionKeyEventRate = 0.5;
+  snapshot.campaignBreakdown.rows[0].sessions = sessions;
+  snapshot.campaignBreakdown.totals.sessions = sessions;
+  const daily = await storageMock.getGA4DailyMetrics();
+  daily[daily.length - 1].sessions = sessions;
+  const pdf = await buildGA4ScheduledPdfAttachment({ report: { id: "rate-parity", campaignId: "campaign-1", reportType,
+    configuration: JSON.stringify({ adComparisonMetric: "conversionRate", sections: { overview: true, ads: true },
+      subsections: { overview: { summary: true, campaignBreakdown: true }, ads: { topCampaigns: true, summary: true } } }) },
+    reportName: "Conversion parity", windowStart: "2026-09-01", windowEnd: "2026-09-15", campaignName: "Campaign" });
+  expect(createReportPdfArtifact(pdf)?.verification?.inputs.comparisonRateDefinition).toBe("conversions_per_session");
+  const summary = pdfText.findIndex(text => text.toUpperCase() === "OVERALL CONVERSION RATE");
+  expect(summary).toBeGreaterThan(-1);
+  expect(pdfText[summary + 1]).toBe(sessions ? "10%" : "Unavailable");
+  expect(pdfText).not.toContain("50%");
+  expect(snapshot.campaignBreakdown.rows[0].conversions).toBe(1);
+});
 
 it.each(["ads", "overview", "custom"])("keeps Promo's display cents and unmapped CSV separate in the scheduled %s PDF", async reportType => {
   const campaign = await storageMock.getCampaign();

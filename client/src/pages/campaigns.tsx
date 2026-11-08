@@ -1835,9 +1835,11 @@ export default function Campaigns() {
                           ) : null}
                           {ga4CampaignDiscoveryError && <p role="alert" className="text-sm text-destructive">{ga4CampaignDiscoveryError}</p>}
                             <div className="space-y-2">
-                              <Label htmlFor="wizard-ga4-campaign-name">GA4 Campaign Name</Label>
+                              <Label htmlFor="wizard-ga4-campaign-name">Enter GA4 Campaign Name</Label>
+                              <p id="wizard-ga4-campaign-name-help" className="text-xs text-muted-foreground">Enter additional campaign names below, including campaigns from before the last 30 days. Separate multiple names with commas.</p>
                               <Input
                                 id="wizard-ga4-campaign-name"
+                                aria-describedby="wizard-ga4-campaign-name-help wizard-ga4-import-period-help"
                                 value={selectedGA4CampaignValues.join(", ")}
                                 onChange={(e) => setSelectedGA4CampaignValues(
                                   e.target.value
@@ -1847,7 +1849,7 @@ export default function Campaigns() {
                                 )}
                                 placeholder="e.g., brand_awareness, paid_social_q2"
                               />
-                              <p className="text-xs text-muted-foreground">If GA4 reporting is delayed, enter one or more expected UTM campaign values, separated by commas.</p>
+                              <p id="wizard-ga4-import-period-help" className="text-xs text-muted-foreground">Selecting older campaigns does not extend the 30-day import period.</p>
                                 <div className="space-y-2">
                                   <p className="text-sm font-medium">Selected campaigns</p>
                                   <ul aria-label="Selected GA4 campaigns" className="flex h-16 flex-wrap content-start items-start gap-2 overflow-y-auto [scrollbar-gutter:stable]">

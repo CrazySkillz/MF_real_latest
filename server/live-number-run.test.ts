@@ -1,7 +1,8 @@
 import { EventEmitter } from "node:events";
 import { Writable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ spawn: vi.fn(), read: vi.fn(), write: vi.fn() }));
+const mocks = vi.hoisted(() => ({ spawn: vi.fn(), read: vi.fn(), write: vi.fn(), directory: vi.fn() }));
+vi.mock("../scripts/monitor-application-source", () => ({ monitorApplicationDirectory: mocks.directory }));
 vi.mock("node:child_process", () => ({ spawn: mocks.spawn }));
 vi.mock("node:fs", () => ({ readFileSync: mocks.read }));
 import { runNumberMonitorPhases, validOutputChecks, writeMonitorOutput } from "../scripts/check-live-number-run";
@@ -14,6 +15,7 @@ function finish(index: number, body: unknown, code = 0) {
 }
 beforeEach(() => {
   children.length = 0; vi.clearAllMocks();
+  mocks.directory.mockReturnValue(process.cwd());
   const originalWrite = process.stdout.write.bind(process.stdout);
   mocks.write.mockImplementation((_value, callback) => { callback(); return true; });
   vi.spyOn(process.stdout, "write").mockImplementation(((value: any, ...args: any[]) => String(value).startsWith('{')
@@ -27,6 +29,21 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("memory-bounded monitoring phases", () => {
+  it("binds the corrected definition to verified replay source and clears inherited legacy overrides", async () => {
+    const config = JSON.parse(mocks.read()); config.application.comparisonRateDefinition = "conversions_per_session";
+    mocks.read.mockReturnValue(JSON.stringify(config)); mocks.directory.mockReturnValue("verified-test-source");
+    const run = runNumberMonitorPhases("config.json"); finish(0, receipt());
+    await vi.waitFor(() => expect(children).toHaveLength(2));
+    expect(mocks.directory).toHaveBeenCalledWith(config.application);
+    expect(mocks.spawn.mock.calls[1][2]).toMatchObject({ cwd: "verified-test-source", env: { MONITOR_COMPARISON_RATE_DEFINITION: "conversions_per_session" } });
+    finish(1, [{ section: "Output", code: "MATCH", status: "passed" }]); expect(await run).toBe(0);
+  });
+  it("fails closed before output replay when the pinned source is missing or changed", async () => {
+    mocks.directory.mockImplementationOnce(() => { throw Error("changed"); });
+    const run = runNumberMonitorPhases("config.json"); finish(0, receipt());
+    expect(await run).toBe(1); expect(children).toHaveLength(1);
+    expect(mocks.write.mock.calls.some(call => String(call[0]).includes("APPLICATION_REPLAY_SOURCE_UNVERIFIED"))).toBe(true);
+  });
   it("starts output replay only after the source process exits, retaining its exact fingerprint", async () => {
     const run = runNumberMonitorPhases("config.json");
     children[0].stdout.emit("data", JSON.stringify(receipt()) + "\n");
@@ -36,6 +53,7 @@ describe("memory-bounded monitoring phases", () => {
     expect(mocks.spawn.mock.calls[1][1]).toContain("--max-old-space-size=512");
     expect(mocks.spawn.mock.calls[1][1].slice(-3)).toEqual([hash, "d".repeat(64), fingerprint]);
     expect(mocks.spawn.mock.calls[1][2].env).toMatchObject({ DATABASE_URL: "postgresql://fixture.invalid/db", GOOGLE_CLIENT_ID: "fixture-client" });
+    expect(mocks.spawn.mock.calls[1][2].env.MONITOR_COMPARISON_RATE_DEFINITION).toBe("");
     finish(1, [{ section: "Output", code: "MATCH", status: "passed" }]); expect(await run).toBe(0);
   });
   it("continues output verification after a numeric finding but preserves failure", async () => {

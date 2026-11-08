@@ -182,12 +182,13 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
     else if (type === "overview") for (const amount of amounts) {
       const item = campaigns.get(amount.name)!;
       row("CAMPAIGN_BREAKDOWN", amount.name, [[item.sessions, 0], [item.users, 0], [item.conversions, 8],
-        [item.sessions > 0 ? item.weightedRate / item.sessions * 100 : 0, 1, "%"], [amount.cents / 100, 2, "money"]]);
+        [item.sessions > 0 ? (snapshot.comparisonRateDefinition === "conversions_per_session" ? item.conversions : item.weightedRate) / item.sessions * 100 : 0, 1, "%"], [amount.cents / 100, 2, "money"]]);
     }
     else {
       const rows = amounts.map(amount => ({ ...campaigns.get(amount.name)!, name: amount.name, revenue: amount.cents / 100 }))
         .sort((a, b) => b.sessions - a.sessions);
-      const rate = (item: typeof rows[number]) => item.sessions > 0 ? item.weightedRate / item.sessions * 100 : 0;
+      const numerator = (item: typeof rows[number]) => snapshot.comparisonRateDefinition === "conversions_per_session" ? item.conversions : item.weightedRate;
+      const rate = (item: typeof rows[number]) => item.sessions > 0 ? numerator(item) / item.sessions * 100 : 0;
       const integer = (value: number) => value.toLocaleString("en-US", { maximumFractionDigits: 0 });
       const checkText = (code: string, title: string, detail: string) => {
         const index = lines.indexOf(title);
@@ -202,9 +203,10 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
         : metric === "conversionRate" ? `${Math.round(value * 10) / 10}%` : metric === "conversions" ? value.toLocaleString("en-US", { maximumSignificantDigits: 21 }) : integer(value);
       const totalLabel = metric === "revenue" ? "CAMPAIGN BREAKDOWN REVENUE" : metric === "conversionRate" ? "OVERALL CONVERSION RATE" : `TOTAL ${labels[metric].toUpperCase()}`;
       const totalSessions = rows.reduce((sum, item) => sum + item.sessions, 0);
-      const metricTotal = metric === "conversionRate" ? totalSessions > 0 ? rows.reduce((sum, item) => sum + item.weightedRate, 0) / totalSessions * 100 : 0
+      const metricTotal = metric === "conversionRate" ? totalSessions > 0 ? rows.reduce((sum, item) => sum + numerator(item), 0) / totalSessions * 100 : 0
         : rows.reduce((sum, item) => sum + metricValue(item), 0);
-      checkText(metric === "sessions" ? "CAMPAIGN_SESSIONS" : "CAMPAIGN_SELECTED_TOTAL", totalLabel, formatValue(metricTotal));
+      checkText(metric === "sessions" ? "CAMPAIGN_SESSIONS" : "CAMPAIGN_SELECTED_TOTAL", totalLabel,
+        metric === "conversionRate" && totalSessions <= 0 && snapshot.comparisonRateDefinition === "conversions_per_session" ? "Unavailable" : formatValue(metricTotal));
       if (rows.length > 1) {
         const best = [...rows].filter(item => item.conversions > 0).sort((a, b) => b.conversions - a.conversions || a.name.localeCompare(b.name))[0];
         const efficient = [...rows].filter(item => item.sessions > 0 && rate(item) > 0).sort((a, b) => rate(b) - rate(a))[0];

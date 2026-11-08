@@ -175,7 +175,7 @@ export function expectedBrowserCampaignRows(snapshot: LiveNumberSnapshot, now = 
   const remaining = total-rows.reduce((n,r)=>n+r.cents,0);
   if (remaining<0 || remaining>rows.length) throw new Error("BROWSER_ALLOCATION_UNVERIFIED");
   for(let i=0;i<remaining;i++)ranked[i].cents++;
-  return rows.map(r=>({...r,revenue:r.cents/100,conversionRate:r.sessions>0?r.weighted/r.sessions*100:0}));
+  return rows.map(r=>({...r,revenue:r.cents/100,conversionRate:r.sessions>0?(snapshot.comparisonRateDefinition === "conversions_per_session" ? r.conversions : r.weighted)/r.sessions*100:0}));
 }
 
 export function checkNarrativeWindows(snapshot: LiveNumberSnapshot, text: string, now = new Date()): NumberCheck[] {
@@ -346,6 +346,13 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
         for (const [metric, title] of [["sessions", "Sessions"], ["users", "Users"], ["conversions", "Conversions"], ["revenue", "Revenue"], ["conversionRate", "Conversion Rate"]]) {
           if (metric !== "sessions") { await page.getByRole("tabpanel").getByRole("combobox").click(); await page.getByRole("option", { name: `${title} (High to Low)`, exact: true }).click(); }
           await charts("Screen GA4 Campaign Comparison", "campaign", metric);
+          if (["conversions", "conversionRate"].includes(metric)) {
+            const rows = expectedBrowserCampaignRows(snapshot, now), sessions = rows.reduce((sum, row) => sum + row.sessions, 0);
+            const conversions = rows.reduce((sum, row) => sum + row.conversions, 0);
+            const numerator = rows.reduce((sum, row) => sum + (snapshot.comparisonRateDefinition === "conversions_per_session" ? row.conversions : row.weighted), 0);
+            await cards("Screen GA4 Campaign Comparison", metric === "conversions" ? [["Total Conversions", conversions]]
+              : [["Overall Conversion Rate", sessions > 0 ? numerator / sessions * 100 : snapshot.comparisonRateDefinition === "conversions_per_session" ? null : 0, 1]]);
+          }
         }
       }
       if (tab === "insights") {

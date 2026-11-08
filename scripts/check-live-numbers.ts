@@ -10,6 +10,7 @@ import { normalizeReportingTimeZone } from "../server/utils/reporting-timezone";
 const outputApplicationSchema = z.object({
   baseUrl: z.string().url().refine(value => { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash && ["", "/"].includes(url.pathname); }),
   expectedCommit: z.string().regex(/^[a-f0-9]{40}$/),
+  comparisonRateDefinition: z.literal("conversions_per_session").optional(),
 }).strict();
 
 export const liveNumberConfigSchema = z.object({

@@ -6,8 +6,9 @@ import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { NumberCheck } from "../server/live-number-checks";
+import { monitorApplicationDirectory } from "./monitor-application-source";
 
-type Application = { baseUrl: string; expectedCommit: string };
+type Application = { baseUrl: string; expectedCommit: string; comparisonRateDefinition?: "conversions_per_session" };
 const activeChildren = new Set<ReturnType<typeof spawn>>();
 const unverified = (code: string): NumberCheck[] => [{ section: "Application outputs", code, status: "unverified" }];
 export function writeMonitorOutput(value: string, output: Pick<Writable, "write"> = process.stdout): Promise<void> {
@@ -31,9 +32,13 @@ export async function checkApplicationOutputProcess(campaignHash: string, databa
     } catch { return false; }
   };
   if (!await revisionMatches()) return unverified("DEPLOYED_APPLICATION_REVISION_UNVERIFIED");
+  let directory: string;
+  try { directory = monitorApplicationDirectory(application!); }
+  catch { return unverified("APPLICATION_REPLAY_SOURCE_UNVERIFIED"); }
   const checks: NumberCheck[] = await new Promise(resolve => {
     const child = spawn(process.execPath, ["--max-old-space-size=512", "--import", "tsx", "scripts/check-live-number-outputs.ts", campaignHash, databaseFingerprint, fingerprint],
-      { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, env: environment });
+      { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, cwd: directory,
+        env: { ...environment, MONITOR_COMPARISON_RATE_DEFINITION: application?.comparisonRateDefinition || "" } });
     activeChildren.add(child); child.once("close", () => activeChildren.delete(child)); child.once("error", () => activeChildren.delete(child));
     let output = "", tooLarge = false;
     const timer = setTimeout(() => child.kill(), 310_000).unref();

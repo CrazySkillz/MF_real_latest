@@ -118,6 +118,18 @@ describe("remaining live monitor selections", () => {
     expect(checkConfiguredReportText(snapshot, text, report, now).every(check => check.status === "passed")).toBe(true);
     expect(checkConfiguredReportText(snapshot, text.replace(value + "\nsearch", "999\nsearch"), report, now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_CHART_VALUE", status: "difference" }));
   });
+  it.each([0, 1.5, 25])("rejects the old rate in corrected Comparison PDFs with %s conversions", conversions => {
+    const snapshot = fixture(); snapshot.comparisonRateDefinition = "conversions_per_session";
+    snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [{ campaign: "search", sessions: 20, users: 8, conversions, revenue: 100, sessionKeyEventRate: 0.05 }];
+    const value = `${conversions / 20 * 100}%`;
+    const text = `Top Campaigns by Conversion Rate\n${value}\nsearch\nOVERALL CONVERSION RATE\n${value}\nCAMPAIGNS COMPARED\n1`;
+    const report = custom({ sections: { ads: true }, subsections: { ads: { topCampaigns: true } }, adComparisonMetric: "conversionRate" });
+    expect(checkConfiguredReportText(snapshot, text, report, now).every(check => check.status === "passed")).toBe(true);
+    expect(checkConfiguredReportText(snapshot, text.replaceAll(value, "5%"), report, now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_SELECTED_TOTAL", status: "difference" }));
+    snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows[0].sessions = 0;
+    const unavailable = text.replace(value + "\nsearch", "0%\nsearch").replace("RATE\n" + value, "RATE\nUnavailable");
+    expect(checkConfiguredReportText(snapshot, unavailable, report, now).every(check => check.status === "passed")).toBe(true);
+  });
   it("checks native All Campaigns ordering and cent allocation independently of imported revenue", () => {
     const snapshot = fixture(); snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [
       { campaign: "a", sessions: 20, users: 8, conversions: 0.1, revenue: 1.0049, sessionKeyEventRate: 0.05 },

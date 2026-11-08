@@ -8,3 +8,4 @@ vite.config.ts.*
 .env.locale2e/auth.json
 test-results/
 playwright-report/
+.monitor-applications/

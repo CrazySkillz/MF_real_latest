@@ -135,16 +135,16 @@ export function checkReportTextNumbers(text: string, reportType: string, verific
     } else checks.push({ section, code: "CPA_HISTORICAL_CONVERSION_BASIS_UNVERIFIED", status: "unverified" });
     const tableStart = lines.indexOf("CAMPAIGN SESSIONS USERS CONVERSIONS CONV. RATE REVENUE");
     if (tableStart >= 0) {
-      // This column is GA4 sessionKeyEventRate (sessions containing a key event),
-      // not the printed key-event count divided by sessions. Its numerator was
-      // not retained in the historical artifact; never flag that intentional difference.
+      // Older receipts retain GA4 sessionKeyEventRate; new receipts explicitly
+      // identify conversions/session. Never reinterpret an old artifact using
+      // today's definition or today's campaign settings.
       if (verification && Array.isArray(verification.campaignRows)) {
         const end = lines.findIndex((line, i) => i > tableStart && ["Landing Pages", "Conversion Events"].includes(line));
         const table = lines.slice(tableStart + 1, end < 0 ? undefined : end).join(" ");
         for (const row of verification.campaignRows) {
           const escaped = String(row.name).replace(/\s+/g, " ").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           const matches = Array.from(table.matchAll(new RegExp(`(?:^|\\s)${escaped}\\s+${numericText}\\s+${numericText}\\s+${numericText}\\s+(${numericText})%`, "g")));
-          const sessions = numberOrNull(row.sessions), weighted = numberOrNull(row.sessionKeyEventRateWeighted);
+          const sessions = numberOrNull(row.sessions), weighted = numberOrNull(verification.comparisonRateDefinition === "conversions_per_session" ? row.conversions : row.sessionKeyEventRateWeighted);
           const expected = sessions !== null && weighted !== null ? sessions > 0 ? weighted / sessions * 100 : 0 : null;
           push("CAMPAIGN_SESSION_KEY_EVENT_RATE", expected, matches.length === 1 ? Number(matches[0][1].replaceAll(",", "")) : null, 1);
         }

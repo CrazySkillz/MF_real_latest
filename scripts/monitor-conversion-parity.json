@@ -1,0 +1,20 @@
+{
+  "expectedCommit": "8a81c483d08b6f3db430f568a86e50d5d3fe2874",
+  "files": [
+    {
+      "path": "client/src/pages/ga4-metrics.tsx",
+      "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
+      "after": "073c9fe26c5feb2fcadc91886efdcf75b8261879b59cf341c2b0dd607b72cc5d"
+    },
+    {
+      "path": "client/src/pages/ga4-ad-comparison.tsx",
+      "before": "d7ddacff87f5f2496891cb14dea26d42586d4a9597b855cf0be0690cb05a6159",
+      "after": "5e28ed0cf63b99b4e43ff5c565c3958f84ec61b756bd6c4ab3d465826c7a79d9"
+    },
+    {
+      "path": "server/ga4-scheduled-report-pdf.ts",
+      "before": "53c136ffec1baa6f92c3d5df66abbbfb2f62a6d4a79a78ca7277bd3a941324d9",
+      "after": "b0dfffef42c0285abb26615cb8d6b2f605a8f451701caa23e182dbd3677e40b8"
+    }
+  ]
+}

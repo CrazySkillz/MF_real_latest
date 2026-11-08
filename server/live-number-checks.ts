@@ -13,7 +13,7 @@ import { deriveTrendFinancialRatios } from "../client/src/lib/trend-analysis-cum
 import { resolveFinancialPacingCalendar } from "../client/src/lib/financial-executive-actions";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 
-export type LiveNumberSnapshot = { campaign: Record<string, any>; rows: Record<string, any[]> };
+export type LiveNumberSnapshot = { campaign: Record<string, any>; rows: Record<string, any[]>; comparisonRateDefinition?: "conversions_per_session" };
 export type NumberCheck = { section: string; code: string; status: "passed" | "difference" | "unverified"; subject?: string };
 export const monitorHash = (value: string) => createHash("sha256").update(value).digest("hex").slice(0, 12);
 export const snapshotFingerprint = (snapshot: LiveNumberSnapshot) => createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");

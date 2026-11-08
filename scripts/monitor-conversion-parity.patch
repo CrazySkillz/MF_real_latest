@@ -1,0 +1,140 @@
+diff --git a/client/src/pages/ga4-ad-comparison.tsx b/client/src/pages/ga4-ad-comparison.tsx
+index 1aa7650b..49e073f4 100644
+--- a/client/src/pages/ga4-ad-comparison.tsx
++++ b/client/src/pages/ga4-ad-comparison.tsx
+@@ -112,12 +112,11 @@ function GA4AdComparison({
+       current.users += row.users;
+       current.conversions += row.conversions;
+       current.revenue += row.revenue;
+-      current.conversionRate += row.conversionRate * row.sessions;
+       byName.set(key, current);
+     }
+     return Array.from(byName.values()).map((row) => ({
+       ...row,
+-      conversionRate: row.sessions > 0 ? row.conversionRate / row.sessions : 0,
++      conversionRate: row.sessions > 0 ? row.conversions / row.sessions * 100 : 0,
+       revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
+     }));
+   }, [chartCampaignRows]);
+@@ -164,8 +163,8 @@ function GA4AdComparison({
+     if (selectedMetric === "revenue" && chartRevenue !== undefined) return chartRevenue;
+     if (selectedMetric === "conversionRate") {
+       const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
+-      const weightedRates = sortedByMetric.reduce((s, c) => s + c.conversionRate * c.sessions, 0);
+-      return totalSessions > 0 ? weightedRates / totalSessions : 0;
++      const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
++      return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+     }
+     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
+   }, [sortedByMetric, selectedMetric, chartRevenue]);
+@@ -353,7 +352,7 @@ function GA4AdComparison({
+               )}
+             </div>
+             <div className="text-2xl font-bold text-foreground mt-1">
+-              {fmtMetricValue(selectedMetric, totalMetric)}
++              {selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, totalMetric)}
+             </div>
+             <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
+           </CardContent>
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 9d33bee3..957f88d6 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -4130,12 +4130,11 @@ export default function GA4Metrics() {
+         current.users += Number(row?.users || 0);
+         current.conversions += Number(row?.conversions || 0);
+         current.revenue += Number(row?.revenue || 0);
+-        current.conversionRate = Number(current.conversionRate || 0) + Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
+         chartSummaryByCampaign.set(key, current);
+       }
+       const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
+         ...row,
+-        conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversionRate || 0) / Number(row.sessions) : 0,
++        conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversions || 0) / Number(row.sessions) * 100 : 0,
+       }));
+       const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
+         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
+@@ -4145,8 +4144,8 @@ export default function GA4Metrics() {
+       const totalMetric = selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
+         ? (() => {
+             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
+-            const weightedRates = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversionRate || 0) * Number(c?.sessions || 0), 0);
+-            return totalSessions > 0 ? weightedRates / totalSessions : 0;
++            const totalConversions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversions || 0), 0);
++            return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+           })()
+         : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
+       if (rows.length === 0 && chartSummaryRows.length === 0) {
+@@ -4241,7 +4240,7 @@ export default function GA4Metrics() {
+           }
+ 
+           const adSummaryCards: [string, string][] = [
+-            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
++            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+             ["Campaigns Compared", String(sortedByMetric.length)],
+           ];
+           const sumW = (CW - 4) / 2;
+@@ -6291,7 +6290,7 @@ export default function GA4Metrics() {
+           revenue,
+           unroundedRevenue: c.revenue,
+           users,
+-          conversionRate: sessions > 0 ? (c.sessionKeyEventRateWeighted / sessions) * 100 : 0,
++          conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+           revenuePerSession: sessions > 0 ? revenue / sessions : 0,
+         };
+       })
+diff --git a/server/ga4-scheduled-report-pdf.ts b/server/ga4-scheduled-report-pdf.ts
+index 7a6f2207..ef221fae 100644
+--- a/server/ga4-scheduled-report-pdf.ts
++++ b/server/ga4-scheduled-report-pdf.ts
+@@ -998,7 +998,7 @@ async function buildGA4ReportPayload(report: any) {
+       return {
+         ...row,
+         revenue,
+-        conversionRate: sessions > 0 ? (row.sessionKeyEventRateWeighted / sessions) * 100 : 0,
++        conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
+       };
+     })
+@@ -1184,6 +1184,7 @@ async function buildGA4ReportPayload(report: any) {
+     },
+     reportCumulativeWindow,
+     verificationInputs: {
++      comparisonRateDefinition: "conversions_per_session",
+       scope: { campaignId, propertyId, campaignFilter, currency: campaignCurrency, reportingTimeZone: reportCumulativeWindow.reportingTimeZone },
+       trafficWindow: reportCumulativeWindow,
+       financialWindow: { startDate: financialStartDate, endDate: financialEndDate, importedStartDate: importedRevenueStartDate, spendStartDate: spendSourceStartDate },
+@@ -1601,12 +1602,11 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+       current.users += Number(row?.users || 0);
+       current.conversions += Number(row?.conversions || 0);
+       current.revenue += Number(row?.revenue || 0);
+-      current.conversionRate += Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
+       chartSummaryByCampaign.set(key, current);
+     }
+     const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
+       ...row,
+-      conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversionRate || 0) / Number(row.sessions) : 0,
++      conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversions || 0) / Number(row.sessions) * 100 : 0,
+     }));
+     const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
+       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
+@@ -1615,8 +1615,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+     const totalMetric = selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
+       ? (() => {
+           const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
+-          const weightedRates = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversionRate || 0) * Number(row?.sessions || 0), 0);
+-          return totalSessions > 0 ? weightedRates / totalSessions : 0;
++          const totalConversions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversions || 0), 0);
++          return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+         })()
+       : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
+     const leaderMetric = selectedMetric;
+@@ -1664,7 +1664,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+       doc.setFontSize(6.5); doc.setTextColor(...COLORS.textTert); doc.text(formatMetricValue(selectedMetric, maxValue), chartX + chartW, chartY + 1, { align: "right" });
+       y += 58;
+       const summaryMetricLabel = selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric]}`;
+-      metricCards([[summaryMetricLabel, formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
++      metricCards([[summaryMetricLabel, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
+       if (selectedMetric === "users") {
+         doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textTert);
+         doc.text("Users are summed campaign-row counts and are non-additive.", MX, y);

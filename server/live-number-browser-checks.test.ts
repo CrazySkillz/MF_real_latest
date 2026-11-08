@@ -75,6 +75,14 @@ describe("isolated browser monitoring boundaries", () => {
   it("uses session key-event rate rather than conversions divided by sessions", () => {
     expect(expectedBrowserCampaignRows(fixture(),now)[0].conversionRate).toBe(5);
   });
+  it.each([0, 1.5, 25])("uses the pinned new definition for %s conversions without changing legacy checks", conversions => {
+    const snapshot = fixture(); snapshot.comparisonRateDefinition = "conversions_per_session";
+    snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows[0].conversions = conversions;
+    const before = JSON.stringify(snapshot);
+    expect(expectedBrowserCampaignRows(snapshot,now)[0].conversionRate).toBe(conversions / 20 * 100);
+    expect(JSON.stringify(snapshot)).toBe(before);
+    expect(expectedBrowserCampaignRows(fixture(),now)[0].conversionRate).toBe(5);
+  });
   it("checks shortened source labels without inventing a join for ambiguous sources", () => {
     const snapshot=fixture();
     snapshot.rows.revenueSources=[{id:'shop',campaignId:'a',sourceType:'shopify',displayName:'Shopify (fixture.invalid)',currency:'EUR',isActive:true}];

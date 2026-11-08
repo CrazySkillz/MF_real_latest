@@ -15,7 +15,7 @@ Google may require an administrator to use a passkey when granting account acces
 ## Configuration and ownership
 
 - New setup is opt-in: `GOOGLE_ADS_CLIENT_SERVICE_ACCOUNTS_ENABLED=true`.
-- Reuses `GA4_CLIENT_SERVICE_ACCOUNT_JSON` as the issuer. Its project must enable the Google Ads API as well as the existing IAM/credentials APIs. The existing `GOOGLE_ADS_DEVELOPER_TOKEN` is still required and must have sufficient access for the customer account.
+- Reuses `GA4_CLIENT_SERVICE_ACCOUNT_JSON` as the issuer. Its project must enable the Google Ads API as well as the existing IAM/credentials APIs. Enabling Ads grants Test API access; real Ads accounts require Explorer access or higher on the Google Cloud Google Ads API Overview page. Google sunset developer tokens on September 9, 2026; no developer token is required. Existing optional token handling is preserved.
 - Email: `<client-name>-ads-<customer-id>@<issuer-project>.iam.gserviceaccount.com`; client portion normalized and shortened to meet Google's 30-character account ID limit.
 - Migration `0029_google_ads_client_service_accounts.sql` adds a reservation table and nullable connection binding; existing records are not rewritten.
 - Reservation scope is owner + client + Ads customer. Campaigns belonging to that same client reuse its identity. A name collision with another client fails closed. Limit: 20 reserved Ads customers per client.
@@ -33,4 +33,12 @@ Related existing GA4 access, Google Ads import/refresh/disconnect and durable-wo
 
 Monitoring must use the updated credential hydration and permit the exact Ads token request while retaining its read-only provider-query restrictions. No live application deployment or live database migration is part of this release.
 
-Official references: https://developers.google.com/google-ads/api/docs/oauth/service-accounts and https://developers.google.com/google-ads/api/docs/oauth/security-requirements.
+Official references: https://developers.google.com/google-ads/api/docs/oauth/service-accounts, https://developers.google.com/google-ads/api/docs/oauth/security-requirements and https://developers.google.com/google-ads/api/docs/api-policy/access-levels.
+
+## Test release evidence — 9 November 2026
+
+- App commit `85be53c117209cbfd0376d006972a9cc91bc8822`: required CI passed 7,596 tests, TypeScript and build. Render test deployment `dep-dbog6ujrjlhs73bbht5g` is serving that commit.
+- Local focused validation: 241 tests across access, browser, PostgreSQL, import, refresh and disconnect paths; the final retry safeguard also passed the 10 PostgreSQL binding tests.
+- Deployed browser: generated the same access email on retry, no page errors, input stayed fixed while typing. Database confirmed one prepared identity, zero Ads connections and the existing one active spend source retained.
+- Real Ads reads using the newly generated identity remain unverified until Google Cloud Explorer access and the Ads administrator's Read only grant are completed. No spend was imported for this hosted preparation check.
+- Live application revision remains `673153c98ab4b651e72ad23fe2f1b7ee7f3bce3c`; no live app release or live database migration was performed.

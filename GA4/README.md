@@ -7,6 +7,10 @@ This folder is the canonical GA4 documentation set for this codebase.
 Use it for all GA4-related development, reviews, testing, and bug fixes.
 
 This is the GA4-specific companion to `ARCHITECTURE_USER_JOURNEY.md`.
+
+The optional client-specific service-account onboarding implementation and its
+pending hosted activation are documented in
+[`docs/GA4_AUTOMATIC_CLIENT_ACCESS.md`](../docs/GA4_AUTOMATIC_CLIENT_ACCESS.md).
 For the current route, navigation, and user-visible section inventory, also use
 `docs/CURRENT_APP_SECTIONS.md`.
 

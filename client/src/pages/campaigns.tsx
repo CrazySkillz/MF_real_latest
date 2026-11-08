@@ -1799,6 +1799,7 @@ export default function Campaigns() {
                       {selectedWizardPlatform === 'google-analytics' && ga4ConfigSubStep === 'campaigns' && (
                         <div className="space-y-4">
                           <p className="text-sm text-muted-foreground">Select which GA4 campaigns (UTM campaign values) to track.</p>
+                          <p className="text-sm font-medium">Campaigns found in the last 30 days</p>
                           {isGA4CampaignLoading ? (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
@@ -1834,8 +1835,11 @@ export default function Campaigns() {
                           ) : null}
                           {ga4CampaignDiscoveryError && <p role="alert" className="text-sm text-destructive">{ga4CampaignDiscoveryError}</p>}
                             <div className="space-y-2">
-                              <Label>GA4 campaignName</Label>
+                              <Label htmlFor="wizard-ga4-campaign-name">Enter GA4 Campaign Name</Label>
+                              <p id="wizard-ga4-campaign-name-help" className="text-xs text-muted-foreground">Enter additional campaign names below, including campaigns from before the last 30 days. Separate multiple names with commas.</p>
                               <Input
+                                id="wizard-ga4-campaign-name"
+                                aria-describedby="wizard-ga4-campaign-name-help wizard-ga4-import-period-help"
                                 value={selectedGA4CampaignValues.join(", ")}
                                 onChange={(e) => setSelectedGA4CampaignValues(
                                   e.target.value
@@ -1845,13 +1849,26 @@ export default function Campaigns() {
                                 )}
                                 placeholder="e.g., brand_awareness, paid_social_q2"
                               />
-                              <p className="text-xs text-muted-foreground">If GA4 reporting is delayed, enter one or more expected UTM campaign values, separated by commas.</p>
+                              <p id="wizard-ga4-import-period-help" className="text-xs text-muted-foreground">Selecting older campaigns does not extend the 30-day import period.</p>
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium">Selected campaigns</p>
+                                  <ul aria-label="Selected GA4 campaigns" className="flex h-16 flex-wrap content-start items-start gap-2 overflow-y-auto [scrollbar-gutter:stable]">
+                                    {selectedGA4CampaignValues.length === 0 && (
+                                      <li className="text-sm text-muted-foreground">No campaigns selected</li>
+                                    )}
+                                    {selectedGA4CampaignValues.map((name, index) => (
+                                      <li key={`${index}-${name}`} className="max-w-full">
+                                        <Badge variant="secondary" className="max-w-full whitespace-normal break-all">{name}</Badge>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
                             </div>
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setGa4ConfigSubStep('property')}>
                               <ArrowLeft className="w-4 h-4 mr-2" /> Back
                             </Button>
-                            <Button type="button" className="flex-1" onClick={handleWizardSaveGA4Filter} disabled={selectedGA4CampaignValues.length === 0}>
+                            <Button type="button" className="min-w-0 flex-1" onClick={handleWizardSaveGA4Filter} disabled={selectedGA4CampaignValues.length === 0}>
                               {selectedGA4CampaignValues.length > 1 ? `Save ${selectedGA4CampaignValues.length} campaigns` : "Save & Continue"}
                             </Button>
                           </div>
@@ -1943,7 +1960,7 @@ export default function Campaigns() {
                       {initialImportRequested && (
                         <div className="text-sm space-y-2" role="status">
                           <p>{initialImport?.state === "failed"
-                            ? initialImport.error?.includes("TOKEN_EXPIRED") ? "Google access expired. Go back to reconnect Google, then retry the import." : "The import could not finish. Your campaign setup is saved. Retry the import or go back to review your connection."
+                            ? initialImport.error?.startsWith("GA4_INITIAL_VERIFICATION_") ? "The imported figures could not be verified against Google Analytics. Your campaign setup is saved. Retry verification before using these figures." : initialImport.error?.includes("TOKEN_EXPIRED") ? "Google access expired. Go back to reconnect Google, then retry the import." : "The import could not finish. Your campaign setup is saved. Retry the import or go back to review your connection."
                             : initialImport === null ? "The import has not started. Try Create Campaign again."
                             : "Your campaign is being prepared. You can close this window and reopen it from All Campaigns. It becomes active when the import finishes."}</p>
                           {importQuery.isError && <p>Import status is temporarily unavailable. Your saved setup is preserved.</p>}

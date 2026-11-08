@@ -35,6 +35,20 @@ export const serviceAccountResourceGrants = pgTable("service_account_resource_gr
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [uniqueIndex("service_account_resource_grants_scope_idx").on(table.ownerId, table.clientId, table.provider, table.resourceId)]);
 
+// Keep identity reservations after client deletion so a name can never be inherited by another tenant.
+export const ga4ClientServiceAccounts = pgTable("ga4_client_service_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
+  clientId: text("client_id").notNull(),
+  propertyId: text("property_id").notNull(),
+  email: text("email").notNull(),
+  googleUniqueId: text("google_unique_id"),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [uniqueIndex("ga4_client_service_accounts_scope_idx").on(table.ownerId, table.clientId, table.propertyId),
+  uniqueIndex("ga4_client_service_accounts_email_idx").on(table.email)]);
+export type GA4ClientServiceAccount = typeof ga4ClientServiceAccounts.$inferSelect;
+
 export const insertClientSchema = createInsertSchema(clients).pick({
   ownerId: true,
   name: true,
@@ -107,6 +121,7 @@ export const ga4Connections = pgTable("ga4_connections", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   serviceAccountKey: text("service_account_key"), // JSON string
+  serviceAccountBindingId: varchar("service_account_binding_id"), // Exact client/property identity; null preserves legacy credentials.
   method: text("method").notNull(), // 'access_token' or 'service_account'
   propertyName: text("property_name"),
   websiteUrl: text("website_url"), // Display URL for this property
@@ -1470,6 +1485,7 @@ export const insertGA4ConnectionSchema = createInsertSchema(ga4Connections).pick
   accessToken: true,
   refreshToken: true,
   serviceAccountKey: true,
+  serviceAccountBindingId: true,
   method: true,
   propertyName: true,
   websiteUrl: true,

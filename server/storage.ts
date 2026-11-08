@@ -7,11 +7,11 @@ import { ga4RefreshWork, ga4ConnectionLifecycleEvents, type GA4RefreshWork, type
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
+import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne, getTableColumns } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, encryptString, type EncryptedTokens } from "./utils/tokenVault";
 import { isDeepStrictEqual } from "node:util";
-import { inboundWebhookReceipts, serviceAccountResourceGrants, campaignCreationRequests } from "@shared/schema";
-import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
+import { inboundWebhookReceipts, serviceAccountResourceGrants, campaignCreationRequests, ga4ClientServiceAccounts, type GA4ClientServiceAccount } from "@shared/schema";
+import { assertGA4ServiceAccountConnectionAccess, getGA4ClientServiceAccountEmail, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, getGoogleAdsServiceAccountLoginCustomerId, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
@@ -189,6 +189,8 @@ export type GA4OverviewSnapshotInput = {
   };
 };
 
+import { ga4VerificationInputHash, type GA4InitialVerificationReceipt } from './ga4-source-verification';
+
 // Internal refresh metadata; never part of a persisted metric or API response.
 export type GA4RefreshWriteInput = {
   refreshScope?: { campaignId: string; ownerId: string; reportingDate: string; work: { id: string; leaseToken: string } };
@@ -203,6 +205,9 @@ export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { e
 export interface IStorage {
   withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T>;
   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
+  getGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId?: string): Promise<GA4ClientServiceAccount | undefined>;
+  reserveGA4ClientServiceAccount(campaignId: string, propertyId: string, ownerId: string): Promise<GA4ClientServiceAccount>;
+  completeGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified?: boolean): Promise<GA4ClientServiceAccount>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
   getGA4PublicationVersion(campaignId: string): Promise<string | null>;
   isGA4NativeRecoveryEligible(campaignId: string, options?: { includeFinancialSources?: boolean; revenueChange?: boolean }): Promise<boolean>;
@@ -210,6 +215,7 @@ export interface IStorage {
   requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry?: boolean): Promise<GA4RefreshWork | undefined>;
   getGA4InitialImportWork(campaignId: string, ownerId: string, workId?: string): Promise<GA4RefreshWork | undefined>;
   getGA4InitialImportStatus(campaignId: string, ownerId: string): Promise<GA4InitialImportStatus | null>;
+  recordGA4InitialImportVerification(scope: NonNullable<GA4RefreshWriteInput['refreshScope']>, receipts: GA4InitialVerificationReceipt[]): Promise<void>;
   retireGA4RefreshWork(campaignId: string): Promise<void>;
   writeGA4DerivedChange<T>(campaignId: string | null | undefined, options: GA4RefreshWriteInput, write: (tx: any) => Promise<T>): Promise<T>;
   // Campaigns
@@ -761,6 +767,50 @@ export class DatabaseStorage implements IStorage {
     throw Object.assign(new Error("This provider resource is not approved for this customer"), { code: "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" });
   }
 
+  async getGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId?: string): Promise<GA4ClientServiceAccount | undefined> {
+    const [row] = await db.select({ binding: ga4ClientServiceAccounts }).from(ga4ClientServiceAccounts)
+      .innerJoin(campaigns, and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ga4ClientServiceAccounts.ownerId), eq(campaigns.clientId, ga4ClientServiceAccounts.clientId)))
+      .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+      .where(and(eq(ga4ClientServiceAccounts.propertyId, propertyId), sql`${campaigns.status} <> 'deleted'`,
+        ...(bindingId ? [eq(ga4ClientServiceAccounts.id, bindingId)] : []))).limit(1);
+    return row?.binding;
+  }
+
+  async reserveGA4ClientServiceAccount(campaignId: string, propertyId: string, ownerId: string): Promise<GA4ClientServiceAccount> {
+    return db.transaction(async (tx: any) => {
+      const [scope] = await tx.select({ campaign: campaigns, client: clients }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), eq(campaigns.status, "draft"))).for("update");
+      if (!scope) throw Object.assign(new Error("Start a new campaign to configure Google access."), { status: 409 });
+      const identity = and(eq(ga4ClientServiceAccounts.ownerId, scope.campaign.ownerId!), eq(ga4ClientServiceAccounts.clientId, scope.client.id), eq(ga4ClientServiceAccounts.propertyId, propertyId));
+      const [existing] = await tx.select().from(ga4ClientServiceAccounts).where(identity);
+      if (existing) return existing;
+      const reserved = await tx.select({ id: ga4ClientServiceAccounts.id }).from(ga4ClientServiceAccounts)
+        .where(and(eq(ga4ClientServiceAccounts.ownerId, scope.campaign.ownerId!), eq(ga4ClientServiceAccounts.clientId, scope.client.id))).limit(20);
+      if (reserved.length >= 20) throw Object.assign(new Error("This client has reached the automatic property setup limit. Contact support."), { status: 409 });
+      const email = getGA4ClientServiceAccountEmail(scope.client.name, propertyId);
+      await tx.insert(ga4ClientServiceAccounts).values({ ownerId: scope.campaign.ownerId!, clientId: scope.client.id, propertyId, email }).onConflictDoNothing();
+      const [binding] = await tx.select().from(ga4ClientServiceAccounts).where(identity);
+      if (!binding) throw Object.assign(new Error("This access email is already reserved for another client. Contact support."), { status: 409 });
+      return binding;
+    });
+  }
+
+  async completeGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified = false): Promise<GA4ClientServiceAccount> {
+    return db.transaction(async (tx: any) => {
+      const [scope] = await tx.select({ campaign: campaigns }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), eq(campaigns.status, "draft"))).for("share");
+      if (!scope || !/^\d+$/.test(googleUniqueId)) throw Object.assign(new Error("Campaign setup is no longer available."), { status: 409 });
+      const [binding] = await tx.update(ga4ClientServiceAccounts).set({ googleUniqueId, ...(verified ? { verifiedAt: new Date() } : {}) }).where(and(
+        eq(ga4ClientServiceAccounts.id, bindingId), eq(ga4ClientServiceAccounts.propertyId, propertyId), eq(ga4ClientServiceAccounts.ownerId, scope.campaign.ownerId!),
+        eq(ga4ClientServiceAccounts.clientId, scope.campaign.clientId!), sql`(${ga4ClientServiceAccounts.googleUniqueId} IS NULL OR ${ga4ClientServiceAccounts.googleUniqueId} = ${googleUniqueId})`,
+      )).returning();
+      if (!binding) throw Object.assign(new Error("The client's Google access identity has changed. Contact support."), { status: 409 });
+      return binding;
+    });
+  }
+
   // Campaign methods
   async getCampaigns(): Promise<Campaign[]> {
     return db.select().from(campaigns).orderBy(campaigns.createdAt);
@@ -1117,8 +1167,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean }): Promise<GA4Connection[]> {
+    // The read-only monitor also reads live databases before the additive rollout reaches them.
     const rows = await db
-      .select()
+      .select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` })
       .from(ga4Connections)
       .where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
       .orderBy(ga4Connections.connectedAt);
@@ -1155,7 +1206,7 @@ export class DatabaseStorage implements IStorage {
 
   async getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined> {
     if (propertyId) {
-      const [connection] = await db.select().from(ga4Connections)
+      const [connection] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
         .where(and(
           eq(ga4Connections.campaignId, campaignId),
           eq(ga4Connections.propertyId, propertyId),
@@ -1165,7 +1216,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Return the primary connection if no propertyId specified
-    const [primary] = await db.select().from(ga4Connections)
+    const [primary] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
       .where(and(
         eq(ga4Connections.campaignId, campaignId),
         eq(ga4Connections.isPrimary, true),
@@ -1175,7 +1226,7 @@ export class DatabaseStorage implements IStorage {
     if (primary) return await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(primary) as any) as any;
 
     // If no primary, return the first active connection
-    const [first] = await db.select().from(ga4Connections)
+    const [first] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
       .where(and(
         eq(ga4Connections.campaignId, campaignId),
         eq(ga4Connections.isActive, true)
@@ -1186,7 +1237,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
-    const [primary] = await db.select().from(ga4Connections)
+    const [primary] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
       .where(and(
         eq(ga4Connections.campaignId, campaignId),
         eq(ga4Connections.isPrimary, true),
@@ -1196,7 +1247,7 @@ export class DatabaseStorage implements IStorage {
     if (primary) return await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(primary) as any) as any;
 
     // If no primary, return the first active connection
-    const [first] = await db.select().from(ga4Connections)
+    const [first] = await db.select({ ...getTableColumns(ga4Connections), serviceAccountBindingId: sql<string | null>`to_jsonb(${ga4Connections})->>'service_account_binding_id'` }).from(ga4Connections)
       .where(and(
         eq(ga4Connections.campaignId, campaignId),
         eq(ga4Connections.isActive, true)
@@ -1252,6 +1303,7 @@ export class DatabaseStorage implements IStorage {
       const sameProperty = existing?.propertyId === propertyId;
       const [saved] = await tx.update(ga4Connections).set({
         propertyId, propertyName, method: 'access_token', isActive: true, isPrimary: true,
+        serviceAccountBindingId: null,
         encryptedTokens: pending.encryptedTokens, accessToken: null, refreshToken: null, clientSecret: null,
         clientId: pending.clientId, expiresAt: pending.expiresAt, lookbackDays: 30,
         importStartDate: sameProperty ? existing.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : importStartDate,
@@ -1265,8 +1317,7 @@ export class DatabaseStorage implements IStorage {
 
   async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
     if (String(connection.method || "").trim().toLowerCase() === GA4_SERVICE_ACCOUNT_METHOD) {
-      assertGA4ServiceAccountPropertyAllowed(connection.propertyId);
-      await this.assertServiceAccountResourceAccess(connection.campaignId, "ga4", connection.propertyId);
+      await assertGA4ServiceAccountConnectionAccess(connection);
     }
     // Check if this is the first connection for this campaign
     const existingConnections = await this.getGA4Connections(connection.campaignId, { resolveRuntimeCredentials: false });
@@ -1308,8 +1359,7 @@ export class DatabaseStorage implements IStorage {
     if (!existing) return undefined;
     const nextMethod = String(connection.method ?? existing.method ?? "").trim().toLowerCase();
     if (nextMethod === GA4_SERVICE_ACCOUNT_METHOD) {
-      assertGA4ServiceAccountPropertyAllowed(connection.propertyId ?? existing.propertyId);
-      await this.assertServiceAccountResourceAccess(existing.campaignId, "ga4", connection.propertyId ?? existing.propertyId);
+      await assertGA4ServiceAccountConnectionAccess({ ...existing, ...connection, campaignId: existing.campaignId });
     }
 
     const tokenFieldsProvided =
@@ -1361,7 +1411,7 @@ export class DatabaseStorage implements IStorage {
     if ("publicationVersion" in options) {
       const expected = options.expectedConnection;
       const current = hydrateDecryptedTokens(existing) as any;
-      if (!expected || ["id", "campaignId", "propertyId", "method", "clientId", "accessToken", "refreshToken", "clientSecret"]
+      if (!expected || ["id", "campaignId", "propertyId", "method", "serviceAccountBindingId", "clientId", "accessToken", "refreshToken", "clientSecret"]
         .some(field => (current[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
 
@@ -1494,6 +1544,7 @@ export class DatabaseStorage implements IStorage {
     const connections = await tx.select({ id: ga4Connections.id, propertyId: ga4Connections.propertyId,
       importStartDate: ga4Connections.importStartDate, isPrimary: ga4Connections.isPrimary,
       method: ga4Connections.method, lookbackDays: ga4Connections.lookbackDays, connectedAt: ga4Connections.connectedAt,
+      serviceAccountBindingId: ga4Connections.serviceAccountBindingId,
     }).from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
       .orderBy(ga4Connections.id).for("share");
     if (!connections.length || connections.some((connection: any) => !connection.propertyId.trim())) return undefined;
@@ -1509,6 +1560,8 @@ export class DatabaseStorage implements IStorage {
         if (source) return undefined;
       }
     }
+    // Preserve existing durable scope hashes for every connection that predates client identities.
+    for (const connection of connections) if (!connection.serviceAccountBindingId) delete (connection as any).serviceAccountBindingId;
     const scope = { version: 1, campaign: Object.fromEntries([
       "id", "createdAt", "ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone",
     ].map(key => [key, campaign[key] ?? null])), connections, ...(initialImport ? { kind: "initial_import" } : revenueChange ? { kind: "revenue_change" } : {}) };
@@ -1751,6 +1804,28 @@ export class DatabaseStorage implements IStorage {
     return row?.work;
   }
 
+  async recordGA4InitialImportVerification(scope: NonNullable<GA4RefreshWriteInput['refreshScope']>, receipts: GA4InitialVerificationReceipt[]): Promise<void> {
+    await this.writeWithGA4RefreshOwnership(scope, async tx => {
+      const [work] = await tx.select().from(ga4RefreshWork).where(eq(ga4RefreshWork.id, scope.work.id));
+      const connections = work?.scope?.connections;
+      if (work?.scope?.kind !== 'initial_import' || !Array.isArray(connections) || !connections.length
+        || receipts.length !== connections.length || new Set(receipts.map(r => r.connectionId)).size !== receipts.length) throw new Error('GA4_INITIAL_VERIFICATION_UNVERIFIED');
+      for (const connection of connections) {
+        const receipt = receipts.find(r => r.connectionId === connection.id && r.propertyId === connection.propertyId);
+        if (!receipt || receipt.startDate !== connection.importStartDate || receipt.endDate !== scope.reportingDate
+          || !/^[a-f0-9]{64}$/.test(receipt.inputHash) || !Number.isSafeInteger(receipt.comparedValues) || receipt.comparedValues <= 0
+          || !Number.isFinite(Date.parse(receipt.checkedAt)) || Date.parse(receipt.checkedAt) > Date.now()
+          || !Array.isArray(receipt.unavailable)) throw new Error('GA4_INITIAL_VERIFICATION_UNVERIFIED');
+        const [overview] = await tx.select().from(ga4OverviewSnapshots).where(and(eq(ga4OverviewSnapshots.campaignId, scope.campaignId), eq(ga4OverviewSnapshots.propertyId, connection.propertyId))).for('share');
+        const daily = await tx.select().from(ga4DailyMetrics).where(and(eq(ga4DailyMetrics.campaignId, scope.campaignId), eq(ga4DailyMetrics.propertyId, connection.propertyId),
+          gte(ga4DailyMetrics.date, receipt.startDate), lte(ga4DailyMetrics.date, receipt.endDate))).orderBy(ga4DailyMetrics.date).for('share');
+        if (ga4VerificationInputHash(overview, daily) !== receipt.inputHash) throw new Error('GA4_INITIAL_VERIFICATION_INPUT_CHANGED');
+      }
+      const verification = { version: 1, leaseReceipt: createHash('sha256').update(scope.work.leaseToken).digest('hex'), properties: receipts };
+      await tx.update(ga4RefreshWork).set({ scope: sql`jsonb_set(${ga4RefreshWork.scope}, '{initialImportVerification}', ${JSON.stringify(verification)}::jsonb)` }).where(eq(ga4RefreshWork.id, scope.work.id));
+    });
+  }
+
   async getGA4InitialImportStatus(campaignId: string, ownerId: string): Promise<GA4InitialImportStatus | null> {
     const work = await this.getGA4InitialImportWork(campaignId, ownerId);
     if (!work) return null;
@@ -1851,6 +1926,8 @@ export class DatabaseStorage implements IStorage {
       if (action === "complete_initial_import") {
         const receipt = createHash("sha256").update(leaseToken).digest("hex");
         if (!scope.scope.connections.every((connection: any) => work.scope?.initialImportPublications?.[connection.id] === receipt)) return undefined;
+        if (process.env.GA4_INITIAL_IMPORT_VERIFICATION_ENABLED === 'true'
+          && work.scope?.initialImportVerification?.leaseReceipt !== receipt) return undefined;
         // Native-only creation must publish the card's financial input in the same activation transaction.
         const primary = scope.scope.connections.find((connection: any) => connection.isPrimary)
           || [...scope.scope.connections].sort((a: any, b: any) => new Date(a.connectedAt).getTime() - new Date(b.connectedAt).getTime())[0];
@@ -2095,7 +2172,7 @@ export class DatabaseStorage implements IStorage {
         const scope = overviewSnapshot!.refreshScope!;
         if ("work" in scope && scope.work) {
           const receipt = createHash("sha256").update(scope.work.leaseToken).digest("hex");
-          await tx.update(ga4RefreshWork).set({ scope: sql`jsonb_set(${ga4RefreshWork.scope}, '{initialImportPublications}',
+          await tx.update(ga4RefreshWork).set({ scope: sql`jsonb_set(${ga4RefreshWork.scope} - 'initialImportVerification', '{initialImportPublications}',
             COALESCE(${ga4RefreshWork.scope}->'initialImportPublications', '{}'::jsonb) || jsonb_build_object(${String(scope.connection.id)}::text, ${receipt}::text))` })
             .where(and(workOwnership, sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`));
         }

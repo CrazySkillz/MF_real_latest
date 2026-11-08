@@ -80,8 +80,17 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       else if (url.searchParams.has("statusOnly")) {
         const pending = deletionPending || publication === "pending";
         if (pending) pendingStatusChecks++;
+        let nextCheckAt = "2026-10-24T06:00:00Z";
+        if (pending) {
+          try { nextCheckAt = new Date(await page.evaluate(() => Date.now()) + 60_000).toISOString(); }
+          catch (error) {
+            // Reload cancels the old document's status request while its clock is read.
+            if (!String(error).includes("Execution context was destroyed")) throw error;
+            await route.abort("aborted"); return;
+          }
+        }
         data = { success: true, campaignId: "a", propertyId: "123", publicationToken: receipt, refreshStatus: pending ? "running" : "current",
-          nextCheckAt: pending ? new Date(await page.evaluate(() => Date.now()) + 60_000).toISOString() : "2026-10-24T06:00:00Z" };
+          nextCheckAt };
       }
       else if (url.pathname.endsWith("/ga4-daily")) data = { success: true, propertyId: "123", startDate: "2026-09-04", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8,14,20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
       else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: {

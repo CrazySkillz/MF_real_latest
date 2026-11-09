@@ -60,7 +60,7 @@ export function readOnlyMonitorFetch(request: typeof fetch): typeof fetch {
         || (host === "oauth2.googleapis.com" && path === "/token" && new URLSearchParams(String(options.body)).get("grant_type") === "refresh_token");
       if (host === "iamcredentials.googleapis.com" && /^\/v1\/projects\/-\/serviceAccounts\/\d+:generateAccessToken$/.test(path)) {
         try {
-          allowed = z.object({ scope: z.tuple([z.enum(["https://www.googleapis.com/auth/analytics.readonly", "https://www.googleapis.com/auth/adwords"])]),
+          allowed = z.object({ scope: z.tuple([z.enum(["https://www.googleapis.com/auth/analytics.readonly", "https://www.googleapis.com/auth/adwords", "https://www.googleapis.com/auth/spreadsheets.readonly"])]),
             lifetime: z.literal("3600s") }).strict().safeParse(JSON.parse(String(options.body))).success;
         } catch { allowed = false; }
       }

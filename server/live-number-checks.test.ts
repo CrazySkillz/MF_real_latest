@@ -441,15 +441,17 @@ describe("source reads", () => {
 });
 
 describe("operator safety", () => {
-  it("permits bounded GA4/Ads impersonation and never account creation or broader credentials", async () => {
+  it("permits bounded GA4/Ads/readonly Sheets impersonation and never account creation or broader credentials", async () => {
     const raw = vi.fn(async () => new Response("{}")), request = readOnlyMonitorFetch(raw);
     const url = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/111:generateAccessToken";
     const body = { scope: ["https://www.googleapis.com/auth/analytics.readonly"], lifetime: "3600s" };
     await request(url, { method: "POST", body: JSON.stringify(body) });
     await request(url, { method: "POST", body: JSON.stringify({ ...body, scope: ["https://www.googleapis.com/auth/adwords"] }) });
-    expect(raw).toHaveBeenCalledTimes(2); raw.mockClear();
+    await request(url, { method: "POST", body: JSON.stringify({ ...body, scope: ["https://www.googleapis.com/auth/spreadsheets.readonly"] }) });
+    expect(raw).toHaveBeenCalledTimes(3); raw.mockClear();
     for (const payload of [{ ...body, scope: ["https://www.googleapis.com/auth/cloud-platform"] }, { ...body, delegates: ["another-account"] },
-      { ...body, lifetime: "7200s" }, { ...body, scope: [...body.scope, "extra"] }]) {
+      { ...body, lifetime: "7200s" }, { ...body, scope: [...body.scope, "extra"] },
+      { ...body, scope: ["https://www.googleapis.com/auth/spreadsheets"] }, { ...body, scope: ["https://www.googleapis.com/auth/drive"] }]) {
       await expect(request(url, { method: "POST", body: JSON.stringify(payload) })).rejects.toThrow("MONITOR_PROVIDER_WRITE_OR_HOST_BLOCKED");
     }
     for (const target of [url.replace("111", "client@project.iam.gserviceaccount.com"), "https://iam.googleapis.com/v1/projects/project/serviceAccounts"]) {

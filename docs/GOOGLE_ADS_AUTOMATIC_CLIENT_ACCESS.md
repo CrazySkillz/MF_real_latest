@@ -42,3 +42,9 @@ Official references: https://developers.google.com/google-ads/api/docs/oauth/ser
 - Deployed browser: generated the same access email on retry, no page errors, input stayed fixed while typing. Database confirmed one prepared identity, zero Ads connections and the existing one active spend source retained.
 - Real Ads reads using the newly generated identity remain unverified until Google Cloud Explorer access and the Ads administrator's Read only grant are completed. No spend was imported for this hosted preparation check.
 - Live application revision remains `673153c98ab4b651e72ad23fe2f1b7ee7f3bce3c`; no live app release or live database migration was performed.
+
+## Spend selection/display follow-up — 9 November 2026
+
+Test application `168ae54ac36342050d9284af67a715c24a23d489` starts new Google Ads imports unselected and checks pending financial publication every 5 seconds for at most 2 minutes after a Spend save. Saved edit selections and existing publication verification remain intact. Observed source save at 14:58:12 UTC completed financial work at 14:58:15 UTC; the previous browser interval could add up to 60 seconds afterward.
+
+The paired monitor changes only the test revision pins. The exact application diff contains no metric calculations, report rendering, provider queries, persistence or scheduled refresh changes; it is equivalent to the existing pinned replay for figure comparisons. Live revision pins, replay hashes, source permissions and monitoring schedules are unchanged. Focused application validation passed 115 tests, including the actual wizard and Overview browser flows.

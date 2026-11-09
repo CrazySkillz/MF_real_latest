@@ -493,6 +493,72 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: false, lastRunStartedAt: startedAt,
         lastRunStatus: previous.lastRunStatus, lastError: previous.lastError, lastErrorTime: previous.lastErrorTime });
     });
+    describe("recovered campaign health", () => {
+      const queue = (ids: string[], suppressAlerts = false) => mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue(ids.map(campaignId => ({
+        id: `work-${campaignId}`, campaignId, dueAt: new Date(Date.now() - 60_000), reportingDate,
+        scope: { campaign: { ownerId: `${campaignId}-owner` } }, suppressAlerts,
+      })));
+      const failScheduled = async (ids: string[]) => {
+        mocks.storage.claimGA4RefreshWork.mockImplementation(async id => {
+          if (ids.includes(id)) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+          return { id: "work-a", leaseToken: "owner-token" };
+        });
+        await expect(runGA4DailyRefreshPipelineForTrigger("scheduled", { scheduledWindow: {
+          after: new Date(Date.now() - 1000), through: new Date(),
+        } })).rejects.toThrow("Aligned GA4 publication failed");
+        mocks.storage.claimGA4RefreshWork.mockResolvedValue({ id: "work-a", leaseToken: "owner-token" });
+        vi.setSystemTime(new Date(Date.now() + 1000));
+      };
+      it("clears a recovered campaign failure only after full publication and retains its error timestamp", async () => {
+        await failScheduled(["campaign-a"]);
+        const failed = getGA4DailySchedulerStatus();
+        queue(["campaign-a"]);
+        await recoverInterruptedGA4Refreshes();
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: false, lastRunStatus: "success", lastError: null,
+          lastAlignedRefreshFailures: [], lastErrorTime: failed.lastErrorTime, lastRunFinishedAt: new Date().toISOString() });
+        expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", "work-a", "owner-token", "complete", 120_000, expect.any(String));
+      });
+      it("retains another campaign's failure until that campaign also recovers", async () => {
+        await failScheduled(["campaign-a", "campaign-b"]);
+        queue(["campaign-a"]); await recoverInterruptedGA4Refreshes();
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ lastRunStatus: "failed", lastAlignedRefreshFailures: [expect.any(Object)] });
+        queue(["campaign-b"]); await recoverInterruptedGA4Refreshes();
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ lastRunStatus: "success", lastError: null, lastAlignedRefreshFailures: [] });
+      });
+      it("does not clear a failure when an unrelated campaign recovers", async () => {
+        await failScheduled(["campaign-a"]);
+        const failed = getGA4DailySchedulerStatus();
+        queue(["campaign-b"]); await recoverInterruptedGA4Refreshes();
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ lastRunStatus: "failed", lastError: failed.lastError,
+          lastAlignedRefreshFailures: failed.lastAlignedRefreshFailures });
+      });
+      it.each(["provider", "alerts", "completion", "suppressed alerts"])("retains the failure after incomplete recovery: %s", async stage => {
+        await failScheduled(["campaign-a"]);
+        queue(["campaign-a"], stage === "suppressed alerts");
+        if (stage === "provider") mocks.provider.getTimeSeriesData.mockRejectedValue(new Error("TOKEN_EXPIRED"));
+        if (stage === "alerts") mocks.kpiAlerts.mockRejectedValue(new Error("ALERT_FAILED"));
+        if (stage === "completion") live = false;
+        await recoverInterruptedGA4Refreshes();
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: false, lastRunStatus: "failed",
+          lastAlignedRefreshFailures: [expect.any(Object)] });
+      });
+      it("retains a new failed campaign while resolving the original failure", async () => {
+        await failScheduled(["campaign-a"]);
+        queue(["campaign-a", "campaign-b"]);
+        mocks.kpiAlerts.mockImplementation(async id => { if (id === "campaign-b") throw new Error("ALERT_FAILED"); });
+        await recoverInterruptedGA4Refreshes();
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ lastRunStatus: "failed", lastAlignedRefreshFailures: [expect.any(Object)] });
+        mocks.kpiAlerts.mockResolvedValue(undefined);
+        queue(["campaign-b"]); await recoverInterruptedGA4Refreshes();
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ lastRunStatus: "success", lastError: null });
+      });
+      it("does not clear an unattributed scheduler error after campaign recovery", async () => {
+        mocks.storage.getCampaigns.mockRejectedValueOnce(new Error("campaign discovery unavailable"));
+        await expect(runGA4DailyRefreshPipelineForTrigger("scheduled")).rejects.toThrow("campaign discovery unavailable");
+        queue(["campaign-a"]); await recoverInterruptedGA4Refreshes();
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ lastRunStatus: "failed", lastError: "campaign discovery unavailable" });
+      });
+    });
     it("runs a saved revenue change through the existing coordinated pipeline for only the requested campaign", async () => {
       const dueAt = new Date(Date.now() - 60_000);
       mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue(["campaign-b", "campaign-a"].map(campaignId => ({ id: `work-${campaignId}`, campaignId,

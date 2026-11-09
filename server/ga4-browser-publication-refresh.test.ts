@@ -194,7 +194,7 @@ describe("GA4 browser publication coordination", () => {
     const view = browser(), now = Date.now();
     const query = (refreshStatus: string, delay = 60_000, status = "success") => ({ state: { status, data: { refreshStatus, nextCheckAt: new Date(Date.now() + delay).toISOString() } } });
     expect(view.render().queryOptions.refetchInterval(query("running"))).toBe(60_000);
-    view.spendFollowUp = { scope: JSON.stringify(["a", "123"]), until: now + 120_000 };
+    view.spendFollowUp = { scope: JSON.stringify(["a", "123"]), until: now + 900_000 };
     const interval = () => view.render().queryOptions.refetchInterval;
     expect(interval()(query("running"))).toBe(5_000);
     expect(interval()(query("delayed"))).toBe(5_000);
@@ -204,7 +204,9 @@ describe("GA4 browser publication coordination", () => {
     expect(interval()({ state: { status: "success", data: { refreshStatus: "running" } } })).toBe(false);
     expect(view.render(undefined, false, "other", "123").queryOptions.refetchInterval(query("running"))).toBe(60_000);
     expect(view.render(undefined, false, "a", "999").queryOptions.refetchInterval(query("running"))).toBe(60_000);
-    vi.setSystemTime(now + 120_000);
+    vi.setSystemTime(now + 125_000);
+    expect(interval()(query("running"))).toBe(5_000);
+    vi.setSystemTime(now + 900_000);
     expect(interval()(query("running"))).toBe(60_000);
     view.client.clear();
   });
@@ -524,7 +526,7 @@ describe("GA4 browser publication coordination", () => {
       await callbackFn({ preventDefault: noop });
       if (marker === "AddSpendWizardModal") {
         expect(followUp).toHaveBeenCalledWith({ scope: JSON.stringify(["a", "123"]), until: expect.any(Number) });
-        expect(followUp.mock.calls[0][0].until).toBeGreaterThanOrEqual(before + 120_000);
+        expect(followUp.mock.calls[0][0].until).toBeGreaterThanOrEqual(before + 900_000);
       } else expect(followUp).not.toHaveBeenCalled();
       if (ok) await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
       else { await vi.waitFor(() => expect(toast).toHaveBeenCalled()); expect(refresh).not.toHaveBeenCalled(); }

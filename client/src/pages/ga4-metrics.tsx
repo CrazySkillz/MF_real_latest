@@ -7493,7 +7493,7 @@ export default function GA4Metrics() {
                     platformContext="ga4"
                     initialSource={editingSpendSource || undefined}
                     onProcessed={() => {
-                      setSpendImportFollowUp({ scope: ga4PublicationScope, until: Date.now() + 120_000 });
+                      setSpendImportFollowUp({ scope: ga4PublicationScope, until: Date.now() + 900_000 });
                       void refetchGA4PublicationStatus();
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });

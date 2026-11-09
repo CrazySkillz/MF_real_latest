@@ -1302,6 +1302,8 @@ export async function recoverInterruptedGA4Refreshes(targetCampaignId?: string):
   const completed = new Set<string>();
   alignedCampaignIdsInCurrentRun = completed;
   (global as any).__ga4DailyRefreshInProgress = true;
+  // The health monitor needs the start of this active batch, not a previous scheduled run.
+  ga4DailySchedulerStatus.lastRunStartedAt = new Date();
   beginFinancialDailySnapshotRefreshObservation("ga4_daily");
   const campaigns = new Set<string>();
   const pending = work.filter(item => {

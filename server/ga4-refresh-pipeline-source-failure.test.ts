@@ -473,6 +473,26 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", dueAt, reportingDate, { suppressAlerts: false });
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(true);
     });
+    it.each([false, true])("records recovery timing without rewriting existing failure evidence (failure=%s)", async failure => {
+      const startedAt = new Date().toISOString();
+      const previous = getGA4DailySchedulerStatus();
+      let release!: () => void;
+      const gate = new Promise<void>(resolve => { release = resolve; });
+      mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue([{ id: "work-a", campaignId: "campaign-a",
+        dueAt: new Date(Date.now() - 60_000), reportingDate, scope: { campaign: { ownerId: "campaign-a-owner" } } }]);
+      mocks.storage.getCampaign.mockImplementationOnce(async () => {
+        await gate;
+        if (failure) throw new Error("recovery provider unavailable");
+        return campaigns[0];
+      });
+      const running = recoverInterruptedGA4Refreshes("campaign-a");
+      await vi.advanceTimersByTimeAsync(0);
+      const during = getGA4DailySchedulerStatus();
+      release(); await running;
+      expect(during).toMatchObject({ inProgress: true, lastRunStartedAt: startedAt });
+      expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: false, lastRunStartedAt: startedAt,
+        lastRunStatus: previous.lastRunStatus, lastError: previous.lastError, lastErrorTime: previous.lastErrorTime });
+    });
     it("runs a saved revenue change through the existing coordinated pipeline for only the requested campaign", async () => {
       const dueAt = new Date(Date.now() - 60_000);
       mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue(["campaign-b", "campaign-a"].map(campaignId => ({ id: `work-${campaignId}`, campaignId,

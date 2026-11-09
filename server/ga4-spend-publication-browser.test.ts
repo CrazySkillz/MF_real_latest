@@ -73,6 +73,9 @@ describe("Spend source amounts stay with the published Total Spend", () => {
       await browserExpect(card).toContainText("€20.00");
       await browserExpect(dialog).toContainText("€20.00");
       await browserExpect(dialog).not.toContainText("€40.00");
+      // Hosted publication can outlast the former two-minute fast-check window.
+      await page.clock.runFor(125_000);
+      await browserExpect(card).toContainText("€20.00");
       published = 40; generation++;
       await page.clock.runFor(5_100);
       await browserExpect(card).toContainText("€40.00");

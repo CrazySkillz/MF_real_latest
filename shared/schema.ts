@@ -63,6 +63,20 @@ export const googleAdsClientServiceAccounts = pgTable("google_ads_client_service
   uniqueIndex("google_ads_client_service_accounts_email_idx").on(table.email)]);
 export type GoogleAdsClientServiceAccount = typeof googleAdsClientServiceAccounts.$inferSelect;
 
+// Sheets identities are reserved per client/file; retired names cannot transfer access to another client.
+export const googleSheetsClientServiceAccounts = pgTable("google_sheets_client_service_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
+  clientId: text("client_id").notNull(),
+  spreadsheetId: text("spreadsheet_id").notNull(),
+  email: text("email").notNull(),
+  googleUniqueId: text("google_unique_id"),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [uniqueIndex("google_sheets_client_service_accounts_scope_idx").on(table.ownerId, table.clientId, table.spreadsheetId),
+  uniqueIndex("google_sheets_client_service_accounts_email_idx").on(table.email)]);
+export type GoogleSheetsClientServiceAccount = typeof googleSheetsClientServiceAccounts.$inferSelect;
+
 export const insertClientSchema = createInsertSchema(clients).pick({
   ownerId: true,
   name: true,
@@ -339,6 +353,7 @@ export const emailAlertEvents = pgTable("email_alert_events", {
 }));
 
 export const googleSheetsConnections = pgTable("google_sheets_connections", {
+  serviceAccountBindingId: varchar("service_account_binding_id"),
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
   spreadsheetId: text("spreadsheet_id").notNull(),
@@ -1570,6 +1585,7 @@ export const insertRevenueRecordSchema = createInsertSchema(revenueRecords).pick
 });
 
 export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheetsConnections).pick({
+  serviceAccountBindingId: true,
   campaignId: true,
   spreadsheetId: true,
   spreadsheetName: true,

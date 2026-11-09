@@ -37,9 +37,10 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   const [authCompleted, setAuthCompleted] = useState(false);
   const [isCheckingExistingAuth, setIsCheckingExistingAuth] = useState(true);
   const [isCheckingServiceAccount, setIsCheckingServiceAccount] = useState(true);
-  const [serviceAccountStatus, setServiceAccountStatus] = useState<{ enabled: boolean; email: string | null }>({ enabled: false, email: null });
+  const [serviceAccountStatus, setServiceAccountStatus] = useState<{ enabled: boolean; email: string | null; selfService?: boolean }>({ enabled: false, email: null });
   const [showServiceAccountInput, setShowServiceAccountInput] = useState(false);
   const [serviceSpreadsheetUrl, setServiceSpreadsheetUrl] = useState("");
+  const [preparedAccess, setPreparedAccess] = useState<{ url: string; email: string } | null>(null);
   const [isServiceConnecting, setIsServiceConnecting] = useState(false);
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>("");
@@ -94,7 +95,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
         const response = await apiRequest("GET", `/api/campaigns/${campaignId}/google-sheets-service-account/status`);
         const data = await response.json().catch(() => ({}));
         if (mounted) {
-          setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null });
+          setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null, selfService: data?.selfService === true });
         }
       } catch {
         if (mounted) setServiceAccountStatus({ enabled: false, email: null });
@@ -189,6 +190,18 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
       onError(error?.message || "Failed to connect to Google Sheets");
     }
   }, [campaignId, cleanupPopup, onError]);
+
+  const prepareAccessEmail = async () => {
+    const url = serviceSpreadsheetUrl.trim();
+    setIsServiceConnecting(true);
+    try {
+      const response = await apiRequest("POST", `/api/campaigns/${campaignId}/google-sheets-service-account/prepare`, { spreadsheetUrl: url });
+      const data = await response.json();
+      if (!data.email) throw new Error("Could not generate the access email.");
+      setPreparedAccess({ url, email: data.email });
+    } catch (error: any) { onError(error?.message || "Could not generate the access email."); }
+    finally { setIsServiceConnecting(false); }
+  };
 
   const connectSharedSpreadsheet = useCallback(async () => {
     if (!serviceSpreadsheetUrl.trim()) {
@@ -366,6 +379,25 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     }
   }, [campaignId, selectedSpreadsheet, selectedSheetNames, availableSheets, onSuccess, onError, isRevenueConnector]);
 
+  const accessEmailReady = !serviceAccountStatus.selfService || preparedAccess?.url === serviceSpreadsheetUrl.trim();
+  const sharedSpreadsheetFields = (
+    <div className="space-y-3">
+      <Label htmlFor="service-spreadsheet-url">Google Sheets URL</Label>
+      <Input id="service-spreadsheet-url" value={serviceSpreadsheetUrl} disabled={isServiceConnecting}
+        onChange={event => { setServiceSpreadsheetUrl(event.target.value); setPreparedAccess(null); }} placeholder="Paste Google Sheets URL" autoComplete="off" />
+      {serviceAccountStatus.selfService && (
+        <Button type="button" variant="outline" onClick={prepareAccessEmail} disabled={isServiceConnecting || !serviceSpreadsheetUrl.trim() || !!preparedAccess}>
+          Generate access email
+        </Button>
+      )}
+      <div className="space-y-2 min-h-28">
+        <Label>Access email</Label>
+        <Input readOnly aria-label="Access email" value={preparedAccess?.email || serviceAccountStatus.email || ""} placeholder="Your client's access email appears here" />
+        <p className="text-sm text-muted-foreground">Open your spreadsheet → Share. Add this email as Viewer, then click Connect shared spreadsheet.</p>
+      </div>
+    </div>
+  );
+
   // Show spreadsheet selection after auth
   if (authCompleted && spreadsheets.length > 0) {
     return (
@@ -402,13 +434,10 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
                 </Button>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Share the spreadsheet with <span className="font-medium text-foreground">{serviceAccountStatus.email}</span> as Viewer, then paste its URL.
-                  </p>
-                  <Input value={serviceSpreadsheetUrl} onChange={(event) => setServiceSpreadsheetUrl(event.target.value)} placeholder="Paste Google Sheets URL" autoComplete="off" />
+                  {sharedSpreadsheetFields}
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" className="flex-1" onClick={() => setShowServiceAccountInput(false)}>Cancel</Button>
-                    <Button type="button" variant="outline" className="flex-1" onClick={connectSharedSpreadsheet} disabled={isServiceConnecting || !serviceSpreadsheetUrl.trim()}>
+                    <Button type="button" variant="outline" className="flex-1" onClick={connectSharedSpreadsheet} disabled={isServiceConnecting || !serviceSpreadsheetUrl.trim() || !accessEmailReady}>
                       {isServiceConnecting ? "Connecting..." : "Connect shared spreadsheet"}
                     </Button>
                   </div>
@@ -594,25 +623,17 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
                   className="w-full"
                   onClick={() => setShowServiceAccountInput(true)}
                 >
-                  Temporary test connection
+                  {serviceAccountStatus.selfService ? "Use an access email" : "Temporary test connection"}
                 </Button>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Share the spreadsheet with <span className="font-medium text-foreground">{serviceAccountStatus.email}</span> as Viewer, then paste its URL.
-                  </p>
-                  <Input
-                    value={serviceSpreadsheetUrl}
-                    onChange={(event) => setServiceSpreadsheetUrl(event.target.value)}
-                    placeholder="Paste Google Sheets URL"
-                    autoComplete="off"
-                  />
+                  {sharedSpreadsheetFields}
                   <Button
                     type="button"
                     variant="outline"
                     className="w-full"
                     onClick={connectSharedSpreadsheet}
-                    disabled={isServiceConnecting || !serviceSpreadsheetUrl.trim()}
+                    disabled={isServiceConnecting || !serviceSpreadsheetUrl.trim() || !accessEmailReady}
                   >
                     {isServiceConnecting ? (
                       <>

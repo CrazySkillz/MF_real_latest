@@ -123,7 +123,7 @@ describe("temporary Google Sheets service-account boundary", () => {
     const route = routesSource.slice(routeStart, routeEnd);
 
     expect(route).toContain("requireCampaignAccessParamId");
-    expect(route).toContain("storage.getGoogleSheetsConnections(campaignId)");
+    expect(route).toContain("storage.getGoogleSheetsConnections(campaignId, undefined, { resolveRuntimeCredentials: false })");
     expect(route).not.toContain("already connected to another account");
     expect(route).not.toContain("existingClaims");
     expect(helperSource).toContain("https://www.googleapis.com/auth/spreadsheets.readonly");

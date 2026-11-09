@@ -1,6 +1,6 @@
 {
   "databaseEnvironmentVariable": "LIVE_NUMBER_DATABASE_URL",
-  "databaseFingerprint": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "databaseFingerprint": "32761ad18dcc39ddc7c8114d7e2b372e1e1f2f8118b773c4ba5e5362a24e2ed3",
   "credentialsEnvironmentPrefix": "LIVE_NUMBER_",
   "application": {
     "baseUrl": "https://app.mimosaas.app",

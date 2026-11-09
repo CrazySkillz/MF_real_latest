@@ -5783,7 +5783,7 @@ export class DatabaseStorage implements IStorage {
         const [connection] = await tx.select().from(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId)).for("update");
         if (!source || source.isActive === false || source.sourceType !== "ad_platforms" || (source.platformContext || "ga4") !== "ga4"
           || source.mappingConfig !== options.expectedSource.mappingConfig || !connection || connection.isActive === false || !connection.spendOnly
-          || ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method", "serviceAccountBindingId", "selectedCampaignIds"].some(field => (connection[field] ?? null) !== (options.expectedConnection![field] ?? null))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+          || ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method", "serviceAccountBindingId", "selectedCampaignIds"].some(field => field === "encryptedTokens" ? !isDeepStrictEqual(connection[field] ?? null, options.expectedConnection![field] ?? null) : (connection[field] ?? null) !== (options.expectedConnection![field] ?? null))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       }
       await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(and(
         eq(ga4GoogleAdsSpendDailyMetrics.campaignId, campaignId),
@@ -6017,7 +6017,7 @@ export class DatabaseStorage implements IStorage {
         const [connection] = await tx.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId)).for("update");
         if (!source || source.isActive === false || source.sourceType !== "ad_platforms" || (source.platformContext || "ga4") !== "ga4"
           || source.mappingConfig !== options.expectedSource.mappingConfig || !connection || connection.isActive === false || !connection.spendOnly
-          || ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method", "selectedCampaignIds"].some(field => (connection[field] ?? null) !== (options.expectedConnection![field] ?? null))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+          || ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method", "selectedCampaignIds"].some(field => field === "encryptedTokens" ? !isDeepStrictEqual(connection[field] ?? null, options.expectedConnection![field] ?? null) : (connection[field] ?? null) !== (options.expectedConnection![field] ?? null))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       }
       await tx.delete(googleAdsDailyMetrics).where(and(
         eq(googleAdsDailyMetrics.campaignId, campaignId),

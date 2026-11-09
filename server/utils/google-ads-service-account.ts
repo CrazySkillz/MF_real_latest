@@ -1,5 +1,7 @@
 import { createHash } from "crypto";
 import { JWT } from "google-auth-library";
+import type { GoogleAdsClientServiceAccount } from "@shared/schema";
+import { clientAccountConfig, clientAccountRequest } from "./ga4-service-account";
 
 export const GOOGLE_ADS_SERVICE_ACCOUNT_METHOD = "service_account";
 
@@ -56,7 +58,8 @@ export function getGoogleAdsServiceAccountConfig(): GoogleAdsServiceAccountConfi
   };
 }
 
-export function getGoogleAdsServiceAccountPublicStatus(): { enabled: boolean; email: string | null } {
+export function getGoogleAdsServiceAccountPublicStatus(): { enabled: boolean; email: string | null; selfService?: boolean } {
+  if (isGoogleAdsClientServiceAccountSetupEnabled()) return { enabled: true, email: null, selfService: true };
   const config = getGoogleAdsServiceAccountConfig();
   return { enabled: Boolean(config && config.allowedCustomerIds.size > 0), email: config?.email || null };
 }
@@ -104,13 +107,20 @@ export async function getGoogleAdsServiceAccountAccessToken(): Promise<{ accessT
 
 export async function hydrateGoogleAdsServiceAccountConnection<T extends Record<string, any>>(connection: T): Promise<T> {
   if (String(connection?.method || "").trim().toLowerCase() !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD) return connection;
-  assertGoogleAdsServiceAccountCustomerAllowed(connection?.customerId);
   const { storage } = await import("../storage");
-  await storage.assertServiceAccountResourceAccess(connection.campaignId, "google_ads", normalizeGoogleAdsCustomerId(connection.customerId));
-  const credentials = await getGoogleAdsServiceAccountAccessToken();
+  let credentials: { accessToken: string; expiresAt: Date };
+  if (connection.serviceAccountBindingId) {
+    const binding = await storage.getGoogleAdsClientServiceAccount(connection.campaignId, normalizeGoogleAdsCustomerId(connection.customerId), connection.serviceAccountBindingId);
+    if (!binding?.verifiedAt || !binding.googleUniqueId) throw new Error("This client's Google Ads access is not verified.");
+    credentials = await getGoogleAdsClientServiceAccountAccessToken(binding);
+  } else {
+    assertGoogleAdsServiceAccountCustomerAllowed(connection?.customerId);
+    await storage.assertServiceAccountResourceAccess(connection.campaignId, "google_ads", normalizeGoogleAdsCustomerId(connection.customerId));
+    credentials = await getGoogleAdsServiceAccountAccessToken();
+  }
   return {
     ...connection,
-    managerAccountId: connection?.managerAccountId || getGoogleAdsServiceAccountLoginCustomerId(),
+    managerAccountId: connection.serviceAccountBindingId ? null : connection?.managerAccountId || getGoogleAdsServiceAccountLoginCustomerId(),
     accessToken: credentials.accessToken,
     refreshToken: null,
     clientId: null,
@@ -118,4 +128,58 @@ export async function hydrateGoogleAdsServiceAccountConnection<T extends Record<
     developerToken: null,
     expiresAt: credentials.expiresAt,
   };
+}
+
+export function isGoogleAdsClientServiceAccountSetupEnabled(): boolean {
+  if (process.env.GOOGLE_ADS_CLIENT_SERVICE_ACCOUNTS_ENABLED !== "true") return false;
+  clientAccountConfig();
+  return true;
+}
+
+export function getGoogleAdsClientServiceAccountEmail(clientName: string, customer: unknown): string {
+  const customerId = normalizeGoogleAdsCustomerId(customer);
+  if (!/^\d{10}$/.test(customerId)) throw Object.assign(new Error("Enter a valid 10-digit Google Ads Customer ID"), { status: 400 });
+  let name = clientName.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "client";
+  if (!/^[a-z]/.test(name)) name = `client-${name}`;
+  return `${name.slice(0, 15).replace(/-+$/g, "")}-ads-${customerId}@${clientAccountConfig().projectId}.iam.gserviceaccount.com`;
+}
+
+export async function provisionGoogleAdsClientServiceAccount(binding: GoogleAdsClientServiceAccount): Promise<string> {
+  if (!isGoogleAdsClientServiceAccountSetupEnabled()) throw new Error("Automatic Google Ads setup is not enabled.");
+  const config = clientAccountConfig(), suffix = `@${config.projectId}.iam.gserviceaccount.com`;
+  if (!binding.email.endsWith(suffix)) throw new Error("This access email belongs to a different Google project.");
+  const base = `https://iam.googleapis.com/v1/projects/${encodeURIComponent(config.projectId)}/serviceAccounts`;
+  const url = `${base}/${encodeURIComponent(binding.email)}`, description = `mimosaas-ads-client-binding:${binding.id}`;
+  let response = await clientAccountRequest(url);
+  if (response.status === 404 && !binding.googleUniqueId) {
+    await response.body?.cancel();
+    response = await clientAccountRequest(base, { accountId: binding.email.slice(0, -suffix.length), serviceAccount: { displayName: binding.email.split("@")[0], description } });
+    if (response.status === 409) { await response.body?.cancel(); response = await clientAccountRequest(url); }
+  }
+  if (!response.ok) { await response.body?.cancel(); throw new Error("Google could not prepare the access email. Please retry or contact support."); }
+  const account = await response.json();
+  if (account.email !== binding.email || account.projectId !== config.projectId || account.description !== description || account.disabled === true ||
+    typeof account.uniqueId !== "string" || !/^\d+$/.test(account.uniqueId) || (binding.googleUniqueId && binding.googleUniqueId !== account.uniqueId)) {
+    throw new Error("This access email is unavailable. No existing account has been changed.");
+  }
+  return account.uniqueId;
+}
+
+const clientTokens = new Map<string, { accessToken: string; expiresAt: Date }>();
+export async function getGoogleAdsClientServiceAccountAccessToken(binding: GoogleAdsClientServiceAccount): Promise<{ accessToken: string; expiresAt: Date }> {
+  const config = clientAccountConfig();
+  if (!/^\d+$/.test(binding.googleUniqueId || "") || !binding.email.endsWith(`@${config.projectId}.iam.gserviceaccount.com`)) throw new Error("This client's Google Ads identity is unavailable.");
+  const key = createHash("sha256").update(`${config.email}\n${config.key}\n${binding.googleUniqueId}`).digest("hex");
+  const cached = clientTokens.get(key);
+  if (cached && cached.expiresAt.getTime() > Date.now() + 5 * 60_000) return cached;
+  const response = await clientAccountRequest(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${binding.googleUniqueId}:generateAccessToken`, {
+    scope: ["https://www.googleapis.com/auth/adwords"], lifetime: "3600s",
+  });
+  if (!response.ok) { await response.body?.cancel(); throw new Error("Google could not authorise this client's Ads access. Please retry or contact support."); }
+  const data = await response.json(), expiresAt = new Date(data.expireTime);
+  if (typeof data.accessToken !== "string" || !data.accessToken.trim() || !Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now() + 60_000) throw new Error("Google returned an invalid access credential.");
+  const credentials = { accessToken: String(data.accessToken), expiresAt };
+  if (clientTokens.size >= 256) clientTokens.delete(clientTokens.keys().next().value!);
+  clientTokens.set(key, credentials);
+  return credentials;
 }

@@ -187,9 +187,21 @@ export function AddSpendWizardModal(props: {
   const [googleAdsSpendCustomers, setGoogleAdsSpendCustomers] = useState<GoogleAdsSpendCustomer[]>([]);
   const [selectedGoogleAdsCustomerId, setSelectedGoogleAdsCustomerId] = useState<string>("");
   const [googleAdsPendingAuthorization, setGoogleAdsPendingAuthorization] = useState<unknown | null>(null);
-  const [googleAdsServiceAccountStatus, setGoogleAdsServiceAccountStatus] = useState<{ enabled: boolean; email: string | null } | null>(null);
+  const [googleAdsServiceAccountStatus, setGoogleAdsServiceAccountStatus] = useState<{ enabled: boolean; email: string | null; selfService?: boolean } | null>(null);
   const [googleAdsServiceAccountCustomerId, setGoogleAdsServiceAccountCustomerId] = useState("");
   const [isGoogleAdsServiceAccountConnecting, setIsGoogleAdsServiceAccountConnecting] = useState(false);
+  const [googleAdsPreparedAccess, setGoogleAdsPreparedAccess] = useState<{ customerId: string; email: string } | null>(null);
+  const [isGoogleAdsAccessPreparing, setIsGoogleAdsAccessPreparing] = useState(false);
+  const googleAdsAccessRequest = useRef(0);
+  useEffect(() => {
+    googleAdsAccessRequest.current++;
+    setGoogleAdsPreparedAccess(null);
+    setGoogleAdsServiceAccountStatus(null);
+    setGoogleAdsServiceAccountCustomerId("");
+    setIsGoogleAdsAccessPreparing(false);
+    setIsGoogleAdsServiceAccountConnecting(false);
+    return () => { googleAdsAccessRequest.current++; };
+  }, [props.campaignId, props.open]);
 
   // LinkedIn OAuth in-modal flow
   const [linkedInAuthStep, setLinkedInAuthStep] = useState<"idle" | "connecting" | "select_account">("idle");
@@ -1255,6 +1267,7 @@ export function AddSpendWizardModal(props: {
 
   // Fetch ad platform spend preview (Meta / Google Ads) — groups by campaign for selection
   const fetchAdPlatformPreview = async (platform: string) => {
+    const accessRequest = googleAdsAccessRequest.current;
     setIsAdPlatformLoading(true);
     setAdPlatformCampaigns([]);
     setSelectedAdPlatformCampaignIds([]);
@@ -1291,6 +1304,7 @@ export function AddSpendWizardModal(props: {
         `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${startDate}&endDate=${endDate}${spendPreviewParam}`
       , { credentials: "include" });
       const json = await resp.json().catch(() => ({ metrics: [] }));
+      if (platform === "google_ads" && accessRequest !== googleAdsAccessRequest.current) return;
       if (!resp.ok || json?.success === false) throw new Error(json?.error || "Could not fetch spend data.");
       const metrics = Array.isArray(json?.metrics) ? json.metrics : [];
 
@@ -1326,11 +1340,14 @@ export function AddSpendWizardModal(props: {
       }));
 
       setAdPlatformCampaigns(campaigns);
-      setSelectedAdPlatformCampaignIds(campaigns.map(c => c.id));
+      setSelectedAdPlatformCampaignIds(platform === "google_ads"
+        ? campaigns.filter(c => selectedAdPlatformCampaignIds.includes(c.id)).map(c => c.id)
+        : campaigns.map(c => c.id));
     } catch (e: any) {
+      if (platform === "google_ads" && accessRequest !== googleAdsAccessRequest.current) return;
       toast({ title: "Preview failed", description: e?.message || "Could not fetch spend data.", variant: "destructive" });
     } finally {
-      setIsAdPlatformLoading(false);
+      if (platform !== "google_ads" || accessRequest === googleAdsAccessRequest.current) setIsAdPlatformLoading(false);
     }
   };
 
@@ -1412,12 +1429,14 @@ export function AddSpendWizardModal(props: {
 
   // Check Meta / Google Ads connection when entering ad_platform step
   const checkGoogleAdsServiceAccountStatus = async () => {
+    const requestId = googleAdsAccessRequest.current;
     try {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/google-ads-service-account/status`, { credentials: "include" });
       const json = await resp.json().catch(() => null);
-      setGoogleAdsServiceAccountStatus({ enabled: resp.ok && json?.enabled === true, email: json?.email || null });
+      if (requestId !== googleAdsAccessRequest.current) return;
+      setGoogleAdsServiceAccountStatus({ enabled: resp.ok && json?.enabled === true, email: json?.email || null, selfService: json?.selfService === true });
     } catch {
-      setGoogleAdsServiceAccountStatus({ enabled: false, email: null });
+      if (requestId === googleAdsAccessRequest.current) setGoogleAdsServiceAccountStatus({ enabled: false, email: null });
     }
   };
 
@@ -1454,12 +1473,37 @@ export function AddSpendWizardModal(props: {
     } catch { /* ignore */ }
   };
 
+  const prepareGoogleAdsServiceAccount = async () => {
+    const customerId = googleAdsServiceAccountCustomerId.trim().replace(/-/g, "");
+    if (!/^\d{10}$/.test(customerId)) {
+      toast({ title: "Google Ads account required", description: "Enter the 10-digit Google Ads Customer ID.", variant: "destructive" });
+      return;
+    }
+    const requestId = ++googleAdsAccessRequest.current;
+    setIsGoogleAdsAccessPreparing(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/google-ads-service-account/prepare`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customerId }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (requestId !== googleAdsAccessRequest.current) return;
+      if (!resp.ok || json?.success !== true || json.customerId !== customerId || !json.email) throw new Error(json?.message || "Could not prepare the access email.");
+      setGoogleAdsPreparedAccess({ customerId, email: json.email });
+    } catch (error: any) {
+      if (requestId === googleAdsAccessRequest.current) toast({ title: "Access email unavailable", description: error?.message || "Please retry.", variant: "destructive" });
+    } finally {
+      if (requestId === googleAdsAccessRequest.current) setIsGoogleAdsAccessPreparing(false);
+    }
+  };
+
   const connectGoogleAdsServiceAccount = async () => {
     const customerId = googleAdsServiceAccountCustomerId.trim().replace(/-/g, "");
     if (!/^\d{10}$/.test(customerId)) {
       toast({ title: "Google Ads account required", description: "Enter the 10-digit Google Ads Customer ID.", variant: "destructive" });
       return;
     }
+    if (googleAdsServiceAccountStatus?.selfService && googleAdsPreparedAccess?.customerId !== customerId) return;
+    const requestId = ++googleAdsAccessRequest.current;
     setIsGoogleAdsServiceAccountConnecting(true);
     try {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/google-ads-service-account/connect`, {
@@ -1469,16 +1513,18 @@ export function AddSpendWizardModal(props: {
         body: JSON.stringify({ customerId }),
       });
       const json = await resp.json().catch(() => null);
+      if (requestId !== googleAdsAccessRequest.current) return;
       if (!resp.ok || json?.success !== true) throw new Error(json?.message || json?.error || "Temporary Google Ads connection failed");
       setAdPlatformConnected(true);
       setAdPlatformConnectionName(json?.customer?.name || `Account ${customerId}`);
       setGoogleAdsServiceAccountCustomerId("");
       await fetchAdPlatformPreview("google_ads");
-      toast({ title: "Connected to Google Ads", description: "Temporary Google Ads spend data is ready to preview and import." });
+      if (requestId !== googleAdsAccessRequest.current) return;
+      toast({ title: "Connected to Google Ads", description: "Google Ads spend data is ready to preview and import." });
     } catch (error: any) {
-      toast({ title: "Connection failed", description: error?.message || "Temporary Google Ads connection failed", variant: "destructive" });
+      if (requestId === googleAdsAccessRequest.current) toast({ title: "Connection failed", description: error?.message || "Google Ads connection failed", variant: "destructive" });
     } finally {
-      setIsGoogleAdsServiceAccountConnecting(false);
+      if (requestId === googleAdsAccessRequest.current) setIsGoogleAdsServiceAccountConnecting(false);
     }
   };
   const connectGoogleAdsSpendCustomer = async () => {
@@ -2290,9 +2336,9 @@ export function AddSpendWizardModal(props: {
                             {selectedPlatform === "google_ads" && googleAdsServiceAccountStatus?.enabled && !googleAdsPendingAuthorization && (
                               <div className="space-y-3 border-t pt-4">
                                 <div>
-                                  <p className="text-sm font-medium">Temporary test connection</p>
+                                  <p className="text-sm font-medium">{googleAdsServiceAccountStatus.selfService ? "Connect using an access email" : "Temporary test connection"}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    Add {googleAdsServiceAccountStatus.email} to the Google Ads account with Read only access, then enter its Customer ID.
+                                    {googleAdsServiceAccountStatus.selfService ? "Enter your Google Ads Customer ID to generate this client's access email." : <>Add {googleAdsServiceAccountStatus.email} to the Google Ads account with Read only access, then enter its Customer ID.</>}
                                   </p>
                                 </div>
                                 <div className="space-y-2">
@@ -2302,19 +2348,34 @@ export function AddSpendWizardModal(props: {
                                     inputMode="numeric"
                                     placeholder="123-456-7890"
                                     value={googleAdsServiceAccountCustomerId}
-                                    onChange={(event) => setGoogleAdsServiceAccountCustomerId(event.target.value)}
+                                    disabled={isGoogleAdsAccessPreparing || isGoogleAdsServiceAccountConnecting}
+                                    onChange={(event) => { googleAdsAccessRequest.current++; setGoogleAdsServiceAccountCustomerId(event.target.value); setGoogleAdsPreparedAccess(null); }}
                                   />
                                 </div>
+                                {googleAdsServiceAccountStatus.selfService && (
+                                  <div className="space-y-3">
+                                    <Button type="button" variant="outline" size="sm" disabled={isGoogleAdsAccessPreparing || isGoogleAdsServiceAccountConnecting || !/^\d{10}$/.test(googleAdsServiceAccountCustomerId.replace(/-/g, "").trim())} onClick={() => void prepareGoogleAdsServiceAccount()}>
+                                      {isGoogleAdsAccessPreparing ? "Preparing email…" : "Generate access email"}
+                                    </Button>
+                                    <div className="min-h-[8rem] space-y-2" aria-live="polite">
+                                      {googleAdsPreparedAccess ? <>
+                                        <Label htmlFor="google-ads-access-email">Access email</Label>
+                                        <Input id="google-ads-access-email" readOnly value={googleAdsPreparedAccess.email} onFocus={(event) => event.currentTarget.select()} />
+                                        <p className="text-xs text-muted-foreground">In Google Ads, open Admin → Access and security → Users → +. Add this email with Read only access, then click Verify connection below.</p>
+                                      </> : <p className="text-xs text-muted-foreground">Your generated email and Google Ads access instructions will appear here.</p>}
+                                    </div>
+                                  </div>
+                                )}
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  disabled={isGoogleAdsServiceAccountConnecting || isAdPlatformConnecting || !googleAdsServiceAccountCustomerId.trim()}
+                                  disabled={isGoogleAdsServiceAccountConnecting || isGoogleAdsAccessPreparing || isAdPlatformConnecting || !googleAdsServiceAccountCustomerId.trim() || (googleAdsServiceAccountStatus.selfService && !googleAdsPreparedAccess)}
                                   onClick={() => void connectGoogleAdsServiceAccount()}
                                 >
                                   {isGoogleAdsServiceAccountConnecting
                                     ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Validating account...</>
-                                    : "Connect test account"}
+                                    : googleAdsServiceAccountStatus.selfService ? "Verify connection" : "Connect test account"}
                                 </Button>
                               </div>
                             )}
@@ -2426,10 +2487,10 @@ export function AddSpendWizardModal(props: {
                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                         </Button>
                       )}
-                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformCampaigns.length > 0 && selectedAdPlatformCampaignIds.length > 0 && (
+                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformCampaigns.length > 0 && (selectedPlatform === "google_ads" || selectedAdPlatformCampaignIds.length > 0) && (
                         <Button
                           onClick={importAdPlatformSpend}
-                          disabled={isProcessing || (isEditing && !hasMeaningfulAdPlatformEditChanges)}
+                          disabled={isProcessing || selectedAdPlatformCampaignIds.length === 0 || (isEditing && !hasMeaningfulAdPlatformEditChanges)}
                         >
                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                         </Button>

@@ -18,6 +18,7 @@ import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecr
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, getGA4ServiceAccountAccessToken, getGA4ServiceAccountConfig, getGA4ServiceAccountPublicStatus, isSupportedGA4ConnectionMethod, normalizeGA4ServiceAccountPropertyId, isGA4ClientServiceAccountSetupEnabled, provisionGA4ClientServiceAccount, getGA4ClientServiceAccountAccessToken } from './utils/ga4-service-account';
 import { getGoogleSheetsServiceAccountAccessToken, getGoogleSheetsServiceAccountPublicStatus, GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, normalizeGoogleSheetsSpreadsheetId } from './utils/google-sheets-service-account';
 import { assertGoogleAdsServiceAccountCustomerAllowed, getGoogleAdsServiceAccountAccessToken, getGoogleAdsServiceAccountLoginCustomerId, getGoogleAdsServiceAccountPublicStatus, GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, isSupportedGoogleAdsSpendConnectionMethod, normalizeGoogleAdsCustomerId } from './utils/google-ads-service-account';
+import { getGoogleAdsServiceAccountConfig, isGoogleAdsClientServiceAccountSetupEnabled, provisionGoogleAdsClientServiceAccount, getGoogleAdsClientServiceAccountAccessToken } from './utils/google-ads-service-account';
 import { parseExecutiveSummaryStoredMetricValue } from './utils/executive-summary-target-eligibility';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -26249,9 +26250,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const campaign = await ensureCampaignAccess(req as any, res as any, req.params.id);
     if (!campaign) return;
     try {
+      const existing = await storage.getGA4GoogleAdsSpendConnection(req.params.id, { hydrateCredentials: false });
+      if (existing && (existing.method !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD || existing.serviceAccountBindingId && !isGoogleAdsClientServiceAccountSetupEnabled())) return res.json({ success: true, enabled: false, email: null });
+      if (existing && !existing.serviceAccountBindingId) {
+        const config = getGoogleAdsServiceAccountConfig();
+        return res.json({ success: true, enabled: Boolean(config?.allowedCustomerIds.size), email: config?.email || null });
+      }
       res.json({ success: true, ...getGoogleAdsServiceAccountPublicStatus() });
     } catch (error: any) {
       res.status(503).json({ success: false, enabled: false, email: null, error: error?.message || "Temporary Google Ads access is not configured" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/google-ads-service-account/prepare", oauthRateLimiter, async (req, res) => {
+    const campaignId = String(req.params.id || "").trim();
+    if (!await ensureCampaignAccess(req as any, res as any, campaignId)) return;
+    try {
+      if (!isGoogleAdsClientServiceAccountSetupEnabled()) return res.status(503).json({ success: false, message: "Automatic Google Ads setup is not enabled." });
+      const customerId = normalizeGoogleAdsCustomerId(req.body?.customerId);
+      if (!/^\d{10}$/.test(customerId)) return res.status(400).json({ success: false, message: "Enter a valid 10-digit Google Ads Customer ID." });
+      const existing = await storage.getGA4GoogleAdsSpendConnection(campaignId, { hydrateCredentials: false });
+      if (existing && (existing.method !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD || !existing.serviceAccountBindingId || existing.customerId !== customerId)) return res.status(409).json({ success: false, message: "This campaign already uses another Google Ads connection. Its access has not been changed." });
+      const binding = await storage.reserveGoogleAdsClientServiceAccount(campaignId, customerId, getActorId(req));
+      const googleUniqueId = await provisionGoogleAdsClientServiceAccount(binding);
+      const prepared = await storage.completeGoogleAdsClientServiceAccount(campaignId, customerId, binding.id, googleUniqueId, getActorId(req));
+      res.json({ success: true, customerId, email: prepared.email });
+    } catch (error: any) {
+      res.status(error?.status === 409 ? 409 : 503).json({ success: false, message: error?.status === 409 ? error.message : "Google Ads could not prepare this client's access email. Retry or contact support." });
     }
   });
 
@@ -26260,13 +26285,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(req.params.id || "").trim();
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
-      const customerId = assertGoogleAdsServiceAccountCustomerAllowed(req.body?.customerId);
-      await storage.assertServiceAccountResourceAccess(campaignId, "google_ads", customerId);
-
-      const existingConnection: any = await storage.getGA4GoogleAdsSpendConnection(campaignId);
+      const existingConnection: any = await storage.getGA4GoogleAdsSpendConnection(campaignId, { hydrateCredentials: false });
       if (existingConnection && String(existingConnection.method || "").trim().toLowerCase() !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD) {
         return res.status(409).json({ success: false, error: "GOOGLE_ADS_OAUTH_CONNECTION_EXISTS", message: "This campaign already has a Google Ads OAuth Spend connection. Use a new test campaign for temporary service-account access." });
       }
+
+      const legacy = existingConnection && !existingConnection.serviceAccountBindingId;
+      const selfService = !legacy && isGoogleAdsClientServiceAccountSetupEnabled();
+      if (!selfService && existingConnection?.serviceAccountBindingId) return res.status(503).json({ success: false, message: "Automatic Google Ads setup is not enabled. Existing access has not been changed." });
+      const customerId = selfService ? normalizeGoogleAdsCustomerId(req.body?.customerId) : assertGoogleAdsServiceAccountCustomerAllowed(req.body?.customerId);
+      if (!/^\d{10}$/.test(customerId)) return res.status(400).json({ success: false, message: "Enter a valid 10-digit Google Ads Customer ID." });
+      const binding = selfService ? await storage.getGoogleAdsClientServiceAccount(campaignId, customerId) : undefined;
+      if (selfService && !binding?.googleUniqueId) return res.status(409).json({ success: false, message: "Generate the access email for this Customer ID first." });
+      if (!selfService) await storage.assertServiceAccountResourceAccess(campaignId, "google_ads", customerId);
 
       const sources = await storage.getSpendSources(campaignId, "ga4");
       const hasGoogleAdsSpendSource = sources.some((source: any) => {
@@ -26281,8 +26312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ success: false, error: "GOOGLE_ADS_SPEND_SOURCE_EXISTS", message: "Delete the existing Google Ads Spend source before changing its account." });
       }
 
-      const credentials = await getGoogleAdsServiceAccountAccessToken();
-      const managerAccountId = getGoogleAdsServiceAccountLoginCustomerId();
+      const credentials = binding ? await getGoogleAdsClientServiceAccountAccessToken(binding) : await getGoogleAdsServiceAccountAccessToken();
+      const managerAccountId = binding ? null : getGoogleAdsServiceAccountLoginCustomerId();
       const { GoogleAdsClient, mapGoogleAdsDailyInsights } = await import('./googleAdsClient');
       const provider = new GoogleAdsClient({
         accessToken: credentials.accessToken,
@@ -26312,8 +26343,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const initialDailyMetrics = startDate <= endDate
         ? mapGoogleAdsDailyInsights(campaignId, await provider.getDailyMetrics(startDate, endDate))
         : [];
+      if (binding) await storage.completeGoogleAdsClientServiceAccount(campaignId, customerId, binding.id, binding.googleUniqueId!, getActorId(req), true);
       await storage.replaceGA4GoogleAdsSpendConnection({
         campaignId,
+        ...(binding ? { serviceAccountBindingId: binding.id } : {}),
         customerId,
         customerName: account.descriptiveName || `Account ${customerId}`,
         managerAccountId,
@@ -26325,7 +26358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: GOOGLE_ADS_SERVICE_ACCOUNT_METHOD,
         expiresAt: null,
         spendOnly: true,
-      } as any, initialDailyMetrics as any);
+      } as any, initialDailyMetrics as any, getActorId(req));
 
       res.json({ success: true, customer: { id: customerId, name: account.descriptiveName }, method: GOOGLE_ADS_SERVICE_ACCOUNT_METHOD });
     } catch (error: any) {
@@ -26338,7 +26371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : 502;
       const message = providerStatus === 401 || providerStatus === 403
         ? "The MimoSaaS service account does not have access to this Google Ads customer"
-        : error?.message || "Temporary Google Ads connection failed";
+        : code.startsWith("GOOGLE_ADS_SERVICE_ACCOUNT_") || code === "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" ? error.message : "Google Ads could not verify this connection. Check the access email and Customer ID, then retry.";
       res.status(status).json({ success: false, error: code || "GOOGLE_ADS_SERVICE_ACCOUNT_CONNECT_FAILED", message });
     }
   });

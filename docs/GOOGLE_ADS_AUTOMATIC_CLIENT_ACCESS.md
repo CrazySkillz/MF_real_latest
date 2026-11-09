@@ -34,3 +34,11 @@ Related existing GA4 access, Google Ads import/refresh/disconnect and durable-wo
 Monitoring must use the updated credential hydration and permit the exact Ads token request while retaining its read-only provider-query restrictions. No live application deployment or live database migration is part of this release.
 
 Official references: https://developers.google.com/google-ads/api/docs/oauth/service-accounts and https://developers.google.com/google-ads/api/docs/oauth/security-requirements.
+
+## Spend selection and completion display — 9 November 2026
+
+- Fresh Google Ads imports start with no campaigns selected. Import remains visible but disabled until selection. Refresh retains explicit choices; Edit restores the saved campaign IDs. Meta behavior is unchanged.
+- Observed test import: source saved at 14:58:12 UTC; financial work completed at 14:58:15 UTC. The existing 60-second browser status interval could delay the displayed result after processing.
+- After a successful Spend save, Overview checks pending publication every 5 seconds for at most 2 minutes, scoped to the current campaign/property. Idle scheduling, error retry cadence and background polling policy remain unchanged. Values still require the existing completed-publication verification.
+- Focused validation: actual Google Ads wizard browser test (empty/default selection, manual/refresh/select-all behavior, exact import payload, saved edit); 78 publication-refresh tests; 2 actual Overview browser tests (5-second completion, return to idle, failed reads, edit/delete/unavailable/zero); 34 spend lifecycle and scheduler regression tests. No provider queries, persistence, formulas or refresh schedules changed.
+- These tests establish the requested UI behavior; they do not recertify unrelated analytics paths. Deployment evidence is recorded separately after the exact revision passes release checks.

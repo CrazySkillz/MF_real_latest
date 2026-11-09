@@ -1865,6 +1865,7 @@ export default function GA4Metrics() {
   const benchmarkAnalyticsFailed = benchmarkAnalyticsQueries.some((query: any) => query?.isError);
 
   const ga4PublicationScope = JSON.stringify([campaignId, selectedGA4PropertyId]);
+  const [spendImportFollowUp, setSpendImportFollowUp] = useState({ scope: "", until: 0 });
   const ga4PublicationReceipt = useRef({ scope: "", token: "", pending: false });
   const [ga4PublicationSync, setGA4PublicationSync] = useState({ scope: "", pending: false, failed: false });
   const { data: ga4PublicationStatus, dataUpdatedAt: ga4PublicationCheckedAt, isError: ga4PublicationStatusError, isFetchedAfterMount: ga4PublicationStatusChecked, refetch: refetchGA4PublicationStatus } = useQuery<any>({
@@ -1874,7 +1875,10 @@ export default function GA4Metrics() {
     refetchInterval: query => {
       if (query.state.status === "error" || ga4PublicationSync.scope === ga4PublicationScope && ga4PublicationSync.failed) return 60_000;
       const nextCheckAt = Date.parse(query.state.data?.nextCheckAt || "");
-      return Number.isFinite(nextCheckAt) ? (nextCheckAt > Date.now() ? nextCheckAt - Date.now() : 60_000) : false;
+      const delay = Number.isFinite(nextCheckAt) ? (nextCheckAt > Date.now() ? nextCheckAt - Date.now() : 60_000) : false;
+      // Follow a just-saved Spend import briefly; values still wait for verified publication.
+      return delay && spendImportFollowUp.scope === ga4PublicationScope && spendImportFollowUp.until > Date.now()
+        && ["running", "delayed"].includes(query.state.data?.refreshStatus) ? Math.min(delay, 5_000) : delay;
     },
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true, refetchOnReconnect: true,
@@ -7489,6 +7493,7 @@ export default function GA4Metrics() {
                     platformContext="ga4"
                     initialSource={editingSpendSource || undefined}
                     onProcessed={() => {
+                      setSpendImportFollowUp({ scope: ga4PublicationScope, until: Date.now() + 120_000 });
                       void refetchGA4PublicationStatus();
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });

@@ -1340,7 +1340,9 @@ export function AddSpendWizardModal(props: {
       }));
 
       setAdPlatformCampaigns(campaigns);
-      setSelectedAdPlatformCampaignIds(campaigns.map(c => c.id));
+      setSelectedAdPlatformCampaignIds(platform === "google_ads"
+        ? campaigns.filter(c => selectedAdPlatformCampaignIds.includes(c.id)).map(c => c.id)
+        : campaigns.map(c => c.id));
     } catch (e: any) {
       if (platform === "google_ads" && accessRequest !== googleAdsAccessRequest.current) return;
       toast({ title: "Preview failed", description: e?.message || "Could not fetch spend data.", variant: "destructive" });
@@ -2485,10 +2487,10 @@ export function AddSpendWizardModal(props: {
                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                         </Button>
                       )}
-                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformCampaigns.length > 0 && selectedAdPlatformCampaignIds.length > 0 && (
+                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformCampaigns.length > 0 && (selectedPlatform === "google_ads" || selectedAdPlatformCampaignIds.length > 0) && (
                         <Button
                           onClick={importAdPlatformSpend}
-                          disabled={isProcessing || (isEditing && !hasMeaningfulAdPlatformEditChanges)}
+                          disabled={isProcessing || selectedAdPlatformCampaignIds.length === 0 || (isEditing && !hasMeaningfulAdPlatformEditChanges)}
                         >
                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                         </Button>

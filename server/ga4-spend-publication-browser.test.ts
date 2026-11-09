@@ -9,7 +9,7 @@ describe("Spend source amounts stay with the published Total Spend", () => {
       stdin: { contents: `import React from 'react';import {createRoot} from 'react-dom/client';
         import {QueryClientProvider} from '@tanstack/react-query';import {TooltipProvider} from './client/src/components/ui/tooltip';
         import {createAppQueryClient} from './client/src/lib/queryClient';import Page from './client/src/pages/ga4-metrics';
-        const client=createAppQueryClient();window.fixtureRefetch=()=>client.invalidateQueries();
+        const client=createAppQueryClient();window.fixtureRefetch=()=>client.invalidateQueries();window.fixtureFetching=()=>client.isFetching();
         createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><TooltipProvider><Page/></TooltipProvider></QueryClientProvider>);`,
         loader: "tsx", resolveDir: process.cwd() },
       bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic",
@@ -18,6 +18,7 @@ describe("Spend source amounts stay with the published Total Spend", () => {
         builder.onResolve({ filter: /^@\/(components\/layout\/(navigation|sidebar)|lib\/clientContext|components\/(GA4ConnectionFlow|AddSpendWizardModal|AddRevenueWizardModal))$/ }, args => ({ path: args.path, namespace: "fixture" }));
         builder.onLoad({ filter: /.*/, namespace: "fixture" }, args => ({ contents: args.path.endsWith("clientContext")
           ? "export const useClient=()=>({clients:[]});" : args.path.includes("layout/") ? "export default function Stub(){return null}"
+          : args.path.endsWith("AddSpendWizardModal") ? "export function AddSpendWizardModal(props){window.fixtureSpendSaved=props.onProcessed;return null}"
           : `export function ${args.path.split("/").at(-1)}(){return null}`, loader: "js" }));
       } }],
     });
@@ -26,7 +27,7 @@ describe("Spend source amounts stay with the published Total Spend", () => {
     const page = await context.newPage(); const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     const day = "2026-10-17", property = { propertyId: "123", propertyName: "Fixture", isPrimary: true, lookbackDays: 30 };
-    let saved: number | null = 20, published: number | null = 20, generation = 1, failed = false;
+    let saved: number | null = 20, published: number | null = 20, generation = 1, failed = false, statusReads = 0;
     const row = (amount: number) => ({ sourceId: "spend-a", sourceType: "csv", displayName: "Fixture.csv", spend: amount,
       currency: "EUR", mappingConfig: { dateColumn: "Date", spendColumn: "Cost" } });
     const totals = { sessions: 10, users: 10, conversions: 2, revenue: 100, engagedSessions: 8, engagementRate: 0.8, pageviews: 20 };
@@ -40,7 +41,7 @@ describe("Spend source amounts stay with the published Total Spend", () => {
       let data: any = { success: true }, status = 200;
       if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Synthetic Spend", status: "active", currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: '["search"]', createdAt: "2026-09-04T00:00:00Z" };
       else if (url.pathname.includes("check-connection") || url.pathname.endsWith("/ga4-connections")) data = { success: true, connected: true, connections: [property] };
-      else if (url.searchParams.has("statusOnly")) data = { success: true, campaignId: "a", propertyId: "123", publicationToken: `p${generation}`, refreshStatus: saved === published ? "current" : "running", nextCheckAt: "2026-10-19T06:00:00Z" };
+      else if (url.searchParams.has("statusOnly")) { statusReads++; data = { success: true, campaignId: "a", propertyId: "123", publicationToken: `p${generation}`, refreshStatus: saved === published ? "current" : "running", nextCheckAt: saved === published ? "2026-10-19T06:00:00Z" : "2026-10-18T12:21:00Z" }; }
       else if (url.pathname.endsWith("/ga4-daily")) data = { success: true, propertyId: "123", startDate: "2026-09-04", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt(), overviewTotals: totals, data: [{ date: day, ...totals }] };
       else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt(), metrics: {
         ...(legacy ? {} : { revenuePublication: { version: 1, reportingDate: day, sources: {}, display: { nativeRevenue: 100, sources: [], spendSources: published === null ? [] : [row(published)] } } }),
@@ -66,17 +67,24 @@ describe("Spend source amounts stay with the published Total Spend", () => {
       const dialog = page.getByRole("dialog");
       await browserExpect(dialog).toContainText("€20.00");
       saved = 40;
-      await page.evaluate(() => (window as any).fixtureRefetch());
+      const beforeSave = statusReads;
+      await page.evaluate(() => (window as any).fixtureSpendSaved());
+      await browserExpect.poll(() => statusReads).toBeGreaterThan(beforeSave);
       await browserExpect(card).toContainText("€20.00");
       await browserExpect(dialog).toContainText("€20.00");
       await browserExpect(dialog).not.toContainText("€40.00");
-      failed = true;
-      await page.evaluate(() => (window as any).fixtureRefetch());
-      await browserExpect(dialog).toContainText("€20.00");
-      failed = false; published = 40; generation++;
-      await page.evaluate(() => (window as any).fixtureRefetch());
+      published = 40; generation++;
+      await page.clock.runFor(5_100);
       await browserExpect(card).toContainText("€40.00");
       await browserExpect(dialog).toContainText("€40.00");
+      await browserExpect.poll(() => page.evaluate(() => (window as any).fixtureFetching())).toBe(0);
+      const completedReads = statusReads;
+      await page.clock.runFor(30_000);
+      expect(statusReads).toBe(completedReads);
+      failed = true;
+      await page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(dialog).toContainText("€40.00");
+      failed = false;
       saved = null;
       await page.evaluate(() => (window as any).fixtureRefetch());
       await browserExpect(card).toContainText("€40.00");

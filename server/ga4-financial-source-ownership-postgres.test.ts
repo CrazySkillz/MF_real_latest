@@ -644,6 +644,30 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     await expect(replace("a", date, date, [], options)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED"); expect(await saved()).toEqual(before);
     await expire(scope); await expect(replace("a", date, date, [], options)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST"); expect(await saved()).toEqual(before);
   });
+  for (const method of ["service_account", "oauth"]) it.each([false, true])(`accepts unchanged ${method} Ads credentials across PostgreSQL reads (dedicated=%s)`, async dedicated => {
+    const table = dedicated ? schema.ga4GoogleAdsSpendConnections : schema.googleAdsConnections;
+    const update = dedicated ? storage.updateGA4GoogleAdsSpendConnection.bind(storage) : storage.updateGoogleAdsConnection.bind(storage);
+    await update("a", { method, accessToken: method === "oauth" ? "fixture-access" : null } as any);
+    const scope = await claim();
+    const [expectedConnection] = (await database.current.select().from(table)).filter((row: any) => row.campaignId === "a");
+    const [separateRead] = (await database.current.select().from(table)).filter((row: any) => row.campaignId === "a");
+    expect(separateRead.encryptedTokens).toEqual(expectedConnection.encryptedTokens);
+    expect(separateRead.encryptedTokens).not.toBe(expectedConnection.encryptedTokens);
+    const options = { refreshScope: scope, expectedConnection, expectedSource: { id: "spend records-a", mappingConfig: initialMapping } };
+    const replace = dedicated ? storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow.bind(storage) : storage.replaceGoogleAdsDailyMetricsForWindow.bind(storage);
+    const otherCampaignBefore = (await saved())[getTableName(dedicated ? schema.ga4GoogleAdsSpendDailyMetrics : schema.googleAdsDailyMetrics)].filter(row => row.campaign_id === "b");
+    await expect(replace("a", date, date, [{ campaignId: "a", googleCampaignId: "selected", date, spend: "4.89" }], options)).resolves.toEqual({ replaced: 1 });
+    const after = await saved(), facts = after[getTableName(dedicated ? schema.ga4GoogleAdsSpendDailyMetrics : schema.googleAdsDailyMetrics)];
+    expect(facts.filter(row => row.campaign_id === "a").map(row => Number(row.spend))).toEqual([4.89]);
+    expect(facts.filter(row => row.campaign_id === "b")).toEqual(otherCampaignBefore);
+    for (const change of [{ encryptedTokens: { ...expectedConnection.encryptedTokens, accessToken: { v: 1, data: "changed" } } },
+      { customerId: "other-customer" }, { managerAccountId: "other-manager" }, { method: "other-method" }]) {
+      await expect(replace("a", date, date, [], { ...options, expectedConnection: { ...expectedConnection, ...change } })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      expect(await saved()).toEqual(after);
+    }
+    await expect(replace("b", date, date, [], options)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED"); expect(await saved()).toEqual(after);
+    await expire(scope); await expect(replace("a", date, date, [], options)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST"); expect(await saved()).toEqual(after);
+  });
   it("prevents expired or cross-campaign jobs from changing the campaign Spend cache", async () => {
     const scope = await claim(); await storage.updateCampaign("a", { spend: "20.00" }, { refreshScope: scope });
     await expect(storage.updateCampaign("b", { spend: "99.00" }, { refreshScope: scope })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");

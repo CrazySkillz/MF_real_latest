@@ -3,6 +3,7 @@
  * Handles periodic data sync for Google Ads connections (mock + real)
  * Follows the meta-scheduler.ts pattern
  */
+import { isDeepStrictEqual } from "node:util";
 import { storage, type GA4RefreshWriteInput, type GA4RefreshGoogleAdsWriteInput } from "./storage";
 import { db } from "./db";
 import { googleAdsConnections, googleAdsDailyMetrics, ga4GoogleAdsSpendConnections } from "../shared/schema";
@@ -269,7 +270,7 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
   if (googleAdsSources.length !== 1) throw new Error(`Multiple active GA4 Google Ads spend sources require review for campaign ${campaignId}`);
   const source = googleAdsSources[0];
   if (refreshWriteInput.refreshScope && (!deferDownstream || source.id !== refreshWriteInput.expectedSource?.id || source.mappingConfig !== refreshWriteInput.expectedSource?.mappingConfig)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
-  if (refreshWriteInput.refreshScope && ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method"].some(field => (connection[field] ?? null) !== (refreshWriteInput.expectedConnection?.[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+  if (refreshWriteInput.refreshScope && ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method"].some(field => field === "encryptedTokens" ? !isDeepStrictEqual(connection[field] ?? null, refreshWriteInput.expectedConnection?.[field] ?? null) : (connection[field] ?? null) !== (refreshWriteInput.expectedConnection?.[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
   const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
   const sourceIds = parseSelectedGoogleAdsCampaignIds(mapping.selectedCampaignIds);
   if (sourceIds.length === 0) throw new Error(`GA4 Google Ads selected campaign scope is unavailable for campaign ${campaignId}`);

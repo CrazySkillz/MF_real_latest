@@ -1,3 +1,4 @@
+import { getGoogleSheetsServiceAccountConfig, isGoogleSheetsClientServiceAccountSetupEnabled, provisionGoogleSheetsClientServiceAccount, getGoogleSheetsClientServiceAccountAccessToken } from "./utils/google-sheets-service-account";
 import type { Express } from "express";
 import { urlencoded } from "express";
 import { createServer, type Server } from "http";
@@ -16512,27 +16513,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Google Sheets OAuth endpoints
 
-  app.get("/api/campaigns/:id/google-sheets-service-account/status", requireCampaignAccessParamId, async (_req, res) => {
+  app.get("/api/campaigns/:id/google-sheets-service-account/status", requireCampaignAccessParamId, async (req, res) => {
     try {
+      if (!await ensureCampaignAccess(req as any, res as any, req.params.id)) return;
+      const existing = await storage.getGoogleSheetsConnections(req.params.id, undefined, { resolveRuntimeCredentials: false });
+      if (existing.some(c => c.method !== GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD)) return res.json({ enabled: false, email: null });
       res.json(getGoogleSheetsServiceAccountPublicStatus());
     } catch (error: any) {
       res.status(500).json({ enabled: false, email: null, error: error?.message || "Google Sheets service-account status is unavailable" });
     }
   });
 
+  app.post("/api/campaigns/:id/google-sheets-service-account/prepare", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "");
+      if (!await ensureCampaignAccess(req as any, res as any, campaignId)) return;
+      if (!isGoogleSheetsClientServiceAccountSetupEnabled()) return res.status(503).json({ error: "Automatic Google Sheets setup is not enabled." });
+      const spreadsheetId = normalizeGoogleSheetsSpreadsheetId(req.body?.spreadsheetUrl || req.body?.spreadsheetId);
+      const existing = await storage.getGoogleSheetsConnections(campaignId, undefined, { resolveRuntimeCredentials: false });
+      if (existing.some(c => c.method !== GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD)) return res.status(409).json({ error: "This campaign already uses Google sign-in. Its existing connection is unchanged." });
+      if (existing.some(c => c.spreadsheetId === spreadsheetId && !c.serviceAccountBindingId)) return res.status(409).json({ error: "This spreadsheet already uses the shared access email. Select its existing connection." });
+      const binding = await storage.reserveGoogleSheetsClientServiceAccount(campaignId, spreadsheetId, getActorId(req));
+      const googleUniqueId = await provisionGoogleSheetsClientServiceAccount(binding);
+      const prepared = await storage.completeGoogleSheetsClientServiceAccount(campaignId, spreadsheetId, binding.id, googleUniqueId, getActorId(req));
+      res.json({ success: true, spreadsheetId, email: prepared.email });
+    } catch (error: any) {
+      res.status(error?.code === "GOOGLE_SHEETS_ID_INVALID" ? 400 : error?.status || 500).json({ error: error?.message || "Could not prepare this client's access email." });
+    }
+  });
+
   app.post("/api/campaigns/:id/google-sheets-service-account/connect", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id || "");
+      if (!await ensureCampaignAccess(req as any, res as any, campaignId)) return;
       const spreadsheetId = normalizeGoogleSheetsSpreadsheetId(req.body?.spreadsheetUrl || req.body?.spreadsheetId);
       const purpose = String(req.body?.purpose || "general");
       const sheetsPurpose =
         (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue" || purpose === "meta_revenue" || purpose === "google_ads_revenue" || purpose === "instagram_revenue" || purpose === "tiktok_revenue" || purpose === "google_sheets_revenue" || purpose === "custom_integration_revenue")
           ? purpose
           : "general";
-      const publicStatus = getGoogleSheetsServiceAccountPublicStatus();
-      if (!publicStatus.enabled || !publicStatus.email) {
-        return res.status(503).json({ error: "Temporary Google Sheets service-account access is not configured" });
-      }
 
       const actorId = getActorId(req as any);
       const campaign = await storage.getCampaign(campaignId);
@@ -16540,20 +16559,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Campaign not found" });
       }
 
-      const existingConnections = await storage.getGoogleSheetsConnections(campaignId);
+      const existingConnections = await storage.getGoogleSheetsConnections(campaignId, undefined, { resolveRuntimeCredentials: false });
       if (existingConnections.some((connection: any) => String(connection?.method || "access_token") !== GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD)) {
-        return res.status(409).json({ error: "This campaign already has a Google OAuth Sheets connection. Use a new test campaign for temporary service-account access." });
+        return res.status(409).json({ error: "This campaign already has a Google OAuth Sheets connection. Its existing connection is unchanged." });
       }
 
-      await storage.assertServiceAccountResourceAccess(campaignId, "google_sheets", spreadsheetId);
-      const credentials = await getGoogleSheetsServiceAccountAccessToken();
+      const legacy = existingConnections.some(c => c.spreadsheetId === spreadsheetId && !c.serviceAccountBindingId);
+      const selfService = !legacy && isGoogleSheetsClientServiceAccountSetupEnabled();
+      const binding = selfService ? await storage.getGoogleSheetsClientServiceAccount(campaignId, spreadsheetId) : undefined;
+      if (selfService && !binding?.googleUniqueId) return res.status(409).json({ error: "Generate this spreadsheet's access email first." });
+      if (!selfService && existingConnections.some(c => c.spreadsheetId === spreadsheetId && c.serviceAccountBindingId)) return res.status(503).json({ error: "Automatic Google Sheets setup is not enabled." });
+      const email = binding?.email || getGoogleSheetsServiceAccountConfig()?.email;
+      if (!email) return res.status(503).json({ error: "Google Sheets access is not configured." });
+      if (!binding) await storage.assertServiceAccountResourceAccess(campaignId, "google_sheets", spreadsheetId);
+      const credentials = binding ? await getGoogleSheetsClientServiceAccountAccessToken(binding) : await getGoogleSheetsServiceAccountAccessToken();
       const metadataResponse = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=spreadsheetId,properties.title,sheets.properties(sheetId,title,index,sheetType,gridProperties)`,
         { headers: { Authorization: `Bearer ${credentials.accessToken}` }, signal: AbortSignal.timeout(30000) },
       );
       if (!metadataResponse.ok) {
         if (metadataResponse.status === 403) {
-          return res.status(403).json({ error: `Share this spreadsheet with ${publicStatus.email} as Viewer, then try again.` });
+          return res.status(403).json({ error: `Share this spreadsheet with ${email} as Viewer, then try again.` });
         }
         if (metadataResponse.status === 404) {
           return res.status(404).json({ error: "Spreadsheet not found. Check the Google Sheets URL and try again." });
@@ -16562,6 +16588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const metadata: any = await metadataResponse.json();
+      if (metadata?.spreadsheetId !== spreadsheetId) return res.status(502).json({ error: "Google returned a different spreadsheet." });
       const sheets = Array.isArray(metadata?.sheets)
         ? metadata.sheets.map((sheet: any) => ({
             sheetId: sheet?.properties?.sheetId,
@@ -16575,8 +16602,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "This spreadsheet has no available tabs" });
       }
 
+      if (binding) await storage.completeGoogleSheetsClientServiceAccount(campaignId, spreadsheetId, binding.id, binding.googleUniqueId!, actorId, true);
       const pending = existingConnections.find((connection: any) => (
         connection?.spreadsheetId === "pending"
+        && (connection.serviceAccountBindingId || null) === (binding?.id || null)
         && String(connection?.method || "") === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD
         && String(connection?.purpose || "general") === sheetsPurpose
       ));
@@ -16586,6 +16615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           spreadsheetId: "pending",
           purpose: sheetsPurpose,
           method: GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD,
+          ...(binding ? { serviceAccountBindingId: binding.id } : {}),
           expiresAt: credentials.expiresAt,
         });
       }
@@ -16777,12 +16807,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let conns = await storage.getGoogleSheetsConnections(String(campaignId), purpose ? String(purpose) : undefined);
       const resolveSheetsTokenConnection = (rows: any[]) => {
         const newestFirst = (Array.isArray(rows) ? rows : [])
-          .filter((c: any) => c && c.accessToken)
+          .filter((c: any) => c && c.accessToken && (!c.serviceAccountBindingId || c.serviceAccountSpreadsheetId === spreadsheetId))
           .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
         return newestFirst.find((c: any) => String(c?.spreadsheetId || '') === 'pending') ||
           newestFirst.find((c: any) => String(c?.spreadsheetId || '') === String(spreadsheetId)) ||
           newestFirst[0] ||
-          rows?.[0];
+          rows?.find((c: any) => !c.serviceAccountBindingId || c.serviceAccountSpreadsheetId === spreadsheetId);
       };
       let connection: any = resolveSheetsTokenConnection(conns);
       if ((!connection || !connection.accessToken) && purpose) {
@@ -16902,6 +16932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      if (dbConnection.serviceAccountBindingId && (dbConnection as any).serviceAccountSpreadsheetId !== spreadsheetId) return res.status(403).json({ error: "Connect this spreadsheet with its own access email first." });
       // Get spreadsheet name - try to fetch from Google API if we have access token
       let spreadsheetName = `Spreadsheet ${spreadsheetId}`;
       if (dbConnection.accessToken) {
@@ -17031,13 +17062,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const matchesAccessFile = (c: any) => !c.serviceAccountBindingId || c.serviceAccountSpreadsheetId === spreadsheetId;
       // First, try to find a pending connection matching the purpose
       let dbConnection = (await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose))
-        .find((c: any) => c && c.spreadsheetId === 'pending') as any;
+        .find((c: any) => c && c.spreadsheetId === 'pending' && matchesAccessFile(c)) as any;
 
       if (!dbConnection) {
         // Check if there's any connection for this campaign matching purpose
-        const existingConnections = await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose);
+        const existingConnections = (await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose)).filter(matchesAccessFile);
         if (existingConnections.length > 0) {
           const newestFirst = existingConnections
             .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
@@ -17049,7 +17081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fall back: search ANY connection for this campaign (regardless of purpose).
         // The fast-path (reusing existing tokens) may skip OAuth, so no 'pending' connection
         // exists for this purpose. Tokens are shared across purposes — only tab selection differs.
-        const anyConnections = (await storage.getGoogleSheetsConnections(campaignId))
+        const anyConnections = (await storage.getGoogleSheetsConnections(campaignId)).filter(matchesAccessFile)
           .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
         if (anyConnections.length > 0) {
           dbConnection = anyConnections.find((c: any) => c.accessToken) || anyConnections[0];
@@ -17108,6 +17140,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      if (dbConnection.serviceAccountBindingId && !spreadsheetTabTitles?.length) return res.status(403).json({ error: "Could not verify this spreadsheet. Check that the access email still has Viewer access." });
+
       // Guardrail: only allow sheetNames that actually exist in the spreadsheet.
       // This prevents mismatches where a stale client selection (or bad payload) connects unexpected tabs.
       if (spreadsheetTabTitles && spreadsheetTabTitles.length > 0) {
@@ -17145,6 +17179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               spreadsheetName,
               sheetName,
               method: dbConnection.method || existing.method || "access_token",
+              serviceAccountBindingId: dbConnection.serviceAccountBindingId || null,
               accessToken: dbConnection.accessToken,
               refreshToken: dbConnection.refreshToken || existing.refreshToken || null,
               clientId: dbConnection.clientId || existing.clientId,
@@ -17189,6 +17224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sheetName: sheetName || null,
             purpose: sheetsPurpose || null,
             method: dbConnection.method || "access_token",
+            serviceAccountBindingId: dbConnection.serviceAccountBindingId || null,
             accessToken: dbConnection.accessToken,
             refreshToken: dbConnection.refreshToken || null,
             clientId: dbConnection.clientId,

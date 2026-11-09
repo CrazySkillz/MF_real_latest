@@ -1,3 +1,5 @@
+import { googleSheetsClientServiceAccounts, type GoogleSheetsClientServiceAccount } from "@shared/schema";
+import { getGoogleSheetsClientServiceAccountEmail } from "./utils/google-sheets-service-account";
 import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type GA4OverviewSnapshot, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
@@ -211,6 +213,9 @@ export interface IStorage {
   getGoogleAdsClientServiceAccount(campaignId: string, customerId: string, bindingId?: string): Promise<GoogleAdsClientServiceAccount | undefined>;
   reserveGoogleAdsClientServiceAccount(campaignId: string, customerId: string, ownerId: string): Promise<GoogleAdsClientServiceAccount>;
   completeGoogleAdsClientServiceAccount(campaignId: string, customerId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified?: boolean): Promise<GoogleAdsClientServiceAccount>;
+  getGoogleSheetsClientServiceAccount(campaignId: string, spreadsheetId: string | undefined, bindingId?: string): Promise<GoogleSheetsClientServiceAccount | undefined>;
+  reserveGoogleSheetsClientServiceAccount(campaignId: string, spreadsheetId: string, ownerId: string): Promise<GoogleSheetsClientServiceAccount>;
+  completeGoogleSheetsClientServiceAccount(campaignId: string, spreadsheetId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified?: boolean): Promise<GoogleSheetsClientServiceAccount>;
   reserveGA4ClientServiceAccount(campaignId: string, propertyId: string, ownerId: string): Promise<GA4ClientServiceAccount>;
   completeGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified?: boolean): Promise<GA4ClientServiceAccount>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
@@ -857,6 +862,52 @@ export class DatabaseStorage implements IStorage {
         eq(googleAdsClientServiceAccounts.clientId, scope.campaign.clientId!), sql`(${googleAdsClientServiceAccounts.googleUniqueId} IS NULL OR ${googleAdsClientServiceAccounts.googleUniqueId} = ${googleUniqueId})`,
       )).returning();
       if (!binding) throw Object.assign(new Error("The client's Google Ads access identity has changed. Contact support."), { status: 409 });
+      return binding;
+    });
+  }
+
+  async getGoogleSheetsClientServiceAccount(campaignId: string, spreadsheetId: string | undefined, bindingId?: string): Promise<GoogleSheetsClientServiceAccount | undefined> {
+    if (!spreadsheetId && !bindingId) return undefined;
+    const [row] = await db.select({ binding: googleSheetsClientServiceAccounts }).from(googleSheetsClientServiceAccounts)
+      .innerJoin(campaigns, and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, googleSheetsClientServiceAccounts.ownerId), eq(campaigns.clientId, googleSheetsClientServiceAccounts.clientId)))
+      .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+      .where(and(...(spreadsheetId ? [eq(googleSheetsClientServiceAccounts.spreadsheetId, spreadsheetId)] : []), sql`${campaigns.status} <> 'deleted'`,
+        ...(bindingId ? [eq(googleSheetsClientServiceAccounts.id, bindingId)] : []))).limit(1);
+    return row?.binding;
+  }
+
+  async reserveGoogleSheetsClientServiceAccount(campaignId: string, spreadsheetId: string, ownerId: string): Promise<GoogleSheetsClientServiceAccount> {
+    if (!/^[A-Za-z0-9_-]{10,}$/.test(spreadsheetId)) throw Object.assign(new Error("Enter a valid 10-digit Google Sheets URL"), { status: 400 });
+    return db.transaction(async (tx: any) => {
+      const [scope] = await tx.select({ campaign: campaigns, client: clients }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), sql`${campaigns.status} <> 'deleted'`)).for("update");
+      if (!scope) throw Object.assign(new Error("Campaign access is no longer available."), { status: 409 });
+      const identity = and(eq(googleSheetsClientServiceAccounts.ownerId, ownerId), eq(googleSheetsClientServiceAccounts.clientId, scope.client.id), eq(googleSheetsClientServiceAccounts.spreadsheetId, spreadsheetId));
+      const [existing] = await tx.select().from(googleSheetsClientServiceAccounts).where(identity);
+      if (existing) return existing;
+      const reserved = await tx.select({ id: googleSheetsClientServiceAccounts.id }).from(googleSheetsClientServiceAccounts)
+        .where(and(eq(googleSheetsClientServiceAccounts.ownerId, ownerId), eq(googleSheetsClientServiceAccounts.clientId, scope.client.id))).limit(20);
+      if (reserved.length >= 20) throw Object.assign(new Error("This client has reached the automatic Sheets setup limit. Contact support."), { status: 409 });
+      const email = getGoogleSheetsClientServiceAccountEmail(scope.client.name, spreadsheetId, ownerId, scope.client.id);
+      await tx.insert(googleSheetsClientServiceAccounts).values({ ownerId, clientId: scope.client.id, spreadsheetId, email }).onConflictDoNothing();
+      const [binding] = await tx.select().from(googleSheetsClientServiceAccounts).where(identity);
+      if (!binding) throw Object.assign(new Error("This access email is already reserved for another client. Contact support."), { status: 409 });
+      return binding;
+    });
+  }
+
+  async completeGoogleSheetsClientServiceAccount(campaignId: string, spreadsheetId: string, bindingId: string, googleUniqueId: string, ownerId: string, verified = false): Promise<GoogleSheetsClientServiceAccount> {
+    return db.transaction(async (tx: any) => {
+      const [scope] = await tx.select({ campaign: campaigns }).from(campaigns)
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), sql`${campaigns.status} <> 'deleted'`)).for("share");
+      if (!scope || !/^\d+$/.test(googleUniqueId)) throw Object.assign(new Error("Campaign access is no longer available."), { status: 409 });
+      const [binding] = await tx.update(googleSheetsClientServiceAccounts).set({ googleUniqueId, ...(verified ? { verifiedAt: new Date() } : {}) }).where(and(
+        eq(googleSheetsClientServiceAccounts.id, bindingId), eq(googleSheetsClientServiceAccounts.spreadsheetId, spreadsheetId), eq(googleSheetsClientServiceAccounts.ownerId, ownerId),
+        eq(googleSheetsClientServiceAccounts.clientId, scope.campaign.clientId!), sql`(${googleSheetsClientServiceAccounts.googleUniqueId} IS NULL OR ${googleSheetsClientServiceAccounts.googleUniqueId} = ${googleUniqueId})`,
+      )).returning();
+      if (!binding) throw Object.assign(new Error("The client's Google Sheets access identity has changed. Contact support."), { status: 409 });
       return binding;
     });
   }
@@ -3828,6 +3879,7 @@ export class DatabaseStorage implements IStorage {
         sheetName: googleSheetsConnections.sheetName,
         purpose: (googleSheetsConnections as any).purpose,
         method: (googleSheetsConnections as any).method,
+        serviceAccountBindingId: sql<string | null>`to_jsonb(${googleSheetsConnections})->>'service_account_binding_id'`,
         accessToken: googleSheetsConnections.accessToken,
         refreshToken: googleSheetsConnections.refreshToken,
         clientId: googleSheetsConnections.clientId,
@@ -4093,6 +4145,14 @@ export class DatabaseStorage implements IStorage {
     const isServiceAccount = method === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD;
 
     const saved = await this.writeGA4RefreshInputChange(connection.campaignId, async db => {
+    if (connection.serviceAccountBindingId) {
+      const [scope] = await db.select({ binding: googleSheetsClientServiceAccounts }).from(googleSheetsClientServiceAccounts)
+        .innerJoin(campaigns, and(eq(campaigns.id, connection.campaignId), eq(campaigns.ownerId, googleSheetsClientServiceAccounts.ownerId), eq(campaigns.clientId, googleSheetsClientServiceAccounts.clientId)))
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(googleSheetsClientServiceAccounts.id, connection.serviceAccountBindingId), sql`${campaigns.status} <> 'deleted'`,
+          ...(connection.spreadsheetId === "pending" ? [] : [eq(googleSheetsClientServiceAccounts.spreadsheetId, connection.spreadsheetId)]))).for("share");
+      if (!isServiceAccount || !scope?.binding.verifiedAt || !scope.binding.googleUniqueId) throw new Error("This client's Google Sheets access is not verified.");
+    }
     await db.execute(sql`SAVEPOINT sheets_connection_create`);
     try {
       // Try to insert - Drizzle will include all fields from schema, which may fail if sheet_name doesn't exist
@@ -4188,7 +4248,7 @@ export class DatabaseStorage implements IStorage {
       const expected = options.expectedConnection;
       if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
         && ["accessToken", "refreshToken", "clientSecret"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
-      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
+      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "serviceAccountBindingId", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
       if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
         || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
         || fields.some(field => field === "encryptedTokens" ? !isDeepStrictEqual(existing[field] ?? null, expected[field] ?? null) : (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
@@ -4201,7 +4261,7 @@ export class DatabaseStorage implements IStorage {
       const started = Date.parse(cache.readStartedAt);
       const previous = Date.parse((existing as any).cachedData?.readStartedAt || "");
       if (!expected || existing.isActive === false || expected.id !== existing.id || !Number.isFinite(started)
-        || ["campaignId", "spreadsheetId", "sheetName", "purpose", "method", "clientId"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))
+        || ["campaignId", "spreadsheetId", "sheetName", "serviceAccountBindingId", "purpose", "method", "clientId"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))
         || ["accessToken", "refreshToken", "clientSecret"].some(field => (currentTokens[field] ?? null) !== (expected[field] ?? null))
         || cache.spreadsheetId !== existing.spreadsheetId || cache.sheetName !== existing.sheetName
         || (Number.isFinite(previous) && previous > started)) throw new Error("GOOGLE_SHEETS_CACHE_INPUT_CHANGED");
@@ -4209,8 +4269,19 @@ export class DatabaseStorage implements IStorage {
       const method = String((connection as any).method || (existing as any).method || "access_token").trim().toLowerCase();
       const isServiceAccount = method === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD;
 
+      const nextConnection = { ...existing, ...connection };
+    if (nextConnection.serviceAccountBindingId) {
+      const [scope] = await db.select({ binding: googleSheetsClientServiceAccounts }).from(googleSheetsClientServiceAccounts)
+        .innerJoin(campaigns, and(eq(campaigns.id, nextConnection.campaignId), eq(campaigns.ownerId, googleSheetsClientServiceAccounts.ownerId), eq(campaigns.clientId, googleSheetsClientServiceAccounts.clientId)))
+        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+        .where(and(eq(googleSheetsClientServiceAccounts.id, nextConnection.serviceAccountBindingId), sql`${campaigns.status} <> 'deleted'`,
+          ...(nextConnection.spreadsheetId === "pending" ? [] : [eq(googleSheetsClientServiceAccounts.spreadsheetId, nextConnection.spreadsheetId)]))).for("share");
+      if (!isServiceAccount || !scope?.binding.verifiedAt || !scope.binding.googleUniqueId) throw new Error("This client's Google Sheets access is not verified.");
+    }
+
       // Build the set object with explicit field mapping for columnMappings
       const setData: any = {};
+      if (connection.serviceAccountBindingId !== undefined) setData.serviceAccountBindingId = connection.serviceAccountBindingId;
       if (connection.spreadsheetId !== undefined) setData.spreadsheetId = connection.spreadsheetId;
       if (connection.spreadsheetName !== undefined) setData.spreadsheetName = connection.spreadsheetName;
       if ((connection as any).sheetName !== undefined) setData.sheetName = (connection as any).sheetName;

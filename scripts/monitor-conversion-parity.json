@@ -4,7 +4,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "073c9fe26c5feb2fcadc91886efdcf75b8261879b59cf341c2b0dd607b72cc5d"
+      "after": "c0e2741c533ce98d746548f7f0569fcc55652d6ec83e2023f245026e1d25a6a9"
     },
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
@@ -20,6 +20,7 @@
   "equivalentCommits": [
     "18ad162e54afc3bb11142e541c8e66ede4c7fd7d",
     "525c64ea51fc61569799b29d2e417ecfe08f41cd",
-    "2bc1be0b6fdf782fefab9949e5fa2e8998c09595"
+    "2bc1be0b6fdf782fefab9949e5fa2e8998c09595",
+    "df60585ebdee0cc0a38bfc13033ce773ff68fc8e"
   ]
 }

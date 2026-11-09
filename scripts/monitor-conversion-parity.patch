@@ -37,10 +37,30 @@ index 1aa7650b..49e073f4 100644
              <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
            </CardContent>
 diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
-index 9d33bee3..957f88d6 100644
+index 9d33bee3..a43a003e 100644
 --- a/client/src/pages/ga4-metrics.tsx
 +++ b/client/src/pages/ga4-metrics.tsx
-@@ -4130,12 +4130,11 @@ export default function GA4Metrics() {
+@@ -1865,6 +1865,7 @@ export default function GA4Metrics() {
+   const benchmarkAnalyticsFailed = benchmarkAnalyticsQueries.some((query: any) => query?.isError);
+ 
+   const ga4PublicationScope = JSON.stringify([campaignId, selectedGA4PropertyId]);
++  const [spendImportFollowUp, setSpendImportFollowUp] = useState({ scope: "", until: 0 });
+   const ga4PublicationReceipt = useRef({ scope: "", token: "", pending: false });
+   const [ga4PublicationSync, setGA4PublicationSync] = useState({ scope: "", pending: false, failed: false });
+   const { data: ga4PublicationStatus, dataUpdatedAt: ga4PublicationCheckedAt, isError: ga4PublicationStatusError, isFetchedAfterMount: ga4PublicationStatusChecked, refetch: refetchGA4PublicationStatus } = useQuery<any>({
+@@ -1874,7 +1875,10 @@ export default function GA4Metrics() {
+     refetchInterval: query => {
+       if (query.state.status === "error" || ga4PublicationSync.scope === ga4PublicationScope && ga4PublicationSync.failed) return 60_000;
+       const nextCheckAt = Date.parse(query.state.data?.nextCheckAt || "");
+-      return Number.isFinite(nextCheckAt) ? (nextCheckAt > Date.now() ? nextCheckAt - Date.now() : 60_000) : false;
++      const delay = Number.isFinite(nextCheckAt) ? (nextCheckAt > Date.now() ? nextCheckAt - Date.now() : 60_000) : false;
++      // Follow a just-saved Spend import briefly; values still wait for verified publication.
++      return delay && spendImportFollowUp.scope === ga4PublicationScope && spendImportFollowUp.until > Date.now()
++        && ["running", "delayed"].includes(query.state.data?.refreshStatus) ? Math.min(delay, 5_000) : delay;
+     },
+     refetchIntervalInBackground: false,
+     refetchOnWindowFocus: true, refetchOnReconnect: true,
+@@ -4130,12 +4134,11 @@ export default function GA4Metrics() {
          current.users += Number(row?.users || 0);
          current.conversions += Number(row?.conversions || 0);
          current.revenue += Number(row?.revenue || 0);
@@ -54,7 +74,7 @@ index 9d33bee3..957f88d6 100644
        }));
        const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
          (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
-@@ -4145,8 +4144,8 @@ export default function GA4Metrics() {
+@@ -4145,8 +4148,8 @@ export default function GA4Metrics() {
        const totalMetric = selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
          ? (() => {
              const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
@@ -65,7 +85,7 @@ index 9d33bee3..957f88d6 100644
            })()
          : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
        if (rows.length === 0 && chartSummaryRows.length === 0) {
-@@ -4241,7 +4240,7 @@ export default function GA4Metrics() {
+@@ -4241,7 +4244,7 @@ export default function GA4Metrics() {
            }
  
            const adSummaryCards: [string, string][] = [
@@ -74,7 +94,7 @@ index 9d33bee3..957f88d6 100644
              ["Campaigns Compared", String(sortedByMetric.length)],
            ];
            const sumW = (CW - 4) / 2;
-@@ -6291,7 +6290,7 @@ export default function GA4Metrics() {
+@@ -6291,7 +6294,7 @@ export default function GA4Metrics() {
            revenue,
            unroundedRevenue: c.revenue,
            users,
@@ -83,6 +103,14 @@ index 9d33bee3..957f88d6 100644
            revenuePerSession: sessions > 0 ? revenue / sessions : 0,
          };
        })
+@@ -7490,6 +7493,7 @@ export default function GA4Metrics() {
+                     platformContext="ga4"
+                     initialSource={editingSpendSource || undefined}
+                     onProcessed={() => {
++                      setSpendImportFollowUp({ scope: ga4PublicationScope, until: Date.now() + 900_000 });
+                       void refetchGA4PublicationStatus();
+                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
+                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
 diff --git a/server/ga4-scheduled-report-pdf.ts b/server/ga4-scheduled-report-pdf.ts
 index 7a6f2207..ef221fae 100644
 --- a/server/ga4-scheduled-report-pdf.ts

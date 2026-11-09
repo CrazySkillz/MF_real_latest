@@ -1300,6 +1300,7 @@ export async function recoverInterruptedGA4Refreshes(targetCampaignId?: string):
   const work = (await storage.getRecoverableGA4RefreshWork()).filter(item => !targetCampaignId || item.campaignId === targetCampaignId);
   if (!work.length || (global as any).__ga4DailyRefreshInProgress || stoppedAt !== ga4DailySchedulerStatus.stoppedAt) return;
   const completed = new Set<string>();
+  const recoveryFailures = new Set<string>();
   alignedCampaignIdsInCurrentRun = completed;
   (global as any).__ga4DailyRefreshInProgress = true;
   // The health monitor needs the start of this active batch, not a previous scheduled run.
@@ -1332,12 +1333,31 @@ export async function recoverInterruptedGA4Refreshes(targetCampaignId?: string):
           await runGA4DailyRefreshPipelineForTrigger("recovery", { campaignId: item.campaignId, workDueAt: item.dueAt,
             suppressAlerts: item.suppressAlerts, refreshFinancialSources: true, revenueChange, ...(initialImport ? { initialImportWorkId: item.id } : {}) }, completed);
         } catch (error: any) {
+          recoveryFailures.add(item.campaignId);
           console.warn(`[GA4 Daily] Recovery attempt failed for campaign ${item.campaignId}:`, error?.message || error);
         }
       }
     }));
   } finally {
-    if (completed === alignedCampaignIdsInCurrentRun) (global as any).__ga4DailyRefreshInProgress = false;
+    if (completed === alignedCampaignIdsInCurrentRun) {
+      // Only full, owned publication resolves that campaign's recorded stage failure.
+      if (ga4DailySchedulerStatus.lastRunStatus === "failed" && ga4DailySchedulerStatus.lastAlignedRefreshFailures.length > 0 &&
+          /^Aligned GA4 publication failed for \d+ campaign stage\(s\)$/.test(ga4DailySchedulerStatus.lastError || "")) {
+        const recovered = new Set(hashEvidenceIds(Array.from(completed)));
+        ga4DailySchedulerStatus.lastAlignedRefreshFailures = ga4DailySchedulerStatus.lastAlignedRefreshFailures
+          .filter(failure => !recovered.has(failure.campaignIdHash));
+        for (const campaignIdHash of hashEvidenceIds(Array.from(recoveryFailures))) {
+          if (!ga4DailySchedulerStatus.lastAlignedRefreshFailures.some(failure => failure.campaignIdHash === campaignIdHash))
+            ga4DailySchedulerStatus.lastAlignedRefreshFailures.push({ campaignIdHash, stage: "campaign_pipeline_failed" });
+        }
+        if (ga4DailySchedulerStatus.lastAlignedRefreshFailures.length === 0) {
+          ga4DailySchedulerStatus.lastRunStatus = "success";
+          ga4DailySchedulerStatus.lastError = null;
+          ga4DailySchedulerStatus.lastRunFinishedAt = new Date();
+        }
+      }
+      (global as any).__ga4DailyRefreshInProgress = false;
+    }
   }
 }
 

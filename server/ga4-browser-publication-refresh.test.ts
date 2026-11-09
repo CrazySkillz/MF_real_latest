@@ -49,6 +49,7 @@ async function statusRoute(overrides: Record<string, any> = {}, query: any = {})
 function browser(client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } })) {
   const receipt = { current: { scope: "", token: "", pending: false } };
   let state = { scope: "", pending: false, failed: false };
+  let spendFollowUp = { scope: "", until: 0 };
   let queryOptions: any; let effect: any;
   let completionResult: any;
   const block = page.slice(page.indexOf("  const ga4PublicationScope ="), page.indexOf("  const deriveBenchmarkCategoryFromMetric"));
@@ -58,14 +59,15 @@ function browser(client = new QueryClient({ defaultOptions: { queries: { retry: 
       platformKPIs: [{ id: "k-a" }], benchmarks: [{ id: "b-a" }],
       useQuery: (options: any) => { queryOptions = options; return { data: status, dataUpdatedAt: Date.now(), isError: error, isFetchedAfterMount: checked, refetch: async () => completionResult || ({ data: status, isError: error }) }; },
       useRef: () => receipt,
-      useState: () => [state, (value: typeof state) => { state = value; }],
+      useState: (initial: any) => "until" in initial ? [spendFollowUp, (value: typeof spendFollowUp) => { spendFollowUp = value; }]
+        : [state, (value: typeof state) => { state = value; }],
       useEffect: (callback: any) => { effect = callback; },
       useIsFetching: (filter: any) => client.isFetching(filter),
       fetch: (...args: any[]) => (globalThis.fetch as any)(...args),
     });
     return { ...values, effect, queryOptions };
   };
-  return { client, render, receipt, set completionResult(value: any) { completionResult = value; }, get state() { return state; } };
+  return { client, render, receipt, set spendFollowUp(value: typeof spendFollowUp) { spendFollowUp = value; }, set completionResult(value: any) { completionResult = value; }, get state() { return state; } };
 }
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); focusManager.setFocused(true); });
@@ -187,6 +189,25 @@ describe("GA4 lightweight publication status", () => {
 });
 
 describe("GA4 browser publication coordination", () => {
+  it("briefly follows pending Spend imports without accelerating idle, failed, expired or foreign scopes", () => {
+    vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-09T14:00:00Z"));
+    const view = browser(), now = Date.now();
+    const query = (refreshStatus: string, delay = 60_000, status = "success") => ({ state: { status, data: { refreshStatus, nextCheckAt: new Date(Date.now() + delay).toISOString() } } });
+    expect(view.render().queryOptions.refetchInterval(query("running"))).toBe(60_000);
+    view.spendFollowUp = { scope: JSON.stringify(["a", "123"]), until: now + 120_000 };
+    const interval = () => view.render().queryOptions.refetchInterval;
+    expect(interval()(query("running"))).toBe(5_000);
+    expect(interval()(query("delayed"))).toBe(5_000);
+    expect(interval()(query("running", 2_000))).toBe(2_000);
+    expect(interval()(query("current", 3_600_000))).toBe(3_600_000);
+    expect(interval()(query("running", 60_000, "error"))).toBe(60_000);
+    expect(interval()({ state: { status: "success", data: { refreshStatus: "running" } } })).toBe(false);
+    expect(view.render(undefined, false, "other", "123").queryOptions.refetchInterval(query("running"))).toBe(60_000);
+    expect(view.render(undefined, false, "a", "999").queryOptions.refetchInterval(query("running"))).toBe(60_000);
+    vi.setSystemTime(now + 120_000);
+    expect(interval()(query("running"))).toBe(60_000);
+    view.client.clear();
+  });
   it("selects only exact campaign/property queries, definitions and their analytics", () => {
     const view = browser(); const { isGA4PublicationQuery: selected } = view.render();
     const yes = [
@@ -490,15 +511,21 @@ describe("GA4 browser publication coordination", () => {
       const item = { source: { id: "source-a", mappingConfig: JSON.stringify({ selectedValues: ["Deal"] }) }, campaignValue: "Deal" };
       const noop = vi.fn();
       const toast = vi.fn();
+      const followUp = vi.fn(), before = Date.now();
       const callbackFn = compile(`return (${callback});`, {
         campaignId: "a", queryClient: { invalidateQueries: vi.fn(async () => {}), refetchQueries: vi.fn(async () => {}) },
         refetchGA4PublicationStatus: refresh, refreshNotificationQueries: noop, fetch: request, toast, console: { error: noop },
+        setSpendImportFollowUp: followUp, ga4PublicationScope: JSON.stringify(["a", "123"]),
         deletingSpendSourceId: "spend-a", deletingRevenueSourceId: "source-a", deletingHubSpotRevenueItem: item, deletingSalesforceRevenueItem: item,
         deletingPipelineProxySource: { sourceId: "source-a", sourceType: "hubspot", providerLabel: "HubSpot" },
         setDeletingSpendSourceId: noop, setDeletingRevenueSourceId: noop, setDeletingPipelineProxySource: noop, setDeletingPipelineProxySourcePending: noop,
         setDeletingHubSpotRevenueItemPending: noop, setDeletingHubSpotRevenueItem: noop, setDeletingSalesforceRevenueItemPending: noop, setDeletingSalesforceRevenueItem: noop,
       });
       await callbackFn({ preventDefault: noop });
+      if (marker === "AddSpendWizardModal") {
+        expect(followUp).toHaveBeenCalledWith({ scope: JSON.stringify(["a", "123"]), until: expect.any(Number) });
+        expect(followUp.mock.calls[0][0].until).toBeGreaterThanOrEqual(before + 120_000);
+      } else expect(followUp).not.toHaveBeenCalled();
       if (ok) await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
       else { await vi.waitFor(() => expect(toast).toHaveBeenCalled()); expect(refresh).not.toHaveBeenCalled(); }
       if (request.mock.calls.length) expect(request.mock.calls[0][0]).toContain("/api/campaigns/a/");

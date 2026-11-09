@@ -8,11 +8,12 @@ Trace: GA4 scheduled work/ownership claim → financial-source refresh → `refr
 
 ## Localized correction
 
-Use the existing `isDeepStrictEqual` helper for `encryptedTokens` in the dedicated and retained legacy Google Ads daily replacement guards. All other campaign, source, customer, method, ownership, lease and mapping checks remain unchanged. No formulas, provider queries, schedules, response contracts, schema or stored settings change.
+Use Node's existing `isDeepStrictEqual` helper for `encryptedTokens` in the dedicated and retained legacy Google Ads daily replacement guards and the subsequent scheduler materialization guard. All other campaign, source, customer, method, ownership, lease and mapping checks remain unchanged. No formulas, provider queries, schedules, response contracts, schema or stored settings change.
 
 ## Evidence and limits
 
 - Four real-PostgreSQL cases reproduced the exact failure before the correction: service account and OAuth, dedicated and legacy storage.
+- Hosted test refresh on the initial correction passed fact replacement but exposed the same object-identity comparison in the subsequent materialization guard (`GA4_REFRESH_CONNECTION_CHANGED`). Four production-path regressions now model independent connection reads through the complete fetch/materialization path and reproduce that failure; they also reject actual credential/customer/manager/method changes before financial records or totals publish.
 - The corrected path passes 540 focused tests across financial ownership, Google Ads production refresh, ordered pipeline and failure handling. New assertions cover identical separately read token envelopes, exact €4.89 facts, changed credentials/customer/manager/method, cross-campaign writes and expired leases. Existing tests cover changed source mappings, rollback, provider failures and downstream ordering.
 - The failure occurs before daily-fact replacement commits. Last-good Ads facts were preserved. Existing failed-work audit rows must remain intact; use the existing owner-guarded campaign run-now path for recovery after deployment, rather than editing historical completion records.
 - Hosted recovery and monitoring verification are pending until deployment. This fix does not recertify unrelated sections or sources.

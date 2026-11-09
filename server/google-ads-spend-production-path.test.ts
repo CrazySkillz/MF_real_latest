@@ -167,11 +167,11 @@ describe("Google Ads GA4 Overview spend production path", () => {
     );
   });
 
-  it.each([false, true])("passes ownership through Google Ads facts, records and cache (dedicated=%s)", async dedicated => {
+  it.each([false, true].flatMap(dedicated => ["oauth", "service_account"].map(method => ({ dedicated, method }))))("passes ownership through Google Ads facts, records and cache ($dedicated/$method)", async ({ dedicated, method }) => {
     const refreshScope = { campaignId: "campaign-1", ownerId: "owner-1", reportingDate: "2026-08-05", work: { id: "work-1", leaseToken: "test-lease" } };
-    const connection = { id: "conn-1", campaignId: "campaign-1", method: "oauth", spendOnly: true, accessToken: "fake", customerId: "123", lastRefreshAt: new Date() };
-    mocks.storage.getGoogleAdsConnection.mockResolvedValue(connection);
-    mocks.storage.getGA4GoogleAdsSpendConnection.mockResolvedValue(connection);
+    const connection = { id: "conn-1", campaignId: "campaign-1", method, encryptedTokens: { v: 1, accessToken: { iv: "fixture", tag: "fixture", ct: "fixture" } }, spendOnly: true, accessToken: "fake", customerId: "123", lastRefreshAt: new Date() };
+    mocks.storage.getGoogleAdsConnection.mockImplementation(async () => structuredClone(connection));
+    mocks.storage.getGA4GoogleAdsSpendConnection.mockImplementation(async () => structuredClone(connection));
     await refreshGoogleAdsForCampaign("campaign-1", connection, { ga4SpendConnection: dedicated, deferDownstream: true, refreshScope });
     const facts = dedicated ? mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow : mocks.storage.replaceGoogleAdsDailyMetricsForWindow;
     const metadata = dedicated ? mocks.storage.updateGA4GoogleAdsSpendConnection : mocks.storage.updateGoogleAdsConnection;
@@ -181,6 +181,13 @@ describe("Google Ads GA4 Overview spend production path", () => {
     expect(mocks.storage.updateCampaign).toHaveBeenCalledWith("campaign-1", { spend: "123.45" }, expect.objectContaining({ refreshScope }));
     expect(mocks.runGA4DailyKPIAndBenchmarkJobs).not.toHaveBeenCalled();
     expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment).not.toHaveBeenCalled();
+    for (const change of [{ encryptedTokens: { v: 1, accessToken: { ct: "changed" } } }, { customerId: "changed" }, { managerAccountId: "changed" }, { method: method === "oauth" ? "service_account" : "oauth" }]) {
+      mocks.storage.getGoogleAdsConnection.mockResolvedValue({ ...structuredClone(connection), ...change });
+      mocks.storage.getGA4GoogleAdsSpendConnection.mockResolvedValue({ ...structuredClone(connection), ...change });
+      mocks.storage.replaceSpendRecordsForSource.mockClear(); mocks.storage.updateCampaign.mockClear();
+      await expect(refreshGoogleAdsForCampaign("campaign-1", connection, { ga4SpendConnection: dedicated, deferDownstream: true, refreshScope })).rejects.toThrow("GA4_REFRESH_CONNECTION_CHANGED");
+      expect(mocks.storage.replaceSpendRecordsForSource).not.toHaveBeenCalled(); expect(mocks.storage.updateCampaign).not.toHaveBeenCalled();
+    }
   });
 
   it("stops Google Ads after a late provider response loses ownership", async () => {

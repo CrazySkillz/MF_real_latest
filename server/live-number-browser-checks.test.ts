@@ -75,15 +75,25 @@ describe("isolated browser monitoring boundaries", () => {
   it("uses session key-event rate rather than conversions divided by sessions", () => {
     expect(expectedBrowserCampaignRows(fixture(),now)[0].conversionRate).toBe(5);
   });
-  it("checks explicitly selected zero-activity campaigns without inventing missing Users evidence", () => {
+  it("preserves empty browser campaign lists without inventing activity or missing Users evidence", () => {
     const snapshot = fixture(); snapshot.usersDefinition = "ga4_totalUsers_distinct_v1";
     const publication = snapshot.rows.ga4OverviewSnapshots[0];
     publication.campaignBreakdown.rows = [];
     publication.campaignBreakdown.meta.distinctUsers = { version: 1, metric: "totalUsers", propertyId: "123", startDate: "2026-11-04", endDate: "2026-11-04", total: 0,
       campaigns: [{ name: "search", users: 0 }], daily: [], windows: [] };
     const before = JSON.stringify(snapshot);
-    expect(expectedBrowserCampaignRows(snapshot, now)).toEqual([expect.objectContaining({ name: "search", users: 0, sessions: 0, conversions: 0, revenue: 0 })]);
+    expect(expectedBrowserCampaignRows(snapshot, now)).toEqual([]);
     expect(JSON.stringify(snapshot)).toBe(before);
+    for (const row of snapshot.rows.ga4DailyMetrics) Object.assign(row, { sessions: 0, users: 0, conversions: 0, revenue: 0 });
+    Object.assign(publication.campaignBreakdown.totals, { sessions: 0, users: 0, conversions: 0, revenue: 0 });
+    expect(checkBrowserReportText(snapshot, "No campaign breakdown data available.", "ads", now)).toContainEqual(expect.objectContaining({ code: "VERIFIED_EMPTY_CAMPAIGN_STATE", status: "passed" }));
+    expect(checkBrowserReportText(snapshot, "", "ads", now)).toContainEqual(expect.objectContaining({ code: "VERIFIED_EMPTY_CAMPAIGN_STATE", status: "difference" }));
+    snapshot.campaign.createdAt = "2026-11-05T12:00:00Z";
+    const text = "Executive Financials\nREVENUE\nEUR 0.00\nSPEND\nUnavailable\nPROFIT\nUnavailable\nROAS\n—\nROI\n—\nSOURCES USED\nSpend: Not connected\nRevenue: Native GA4";
+    expect(checkBrowserReportText(snapshot, text, "insights", now).every(c => c.status === "passed")).toBe(true);
+    expect(checkBrowserReportText(snapshot, text.replace("EUR 0.00", "EUR 1.00"), "insights", now)).toContainEqual(expect.objectContaining({ code: "REVENUE", status: "difference" }));
+    publication.campaignBreakdown.rows = [{ campaign: "search", sessions: 0, users: 0, conversions: 0, revenue: 0, sessionKeyEventRate: 0 }];
+    expect(expectedBrowserCampaignRows(snapshot, now)).toEqual([expect.objectContaining({ name: "search", users: 0, sessions: 0 })]);
     publication.campaignBreakdown.meta.distinctUsers.campaigns = [];
     expect(expectedBrowserCampaignRows(snapshot, now)[0].users).toBeNaN();
   });

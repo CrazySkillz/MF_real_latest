@@ -115,17 +115,27 @@ export function checkGeneratedReportText(snapshot: LiveNumberSnapshot, text: str
   return checks.length ? checks : [{ section, code: "PDF_OUTPUT_UNVERIFIED", status: "unverified" }];
 }
 
-export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string, type: string, now = new Date(), comparisonMetric = "sessions"): NumberCheck[] {
+export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string, type: string, now = new Date(), comparisonMetric = "sessions", includeEmptySelections = true): NumberCheck[] {
   const expected = expectedOutputNumbers(snapshot, now), section = `Generated ${type} PDF details`, checks: NumberCheck[] = [];
   const lines = text.split(/\r?\n/).map(line => line.replace(/\s+/g, " ").trim()).filter(Boolean);
   const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const numeric = "(-?(?:\\d+|\\d{1,3}(?:,\\d{3})+)(?:\\.\\d+)?|Unavailable)";
   const row = (code: string, name: string, values: Array<[unknown, number | undefined, string?]>, subset = lines) => {
-    const pattern = new RegExp(`^${escape(name)} ${values.map(([, , unit]) => `${unit === "money" ? escape(expected.scope.currency) + " " : ""}${numeric}${unit === "%" ? "%" : ""}`).join(" ")}$`);
+    const pattern = new RegExp(`^${escape(name)} ${values.map(([, , unit]) => `${unit === "money" ? escape(expected.scope.currency) + " " : ""}${unit === "%" ? numeric.replace("|Unavailable)", "%|Unavailable)") : numeric}`).join(" ")}$`);
     const found = subset.map(line => line.match(pattern)).filter(Boolean), subject = monitorHash(name);
+    // PDF extraction can put a wrapped campaign name on separate lines before
+    // its numeric cells. Rejoin only an exact expected name, never its values.
+    for (let i = 0; i < subset.length; i++) {
+      let joined = "";
+      for (let j = i; j < Math.min(i + 8, subset.length - 1); j++) {
+        joined += joined && name.startsWith(joined + " " + subset[j]) ? " " + subset[j] : subset[j];
+        if (!name.startsWith(joined)) break;
+        if (joined === name) { const match = `${name} ${subset[j + 1]}`.match(pattern); if (match) found.push(match); break; }
+      }
+    }
     if (found.length !== 1) { checks.push({ section, code: code + "_ROW_UNVERIFIED", subject, status: "unverified" }); return; }
     values.forEach(([wanted, decimals], index) => {
-      const raw = found[0]![index + 1], actual = raw === "Unavailable" ? null : numberOrNull(raw.replaceAll(",", ""));
+      const raw = found[0]![index + 1], actual = raw === "Unavailable" ? null : numberOrNull(raw.replaceAll(",", "").replace(/%$/, ""));
       if (wanted === null && actual === null) checks.push({ section, code: `${code}_${index}_UNAVAILABLE`, subject, status: "passed" });
       else if (wanted === null || actual === null) checks.push({ section, code: `${code}_${index}_AVAILABILITY`, subject, status: "difference" });
       else {
@@ -148,7 +158,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
       campaigns.set(item.campaign, current);
     }
     // The report retains explicitly selected campaigns with no provider rows.
-    for (const name of expected.scope.filter) if (!Array.from(campaigns.keys()).some(key => key.toLowerCase() === name.toLowerCase())) {
+    for (const name of includeEmptySelections ? expected.scope.filter : []) if (!Array.from(campaigns.keys()).some(key => key.toLowerCase() === name.toLowerCase())) {
       campaigns.set(name, { sessions: 0, users: 0, conversions: 0, revenue: 0, weightedRate: 0 });
     }
     const nativeCampaigns = Array.from(campaigns.entries()).map(([name, item]) => ({ name, ...item }));
@@ -345,7 +355,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
   return checks;
 }
 
-export function checkConfiguredReportText(snapshot: LiveNumberSnapshot, text: string, report: any, now = new Date()): NumberCheck[] {
+export function checkConfiguredReportText(snapshot: LiveNumberSnapshot, text: string, report: any, now = new Date(), includeEmptySelections = true): NumberCheck[] {
   const section = "Configured report PDF", subject = monitorHash(String(report.id)), checks: NumberCheck[] = [];
   if (report.campaignId !== snapshot.campaign.id) return [{ section, subject, code: "REPORT_CAMPAIGN_MISMATCH", status: "difference" }];
   let cfg: any;
@@ -365,7 +375,7 @@ export function checkConfiguredReportText(snapshot: LiveNumberSnapshot, text: st
     return [{ section, subject, code: "REPORT_TYPE_UNVERIFIED", status: "unverified" }];
   if (report.reportType !== "custom") {
     add(checkGeneratedReportText(snapshot, text, report.reportType, now));
-    add(checkReportDetailText(snapshot, text, report.reportType, now, cfg.adComparisonMetric || "sessions"));
+    add(checkReportDetailText(snapshot, text, report.reportType, now, cfg.adComparisonMetric || "sessions", includeEmptySelections));
     return checks;
   }
   const selected = (group: string, key: string) => cfg.sections?.[group] === true && cfg.subsections?.[group]?.[key] === true;
@@ -390,7 +400,7 @@ export function checkConfiguredReportText(snapshot: LiveNumberSnapshot, text: st
   const detailGroups: Record<string, string[]> = { campaignBreakdown: ["CAMPAIGN_BREAKDOWN", "CAMPAIGN_REVENUE_ALLOCATION"],
     landingPages: ["LANDING_PAGE"], conversionEvents: ["CONVERSION_EVENT"], revenue: ["REVENUE_SOURCE_AMOUNT"] };
   const detailCodes = Object.entries(detailGroups).filter(([key]) => selected("overview", key)).flatMap(([, codes]) => codes);
-  add(checkReportDetailText(filtered, text, "overview", now).filter(check => detailCodes.some(code => check.code.startsWith(code))));
+  add(checkReportDetailText(filtered, text, "overview", now, "sessions", includeEmptySelections).filter(check => detailCodes.some(code => check.code.startsWith(code))));
   if (cfg.sections?.insights) {
     if (selected("insights", "summaryCards")) add(checkGeneratedReportText(filtered, text, "insights", now));
     add(checkReportDetailText(filtered, text, "insights", now).filter(check => selected("insights", "dataSummary") && check.code.startsWith("SUMMARY_")
@@ -400,7 +410,7 @@ export function checkConfiguredReportText(snapshot: LiveNumberSnapshot, text: st
   if (cfg.sections?.ads) {
     if (selected("ads", "revenueBreakdown")) add(checkGeneratedReportText(filtered, text, "ads", now));
     const selectedMetric = cfg.adComparisonMetric || "sessions";
-    add(checkReportDetailText(filtered, text, "ads", now, selectedMetric).filter(check => selected("ads", "revenueBreakdown") && check.code === "REVENUE_SOURCE_AMOUNT"
+    add(checkReportDetailText(filtered, text, "ads", now, selectedMetric, includeEmptySelections).filter(check => selected("ads", "revenueBreakdown") && check.code === "REVENUE_SOURCE_AMOUNT"
       || (selected("ads", "topCampaigns") || selected("ads", "summary")) && ["CAMPAIGN_COUNT", "CAMPAIGN_SESSIONS", "CAMPAIGN_SELECTED_TOTAL", "CAMPAIGN_CHART_VALUE"].includes(check.code)
       || selected("ads", "bestWorst") && ["KEY_EVENT_LEADER", "RATE_LEADER", "ATTENTION_CAMPAIGN"].includes(check.code)
       || selected("ads", "allCampaigns") && check.code.startsWith("ALL_CAMPAIGNS")));

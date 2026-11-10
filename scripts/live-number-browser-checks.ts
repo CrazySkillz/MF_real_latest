@@ -90,6 +90,11 @@ export function checkDisplayedNumber(section: string, code: string, expected: nu
 }
 
 export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: string, type: string, now = new Date()): NumberCheck[] {
+  if (type === "ads" && expectedBrowserCampaignRows(snapshot, now).length === 0) {
+    const totals = expectedOutputNumbers(snapshot, now).totals;
+    return [{ section: "Browser ads PDF", code: "VERIFIED_EMPTY_CAMPAIGN_STATE", status: [totals.sessions, totals.users, totals.conversions, totals.revenue].every(value => value === 0)
+      && text.includes("No campaign breakdown data available.") ? "passed" : "difference" }];
+  }
   // Browser PDFs deliberately shorten the Shopify label. Only resolve it when
   // exactly one active source has that label; ambiguous sources remain unverified.
   const shopify = (snapshot.rows.revenueSources || []).filter(r => r.sourceType === "shopify" && r.isActive !== false);
@@ -97,7 +102,7 @@ export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: strin
     revenueSources: snapshot.rows.revenueSources.map(r => r.id === shopify[0].id ? { ...r, displayName: "Shopify" } : r) } };
   if (type !== "insights") {
     const normalized = text.replaceAll("Revenue SOURCES", "Revenue Sources").replaceAll("Spend SOURCES", "Spend Sources");
-    const checks = [...checkGeneratedReportText(snapshot, normalized, type, now), ...checkReportDetailText(snapshot, normalized, type, now)]
+    const checks = [...checkGeneratedReportText(snapshot, normalized, type, now), ...checkReportDetailText(snapshot, normalized, type, now, "sessions", false)]
       .filter(c => !["KPIS_CURRENT_TARGET", "BENCHMARKS_CURRENT_TARGET", ...(type === "ads" ? ["RATE_LEADER"] : [])].includes(c.code));
     if (type === "kpis" || type === "benchmarks") for (const target of expectedTargetNumbers(snapshot, now).filter(t => t.kind === type && t.verified)) {
       if (!target.verified) continue;
@@ -119,7 +124,7 @@ export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: strin
   }
   const e = expectedOutputNumbers(snapshot, now), section = "Browser insights PDF";
   const lines = text.split(/\r?\n/).map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
-  const start = lines.indexOf("Executive Financials"), end = lines.findIndex((line, index) => index > start && ["Trends", "Data Summary"].includes(line));
+  const start = lines.indexOf("Executive Financials"), end = lines.findIndex((line, index) => index > start && ["SOURCES USED", "Trends", "Data Summary"].includes(line));
   const financial = start >= 0 && end > start ? ["Executive Summary", ...lines.slice(start + 1, end), "Data Summary"].join("\n") : "";
   const checks = checkGeneratedReportText(snapshot, financial, type, now);
   const summaryStart = lines.indexOf("Data Summary"), summary = summaryStart < 0 ? [] : lines.slice(summaryStart + 1);
@@ -143,7 +148,8 @@ export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: strin
   const created = new Date(snapshot.campaign.createdAt), validCreated = Number.isFinite(created.getTime()) && created <= now;
   const historyStart = validCreated ? new Intl.DateTimeFormat("en-CA", { timeZone: e.scope.reportingTimeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(created) : "";
   const expectedDates = e.daily.filter(row => historyStart && row.date >= historyStart && row.date <= e.scope.endDate).map(row => row.date).sort().slice(-14);
-  const emptyNewHistory = validCreated && historyStart > e.scope.endDate && summaryStart > start && start >= 0 && !lines.includes("Trends");
+  const emptyNewHistory = validCreated && historyStart > e.scope.endDate && start >= 0 && end > start && !lines.includes("Trends")
+    && (summaryStart > start || summaryStart < 0 && e.totals.sessions === 0 && e.revenue === 0);
   checks.push({ section, code: "TREND_TABLE_OR_EXPLICIT_HISTORY_STATE", status: !validCreated ? "unverified"
     : dates.length ? JSON.stringify(dates.map(match => match[1]).sort()) === JSON.stringify(expectedDates) ? "passed" : "difference"
     : expectedDates.length ? "unverified" : emptyNewHistory || /comparison unavailable|Need at least|No daily history/i.test(text) ? "passed" : "unverified" });
@@ -156,9 +162,6 @@ export function expectedBrowserCampaignRows(snapshot: LiveNumberSnapshot, now = 
     const value = groups.get(row.campaign) || {name:row.campaign,sessions:0,users:0,conversions:0,revenue:0,weighted:0};
     for (const field of ["sessions","users","conversions","revenue"] as const) value[field] += Number(row[field]);
     value.weighted += Number(row.sessions) * Number(row.sessionKeyEventRate || 0); groups.set(row.campaign,value);
-  }
-  for (const name of e.scope.filter) if (!Array.from(groups.keys()).some(key => key.toLowerCase() === name.toLowerCase())) {
-    groups.set(name, { name, sessions: 0, users: 0, conversions: 0, revenue: 0, weighted: 0 });
   }
   for (const row of groups.values()) row.users = monitoredUsers(snapshot, e.scope, row.name) ?? Number.NaN;
   const normalize = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -300,7 +303,7 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
     await visit(`/campaigns/${cid}/ga4-metrics?readOnly=1`);
     if(observe) await observe("image","overview",(await page.screenshot()).toString("base64"));
     await cards("Screen GA4 Overview", [["Sessions", e.totals.sessions, 0], ["Users", e.totals.users, 0], ["Conversions", e.totals.conversions], ["Engagement Rate", e.engagementRate === null ? null : e.engagementRate * 100, 1], ["Conv. Rate", e.cvr, 1], ...financial]);
-    checks.push(...checkReportDetailText(snapshot, await tableText(), "overview", now).filter(c => c.code !== "REVENUE_SOURCE_AMOUNT").map(c => ({ ...c, section: "Screen GA4 Overview tables" })));
+    checks.push(...checkReportDetailText(snapshot, await tableText(), "overview", now, "sessions", false).filter(c => c.code !== "REVENUE_SOURCE_AMOUNT").map(c => ({ ...c, section: "Screen GA4 Overview tables" })));
     for (const [kind, sources] of [["revenue", e.revenueSources], ["spend", e.spendSources]] as const) {
       const title = kind === "revenue" ? "Total Revenue" : "Total Spend";
       const parent = page.getByText(title, { exact: true }).first().locator("xpath=../..");
@@ -347,6 +350,12 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
         }
       }
       if (tab === "campaigns") {
+        if (!await page.getByRole("tabpanel").getByRole("combobox").count()) {
+          checks.push({ section: "Screen GA4 Campaign Comparison", code: "VERIFIED_EMPTY_CAMPAIGN_STATE", status: expectedBrowserCampaignRows(snapshot, now).length === 0
+            && e.totals.sessions === 0 && e.totals.users === 0 && e.totals.conversions === 0 && e.totals.revenue === 0
+            && text.includes("No campaign data available. Ensure your GA4 property has UTM campaign tracking configured.") ? "passed" : "difference" });
+          continue;
+        }
         for (const [metric, title] of [["sessions", "Sessions"], ["users", "Users"], ["conversions", "Conversions"], ["revenue", "Revenue"], ["conversionRate", "Conversion Rate"]]) {
           if (metric !== "sessions") { await page.getByRole("tabpanel").getByRole("combobox").click(); await page.getByRole("option", { name: `${title} (High to Low)`, exact: true }).click(); }
           await charts("Screen GA4 Campaign Comparison", "campaign", metric);
@@ -390,7 +399,7 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
           const found = report.configuration
             ? report.reportType === "custom" && report === reports[5]
               ? [...checkBrowserReportText(snapshot, result.text.split("Key Performance Indicators")[0], "overview", now), ...checkBrowserReportText(snapshot, result.text, "kpis", now), ...checkBrowserReportText(snapshot, result.text, "benchmarks", now), ...checkBrowserReportText(snapshot, result.text.slice(result.text.indexOf("Executive Financials")), "insights", now)]
-              : report.reportType === "custom" ? checkConfiguredReportText(snapshot, result.text, { campaignId: cid, id: "monitor-browser", platformType: "google_analytics", ...report }, now) : checkBrowserReportText(snapshot,result.text,report.reportType,now)
+              : report.reportType === "custom" ? checkConfiguredReportText(snapshot, result.text, { campaignId: cid, id: "monitor-browser", platformType: "google_analytics", ...report }, now, false) : checkBrowserReportText(snapshot,result.text,report.reportType,now)
             : checkBrowserReportText(snapshot, result.text, report.reportType, now);
           checks.push(...found.map(c => ({ ...c, section })), ...checkNarrativeWindows(snapshot, result.text, now), { section, code: "ACTUAL_BROWSER_DOWNLOAD", status: "passed" });
         } finally { await parser.destroy(); await download.delete(); }

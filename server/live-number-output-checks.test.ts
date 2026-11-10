@@ -424,9 +424,20 @@ describe("actual report detail values", () => {
     expect(checkReportDetailText(snapshot, text.replace("COMPARED\n1", "COMPARED\n0"), "ads", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_COUNT", status: "difference" }));
     expect(checkReportDetailText(snapshot, "search 0 0 0 0.0% EUR 0.00", "overview", now).every(check => check.status === "passed")).toBe(true);
     expect(checkReportDetailText(snapshot, "search 1 0 0 0.0% EUR 0.00", "overview", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_0", status: "difference" }));
+    const name = "mimosaas_landing_browser_demo_20261110";
+    snapshot.campaign.ga4CampaignFilter = JSON.stringify([name]);
+    const wrapped = "mimosaas_landing_browser_demo_20\n261110\n0 0 0 0.0% EUR 0.00";
+    expect(checkReportDetailText(snapshot, wrapped, "overview", now).every(c => c.status === "passed")).toBe(true);
+    expect(checkReportDetailText(snapshot, wrapped.replace("0 0 0", "1 0 0"), "overview", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_0", status: "difference" }));
+    expect(checkReportDetailText(snapshot, wrapped.replace("261110", "261111"), "overview", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_ROW_UNVERIFIED", status: "unverified" }));
+    expect(checkReportDetailText(snapshot, wrapped + "\n" + wrapped, "overview", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_ROW_UNVERIFIED", status: "unverified" }));
     const executive = "Marketing Funnel Performance\nCONVERSION RATE\nUnavailable\nKPI Exceptions";
     expect(checkDiagnosticReportText(snapshot, executive, "executive-summary", now)).toContainEqual(expect.objectContaining({ code: "CONVERSION_RATE_UNAVAILABLE", status: "passed" }));
     expect(checkDiagnosticReportText(snapshot, executive.replace("Unavailable", "0.0%"), "executive-summary", now)).toContainEqual(expect.objectContaining({ code: "CONVERSION_RATE_AVAILABILITY", status: "difference" }));
+    const trend = "Website Engagement & Conversion Summary\nENGAGEMENT RATE\nUnavailable\nExecutive Recommendations";
+    expect(checkReportDetailText(snapshot, trend, "trend-analysis", now)).toContainEqual(expect.objectContaining({ code: "WEBSITE_ENGAGEMENT_RATE_0_UNAVAILABLE", status: "passed" }));
+    expect(checkReportDetailText(snapshot, trend.replace("Unavailable", "0.0%"), "trend-analysis", now)).toContainEqual(expect.objectContaining({ code: "WEBSITE_ENGAGEMENT_RATE_0_AVAILABILITY", status: "difference" }));
+    expect(checkReportDetailText(snapshot, trend.replace("Unavailable", "0.0"), "trend-analysis", now)).toContainEqual(expect.objectContaining({ code: "WEBSITE_ENGAGEMENT_RATE_ROW_UNVERIFIED", status: "unverified" }));
   });
   it("keeps a negative revenue benchmark's visual progress at zero", () => {
     const snapshot = fixture(); snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.totals.revenue = -50;

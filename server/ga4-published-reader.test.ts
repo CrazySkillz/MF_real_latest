@@ -92,6 +92,20 @@ describe("published GA4 readers", () => {
     await route("/api/campaigns/:id/ga4-to-date", bindings)(req(), response());
     expect(storage.getGA4OverviewSnapshot).not.toHaveBeenCalled();
   });
+  it.each([21, 0, null])("returns the exact published Users value %s in diagnostic aliases without adding daily users", async (users) => {
+    const saved: any = overview();
+    saved.campaignBreakdown.meta.propertyId = connection.propertyId;
+    if (users !== null) saved.campaignBreakdown.meta.distinctUsers = { version: 1, metric: "totalUsers", propertyId: connection.propertyId,
+      startDate: saved.windowStart, endDate: saved.windowEnd, total: users, campaigns: [{ name: "sale", users }], daily: [], windows: [] };
+    storage.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(), res);
+    expect(res.code, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.ga4.users).toBe(users); expect(res.body.webAnalytics.users).toBe(users);
+    expect(res.body.performanceSummary.totals.users).toMatchObject({ value: users ?? 0, available: users !== null });
+    expect(res.body.ga4).toMatchObject({ sessions: 30, conversions: 5, revenue: 100.01 });
+    expect(res.body.financials).toMatchObject({ totalRevenue: 130.01, spend: 20, conversions: 5 });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled(); expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
   it("keeps diagnostic totals and provenance on the published values", async () => {
     const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(), res);
     expect(res.code, JSON.stringify(res.body)).toBe(200);

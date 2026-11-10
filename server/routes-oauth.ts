@@ -15921,6 +15921,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (useSavedOverview) {
+        ga4Totals.users = financialGa4Totals.users ?? null;
+        if (webAnalytics.provider === "ga4") webAnalytics.users = financialWebAnalytics.users ?? null;
+      }
       res.json({
         success: true,
         campaignId,

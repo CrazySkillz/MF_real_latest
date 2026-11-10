@@ -195,7 +195,7 @@ function setSavedPublication(breakdown: { rows: any[]; totals?: Record<string, n
   storageMock.getGA4OverviewSnapshot.mockResolvedValue({
     campaignId: campaign.id, propertyId: "properties/123", windowStart: "2026-07-02", windowEnd: "2026-07-04",
     updatedAt: dailyRow.updatedAt,
-    campaignBreakdown: { rows: breakdown.rows, totals, meta: { currencyCode: "USD", revenueMetric: "purchaseRevenue" } },
+    campaignBreakdown: { rows: breakdown.rows, totals, meta: { currencyCode: "USD", revenueMetric: "purchaseRevenue", propertyId: "properties/123", distinctUsers: { version: 1, metric: "totalUsers", propertyId: "properties/123", startDate: "2026-07-02", endDate: "2026-07-04", total: totals.users, campaigns: breakdown.rows.map(row => ({ name: row.campaign || row.campaignName, users: row.users })), windows: [] } } },
     landingPages: { rows: [] }, conversionEvents: { rows: [] },
   });
   const rows = ["2026-07-02", "2026-07-03", "2026-07-04"].map((date) => ({
@@ -536,7 +536,7 @@ describe("Shopify downstream value/content regression guard", () => {
       const other = expected.first === "Alpha" ? "Beta" : "Alpha";
       expect(pdfTextCalls.indexOf(expected.first)).toBeLessThan(pdfTextCalls.indexOf(other));
       if (expected.metric === "users") {
-        expect(pdfTextCalls).toContain("Users are summed campaign-row counts and are non-additive.");
+        expect(pdfTextCalls).toContain("Users are distinct within each campaign and period; campaign counts can overlap.");
       }
     }
   });

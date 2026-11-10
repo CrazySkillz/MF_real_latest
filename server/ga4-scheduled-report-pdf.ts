@@ -6,7 +6,7 @@ import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveG
 import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct, formatConversionCredit } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
-import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
 import { computeAttainmentPct, computeEffectiveDeltaPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiDataSufficiency, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -829,6 +829,7 @@ async function buildGA4ReportPayload(report: any) {
   dailySummedTotals.revenue = Number(dailySummedTotals.revenue.toFixed(2));
   dailySummedTotals.engagementRate = dailySummedTotals.sessions > 0 ? dailySummedTotals.engagedSessions / dailySummedTotals.sessions : 0;
   const overviewSummedTotals = summarizeGA4TrafficRows(overviewDailyRows);
+  const overviewUsers = getGA4DistinctUsers(breakdown, overviewStartDate, dailyEnd);
   const latestOverview = useSavedOverview ? await storage.getGA4OverviewSnapshot(campaignId, propertyId) : null;
   if (useSavedOverview && (failedParts.has("persisted daily metrics") || failedParts.has("persisted Overview Summary metrics") ||
       !latestOverview || String(latestOverview.updatedAt) !== String(savedOverview!.updatedAt) ||
@@ -871,7 +872,7 @@ async function buildGA4ReportPayload(report: any) {
     sessions: Number(overviewTotalsSource?.sessions || 0),
     conversions: Number(overviewTotalsSource?.conversions || 0),
     revenue: Number(overviewTotalsSource?.revenue || 0),
-    users: Number(overviewTotalsSource?.users || 0),
+    users: overviewUsers,
     engagementRate: Number(overviewTotalsSource?.engagementRate || 0),
   };
   const ga4ToDateFinancialTotals = {
@@ -997,6 +998,7 @@ async function buildGA4ReportPayload(report: any) {
       const conversions = Number(row.conversions || 0);
       return {
         ...row,
+        users: getGA4DistinctUsers(breakdown, overviewStartDate, dailyEnd, row.name),
         revenue,
         conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
@@ -1043,6 +1045,7 @@ async function buildGA4ReportPayload(report: any) {
       const conversions = Number(row.conversions || 0);
       return {
         ...row,
+        users: adComparisonWindow ? getGA4DistinctUsers(adComparisonBreakdown, adComparisonWindow.startDate, adComparisonWindow.endDate, row.name) : null,
         revenue,
         conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
@@ -1094,6 +1097,7 @@ async function buildGA4ReportPayload(report: any) {
       ...platformKPIs.map(async (target: any) => {
         try {
           const history = filterGA4InsightsHistoryByScope(await storage.getKPIProgress(target.id), marker)
+            .filter(point => resolveGA4KpiMetricIdentity(target.metric, target.name) !== "users" || String(point.notes || "").includes("users:totalUsers:v1"))
             .filter(point => point.kpiId === target.id && Number.isFinite(new Date(point.recordedAt).getTime()) && new Date(point.recordedAt).toISOString().slice(0, 10) <= dailyEnd && String(point.value ?? "").trim() !== "" && Number.isFinite(Number(point.value)));
           insightsKpiHistory.set(String(target.id), history);
         } catch { failures.add("KPI"); }
@@ -1101,6 +1105,7 @@ async function buildGA4ReportPayload(report: any) {
       ...benchmarks.map(async (target: any) => {
         try {
           const history = filterGA4InsightsHistoryByScope(await storage.getBenchmarkHistory(target.id), marker)
+            .filter(point => resolveGA4KpiMetricIdentity(target.metric, target.name) !== "users" || String(point.notes || "").includes("users:totalUsers:v1"))
             .filter(point => point.benchmarkId === target.id && Number.isFinite(new Date(point.recordedAt).getTime()) && new Date(point.recordedAt).toISOString().slice(0, 10) <= dailyEnd && String(point.variance ?? "").trim() !== "" && Number.isFinite(Number(point.variance)));
           insightsBenchmarkHistory.set(String(target.id), history);
         } catch { failures.add("Benchmark"); }
@@ -1134,7 +1139,7 @@ async function buildGA4ReportPayload(report: any) {
   }
   const currency = String((campaign as any)?.currency || "USD");
   const formatMoney = (value: number) => `${currency} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const formatNumber = (value: number) => `${Math.round(Number(value || 0)).toLocaleString()}`;
+  const formatNumber = (value: number | null) => value == null || !Number.isFinite(value) ? "Unavailable" : `${Math.round(value).toLocaleString()}`;
 
   const payload = {
     campaign,
@@ -1184,6 +1189,8 @@ async function buildGA4ReportPayload(report: any) {
     },
     reportCumulativeWindow,
     verificationInputs: {
+      usersDefinition: "ga4_totalUsers_distinct_v1",
+      distinctUsers: (breakdown as any)?.meta?.distinctUsers ?? null,
       comparisonRateDefinition: "conversions_per_session",
       scope: { campaignId, propertyId, campaignFilter, currency: campaignCurrency, reportingTimeZone: reportCumulativeWindow.reportingTimeZone },
       trafficWindow: reportCumulativeWindow,
@@ -1502,7 +1509,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         payload.adComparisonChartRows.map((row: any) => [
           String(row?.name || "(not set)"),
           formatNumber(row?.sessions || 0),
-          formatNumber(row?.users || 0),
+          formatNumber(row?.users ?? null),
           formatConversionCredit(row?.conversions || 0),
           formatPct(Number(row?.conversionRate || 0)),
           formatMoney(Number(row?.revenue || 0)),
@@ -1601,7 +1608,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       const key = String(row?.name || "").toLocaleLowerCase("en-US");
       const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
       current.sessions += Number(row?.sessions || 0);
-      current.users += Number(row?.users || 0);
+      current.users = row.users;
       current.conversions += Number(row?.conversions || 0);
       current.revenue += Number(row?.revenue || 0);
       chartSummaryByCampaign.set(key, current);
@@ -1614,7 +1621,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
-    const totalMetric = selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
+    const totalMetric = selectedMetric === "users" ? payload.breakdownTotals.users ?? Number.NaN : selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
       ? (() => {
           const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
           const totalConversions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversions || 0), 0);
@@ -1643,6 +1650,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       y += 30;
     }
     if (includeTopCampaigns && sortedByMetric.length > 0) {
+      if (selectedMetric === "users" && sortedByMetric.some(row => row.users == null || !Number.isFinite(row.users))) throw new Error("Distinct GA4 Users are unavailable for this report window");
       const chartData = sortedByMetric.slice(0, 10).map((row: any) => ({ name: String(row?.name || "(not set)"), value: Number(row?.[selectedMetric] || 0) }));
       checkPage(70);
       doc.setFillColor(...COLORS.white); doc.setDrawColor(...COLORS.cardBorder); doc.roundedRect(MX, y, CW, 52, 3, 3, "FD");
@@ -1669,7 +1677,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       metricCards([[summaryMetricLabel, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
       if (selectedMetric === "users") {
         doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textTert);
-        doc.text("Users are summed campaign-row counts and are non-additive.", MX, y);
+        doc.text("Users are distinct within each campaign and period; campaign counts can overlap.", MX, y);
         y += 5;
       }
     }
@@ -1684,7 +1692,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       const allCampaignRows = rows.map((row: any, index: number) => ({ row, index }));
       allCampaignRows.forEach(({ row, index }: { row: any; index: number }) => {
         checkPage(9);
-        const sessions = Number(row?.sessions || 0), users = Number(row?.users || 0);
+        const sessions = Number(row?.sessions || 0), users = row?.users == null ? null : Number(row.users);
         const conversions = Number(row?.conversions || 0), revenue = Number(row?.revenue || 0);
         const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
         doc.setDrawColor(...COLORS.divider); doc.setLineWidth(0.2); doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
@@ -1797,7 +1805,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["METRIC", "VALUE", "NOTE"],
         [
           ["Sessions", formatNumber(payload.breakdownTotals.sessions), "Current GA4 total"],
-          ["Users", formatNumber(payload.breakdownTotals.users), "Sum of daily users"],
+          ["Users", formatNumber(payload.breakdownTotals.users), "Distinct users for the reporting period"],
           ["Conversions", formatConversionCredit(payload.breakdownTotals.conversions), ""],
           ["Revenue", formatMoney(payload.financialRevenue), "Total across revenue sources"],
           ...(payload.financialSpend > 0 ? [["Total Spend", formatMoney(payload.financialSpend), ""]] : []),

@@ -1,5 +1,5 @@
 import { conversionCreditsMatch, formatRoasRatio } from "../../shared/metric-math";
-import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { storage, type GA4RefreshWriteInput } from "../storage";
 import { ga4Service } from "../analytics";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
@@ -19,6 +19,7 @@ export type CampaignMetricTotals = {
   conversions: number;
   financialConversions: number;
   users: number;
+  usersAvailable?: boolean;
   sessions: number;
   engagementRate: number;
   revenueBySource: Map<string, number>;
@@ -153,6 +154,7 @@ async function getCampaignMetricTotalsForEndDate(
   let conversions = 0;
   let financialConversions: number | null = null;
   let users = 0;
+  let usersAvailable = false;
   let sessions = 0;
   let engagementRate = 0;
 
@@ -203,6 +205,12 @@ async function getCampaignMetricTotalsForEndDate(
       ga4Revenue += parseNum((row as any)?.revenue);
     }
     engagementRate = summarizeGA4TrafficRows(rows).engagementRate * 100;
+    if (!isYesopMockProperty(propertyId)) {
+      const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null);
+      const distinctUsers = getGA4DistinctUsers(usersSnapshot, startDate, endDate);
+      usersAvailable = distinctUsers !== null;
+      users = distinctUsers ?? 0;
+    } else usersAvailable = true;
     if (isYesopMockProperty(propertyId)) {
       const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter);
       sessions += baseline.sessions;
@@ -349,6 +357,7 @@ async function getCampaignMetricTotalsForEndDate(
     conversions,
     financialConversions,
     users: Math.round(users),
+    usersAvailable,
     sessions: Math.round(sessions),
     engagementRate: round2(engagementRate),
     revenueBySource: new Map((revenueBreakdown || []).map((row: any) => [String(row?.sourceId || ""), parseNum(row?.revenue)])),
@@ -379,7 +388,7 @@ function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricT
   if (sourceId === "total_revenue") return totals.revenueAvailable === false ? null : totals.revenue;
   if (sourceId === "total_spend") return totals.spendAvailable === false ? null : totals.spend;
   if (sourceId === "total_conversions") return totals.ga4Available === false ? null : totals.conversions;
-  if (sourceId === "total_users") return totals.ga4Available === false ? null : totals.users;
+  if (sourceId === "total_users") return totals.ga4Available === false || totals.usersAvailable === false ? null : totals.users;
   if (sourceId === "total_sessions") return totals.ga4Available === false ? null : totals.sessions;
   if (sourceId === "total_engagement_rate") return totals.ga4Available === false ? null : totals.engagementRate;
   if (sourceId.startsWith("revenue-source:")) {
@@ -392,7 +401,7 @@ function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricT
   }
   if (sourceId === "ga4" && inputKey === "revenue") return totals.ga4RevenueAvailable === false ? null : totals.ga4Revenue;
   if (sourceId === "ga4" && inputKey === "conversions") return totals.ga4Available === false ? null : totals.conversions;
-  if (sourceId === "ga4" && inputKey === "users") return totals.ga4Available === false ? null : totals.users;
+  if (sourceId === "ga4" && inputKey === "users") return totals.ga4Available === false || totals.usersAvailable === false ? null : totals.users;
   if (sourceId === "ga4" && inputKey === "sessions") return totals.ga4Available === false ? null : totals.sessions;
   if (sourceId === "ga4" && inputKey === "engagementRate") return totals.ga4Available === false ? null : totals.engagementRate;
   return null;

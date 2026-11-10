@@ -11,6 +11,23 @@ export const addDerivedGA4EngagedSessions = <T extends Record<string, any>>(row:
   return { ...row, engagedSessions: Math.max(0, Math.round(sessions * rate)) };
 };
 
+// A multi-day audience cannot be reconstructed by adding daily unique counts.
+// Only a provider aggregate for the exact window may supply Users.
+export const getGA4DistinctUsers = (snapshot: any, startDate: string, endDate: string, campaignName?: string): number | null => {
+  const report = snapshot?.campaignBreakdown ?? snapshot;
+  const users = report?.meta?.distinctUsers;
+  if (users?.version !== 1 || users.metric !== "totalUsers" || users.propertyId !== report?.meta?.propertyId ||
+      (snapshot?.windowStart && snapshot.windowStart !== users.startDate) ||
+      (snapshot?.windowEnd && snapshot.windowEnd !== users.endDate)) return null;
+  const currentWindow = users.startDate === startDate && users.endDate === endDate;
+  const value = campaignName !== undefined
+    ? currentWindow ? users.campaigns?.find((row: any) => String(row.name).toLowerCase() === campaignName.toLowerCase())?.users : null
+    : currentWindow ? users.total
+    : startDate === endDate ? users.daily?.find((row: any) => row.date === startDate)?.users
+    : users.windows?.find((row: any) => row.startDate === startDate && row.endDate === endDate)?.users;
+  return value !== null && value !== undefined && Number.isSafeInteger(value) && value >= 0 ? value : null;
+};
+
 export const summarizeGA4TrafficRows = (rows: any[]) => {
   const totals = (Array.isArray(rows) ? rows : []).reduce((acc, rawRow) => {
     const row = addDerivedGA4EngagedSessions(rawRow || {});

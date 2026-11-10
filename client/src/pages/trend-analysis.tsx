@@ -1,4 +1,5 @@
 import { useParams } from "wouter";
+import { getGA4DistinctUsers } from "@shared/ga4-traffic-window";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
@@ -505,13 +506,13 @@ export default function TrendAnalysis() {
   const currentTraffic = exactCumulativeTraffic?.current || (() => {
     if (!cumulativeGA4CurrentCompatible) return null;
     const totals = ga4Daily?.overviewTotals || {};
-    if ([totals.users, totals.sessions, totals.conversions, totals.engagedSessions]
+    if ([totals.sessions, totals.conversions, totals.engagedSessions]
       .some((value) => value === null || typeof value === "undefined" || value === "")) return null;
-    const users = Number(totals.users);
+    const users = totals.users == null ? Number.NaN : Number(totals.users);
     const sessions = Number(totals.sessions);
     const conversions = Number(totals.conversions);
     const engagedSessions = Number(totals.engagedSessions);
-    if ([users, sessions, conversions, engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
+    if ([sessions, conversions, engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
     return {
       users, sessions, conversions, engagedSessions,
       engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : null,
@@ -737,7 +738,9 @@ export default function TrendAnalysis() {
       const clicks = hasMetric("clicks") ? sum(items, "clicks") : null;
       const impressions = hasMetric("impressions") ? sum(items, "impressions") : null;
       const sessions = hasMetric("sessions") ? sum(items, "sessions") : null;
-      const users = hasMetric("users") ? sum(items, "users") : null;
+      const ga4Source = aggregate?.sources?.find((source: any) => source.id === "ga4");
+      const dates = items.map(row => String(row.date).slice(0, 10)).sort();
+      const users = ga4Source ? getGA4DistinctUsers(ga4Source.usersReport, dates[0], dates.at(-1)!) : hasMetric("users") ? sum(items, "users") : null;
       return {
         spend,
         revenue,
@@ -1045,6 +1048,11 @@ export default function TrendAnalysis() {
     const webMetricTotal = (metricName: string): number | null => {
       const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(metricName));
       if (compatibleSources.length === 0) return null;
+      const ga4Source = compatibleSources.find((source: any) => source.id === "ga4");
+      if (metricName === "users" && ga4Source) {
+        const dates = filterAggregateTrendWindow(ga4Source.dailyRows || [], aggregate, perfDays).map((row: any) => String(row.date).slice(0, 10)).sort();
+        return getGA4DistinctUsers(ga4Source.usersReport, dates[0], dates.at(-1)!);
+      }
       return compatibleSources.reduce((total: number, source: any) => total + filterAggregateTrendWindow(
         Array.isArray(source?.dailyRows) ? source.dailyRows : [], aggregate, perfDays,
       ).reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[metricName]) || 0), 0), 0);
@@ -1137,7 +1145,8 @@ export default function TrendAnalysis() {
       const sum = (metricName: string) => hasMetric(metricName)
         ? currentRows.reduce((total: number, row: any) => total + (Number(row?.metrics?.[metricName]) || 0), 0)
         : null;
-      const users = sum("users");
+      const userDates = currentRows.map((row: any) => String(row.date).slice(0, 10)).sort();
+      const users = source.id === "ga4" ? getGA4DistinctUsers(source.usersReport, userDates[0], userDates.at(-1)!) : sum("users");
       const sessions = sum("sessions");
       const impressions = sum("impressions");
       const clicks = sum("clicks");
@@ -1587,7 +1596,7 @@ export default function TrendAnalysis() {
                         authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpc") || { label: 'CPC', value: null, change: null, invertColor: true },
                         authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpm") || { label: 'CPM', value: null, change: null, invertColor: true },
                         { label: 'Sessions', value: authoritativeHeadlineCurrent.sessions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.sessions), change: headlineComparison.sessions },
-                        { label: usesCumulativeGA4Consumer || responseTrendAggregate?.sources?.some((source: any) => source.id === 'ga4') ? 'Users (daily sum)' : 'Users', value: authoritativeHeadlineCurrent.users === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.users), change: headlineComparison.users },
+                        { label: 'Users', value: authoritativeHeadlineCurrent.users === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.users), change: headlineComparison.users },
                         { label: 'CVR', value: authoritativeHeadlineCurrent.cvr === null ? null : formatPct(authoritativeHeadlineCurrent.cvr), change: headlineComparison.cvr },
                         { label: 'Engagement Rate', value: authoritativeHeadlineCurrent.engagementRate === null ? null : formatPct(authoritativeHeadlineCurrent.engagementRate), change: headlineComparison.engagementRate },
                         { label: 'CTR', value: authoritativeHeadlineCurrent.ctr === null ? null : formatPct(authoritativeHeadlineCurrent.ctr), change: headlineComparison.ctr },

@@ -117,13 +117,28 @@ export async function checkGA4SourceNumbers(scope: { campaignId: string; connect
   // Complete GA4 reports omit zero-activity dates. The API helper rejects partial/thresholded/sampled reports first.
   const expectedDaily: any[] = [];
   for (let date = scope.startDate; date <= scope.endDate; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) {
-    expectedDaily.push(byDate.get(date) || { date, sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0, engagedSessions: 0, engagementRate: 0 });
+    expectedDaily.push({ ...(byDate.get(date) || { date, sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0, engagedSessions: 0, engagementRate: 0 }) });
   }
-  const checks = compareProviderRows("GA4 daily inputs / Insights / Trend Analysis", expectedDaily, savedDaily, ["date"],
-    ["sessions", "users", "pageviews", "conversions", "revenue", "engagedSessions", "engagementRate"]);
   const provider = await service.getAcquisitionBreakdown(campaignId, facade, scope.startDate, connection.propertyId,
     breakdownLimit, scope.filter, scope.endDate, true, false, scope.currency, true, capture);
   const saved = scope.publication.campaignBreakdown;
+  const distinctUsers = provider.meta.distinctUsers;
+  const savedUsers = saved?.meta?.distinctUsers;
+  const dailyUsers = new Map(distinctUsers?.daily.map(row => [row.date, row.users]));
+  const checks: NumberCheck[] = [];
+  if (distinctUsers?.version !== 1 || savedUsers?.version !== 1 || distinctUsers.metric !== 'totalUsers' || savedUsers.metric !== 'totalUsers' || distinctUsers.propertyId !== connection.propertyId ||
+      savedUsers.propertyId !== connection.propertyId || distinctUsers.startDate !== scope.startDate || savedUsers.startDate !== scope.startDate ||
+      distinctUsers.endDate !== scope.endDate || savedUsers.endDate !== scope.endDate || expectedDaily.some(row => !dailyUsers.has(row.date))) {
+    checks.push({ section: "Users across sections and reports", code: "DISTINCT_USERS_SCOPE_UNVERIFIED", status: "unverified" });
+  } else {
+    for (const row of expectedDaily) row.users = dailyUsers.get(row.date);
+    checks.push(compareNumber("Users across sections and reports", "SOURCE_DISTINCT_USERS", distinctUsers.total, savedUsers.total));
+    checks.push(...compareProviderRows("Daily distinct Users", distinctUsers.daily, savedUsers.daily, ["date"], ["users"]));
+    checks.push(...compareProviderRows("Campaign Users", distinctUsers.campaigns, savedUsers.campaigns, ["name"], ["users"]));
+    checks.push(...compareProviderRows("Historical Users comparisons", distinctUsers.windows, savedUsers.windows, ["startDate", "endDate"], ["users"]));
+  }
+  checks.push(...compareProviderRows("GA4 daily inputs / Insights / Trend Analysis", expectedDaily, savedDaily, ["date"],
+    ["sessions", "users", "pageviews", "conversions", "revenue", "engagedSessions", "engagementRate"]));
   if (provider.meta.currencyCode !== scope.currency || provider.meta.revenueMetric !== saved.meta.revenueMetric
     || JSON.stringify(provider.meta.dimensions) !== JSON.stringify(saved.meta.dimensions)) {
     checks.push({ section: "Overview / Campaign Comparison", code: "PROVIDER_METRIC_DEFINITION_CHANGED", status: "unverified" });

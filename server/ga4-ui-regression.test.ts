@@ -394,7 +394,7 @@ describe("GA4 UI regression guard", () => {
     expect(summarySection).toContain("renderSummaryValue(formatConversionCredit(overviewSummaryTotals.conversions || 0))");
     expect(summarySection).not.toContain("ga4Metrics?.conversions");
     expect(summarySection).toContain('data-testid="ga4-refresh-status">{ga4RefreshStatusText}');
-    expect(summarySection).toContain("GA4 daily users summed from the initial historical import through the latest completed day; the same user may appear on more than one day.");
+    expect(summarySection).toContain("Distinct GA4 users from the initial import through the latest completed day, across the selected campaigns. Returning users count once for this period.");
     expect(summarySection).not.toContain("Unique GA4 users for the selected property");
     expect(summarySection).not.toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
   });
@@ -679,7 +679,7 @@ describe("GA4 UI regression guard", () => {
     expect(summaryStart).toBeGreaterThan(-1);
     expect(summarySection).toContain("Overall Conversion Rate");
     expect(summarySection).not.toContain("Total Conversion Rate");
-    expect(adComparison).toContain("User counts are approximate. GA4 users are non-additive - the same user visiting across multiple days");
+    expect(adComparison).toContain("Distinct GA4 users for each campaign during the displayed dates. A user can visit several campaigns");
     expect(adComparison).not.toContain("Ã");
     expect(adComparison).not.toContain("â");
   });

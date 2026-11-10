@@ -131,7 +131,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     const rows = [{ date: reportingDate, users: 80, sessions: 100, engagedSessions: 50, pageviews: 120, conversions: 25, revenue: 500 }];
     mocks.provider.getTimeSeriesData.mockResolvedValue(rows);
     mocks.provider.getTrendsDailyPresenceWithToken.mockResolvedValue({ dailyRows: rows, presentDates: [reportingDate] });
-    mocks.provider.getAcquisitionBreakdown.mockResolvedValue({ totals: { sessions: 100, conversions: 25, revenue: 500 }, meta: { currencyCode: "EUR" } });
+    mocks.provider.getAcquisitionBreakdown.mockResolvedValue({ totals: { sessions: 100, conversions: 25, revenue: 500 }, meta: { currencyCode: "EUR", distinctUsers: { version: 1, daily: [{ date: reportingDate, users: 80 }] } } });
     mocks.provider.getLandingPagesReport.mockResolvedValue({ rows: [] });
     mocks.provider.getConversionEventsReport.mockResolvedValue({ version: "test-v1", totals: { conversions: 25 } });
     mocks.totals.mockImplementation(async () => totals());

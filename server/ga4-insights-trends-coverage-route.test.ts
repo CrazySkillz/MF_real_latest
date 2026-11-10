@@ -3,6 +3,7 @@ import { getAuth } from "@clerk/express";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
+  getGA4OverviewSnapshot: vi.fn(async () => null),
   getCampaign: vi.fn(),
   getGA4Connection: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
@@ -10,6 +11,7 @@ const storageMock = vi.hoisted(() => ({
   updateGA4ConnectionTokens: vi.fn(),
 }));
 const ga4ServiceMock = vi.hoisted(() => ({
+  getDistinctUsersWithToken: vi.fn(),
   getTrendsDailyPresenceWithToken: vi.fn(),
   refreshAccessToken: vi.fn(),
 }));
@@ -69,6 +71,10 @@ describe("Insights Trends zero-day coverage route", () => {
     vi.mocked(getAuth).mockReturnValue({ userId: "owner-1" } as any);
     for (const fn of Object.values(storageMock)) fn.mockReset();
     for (const fn of Object.values(ga4ServiceMock)) fn.mockReset();
+    ga4ServiceMock.getDistinctUsersWithToken.mockImplementation(async () => {
+      const presence = await ga4ServiceMock.getTrendsDailyPresenceWithToken.mock.results.at(-1)?.value;
+      return { total: 61, daily: (presence?.dailyRows || []).map((row: any) => ({ date: row.date, users: row.users })), windows: [] };
+    });
     storageMock.getCampaign.mockResolvedValue(campaign);
     storageMock.getGA4Connection.mockResolvedValue(connection);
     storageMock.getGA4DailyMetrics.mockResolvedValue(dailyRows);

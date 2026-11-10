@@ -3,7 +3,7 @@ import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { financialDailySnapshotInputSchema } from "../shared/schema";
-import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
@@ -52,7 +52,7 @@ describe("published GA4 readers", () => {
       normalizePropertyIdForMock: (id: string) => id.replace("properties/", ""), isYesopMockProperty: (id: string) => id === "yesop", isSupportedGA4ConnectionMethod: () => true,
       getReportingDateWindow, resolveGA4ImportToDateWindow, isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource, financialDailySnapshotInputSchema,
       assertGA4InsightsFinancialCurrencyScope: () => {}, getDateRangeBounds: () => ({ startDate: "2026-07-19", endDate: "2026-10-16" }),
-      summarizeGA4TrafficRows, resolveCampaignCumulativeFinancials, observeFinancialDailySnapshotReadiness: vi.fn(),
+      getGA4DistinctUsers, summarizeGA4TrafficRows, resolveCampaignCumulativeFinancials, observeFinancialDailySnapshotReadiness: vi.fn(),
       getShopifyRevenueSourceFreshness: () => undefined,
       buildLinkedInPlatformSourceForAggregate: async () => ({ linkedIn: { connected: false }, linkedInSpend: 0 }),
       buildGoogleAdsPlatformSourceForAggregate: async () => ({ googleAds: { connected: false }, googleAdsSpend: 0 }),

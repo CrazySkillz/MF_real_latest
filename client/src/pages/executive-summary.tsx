@@ -614,7 +614,7 @@ export default function ExecutiveSummary() {
                             </div>
                             <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
                               {aggregateMetricSourceLabel(reachMetricKey)}
-                              {reachMetricKey === "users" && performanceSummary?.totals?.users?.sources?.includes("ga4") && <span className="block">Summed daily users; not unique people across the reporting window.</span>}
+                              {reachMetricKey === "users" && performanceSummary?.totals?.users?.sources?.includes("ga4") && <span className="block">Distinct GA4 users for the displayed dates and selected campaigns.</span>}
                             </div>
                           </div>
                         </div>

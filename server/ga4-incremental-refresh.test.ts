@@ -60,7 +60,7 @@ describe("GA4 correction windows and full-history repair", () => {
       structuredClone(facts.filter(r => r.date >= from && r.date <= to)));
     mocks.provider.getTrendsDailyPresenceWithToken.mockImplementation(async (_pid, _token, _from, _to, _filter, _currency, _capture, series) =>
       ({ dailyRows: series, presentDates: series.map((r: any) => r.date) }));
-    mocks.provider.getAcquisitionBreakdown.mockImplementation(async () => ({ rows: [], totals: expected(), meta: { currencyCode: campaign.currency } }));
+    mocks.provider.getAcquisitionBreakdown.mockImplementation(async (_cid, _storage, from, _property, _limit, _filter, to) => ({ rows: [], totals: expected(), meta: { currencyCode: campaign.currency, distinctUsers: { version: 1, daily: Array.from({ length: Math.floor((Date.parse(to) - Date.parse(from)) / 86400000) + 1 }, (_, i) => { const date = new Date(Date.parse(from) + i * 86400000).toISOString().slice(0, 10); return { date, users: facts.find(r => r.date === date)?.users || 0 }; }) } } }));
     mocks.provider.getLandingPagesReport.mockResolvedValue({ rows: [], totals: {} });
     mocks.provider.getConversionEventsReport.mockImplementation(async () => ({ rows: [], totals: { conversions: expected().conversions } }));
     mocks.storage.replaceGA4DailyMetricsWindow.mockImplementation(async (_cid, _pid, from, to, rows, overview) => {
@@ -198,7 +198,7 @@ describe("GA4 correction windows and full-history repair", () => {
     await prime(); const previous = structuredClone({ stored, snapshot });
     if (kind === "provider") mocks.provider.getTimeSeriesData.mockRejectedValue(new Error("TOKEN_EXPIRED"));
     if (kind === "currency") mocks.provider.getAcquisitionBreakdown.mockResolvedValue({ totals: expected(), meta: { currencyCode: "USD" } });
-    if (kind === "mismatch") mocks.provider.getAcquisitionBreakdown.mockImplementation(async () => ({ totals: { ...expected(), sessions: 999 }, meta: { currencyCode: "EUR" } }));
+    if (kind === "mismatch") mocks.provider.getAcquisitionBreakdown.mockImplementation(async () => ({ totals: { ...expected(), sessions: 999 }, meta: { currencyCode: "EUR", distinctUsers: snapshot.campaignBreakdown.meta.distinctUsers } }));
     if (kind === "events") mocks.provider.getConversionEventsReport.mockRejectedValue(new Error("GA4_CONVERSION_EVENT_DAILY_RECONCILIATION_FAILED"));
     if (kind === "publication") mocks.storage.replaceGA4DailyMetricsWindow.mockRejectedValue(new Error("GA4_REFRESH_PUBLICATION_CHANGED"));
     const opts = kind === "ownership" ? { assertWorkOwnership: async () => { throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST"); } } : {};

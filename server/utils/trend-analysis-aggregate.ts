@@ -10,6 +10,7 @@ type TrendSourceInput = {
   excludedMetrics: { metric: string; reason: string }[];
   dailyRows: Array<{ date: string; metrics: Record<string, any> }>;
   freshness?: Record<string, any>;
+  usersReport?: Record<string, any>;
 };
 
 type FinancialDailyRow = {
@@ -58,6 +59,7 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
       includedMetrics: Array.isArray(source.includedMetrics) ? source.includedMetrics.map(String) : [],
       excludedMetrics: Array.isArray(source.excludedMetrics) ? source.excludedMetrics : [],
       freshness: source.freshness,
+      ...(source.usersReport ? { usersReport: source.usersReport } : {}),
       dailyRows: (Array.isArray(source.dailyRows) ? source.dailyRows : [])
         .map((row) => ({
           date: normalizeDate(row.date),

@@ -202,7 +202,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
       expect(pdfScope).toContain('Campaign Breakdown Revenue');
       expect(pdfScope).toContain('Overall Conversion Rate');
       expect(pdfScope).toContain('Campaigns Compared');
-      expect(pdfScope).toContain('Users are summed campaign-row counts and are non-additive.');
+      expect(pdfScope).toContain('Users are distinct within each campaign and period; campaign counts can overlap.');
       expect(pdfScope).toContain('chartSummaryByCampaign');
     }
     expect(browserPdfScope).toContain('const selectedMetric = reportAdComparisonMetric');

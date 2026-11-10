@@ -1211,7 +1211,7 @@ index ca02f1c9..ff53ccfa 100644
      || JSON.stringify(provider.meta.dimensions) !== JSON.stringify(saved.meta.dimensions)) {
      checks.push({ section: "Overview / Campaign Comparison", code: "PROVIDER_METRIC_DEFINITION_CHANGED", status: "unverified" });
 diff --git a/server/report-scheduler.ts b/server/report-scheduler.ts
-index 6f165787..afecfd1f 100644
+index 6f165787..2de400f9 100644
 --- a/server/report-scheduler.ts
 +++ b/server/report-scheduler.ts
 @@ -6,7 +6,7 @@ import { db } from "./db";
@@ -1223,7 +1223,15 @@ index 6f165787..afecfd1f 100644
  import { and, desc, eq, sql } from "drizzle-orm";
  import type { LinkedInReport } from "../shared/schema";
  import * as cron from "node-cron";
-@@ -1396,6 +1396,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -1258,6 +1258,7 @@ const campaignDeepDiveMetricAliases: Record<string, string> = {
+ };
+ 
+ function formatCampaignDeepDiveMetricValue(key: string, value: unknown, currency = "USD"): string {
++  if (value === null || value === undefined || value === "") return "Unavailable";
+   const n = typeof value === "number" ? value : Number(value);
+   if (!Number.isFinite(n)) return "Unavailable";
+   if (["revenue", "spend", "cpc", "cpa", "cpm"].includes(key)) {
+@@ -1396,6 +1397,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
      scope: { campaignId, currency: campaign?.currency, reportingTimeZone: campaign?.reportingTimeZone, campaignFilter: campaign?.ga4CampaignFilter },
      performanceSummary, financialInputs, budgetPacing, financialDecisionContext, executiveSummary, trendAnalysis,
      cumulativeGA4Window, performancePageTrafficTotals, performancePageTotals,
@@ -1231,7 +1239,7 @@ index 6f165787..afecfd1f 100644
      trendWindowStart, trendWindowEnd, trendWindowRows, trendPreviousWindowRows, compatibleTrendFinancialDaily, executiveTrajectory,
      targets: { kpis: reportTargetInputs(kpis), benchmarks: reportTargetInputs(benchmarks) },
    });
-@@ -1420,6 +1421,11 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -1420,6 +1422,11 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
        ])
      : [null, null];
    const performancePageTrafficTotals = Array.isArray(performancePageRows) ? summarizeGA4TrafficRows(performancePageRows) : null;
@@ -1243,7 +1251,19 @@ index 6f165787..afecfd1f 100644
    const performanceFinancialConversions = Number(performancePageTotals?.financialConversions);
    const performanceFinancialConversionsAvailable = performancePageTotals?.financialConversionsAvailable === true
      && Number.isFinite(performanceFinancialConversions)
-@@ -1519,7 +1525,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -1458,9 +1465,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+     else if (key === "revenue" && performancePageTotals.revenueAvailable === true) value = financialValue("revenue");
+     else if (key === "spend") value = performancePageTotals.spendAvailable === true && performancePageTotals.spendRecordsAvailable !== false ? financialValue("spend") : null;
+     else if (key === "cvr" && available(trafficValue("sessions")) && available(trafficValue("conversions"))) {
+-      value = trafficValue("sessions") > 0 ? (trafficValue("conversions") / trafficValue("sessions")) * 100 : 0;
++      value = trafficValue("sessions") > 0 ? (trafficValue("conversions") / trafficValue("sessions")) * 100 : null;
+     } else if (key === "engagementRate" && available(trafficValue("sessions"))) {
+-      value = trafficValue("sessions") > 0 ? (Number(performancePageTrafficTotals.engagedSessions) / trafficValue("sessions")) * 100 : 0;
++      value = trafficValue("sessions") > 0 ? (Number(performancePageTrafficTotals.engagedSessions) / trafficValue("sessions")) * 100 : null;
+     } else if (["roas", "roi"].includes(key)) {
+       value = performancePageTotals.revenueAvailable !== true || performancePageTotals.spendAvailable !== true || performancePageTotals.spendRecordsAvailable === false || financialValue("spend") <= 0 ? null : key === "roas"
+         ? financialValue("revenue") / financialValue("spend")
+@@ -1519,7 +1526,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
    const trendRecentTrafficTotals = summarizeGA4TrafficRows(trendRecentTrafficRows);
    const trendPreviousTrafficTotals = performancePageTrafficTotals && trendComparisonDate >= String(cumulativeGA4Window?.startDate || "")
      ? {
@@ -1252,7 +1272,7 @@ index 6f165787..afecfd1f 100644
          sessions: performancePageTrafficTotals.sessions - trendRecentTrafficTotals.sessions,
          conversions: performancePageTrafficTotals.conversions - trendRecentTrafficTotals.conversions,
          engagedSessions: performancePageTrafficTotals.engagedSessions - trendRecentTrafficTotals.engagedSessions,
-@@ -2018,12 +2024,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -2018,12 +2025,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
    };
    const addSelectedSectionBody = (section: string) => {
      addText(campaignDeepDiveTabLabels[section] || section, { size: 14, bold: true });
@@ -1267,7 +1287,7 @@ index 6f165787..afecfd1f 100644
          ["sessions", "Total Sessions"],
          ["conversions", "Total Conversions"],
          ["revenue", "Total Revenue"],
-@@ -2260,6 +2266,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -2260,6 +2267,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
          const webMetricTotal = (key: string): number | null => {
            const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(key));
            if (compatibleSources.length === 0) return null;
@@ -1276,7 +1296,7 @@ index 6f165787..afecfd1f 100644
            return compatibleSources.reduce((total: number, source: any) => total + sourceWindowRows(source)
              .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
          };
-@@ -2310,7 +2318,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -2310,7 +2319,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
            const sum = (key: string): number | null => includedMetrics.includes(key)
              ? sourceWindowRows(source).reduce((total: number, row: any) => total + (Number(row?.metrics?.[key]) || 0), 0)
              : null;
@@ -1286,7 +1306,7 @@ index 6f165787..afecfd1f 100644
            const sessions = sum("sessions");
            const clicks = sum("clicks");
            const impressions = sum("impressions");
-@@ -2679,7 +2688,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -2679,7 +2689,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
      drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
      y += metaCardHeight + 8;
      if (performancePageTrafficTotals) {
@@ -1295,7 +1315,7 @@ index 6f165787..afecfd1f 100644
        y += 8;
      }
  
-@@ -3045,6 +3054,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -3045,6 +3055,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
        const webMetricTotal = (key: string): number | null => {
          const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(key));
          if (compatibleSources.length === 0) return null;
@@ -1304,7 +1324,7 @@ index 6f165787..afecfd1f 100644
          return compatibleSources.reduce((total: number, source: any) => total + trendSourceWindowRows(source)
            .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
        };
-@@ -3142,7 +3153,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+@@ -3142,7 +3154,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
            source,
            id: String(source?.id || `source_${index}`),
            label: String(source?.label || source?.id || "Connected Source"),
@@ -1462,7 +1482,7 @@ index 05ccd804..fc88fbab 100644
            ga4LastUpdate = scopedRows.map((row: any) => String(row.date)).sort().at(-1) || null;
          }
 diff --git a/server/scheduler.ts b/server/scheduler.ts
-index 49388698..d59198de 100644
+index 49388698..548fdeee 100644
 --- a/server/scheduler.ts
 +++ b/server/scheduler.ts
 @@ -8,6 +8,7 @@ import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state
@@ -1512,6 +1532,16 @@ index 49388698..d59198de 100644
        trafficWindow: { startDate, endDate }, nativeFinancialWindow: ga4FinancialWindow,
        importedFinancialWindow: { startDate: financialSourceStartDate, endDate: financialSourceEndDate },
        trafficRows: ga4DailyRows.map(row => ({ date: row.date, sessions: row.sessions, users: row.users, conversions: row.conversions })),
+@@ -806,7 +812,8 @@ export async function recordCampaignMetrics(campaignId: string, opts: { allowSch
+     const writeInput: GA4RefreshWriteInput = "refreshScope" in opts ? { refreshScope: opts.refreshScope }
+       : { publicationVersion: opts.publicationVersion ?? { campaignId, version: await storage.getGA4PublicationVersion(campaignId) } };
+     const metrics = await aggregateCampaignMetrics(campaignId, { useSavedOverview: opts.allowScheduledGA4 === true });
+-    if (hasSnapshotMetricValue(metrics)) {
++    if (hasSnapshotMetricValue(metrics) || (opts.allowScheduledGA4 === true
++      && metrics.detailedMetrics?.performanceSummaryVerification?.version === 1)) {
+       await storage.createMetricSnapshot({
+         campaignId,
+         totalImpressions: metrics.totalImpressions,
 diff --git a/server/utils/campaign-current-values.ts b/server/utils/campaign-current-values.ts
 index 08d01aa1..65a75d56 100644
 --- a/server/utils/campaign-current-values.ts

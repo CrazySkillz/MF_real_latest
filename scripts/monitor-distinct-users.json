@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "e8d4c4537982081d2a8775432cb7060954e6e53e",
+  "expectedCommit": "dacdb5b6e220ef90a3674668d971b3f864be0c08",
   "files": [
     {
       "path": "client/src/components/AddSpendWizardModal.tsx",
@@ -74,7 +74,7 @@
     {
       "path": "server/report-scheduler.ts",
       "before": "6a802103dca3ef8337d5bda4e4964ad2451da2ab1635b1dcd0a1a21b8abb9e77",
-      "after": "c49690cde8ce21b645fc1ad12065e49f76e0f9c04d4b20f01f541fb71254d13c"
+      "after": "77a15256bf524d464f6129a6fe1eecf8e4ac75e0d913ed7a9b2ba9525bc87672"
     },
     {
       "path": "server/routes-oauth.ts",
@@ -84,7 +84,7 @@
     {
       "path": "server/scheduler.ts",
       "before": "20dfb92f544d1ea4954ea3aef3f096204a52b29b6367c516b434bac4c41af256",
-      "after": "58f5b0879c0843bb91594fcc22701649b5f8aa3745f2627396b95824799c9ba8"
+      "after": "bc06c56fbfae7bcf178390effa2a2074761c6b8e8a08d3de9f4a2e773916990d"
     },
     {
       "path": "server/utils/campaign-current-values.ts",

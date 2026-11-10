@@ -131,7 +131,7 @@ describe("remaining live monitor selections", () => {
     expect(checkConfiguredReportText(snapshot, unavailable, report, now).every(check => check.status === "passed")).toBe(true);
   });
   it("checks native All Campaigns ordering and cent allocation independently of imported revenue", () => {
-    const snapshot = fixture(); snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [
+    const snapshot = fixture(); snapshot.campaign.ga4CampaignFilter = '["a","b"]'; snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [
       { campaign: "a", sessions: 20, users: 8, conversions: 0.1, revenue: 1.0049, sessionKeyEventRate: 0.05 },
       { campaign: "b", sessions: 30, users: 9, conversions: 1.5, revenue: 1.0051, sessionKeyEventRate: 0.05 },
     ];
@@ -397,6 +397,7 @@ describe("actual report detail values", () => {
   });
   it("detects incorrect Comparison leaders and chart values independently of its total", () => {
     const snapshot = fixture();
+    snapshot.campaign.ga4CampaignFilter = '["a","b"]';
     snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [
       { campaign: "a", sessions: 100, users: 99, conversions: 10.125, revenue: 200, sessionKeyEventRate: 0.1 },
       { campaign: "b", sessions: 50, users: 45, conversions: 5, revenue: 100, sessionKeyEventRate: 0.2 },
@@ -408,6 +409,25 @@ describe("actual report detail values", () => {
     expect(checkReportDetailText(snapshot, text.replace("COMPARED\n2", "COMPARED\n20"), "ads", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_COUNT", status: "difference" }));
     expect(checkReportDetailText(snapshot, text.replace("50\nb", "50\nbother"), "ads", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_CHART_VALUE", status: "difference" }));
   });
+  it("checks selected campaigns without activity and preserves zero-rate API versus unavailable display semantics", () => {
+    const snapshot = fixture();
+    const totals = { users: 0, sessions: 0, conversions: 0, revenue: 0, engagedSessions: 0, pageviews: 0, engagementRate: 0 };
+    snapshot.rows.ga4DailyMetrics = [{ ...snapshot.rows.ga4DailyMetrics[0], ...totals }];
+    snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.totals = totals;
+    snapshot.rows.spendSources = []; snapshot.rows.spendRecords = [];
+    const response = { daily: { data: snapshot.rows.ga4DailyMetrics, overviewTotals: totals } };
+    expect(sectionChecks("Overview response", response, snapshot)).toContainEqual(expect.objectContaining({ code: "engagementRate", status: "passed" }));
+    response.daily.overviewTotals = { ...totals, engagementRate: 0.5 };
+    expect(sectionChecks("Overview response", response, snapshot)).toContainEqual(expect.objectContaining({ code: "engagementRate", status: "difference" }));
+    const text = "TOTAL SESSIONS\n0\nCAMPAIGNS COMPARED\n1";
+    expect(checkReportDetailText(snapshot, text, "ads", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_COUNT", status: "passed" }));
+    expect(checkReportDetailText(snapshot, text.replace("COMPARED\n1", "COMPARED\n0"), "ads", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_COUNT", status: "difference" }));
+    expect(checkReportDetailText(snapshot, "search 0 0 0 0.0% EUR 0.00", "overview", now).every(check => check.status === "passed")).toBe(true);
+    expect(checkReportDetailText(snapshot, "search 1 0 0 0.0% EUR 0.00", "overview", now)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_0", status: "difference" }));
+    const executive = "Marketing Funnel Performance\nCONVERSION RATE\nUnavailable\nKPI Exceptions";
+    expect(checkDiagnosticReportText(snapshot, executive, "executive-summary", now)).toContainEqual(expect.objectContaining({ code: "CONVERSION_RATE_UNAVAILABLE", status: "passed" }));
+    expect(checkDiagnosticReportText(snapshot, executive.replace("Unavailable", "0.0%"), "executive-summary", now)).toContainEqual(expect.objectContaining({ code: "CONVERSION_RATE_AVAILABILITY", status: "difference" }));
+  });
   it("keeps a negative revenue benchmark's visual progress at zero", () => {
     const snapshot = fixture(); snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.totals.revenue = -50;
     snapshot.rows.benchmarks = [{ id: "b", name: "Revenue", metric: "revenue", unit: "EUR", applyTo: "all", platformType: "google_analytics", benchmarkValue: "100" }];
@@ -415,6 +435,7 @@ describe("actual report detail values", () => {
   });
   it("checks campaign allocation, weighted rates and cent ties without allocating unrelated revenue", () => {
     const snapshot = fixture();
+    snapshot.campaign.ga4CampaignFilter = '["a","b"]';
     snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [
       { campaign: "a", sessions: 10, users: 9, conversions: 2, revenue: 1.005, sessionKeyEventRate: 0.1 },
       { campaign: "b", sessions: 30, users: 20, conversions: 3, revenue: 1.005, sessionKeyEventRate: 0.2 },

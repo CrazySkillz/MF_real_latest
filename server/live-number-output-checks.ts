@@ -194,7 +194,7 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
     flag("Overview response", "DATE_PROPERTY_TIMEZONE", outputs.daily.propertyId === scope.connection.propertyId && outputs.daily.overviewStartDate === scope.startDate
       && outputs.daily.endDate === scope.endDate && outputs.daily.reportingTimeZone === scope.reportingTimeZone);
     for (const metric of numericMetrics) value("Overview response", metric, totals[metric], outputs.daily.overviewTotals?.[metric], metric === "revenue" ? 2 : undefined);
-    value("Overview response", "engagementRate", expected.engagementRate, outputs.daily.overviewTotals?.engagementRate, 8);
+    value("Overview response", "engagementRate", expected.totals.sessions === 0 ? 0 : expected.engagementRate, outputs.daily.overviewTotals?.engagementRate, 8);
     const selected = (rows.ga4DailyMetrics || []).filter(row => row.propertyId === scope.connection.propertyId && row.date >= outputs.daily.startDate && row.date <= scope.endDate);
     table("Insights daily response", selected, outputs.daily.data, "date", [...numericMetrics, "engagementRate"]);
   }

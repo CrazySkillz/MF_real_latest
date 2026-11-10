@@ -265,8 +265,8 @@ describe("GA4 KPI regression guard", () => {
     expect(trafficStateSection).toContain("const kpiTrafficInputState");
     expect(trafficStateSection).toContain("(ga4DailyResp as any)?.refreshIsStale");
     expect(trafficStateSection.slice(trafficStateSection.indexOf("const kpiTrafficInputState"))).not.toContain("trendsRefreshIsStale");
-    expect(ga4MetricsFile.slice(kpiConsumerStart, benchmarkConsumerStart)).toContain("trafficState: kpiTrafficInputState");
-    expect(ga4MetricsFile.slice(benchmarkConsumerStart, pdfKpiStart)).toContain("trafficState: trafficKpiInputState");
+    expect(ga4MetricsFile.slice(kpiConsumerStart, benchmarkConsumerStart)).toContain('trafficState: resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name) === "users" && breakdownTotals.users === null ? "unavailable" : kpiTrafficInputState');
+    expect(ga4MetricsFile.slice(benchmarkConsumerStart, pdfKpiStart)).toContain('trafficState: resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name) === "users" && breakdownTotals.users === null ? "unavailable" : trafficKpiInputState');
     expect(ga4MetricsFile.slice(pdfKpiStart, pdfKpiEnd)).toContain("const consumerState = getKpiConsumerState(k);");
   });
 });

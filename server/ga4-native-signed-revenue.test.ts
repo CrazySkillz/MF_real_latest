@@ -3,7 +3,7 @@ import { ga4Service, GoogleAnalytics4Service } from './analytics';
 
 const store = vi.hoisted(() => ({ getCampaign: vi.fn(), getGA4Connections: vi.fn(), getGA4DailyMetrics: vi.fn(),
   getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), getRevenueBreakdownBySource: vi.fn(),
-  getSpendBreakdownBySource: vi.fn(), getGA4OverviewSnapshot: vi.fn(), updateGA4ConnectionTokens: vi.fn(),
+  getSpendBreakdownBySource: vi.fn(), getGA4OverviewSnapshot: vi.fn(async () => null), updateGA4ConnectionTokens: vi.fn(),
   upsertFinancialDailySnapshot: vi.fn(), updateKPI: vi.fn(), updateBenchmark: vi.fn() }));
 vi.mock('./storage', () => ({ storage: store }));
 import { getCampaignMetricTotalsAtDate } from './utils/campaign-current-values';

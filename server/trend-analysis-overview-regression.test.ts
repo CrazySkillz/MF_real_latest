@@ -235,6 +235,7 @@ describe("Trend Analysis Overview regression guard", () => {
       endDate: "2026-08-22",
       dataThroughDate: "2026-08-22",
       overviewTotals: { users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809 },
+      usersComparisons: [{ startDate: "2026-07-02", endDate: "2026-07-23", users: 867 }, { startDate: "2026-07-02", endDate: "2026-08-08", users: 975 }, { startDate: "2026-07-02", endDate: "2026-08-15", users: 1184 }],
       data: [
         { date: "2026-08-08", users: 108, sessions: 108, conversions: 14, engagedSessions: 74 },
         { date: "2026-08-09", users: 106, sessions: 106, conversions: 14, engagedSessions: 72 },
@@ -262,7 +263,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(deriveExactCumulativeGA4Traffic({ ...response, providerRefreshWarning: "stale" }, "2026-07-23")).toBeNull();
     expect(deriveExactCumulativeGA4Traffic({ ...response, startDate: "2026-08-22" }, "2026-07-23")).toBeNull();
     expect(deriveExactCumulativeGA4Traffic({ ...response, data: [...response.data, response.data[1]] }, "2026-07-23")).toBeNull();
-    expect(deriveExactCumulativeGA4Traffic({ ...response, overviewTotals: { ...response.overviewTotals, users: null } }, "2026-07-23")).toBeNull();
+    expect(deriveExactCumulativeGA4Traffic({ ...response, overviewTotals: { ...response.overviewTotals, users: null } }, "2026-07-23")?.current.users).toBeNaN();
     expect(deriveExactCumulativeGA4Traffic({ ...response, data: [{ ...response.data[0], engagedSessions: null }] }, "2026-07-23")).toBeNull();
   });
 

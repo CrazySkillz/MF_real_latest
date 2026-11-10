@@ -135,6 +135,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     ["pageviews", "40"], ["conversions", "5"], ["totalConversions", "5"],
     ["conversionRate", "25"], ["engagement_rate", "50"],
   ])("does not wait for unused financial reads for %s", async (metric, expected) => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignBreakdown: { meta: { propertyId: connection.propertyId, distinctUsers: { version: 1, metric: "totalUsers", propertyId: connection.propertyId, startDate: "2026-07-01", endDate: "2026-07-31", total: 12, windows: [] } } } });
     storageMock.getGA4DailyMetrics.mockResolvedValue([{ ...sourceRow, sessions: 20, users: 12,
       pageviews: 40, conversions: 5, engagedSessions: 10, engagementRate: 0.5 }]);
     storageMock.getRevenueTotalForRange.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ totalRevenue: 1000, sourceIds: [] }), 1000)));
@@ -146,7 +147,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     await pending;
     expect(storageMock.getRevenueTotalForRange).not.toHaveBeenCalled();
     expect(storageMock.getGA4Connection).not.toHaveBeenCalled();
-    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(["users", "totalUsers"].includes(metric) ? 1 : 0);
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
@@ -397,6 +398,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
   });
 
   it("keeps authoritative zero alert-eligible for counts and revenue", async () => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignBreakdown: { meta: { propertyId: connection.propertyId, distinctUsers: { version: 1, metric: "totalUsers", propertyId: connection.propertyId, startDate: "2026-07-01", endDate: "2026-07-31", total: 0, windows: [] } } } });
     const users = await resolveAlertCurrentValueForDecision(row("users"));
     const revenue = await resolveAlertCurrentValueForDecision(row("revenue"));
 

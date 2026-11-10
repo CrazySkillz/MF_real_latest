@@ -165,7 +165,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("&& !isGA4FinancialTotalsCandidate(toDateFinancialCandidate)");
     expect(route).toContain("&& !isGA4FinancialTotalsCandidate(overviewFinancialCandidate)");
     expect(route).toContain("financialWebAnalytics.available = false;");
-    expect(route).toContain("financialWebAnalytics.users = parseNum(financialGa4Totals.users);");
+    expect(route).toContain("financialWebAnalytics.users = financialGa4Totals.users;");
     expect(route).not.toContain("parseNum(financialGa4Totals.users) || parseNum(financialWebAnalytics.users)");
     expect(route).toContain("const onsiteRevenue = parseNum(financialWebAnalytics.revenue);");
     expect(route).toContain("ga4: financialGa4Totals,");

@@ -1007,7 +1007,8 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('uses exact UTM daily row sums when provider aggregates are non-additive', async () => {
+  it('uses exact UTM daily traffic and native distinct Users when aggregates are non-additive', async () => {
+    vi.spyOn(ga4Service, 'getDistinctUsersWithToken').mockResolvedValue({ version: 1, metric: 'totalUsers', propertyId: '123', startDate: '2026-06-01', endDate: '2026-06-30', total: 360, campaigns: [], daily: [], windows: [] });
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || '{}'));
       const dimensions = (body?.dimensions || []).map((item: any) => item?.name);
@@ -1072,7 +1073,7 @@ describe("GA4 campaign value picker", () => {
       expect.objectContaining({ campaign: 'yesop_retargeti', sessions: 200, users: 202, conversions: 2, revenue: 20, engagedSessions: 145, sessionKeyEventRate: 0.25 }),
       expect.objectContaining({ campaign: 'yesop_email_nurture', sessions: 180, users: 181, conversions: 7, revenue: 70, engagedSessions: 138, sessionKeyEventRate: 0 }),
     ]);
-    expect(result.totals).toMatchObject({ sessions: 380, users: 383, conversions: 9, revenue: 90, engagedSessions: 283 });
+    expect(result.totals).toMatchObject({ sessions: 380, users: 360, conversions: 9, revenue: 90, engagedSessions: 283 });
     expect(result.meta.overviewCampaignAttribution).toMatchObject({
       selected: true,
       standardRevenue: 4631.1,

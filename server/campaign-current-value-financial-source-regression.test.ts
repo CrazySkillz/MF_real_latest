@@ -7,7 +7,7 @@ const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
-  getGA4OverviewSnapshot: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(async () => null),
   getSpendSources: vi.fn(),
   upsertFinancialDailySnapshot: vi.fn(),
   getRevenueTotalForRange: vi.fn(),

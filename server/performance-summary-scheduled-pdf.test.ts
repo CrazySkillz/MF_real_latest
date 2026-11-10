@@ -6,6 +6,7 @@ const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsAtDateMock = vi.hoisted(() => vi.fn());
 const storageMock = vi.hoisted(() => ({
+  getGA4OverviewSnapshot: vi.fn(async () => ({ campaignBreakdown: { meta: { propertyId: "properties/123", distinctUsers: { version: 1, metric: "totalUsers", propertyId: "properties/123", startDate: "2026-07-02", endDate: "2026-08-27", total: 1184, windows: [] } } } })),
   getCampaign: vi.fn(),
   getCampaignKPIs: vi.fn(),
   getCampaignBenchmarks: vi.fn(),

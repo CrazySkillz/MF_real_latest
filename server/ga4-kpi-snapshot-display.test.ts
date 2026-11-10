@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { computeCpa, computeRoiPercent } from "../shared/metric-math";
 import { resolveGA4OverviewFinancialRefreshWarning } from "../shared/ga4-financial-source";
 import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
-import { getGA4KpiMetricDependencies } from "../shared/ga4-kpi-metric-identity";
+import { resolveGA4KpiMetricIdentity, getGA4KpiMetricDependencies } from "../shared/ga4-kpi-metric-identity";
 import { resolveGA4KpiConsumerState } from "../shared/ga4-kpi-consumer-state";
 import { resolveKpiDataSufficiency, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4InsightsCampaignToDateSufficiencyReason } from "../shared/ga4-insights";
@@ -54,7 +54,7 @@ const fixture = (): Record<string, any> => ({
 function page(input = fixture()) {
   const bindings = {
     ...input, computeCpa, computeRoiPercent, resolveGA4OverviewFinancialRefreshWarning, resolveGA4KpiLiveValue,
-    getGA4KpiMetricDependencies, resolveGA4KpiConsumerState, resolveKpiDataSufficiency,
+    resolveGA4KpiMetricIdentity, getGA4KpiMetricDependencies, resolveGA4KpiConsumerState, resolveKpiDataSufficiency,
     resolveBenchmarkDataSufficiency, resolveGA4InsightsCampaignToDateSufficiencyReason,
   };
   const overview = declarations.filter((node) => /^overviewFinancial/.test(node.name.getText(file)));

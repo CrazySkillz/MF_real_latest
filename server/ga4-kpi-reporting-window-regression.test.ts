@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
+  getGA4OverviewSnapshot: vi.fn(async () => ({ campaignBreakdown: { meta: { propertyId: "properties/123", distinctUsers: { version: 1, metric: "totalUsers", propertyId: "properties/123", startDate: "2026-07-01", endDate: "2026-07-30", total: 200, windows: [] } } } })),
   getCampaign: vi.fn(),
   getGA4PublicationVersion: vi.fn(),
   getCampaigns: vi.fn(),

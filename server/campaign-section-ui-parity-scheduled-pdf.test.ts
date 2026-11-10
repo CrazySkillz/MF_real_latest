@@ -10,6 +10,7 @@ const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const resolveFinancialDailyComparisonPreviousMock = vi.hoisted(() => vi.fn());
 const evaluateExecutiveSummaryTrajectoryMock = vi.hoisted(() => vi.fn());
 const storageMock = vi.hoisted(() => ({
+  getGA4OverviewSnapshot: vi.fn(async () => null),
   getCampaign: vi.fn(),
   getCampaignKPIs: vi.fn(),
   getCampaignBenchmarks: vi.fn(),

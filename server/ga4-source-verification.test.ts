@@ -54,6 +54,14 @@ describe('first-import source verification', () => {
     stored.conversionEvents.rows[0].eventCount = 0;
     await expect(verifyGA4InitialImport(storage, owned, ownership)).rejects.toThrow('VERIFICATION_UNVERIFIED');
   });
+  it('compares the actual Landing Pages date window even when the row values match', async () => {
+    const meta = { historyLimited: true, requestedStartDate: '2026-11-01', startDate: day, endDate: day };
+    (stored.landingPages as any).meta = meta;
+    provider.getLandingPagesReport.mockResolvedValue({ ...overview().landingPages, meta: { ...meta } });
+    await verifyGA4InitialImport(storage, owned, ownership);
+    (stored.landingPages as any).meta = { ...meta, startDate: '2026-11-06' };
+    await expect(verifyGA4InitialImport(storage, owned, ownership)).rejects.toThrow('VERIFICATION_UNVERIFIED');
+  });
   it.each(['getTimeSeriesWithToken', 'getAcquisitionBreakdown', 'getLandingPagesReport', 'getConversionEventsReport'] as const)('cannot certify a failed %s query', async method => {
     provider[method].mockRejectedValue(new Error('provider failure with private data'));
     await expect(verifyGA4InitialImport(storage, owned, ownership)).rejects.toThrow('GA4_INITIAL_VERIFICATION_UNVERIFIED');

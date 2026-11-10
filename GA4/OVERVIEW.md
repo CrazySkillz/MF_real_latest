@@ -352,7 +352,7 @@ Historical deployed candidate evidence captured on `2026-08-13`:
 
 `Landing Pages` is a cumulative view from the fixed initial-import boundary through the latest completed day for the GA4 property and campaign selection configured for this app campaign.
 
-October 28 user-authorized presentation exception: Promo (`b74f98af-ede9-47af-9b19-0720ebb4d2c0`), property `542352127`, with exactly `yesop_brand_search` and `yesop_retargeting`, displays five mock landing-page rows when its successful saved response is empty and Summary is available. The user explicitly requested no demo label. These are synthetic page allocations of Summary Sessions/Conversions, not measured landing-page performance; they must not be used as analytics-certification evidence. The override is confined to the Overview table: real rows take precedence, request failures retain the existing error handling, and API responses, stored snapshots, calculations, browser PDFs and scheduled PDFs remain source-backed.
+November 10 correction: the user requested real GA4 Landing Pages values, superseding the October 28 Promo presentation exception. The corrected Overview renders only saved provider rows; it does not allocate Summary traffic or conversions to invented pages. Deployment and direct-provider evidence are tracked in `docs/fixes/ga4-landing-pages-native-data.md`.
 
 Columns:
 
@@ -367,10 +367,11 @@ Important meaning:
 
 - it can reflect multiple GA4 campaign values if those values were intentionally selected for this one app campaign
 - it is not a rollup across unrelated campaigns in the property
-- it uses the same fixed initial-import-to-latest-completed-day boundary as Summary and Campaign Breakdown, not a rolling 30-day window or the app campaign's start/created date
+- it requests the fixed initial-import-to-latest-completed-day boundary. If GA4 explicitly reports a property history limit, it re-queries once from GA4's first complete date through the same end date; only a complete response is accepted. The actual shorter dates and unavailable earlier history are labelled on the table and both PDF paths. Summary and Campaign Breakdown keep their existing date boundaries.
 - revenue is intentionally not shown in `Landing Pages`; page-level rows remain traffic and conversion context only
 - numeric live or live-test GA4 property IDs use the live GA4 Data API path; zero row-level conversions are correct when GA4 returns zero conversions for the exact landing-page/source/medium grain
 - only GA4 `landingPagePlusQueryString + sessionSource + sessionMedium` rows can create Landing Pages rows; when one of those existing rows has no conversions, a conversion-prioritized same-scope `pageLocation + sessionSource + sessionMedium` query may supplement only its Conversions through an exact, case-sensitive `Landing page + Source/Medium` match
+- if the saved `sessionCampaignName` selection returns no usable native landing rows, the same native landing dimensions may be queried using the campaign's exact saved `utm_campaign` values as a `pageLocation` filter. The dimensions, property, dates and row limit stay unchanged. Visited-page dimensions never create landing rows, and no unfiltered property-wide fallback is allowed. GA4 quality restrictions still fail closed.
 - campaign-level conversions and campaign-matched imported revenue are not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
 - if GA4 cannot provide an exact row-level conversion match, `Conversions` and `Conv. rate` can correctly remain zero for that row
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total

@@ -3220,29 +3220,7 @@ export default function GA4Metrics() {
     adComparisonBreakdownPlaceholder ||
     (adComparisonBreakdownError && adComparisonBreakdown === undefined);
   const landingPagesUnavailable = !ga4ConnectionUsable || (landingPagesError && ga4LandingPages === undefined);
-  const overviewLandingPageRows = (() => {
-    const rows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];
-    // User-requested mock rows for Promo's Overview only; never persist or export them.
-    if (rows.length || campaignId !== "b74f98af-ede9-47af-9b19-0720ebb4d2c0" || selectedGA4PropertyId !== "542352127"
-      || selectedGa4CampaignFilterList.length !== 2 || !["yesop_brand_search", "yesop_retargeting"].every(name => selectedGa4CampaignFilterList.includes(name))
-      || landingPagesUnavailable || landingPagesError || ga4LandingPages?.success !== true || !overviewSummaryAvailable
-      || !Number.isFinite(overviewSummaryTotals.sessions) || overviewSummaryTotals.sessions <= 0
-      || !Number.isFinite(overviewSummaryTotals.conversions) || overviewSummaryTotals.conversions < 0) return rows;
-    let sessionsLeft = overviewSummaryTotals.sessions, conversionsLeft = overviewSummaryTotals.conversions;
-    return [
-      { landingPage: "/", source: "google", medium: "cpc", sessionShare: 0.38, conversionShare: 0.30 },
-      { landingPage: "/pricing", source: "google", medium: "cpc", sessionShare: 0.27, conversionShare: 0.31 },
-      { landingPage: "/product", source: "google", medium: "display", sessionShare: 0.18, conversionShare: 0.18 },
-      { landingPage: "/signup", source: "google", medium: "display", sessionShare: 0.10, conversionShare: 0.18 },
-      { landingPage: "/blog/benchmarking", source: "google", medium: "cpc", sessionShare: 0.07, conversionShare: 0.03 },
-    ].map(({ sessionShare, conversionShare, ...row }, index) => {
-      const sessions = index === 4 ? sessionsLeft : Math.floor(overviewSummaryTotals.sessions * sessionShare);
-      const conversions = index === 4 ? conversionsLeft : Math.floor(overviewSummaryTotals.conversions * conversionShare);
-      sessionsLeft -= sessions;
-      conversionsLeft -= conversions;
-      return { ...row, sessions, users: Math.min(overviewSummaryTotals.users, Math.round(sessions * 0.94)), conversions };
-    });
-  })();
+  const overviewLandingPageRows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];
   const conversionEventsUnavailable = !ga4ConnectionUsable || (conversionEventsError && ga4ConversionEvents === undefined);
   const revenueSourcesUnavailable = revenueSourcesError && revenueSourcesResp === undefined;
   const spendSourcesUnavailable = spendSourcesError && spendSourcesResp === undefined;
@@ -4076,7 +4054,10 @@ export default function GA4Metrics() {
           formatConversionCredit(Number(r?.conversions || 0)),
           formatPercentage(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0),
         ]),
-        [52, 44, 22, 20, 28, 26]
+        [52, 44, 22, 20, 28, 26],
+        ga4LandingPages?.meta?.historyLimited
+          ? `Data from ${ga4LandingPages.meta.startDate} through ${ga4LandingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.` : undefined,
+        "No landing page data is available for the selected campaigns and dates.",
       );
 
       if (includeOverviewConversionEvents) addSimpleTable(
@@ -7409,7 +7390,9 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">{ga4LandingPages?.meta?.historyLimited
+                          ? `Data from ${ga4LandingPages.meta.startDate} through ${ga4LandingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.`
+                          : "Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope"}</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -7475,7 +7458,7 @@ export default function GA4Metrics() {
                             </div>
                           ) : (
                             <div className="text-sm text-muted-foreground/70">
-                              Data coming soon
+                              No landing page data is available for the selected campaigns and dates.
                             </div>
                           )}
                         </CardContent>

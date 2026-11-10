@@ -242,7 +242,12 @@ describe("GA4 UI regression guard", () => {
     expect(conversionRoute).not.toContain("campaignStartDate");
     expect(routes).toContain("case '60days':");
     expect(routes).toContain("ga4DateRange = '60daysAgo';");
-    expect(landingMethod).toContain("dateRanges: [{ startDate: dateRange, endDate }]");
+    expect(landingMethod).toContain("let reportStartDate = dateRange;");
+    expect(landingMethod).toContain("dateRanges: [{ startDate: reportStartDate, endDate }]");
+    expect(landingMethod).toContain("requestedStartDate: dateRange, startDate: reportStartDate, endDate");
+    expect(landingMethod).toContain("d.dataTruncationDate <= dateRange || d.dataTruncationDate > endDate");
+    expect(ga4Metrics).toContain("ga4LandingPages?.meta?.historyLimited");
+    expect(ga4Metrics).toContain("Earlier landing page data is unavailable in GA4.");
     expect(conversionMethod).toContain("dateRanges: [{ startDate: dateRange, endDate }]");
   });
 

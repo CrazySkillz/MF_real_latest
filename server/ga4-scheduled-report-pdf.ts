@@ -1525,7 +1525,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           formatPct(Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0),
         ]),
         [52, 44, 22, 20, 28, 26],
-        COLORS.overview
+        COLORS.overview,
+        payload.landingPages?.meta?.historyLimited
+          ? `Data from ${payload.landingPages.meta.startDate} through ${payload.landingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.` : undefined,
       );
     }
     if (includeConversionEvents) {

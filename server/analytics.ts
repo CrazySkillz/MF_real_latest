@@ -95,7 +95,7 @@ export class GoogleAnalytics4Service {
             metadata?.dataTruncationReasons?.length && 'truncated', metadata?.emptyReason && 'empty_reason',
           ].filter(Boolean);
           if (reasons.length) throw Object.assign(new Error(`GA4_DATA_QUALITY_UNAVAILABLE: ${reasons.join(', ')}`), {
-            code: 'GA4_DATA_QUALITY_UNAVAILABLE', reasons,
+            code: 'GA4_DATA_QUALITY_UNAVAILABLE', reasons, dataTruncationReasons: metadata?.dataTruncationReasons,
           });
           return new Response(JSON.stringify(data), { status: response.status, headers: response.headers });
         };
@@ -285,7 +285,7 @@ export class GoogleAnalytics4Service {
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
     rows: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number }>;
     totals: { sessions: number; users: number; conversions: number; revenue: number };
-    meta: { usersAreNonAdditive: boolean; sessionScopedAttributionAvailable: boolean };
+    meta: { usersAreNonAdditive: boolean; sessionScopedAttributionAvailable: boolean; historyLimited?: boolean; requestedStartDate?: string; startDate?: string; endDate?: string };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection) throw new Error('NO_GA4_CONNECTION');
@@ -300,6 +300,7 @@ export class GoogleAnalytics4Service {
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
     const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
     const pageLocationDims = [{ name: 'pageLocation' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
+    let reportStartDate = dateRange;
 
     const run = async (
       accessToken: string,
@@ -312,7 +313,7 @@ export class GoogleAnalytics4Service {
     ) => {
       const boundedLimit = Math.min(Math.max(reportLimit, 1), 10000);
       const requestBody = {
-        dateRanges: [{ startDate: dateRange, endDate }],
+        dateRanges: [{ startDate: reportStartDate, endDate }],
         dimensions,
         ...(scopeFilter ? scopeFilter : {}),
         metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
@@ -504,15 +505,39 @@ export class GoogleAnalytics4Service {
       return supplementMissingConversionRows(base, conversionRes);
     };
 
-    const tryFetch = async (accessToken: string) => {
-      const base = await fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions');
+    const fetchWindow = async (accessToken: string) => {
+      let base = await fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions');
+      if (base.rows.length === 0 && pageLocationCampaignFilter) {
+        // Keep GA4's landing-page dimension; use the exact saved UTM scope when session campaign attribution is absent.
+        base = await fetchRows(accessToken, pageLocationCampaignFilter, false, limit, 'sessions');
+      }
       assertUniqueBaseRows(base);
       return supplementFromConversionFallback(accessToken, base);
     };
 
+    const tryFetch = async (accessToken: string) => {
+      reportStartDate = dateRange;
+      try { return await fetchWindow(accessToken); }
+      catch (error: any) {
+        const dates = error?.dataTruncationReasons;
+        const validDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+          && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+        if (error?.code !== 'GA4_DATA_QUALITY_UNAVAILABLE' || JSON.stringify(error.reasons) !== '["truncated"]'
+          || !validDate(dateRange) || !validDate(endDate) || !Array.isArray(dates) || !dates.length
+          || dates.some(d => d?.dataTruncationType !== 'DATA_TRUNCATION_TYPE_PROPERTY' || !validDate(d.dataTruncationDate)
+            || d.dataTruncationDate <= dateRange || d.dataTruncationDate > endDate)) throw error;
+        // Re-query the complete available window; never accept the truncated response itself.
+        reportStartDate = dates.map(d => d.dataTruncationDate).sort().at(-1)!;
+        return await fetchWindow(accessToken);
+      }
+    };
+    const historyMeta = () => reportStartDate === dateRange ? {} : {
+      historyLimited: true, requestedStartDate: dateRange, startDate: reportStartDate, endDate,
+    };
+
     try {
       const res = await tryFetch(String(connection.accessToken));
-      return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, sessionScopedAttributionAvailable: !isEmptyResult(res) } };
+      return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, sessionScopedAttributionAvailable: !isEmptyResult(res), ...historyMeta() } };
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (isAuthErrorText(msg) && validationReadOnly) {
@@ -532,7 +557,7 @@ export class GoogleAnalytics4Service {
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
         const res = await tryFetch(refresh.access_token);
-        return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, sessionScopedAttributionAvailable: !isEmptyResult(res) } };
+        return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, sessionScopedAttributionAvailable: !isEmptyResult(res), ...historyMeta() } };
       }
       throw e;
     }

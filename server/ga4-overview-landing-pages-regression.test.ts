@@ -82,8 +82,10 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(ui).toContain("landingPagesUnavailable");
     expect(ui).toContain("Landing page data is unavailable. Refresh the page to try again.");
     expect(ui).toContain("overviewLandingPageRows.length > 0");
-    expect(client).toContain("const rows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];");
-    expect(ui).toContain("Data coming soon");
+    expect(client).toContain("const overviewLandingPageRows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];");
+    expect(ui).toContain("No landing page data is available for the selected campaigns and dates.");
+    expect(client).not.toContain("sessionShare");
+    expect(client).not.toContain('campaignId !== "b74f98af-ede9-47af-9b19-0720ebb4d2c0"');
     expect(client).toContain("landingPagesError && ga4LandingPages !== undefined");
     expect(client).toContain("Last successful values remain visible where available; unavailable values are marked.");
     expect(client).toContain("if (needsLandingPages && landingPagesUnavailable) unavailable.push(\"Landing Pages\")");
@@ -132,6 +134,96 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(body.dimensionFilter.orGroup.expressions.map((item: any) => item.filter.stringFilter.value)).toEqual(["saved-a", "saved-b"]);
     expect(result.rows[0]).toMatchObject({ sessions: 7, users: 5, conversions: 2.5, revenue: 19 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("recovers native landing rows using exact saved UTM names when session campaign attribution is missing", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(init.body);
+      const taggedScope = JSON.stringify(body.dimensionFilter).includes('pageLocation');
+      return { ok: true, json: async () => ({ rowCount: taggedScope ? 1 : 0, rows: taggedScope ? [{
+        dimensionValues: [{ value: '/landing' }, { value: '(not set)' }, { value: '(not set)' }],
+        metricValues: [{ value: '1152' }, { value: '1149' }, { value: '112' }, { value: '33877.249999' }],
+      }] : [] }) } as any;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({ propertyId: '123', accessToken: 'token' })) };
+    const result = await ga4Service.getLandingPagesReport('campaign', storage, '2026-10-10', '123', 50,
+      ['brand search', 'paid.social'], '2026-11-09', true);
+    expect(result.rows).toEqual([{ landingPage: '/landing', source: '(not set)', medium: '(not set)', sessions: 1152, users: 1149, conversions: 112, revenue: 33877.25 }]);
+    expect(result.meta.sessionScopedAttributionAvailable).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body));
+    for (const body of bodies) {
+      expect(body.dimensions.map((d: any) => d.name)).toEqual(['landingPagePlusQueryString', 'sessionSource', 'sessionMedium']);
+      expect(body.dateRanges).toEqual([{ startDate: '2026-10-10', endDate: '2026-11-09' }]);
+      expect(body.limit).toBe(50);
+    }
+    const filters = bodies[1].dimensionFilter.orGroup.expressions.map((e: any) => e.filter);
+    expect(filters.every((f: any) => f.fieldName === 'pageLocation' && f.stringFilter.matchType === 'FULL_REGEXP')).toBe(true);
+    const matches = (url: string) => filters.some((f: any) => new RegExp(f.stringFilter.value, 'i').test(url));
+    expect(matches('https://example.test/?utm_campaign=brand%20search')).toBe(true);
+    expect(matches('https://example.test/?utm_campaign=paid.social&x=1')).toBe(true);
+    expect(matches('https://example.test/?utm_campaign=paid.social-extra')).toBe(false);
+    expect(matches('https://example.test/?utm_campaign=paidXsocial')).toBe(false);
+    expect(matches('https://example.test/?campaign=brand%20search')).toBe(false);
+  });
+
+  it("does not retry an empty unfiltered report with a broader or invented campaign scope", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ rowCount: 0, rows: [] }) }) as any);
+    vi.stubGlobal('fetch', fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({ propertyId: '123', accessToken: 'token' })) };
+    expect((await ga4Service.getLandingPagesReport('campaign', storage, '2026-10-10', '123', 50, undefined, '2026-11-09')).rows).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { subjectToThresholding: true },
+    { samplingMetadatas: [{ samplesReadCount: '10', samplingSpaceSize: '100' }] },
+    { dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-11-10' }] },
+    { dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-31' }] },
+    { dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-04' }] },
+    { dataTruncationReasons: [{ dataTruncationType: 'UNKNOWN', dataTruncationDate: '2026-09-09' }] },
+    { subjectToThresholding: true, dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-09' }] },
+  ])("rejects incomplete native landing rows from the tagged campaign fallback: %j", async metadata => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const fallback = JSON.stringify(JSON.parse(init.body).dimensionFilter).includes('pageLocation');
+      return { ok: true, json: async () => fallback ? { metadata, rowCount: 1, rows: [{
+        dimensionValues: [{ value: '/partial' }, { value: 'google' }, { value: 'cpc' }],
+        metricValues: [{ value: '10' }, { value: '8' }, { value: '2' }, { value: '100' }],
+      }] } : { rowCount: 0, rows: [] } } as any;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({ propertyId: '123', accessToken: 'token' })) };
+    await expect(ga4Service.getLandingPagesReport('campaign', storage, '2026-09-04', '123', 50,
+      ['saved-campaign'], '2026-11-09', true)).rejects.toMatchObject({ code: 'GA4_DATA_QUALITY_UNAVAILABLE' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([false, true])("re-queries only the declared complete history window and rejects a still-partial retry (%s)", async stillPartial => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(init.body);
+      const fallback = JSON.stringify(body.dimensionFilter).includes('pageLocation');
+      const originalWindow = body.dateRanges[0].startDate === '2026-09-04';
+      return { ok: true, json: async () => !fallback ? { rowCount: 0, rows: [] } : {
+        ...(originalWindow || stillPartial ? { metadata: { dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-09' }] } } : {}),
+        rowCount: 1, rows: [{ dimensionValues: [{ value: '/landing' }, { value: '(not set)' }, { value: '(not set)' }],
+          metricValues: [{ value: originalWindow ? '99999' : '3884' }, { value: '3916' }, { value: '394' }, { value: '0' }] }],
+      } } as any;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({ propertyId: '123', accessToken: 'token' })) };
+    const promise = ga4Service.getLandingPagesReport('campaign', storage, '2026-09-04', '123', 50, ['saved-campaign'], '2026-11-09', true);
+    if (stillPartial) await expect(promise).rejects.toMatchObject({ code: 'GA4_DATA_QUALITY_UNAVAILABLE' });
+    else {
+      const result = await promise;
+      expect(result.rows[0]).toMatchObject({ sessions: 3884, users: 3916, conversions: 394 });
+      expect(result.meta).toMatchObject({ historyLimited: true, requestedStartDate: '2026-09-04', startDate: '2026-09-09', endDate: '2026-11-09' });
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const requests = fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body));
+    for (let i = 2; i < 4; i++) {
+      expect(requests[i]).toEqual({ ...requests[i - 2], dateRanges: [{ startDate: '2026-09-09', endDate: '2026-11-09' }] });
+    }
   });
 
   it("paginates conversion supplementation and keeps deterministic provider ordering", async () => {

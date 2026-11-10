@@ -116,5 +116,8 @@
       "before": "3c0cb772db1f61e9d45ebad7673da2c49e97c91573563e2a4bfc072e21c7bc84",
       "after": "c05e88d2f029a17e5a88abaeae4577678859253d12ecad064b6a4b25442eb0c3"
     }
+  ],
+  "equivalentCommits": [
+    "e5555da7c6312dc41f5f2ca7ce8b74041906fe9c"
   ]
 }

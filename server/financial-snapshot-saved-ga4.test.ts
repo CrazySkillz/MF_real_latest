@@ -181,7 +181,7 @@ describe("financial snapshot reuses the verified GA4 Overview", () => {
     const newer = { ...savedOverview(), campaignBreakdown: { ...savedOverview().campaignBreakdown,
       totals: { ...savedOverview().campaignBreakdown.totals, [field]: savedOverview().campaignBreakdown.totals[field] + 1 },
     } };
-    storageMock.getGA4OverviewSnapshot.mockResolvedValueOnce(savedOverview()).mockResolvedValue(newer);
+    storageMock.getGA4OverviewSnapshot.mockResolvedValueOnce(savedOverview()).mockResolvedValueOnce(savedOverview()).mockResolvedValue(newer);
     expect(await write()).toEqual({ status: "blocked", reasons: [field === "revenue" ? "ga4_revenue_total_mismatch" : "ga4_conversion_total_mismatch"] });
     expect(storageMock.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
   });
@@ -196,13 +196,13 @@ describe("financial snapshot reuses the verified GA4 Overview", () => {
     expect(await getCampaignMetricTotals(campaignId, true)).toMatchObject({ ga4Revenue: 110, financialConversions: 6, ga4FinancialSource: "provider_to_date" });
     expect(await getCampaignMetricTotalsAtDate(campaignId, reportingDate)).toMatchObject({ ga4Revenue: 110, financialConversions: 6, ga4FinancialSource: "provider_to_date" });
     expect(provider.getTotalsWithRevenue).toHaveBeenCalledTimes(2);
-    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaignId, "542352127");
   });
 
   it("preserves the unfiltered legacy path and its mismatch guard", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...(await storageMock.getCampaign()), ga4CampaignFilter: "" });
     expect(await write()).toEqual({ status: "blocked", reasons: ["ga4_conversion_total_mismatch"] });
     expect(provider.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
-    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaignId, "542352127");
   });
 });

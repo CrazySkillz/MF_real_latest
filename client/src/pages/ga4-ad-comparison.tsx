@@ -30,6 +30,7 @@ interface GA4AdComparisonProps {
   nativeRevenue?: number;
   chartCampaignRows: CampaignAgg[];
   chartRevenue?: number;
+  chartUsers?: number | null;
   breakdownLoading: boolean;
   breakdownUnavailable?: boolean;
   breakdownStale?: boolean;
@@ -67,6 +68,7 @@ function GA4AdComparison({
   nativeRevenue,
   chartCampaignRows,
   chartRevenue,
+  chartUsers,
   breakdownLoading,
   breakdownUnavailable = false,
   breakdownStale = false,
@@ -109,7 +111,7 @@ function GA4AdComparison({
       const key = row.name.toLocaleLowerCase("en-US");
       const current = byName.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0, revenuePerSession: 0 };
       current.sessions += row.sessions;
-      current.users += row.users;
+      current.users = row.users;
       current.conversions += row.conversions;
       current.revenue += row.revenue;
       byName.set(key, current);
@@ -148,6 +150,7 @@ function GA4AdComparison({
   }, [chartSummaryRows, selectedMetric]);
 
   const fmtMetricValue = (metric: string, value: number) => {
+    if (metric === "users" && !Number.isFinite(value)) return "Unavailable";
     if (metric === "revenue") return formatMoney(value);
     if (metric === "conversionRate") return `${formatPct(value)}`;
     if (metric === "conversions") return formatConversionCredit(value);
@@ -160,6 +163,7 @@ function GA4AdComparison({
   };
 
   const totalMetric = useMemo(() => {
+    if (selectedMetric === "users") return chartUsers ?? Number.NaN;
     if (selectedMetric === "revenue" && chartRevenue !== undefined) return chartRevenue;
     if (selectedMetric === "conversionRate") {
       const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
@@ -167,7 +171,7 @@ function GA4AdComparison({
       return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
     }
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
-  }, [sortedByMetric, selectedMetric, chartRevenue]);
+  }, [sortedByMetric, selectedMetric, chartRevenue, chartUsers]);
 
   const summaryMetricLabel = selectedMetric === "revenue"
     ? "Campaign Breakdown Revenue"
@@ -303,7 +307,7 @@ function GA4AdComparison({
       )}
       {chartBreakdownLoading && chartSummaryRows.length === 0 ? (
         <div className="h-80 bg-muted rounded animate-pulse" />
-      ) : chartBreakdownUnavailable ? (
+      ) : chartBreakdownUnavailable || (selectedMetric === "users" && chartSummaryRows.some(row => !Number.isFinite(row.users))) ? (
         <Card><CardContent className="p-8 text-center text-destructive">GA4 Overview Campaign Breakdown is unavailable.</CardContent></Card>
       ) : chartSummaryRows.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">No GA4 Overview Campaign Breakdown rows available.</CardContent></Card>
@@ -346,7 +350,7 @@ function GA4AdComparison({
                     <Info className="w-3.5 h-3.5 text-amber-500 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                    <p className="text-xs">User counts are approximate. GA4 users are non-additive - the same user visiting across multiple days, devices, or traffic sources is counted in each breakdown row. Per-campaign and total user counts may be higher than actual unique users.</p>
+                    <p className="text-xs">Distinct GA4 users for each campaign during the displayed dates. A user can visit several campaigns, so campaign counts must not be added to calculate total users.</p>
                   </TooltipContent>
                 </UITooltip>
               )}

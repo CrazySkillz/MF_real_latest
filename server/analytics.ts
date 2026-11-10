@@ -10,6 +10,7 @@ type CampaignFilter = string | string[] | undefined;
 // Owned by one scheduler connection attempt; never persisted or shared across requests.
 export type GA4DailyTrafficCapture = {
   campaignId: string;
+  primaryScope?: { propertyId: string; startDate: string; endDate: string; campaigns: string[]; throughDate: string };
   captured?: {
     propertyId: string; startDate: string; endDate: string; currencyCode: string;
     campaigns: Array<{ name: string; rows: any[] }>;
@@ -1439,6 +1440,80 @@ export class GoogleAnalytics4Service {
     }
   }
 
+  // No date/campaign/device dimensions on aggregate requests: GA4 performs
+  // deduplication across the entire selected scope, including fallback dates.
+  async getDistinctUsersWithToken(
+    propertyId: string, accessToken: string, startDate: string, endDate: string,
+    campaignFilter: CampaignFilter, primaryScope?: GA4DailyTrafficCapture['primaryScope'],
+  ) {
+    const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+    const names = this.normalizeCampaignFilter(campaignFilter);
+    if (!names.length || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
+      throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
+    }
+    const run = async (filter: any, from: string, to: string, daily = false): Promise<Array<{ date: string; users: number }>> => {
+      const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dateRanges: [{ startDate: from, endDate: to }],
+          ...(daily ? { dimensions: [{ name: 'date' }], orderBys: [{ dimension: { dimensionName: 'date' } }] } : {}),
+          ...filter, metrics: [{ name: 'totalUsers' }], limit: 100000 }),
+      });
+      if (!response.ok) throw new Error(`GA4 distinct users API error: ${await response.text()}`);
+      const data = await response.json();
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      if (Number(data?.rowCount ?? rows.length) !== rows.length || (!daily && rows.length > 1) ||
+          rows.some((row: any) => row.metricValues?.[0]?.value == null || row.metricValues[0].value === '' ||
+            !Number.isSafeInteger(Number(row.metricValues[0].value)) || Number(row.metricValues[0].value) < 0)) {
+        throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
+      }
+      const values = rows.map((row: any) => ({ date: daily ? String(row.dimensionValues?.[0]?.value || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3') : '', users: Number(row.metricValues[0].value) }));
+      if (daily && (new Set(values.map((row: any) => row.date)).size !== values.length ||
+          values.some((row: any) => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < from || row.date > to))) throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
+      return values;
+    };
+    if (primaryScope && (primaryScope.propertyId !== normalizedPropertyId || primaryScope.startDate !== startDate ||
+        primaryScope.endDate !== endDate || JSON.stringify(primaryScope.campaigns) !== JSON.stringify(names))) {
+      throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
+    }
+    const primaryDates = primaryScope ? [] : await run(this.buildCampaignDimensionFilter(names, 'sessionCampaignName'), startDate, endDate, true);
+    const throughDate = primaryScope?.throughDate ?? primaryDates.map(row => row.date).sort().at(-1) ?? '';
+    const scopeFor = (selected: string | string[]) => {
+      const primary = this.buildCampaignDimensionFilter(selected, 'sessionCampaignName')!.dimensionFilter;
+      const fallback = this.buildExactUtmCampaignPageLocationFilter(selected)!.dimensionFilter;
+      if (!throughDate) return { dimensionFilter: fallback };
+      if (throughDate >= endDate) return { dimensionFilter: primary };
+      const dateFilter = { filter: { fieldName: 'date', numericFilter: { operation: 'LESS_THAN_OR_EQUAL', value: { int64Value: throughDate.replace(/-/g, '') } } } };
+      return { dimensionFilter: { orGroup: { expressions: [
+        { andGroup: { expressions: [primary, dateFilter] } },
+        { andGroup: { expressions: [fallback, { notExpression: dateFilter }] } },
+      ] } } };
+    };
+    const fullScope = scopeFor(names);
+    const [aggregate, dailyRows] = await Promise.all([run(fullScope, startDate, endDate), run(fullScope, startDate, endDate, true)]);
+    const byDate = new Map(dailyRows.map(row => [row.date, row.users]));
+    if (byDate.size !== dailyRows.length || dailyRows.some(row => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < startDate || row.date > endDate)) {
+      throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
+    }
+    const daily: Array<{ date: string; users: number }> = [];
+    for (let date = startDate; date <= endDate; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) {
+      daily.push({ date, users: byDate.get(date) ?? 0 });
+    }
+    const total = aggregate[0]?.users ?? 0;
+    const campaigns: Array<{ name: string; users: number }> = [];
+    for (let i = 0; i < names.length; i += 4) campaigns.push(...await Promise.all(names.slice(i, i + 4).map(async name => ({ name, users: names.length === 1 ? total : (await run(scopeFor(name), startDate, endDate))[0]?.users ?? 0 }))));
+    const windows: Array<{ startDate: string; endDate: string; users: number }> = [];
+    for (const days of [7, 14, 30, 90]) {
+      const previousEnd = new Date(Date.parse(endDate) - days * 86400000).toISOString().slice(0, 10);
+      const recentStart = new Date(Date.parse(endDate) - (days - 1) * 86400000).toISOString().slice(0, 10);
+      for (const [from, to] of [[startDate, previousEnd], [recentStart, endDate]]) {
+        if (from < startDate || to < startDate || (from === startDate && to === endDate)) continue;
+        windows.push({ startDate: from, endDate: to, users: 0 });
+      }
+    }
+    for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { window.users = (await run(fullScope, window.startDate, window.endDate))[0]?.users ?? 0; }));
+    return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows };
+  }
+
   async getMetricsWithToken(
     propertyId: string,
     accessToken: string,
@@ -1832,6 +1907,7 @@ export class GoogleAnalytics4Service {
       currencyCode?: string;
       overviewCampaignAttribution?: Record<string, string | number | boolean>;
       insightsLandingCoverage?: Record<string, string | number | boolean>;
+      distinctUsers?: Awaited<ReturnType<GoogleAnalytics4Service['getDistinctUsersWithToken']>>;
     };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
@@ -2644,12 +2720,15 @@ export class GoogleAnalytics4Service {
     const resolvedRevenue = hasAggregateTotals ? Number.parseFloat(aggregateMetricValues[3]?.value || '0') || 0 : totalRevenue;
     const resolvedEngagedSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[4]?.value || '0', 10) || 0 : totalEngagedSessions;
 
+    const distinctUsers = preferOverviewCampaignTotals && this.normalizeCampaignFilter(campaignFilter).length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && endDate
+      ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope)
+      : undefined;
     return {
       rows,
       totals: {
         sessions: totalSessions,
         sessionsRaw: totalSessions,
-        users: resolvedUsers,
+        users: distinctUsers?.total ?? resolvedUsers,
         conversions: resolvedConversions,
         revenue: Number(resolvedRevenue.toFixed(2)),
         engagedSessions: resolvedEngagedSessions,
@@ -2664,6 +2743,7 @@ export class GoogleAnalytics4Service {
         ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
         ...(overviewCampaignAttribution ? { overviewCampaignAttribution } : {}),
         ...(insightsLandingCoverage ? { insightsLandingCoverage } : {}),
+        ...(distinctUsers ? { distinctUsers } : {}),
       },
     };
   }
@@ -3142,7 +3222,7 @@ export class GoogleAnalytics4Service {
     currencyCode?: string,
     overviewDailyTraffic?: GA4DailyTrafficCapture,
   ): Promise<any[]> {
-    if (overviewDailyTraffic) delete overviewDailyTraffic.captured;
+    if (overviewDailyTraffic) { delete overviewDailyTraffic.captured; delete overviewDailyTraffic.primaryScope; }
     try {
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
       const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
@@ -3313,6 +3393,10 @@ export class GoogleAnalytics4Service {
         (latest: string, row: any) => providerDateKey(row) > latest ? providerDateKey(row) : latest,
         "",
       );
+      if (overviewDailyTraffic) overviewDailyTraffic.primaryScope = {
+        propertyId: normalizedPropertyId, startDate: dateRange, endDate, campaigns: this.normalizeCampaignFilter(campaignFilter),
+        throughDate: latestPrimaryDateKey.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'),
+      };
       if (pageLocationCampaignFilter && (primaryRows.length === 0 || (completedEndDateKey && latestPrimaryDateKey < completedEndDateKey))) {
         const fallbackStartDate = primaryRows.length > 0 && /^[0-9]{8}$/.test(latestPrimaryDateKey)
           ? new Date(Date.UTC(

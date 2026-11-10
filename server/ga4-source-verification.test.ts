@@ -6,7 +6,8 @@ import { checkGA4SourceNumbers, ga4VerificationInputHash, verifyGA4InitialImport
 const day = '2026-11-07';
 const daily = () => ({ campaignId: 'a', propertyId: '123', date: day, sessions: 10, users: 8, pageviews: 15, conversions: 2, revenue: '20.25', engagedSessions: 6, engagementRate: 0.6, isSimulated: false });
 const overview = () => ({ campaignId: 'a', propertyId: '123', windowStart: day, windowEnd: day,
-  campaignBreakdown: { meta: { propertyId: '123', currencyCode: 'EUR', revenueMetric: 'totalRevenue', dimensions: ['campaignName'] },
+  campaignBreakdown: { meta: { propertyId: '123', currencyCode: 'EUR', revenueMetric: 'totalRevenue', dimensions: ['campaignName'],
+    distinctUsers: { version: 1, metric: 'totalUsers', propertyId: '123', startDate: day, endDate: day, total: 8, daily: [{ date: day, users: 8 }], campaigns: [{ name: 'sale', users: 8 }], windows: [] } },
     totals: { sessions: 10, sessionsRaw: 10, users: 8, conversions: 2, revenue: 20.25, engagedSessions: 6, engagementRate: 0.6 },
     rows: [{ campaign: 'sale', sessions: 10, users: 8, conversions: 2, revenue: 20.25, engagedSessions: 6, sessionKeyEventRate: 0.2 }] },
   landingPages: { propertyId: '123', revenueMetric: 'totalRevenue', rows: [{ landingPage: '/sale', source: 'google', medium: 'cpc', sessions: 10, users: 8, conversions: 2 }] },
@@ -26,6 +27,18 @@ beforeEach(() => {
   provider.getConversionEventsReport.mockResolvedValue(overview().conversionEvents);
 });
 describe('first-import source verification', () => {
+  it.each(['total', 'campaign', 'daily'])('blocks a changed distinct-user %s result', async kind => {
+    const users = stored.campaignBreakdown.meta.distinctUsers;
+    if (kind === 'total') users.total = 999;
+    if (kind === 'campaign') users.campaigns[0].users = 999;
+    if (kind === 'daily') users.daily[0].users = 999;
+    await expect(verifyGA4InitialImport(storage, owned, ownership)).rejects.toThrow('VERIFICATION_DIFFERENCE');
+  });
+  it('does not certify an old daily sum as distinct Users', async () => {
+    delete (stored.campaignBreakdown.meta as any).distinctUsers;
+    await expect(verifyGA4InitialImport(storage, owned, ownership)).rejects.toThrow('VERIFICATION_UNVERIFIED');
+    expect(storage.recordGA4InitialImportVerification).not.toHaveBeenCalled();
+  });
   it('compares saved inputs with fresh exact-scope queries without writing figures or refreshing credentials', async () => {
     const before = JSON.stringify([stored, savedDaily]);
     await verifyGA4InitialImport(storage, owned, ownership);
@@ -95,6 +108,9 @@ describe('first-import source verification', () => {
     const zero = Object.fromEntries(Object.keys(daily()).filter(k => typeof (daily() as any)[k] === 'number').map(k => [k, 0]));
     savedDaily = [{ ...daily(), ...zero, revenue: '0' }];
     const publication = overview(); publication.campaignBreakdown.rows = []; Object.keys(publication.campaignBreakdown.totals).forEach(k => (publication.campaignBreakdown.totals as any)[k] = 0);
+    publication.campaignBreakdown.meta.distinctUsers.total = 0;
+    publication.campaignBreakdown.meta.distinctUsers.daily[0].users = 0;
+    publication.campaignBreakdown.meta.distinctUsers.campaigns[0].users = 0;
     publication.landingPages.rows = []; publication.conversionEvents.rows = [];
     provider.getTimeSeriesWithToken.mockResolvedValue([]); provider.getAcquisitionBreakdown.mockResolvedValue(publication.campaignBreakdown);
     provider.getLandingPagesReport.mockResolvedValue(publication.landingPages); provider.getConversionEventsReport.mockResolvedValue(publication.conversionEvents);

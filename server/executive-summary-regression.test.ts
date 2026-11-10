@@ -245,7 +245,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain('source: "ga4_property_window"');
     expect(route).toContain("conversions: parseNum(exactTrafficCandidate?.conversions)");
     expect(route).toContain("sessions: parseNum(exactTrafficCandidate?.sessions)");
-    expect(route).toContain("users: parseNum(exactTrafficCandidate?.users)");
+    expect(route).toContain("users: exactTrafficCandidate?.users");
     expect(route).toContain("...summarizeGA4TrafficRows(propertyWindowRows)");
     expect(route).toContain("executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0");
     expect(route).toContain("(performanceSummary as any).totals.engagementRate");

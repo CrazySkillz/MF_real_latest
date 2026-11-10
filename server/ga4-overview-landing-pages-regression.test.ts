@@ -37,7 +37,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(ui).toContain("const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;");
     expect(browserPdf).toContain("formatPercentage(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0)");
     expect(scheduledPdf).toContain("Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0");
-    expect(ui).toContain("Users are directional and may overlap across landing pages");
+    expect(ui).toContain("Distinct GA4 users for each landing page and Source/Medium during the displayed dates. Users can appear on multiple pages");
   });
 
   it("keeps Landing Pages on the saved property, fixed import window, and read-only route", () => {

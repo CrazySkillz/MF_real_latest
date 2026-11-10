@@ -95,7 +95,7 @@ function setFixture(rows: any[], long = false) {
   const totals = rows.reduce((t, r) => { for (const key of ["sessions", "users", "conversions", "revenue", "engagedSessions", "pageviews"]) t[key] = (t[key] || 0) + r[key]; return t; }, {});
   const campaignRows = [{ campaignName: "saved_campaign", campaign: "saved_campaign", ...totals, sessionKeyEventRate: totals.sessions > 0 ? totals.conversions / totals.sessions : 0 }];
   const overview = { campaignId: campaign.id, propertyId: connection.propertyId, windowStart: start, windowEnd: "2026-10-18", updatedAt: fixedNow,
-    campaignBreakdown: { rows: campaignRows, totals, meta: { currencyCode: "EUR", revenueMetric: "totalRevenue" } },
+    campaignBreakdown: { rows: campaignRows, totals, meta: { currencyCode: "EUR", revenueMetric: "totalRevenue", propertyId: connection.propertyId, distinctUsers: { version: 1, metric: "totalUsers", propertyId: connection.propertyId, startDate: start, endDate: "2026-10-18", total: totals.users, campaigns: [{ name: "saved_campaign", users: totals.users }], daily: rows.map(row => ({ date: row.date, users: row.users })), windows: [] } } },
     landingPages: { rows: long ? Array.from({ length: 26 }, (_, i) => ({ landingPage: `/international-products/a-very-long-campaign-specific-landing-page-name-${i + 1}`, source: "long-source-label", medium: "paid-search", sessions: 10, users: 8, conversions: 2.5, revenue: 40, engagedSessions: 7, engagementRate: 0.7 })) : [] },
     conversionEvents: { rows: long ? Array.from({ length: 26 }, (_, i) => ({ eventName: `conversion_event_with_long_descriptive_name_${String(i + 1).padStart(2, "0")}`, conversions: 2.5, eventCount: 20, users: 10 })) : [] } };
   const financial = { campaignId: campaign.id, reportingDate: "2026-10-18", metrics: { financialDaily: { version: "financial_daily_snapshot_v1", currency: "EUR", currentValueWindow: { mode: "initial_import_to_latest_completed_day", startDate: start, endDate: "2026-10-18", dataThroughDate: "2026-10-18", reportingTimeZone: "Europe/Amsterdam" }, inputs: { spend: { available: false, value: null, sources: [] }, revenue: { available: true, value: String(totals.revenue), sources: ["ga4"] }, conversions: { available: true, value: totals.conversions, sources: ["ga4"] } } } } };
@@ -155,7 +155,7 @@ function contextFixture() {
   fixture.kpis = [target("sessions", "2000")]; fixture.benchmarks = [target("users", "2000", { id: "benchmark-1" })];
   const notes = buildGA4InsightsHistoryScopeMarker(fixture.connection.propertyId, ["saved_campaign"], "Europe/Amsterdam", "EUR");
   fixture.progress = [18, 17, 16].map(day => ({ kpiId: "target-1", recordedAt: `2026-10-${day}T00:00:00Z`, value: String(day * 10), notes }));
-  fixture.history = [16, 17, 18].map(day => ({ benchmarkId: "benchmark-1", recordedAt: `2026-10-${day}T00:00:00Z`, variance: day - 30, notes }));
+  fixture.history = [16, 17, 18].map(day => ({ benchmarkId: "benchmark-1", recordedAt: `2026-10-${day}T00:00:00Z`, variance: day - 30, notes: `${notes};users:totalUsers:v1` }));
   fixture.channels = { rows: fixture.rows.flatMap((r: any) => [
     { date: r.date, source: "search", medium: "paid", sessions: 80, conversions: 6, revenue: 90 },
     { date: r.date, source: "email", medium: "owned", sessions: 20, conversions: 4, revenue: 10 },

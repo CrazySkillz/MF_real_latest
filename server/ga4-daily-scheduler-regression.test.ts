@@ -706,7 +706,7 @@ describe("GA4 daily scheduler timing", () => {
     vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({
       rows: [{ campaign: "saved-filter", sessions: 10, conversions: 2, revenue: 20.02 }],
       totals: { sessions: 10, conversions: 2, revenue: 20.02 },
-      meta: { currencyCode: "USD" },
+      meta: { currencyCode: "USD", distinctUsers: { version: 1, daily: dailyRows.map(row => ({ date: row.date, users: 0 })) } },
     } as any);
     vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
     const conversionEvents = vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({
@@ -743,7 +743,7 @@ describe("GA4 daily scheduler timing", () => {
     vi.spyOn(ga4Service, "getTrendsDailyPresenceWithToken").mockResolvedValue({ dailyRows, presentDates: ["2026-08-05"] } as any);
     vi.spyOn(storage, "getGA4DailyMetrics").mockResolvedValue([] as any);
     vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({
-      totals: { sessions: 4, conversions: 1, revenue: 10 }, rows: [], meta: {},
+      totals: { sessions: 4, conversions: 1, revenue: 10 }, rows: [], meta: { distinctUsers: { version: 1, daily: dailyRows.map(row => ({ date: row.date, users: 0 })) } },
     } as any);
     vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
     vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({ rows: [], totals: { conversions: 1 } } as any);
@@ -771,7 +771,7 @@ describe("GA4 daily scheduler timing", () => {
       dailyRows: [{ date: "2026-08-05", sessions: 4, conversions: 1, revenue: 10 }], presentDates: ["2026-08-05"],
     } as any);
     vi.spyOn(storage, "getGA4DailyMetrics").mockResolvedValue([] as any);
-    vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({ totals: { sessions: 4, conversions: 1, revenue: 10 }, rows: [], meta: { currencyCode: "USD" } } as any);
+    vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({ totals: { sessions: 4, conversions: 1, revenue: 10 }, rows: [], meta: { currencyCode: "USD", distinctUsers: { version: 1, daily: [{ date: "2026-08-05", users: 0 }] } } } as any);
     vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
     vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({ rows: [], totals: { conversions: 2 } } as any);
     const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 1 } as any);

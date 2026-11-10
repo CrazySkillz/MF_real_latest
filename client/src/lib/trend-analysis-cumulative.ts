@@ -190,10 +190,10 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
   if (responseStartDate > firstRecentDate.toISOString().slice(0, 10)) return null;
 
   const currentRaw = response?.overviewTotals || {};
-  if ([currentRaw.users, currentRaw.sessions, currentRaw.conversions, currentRaw.engagedSessions]
+  if ([currentRaw.sessions, currentRaw.conversions, currentRaw.engagedSessions]
     .some((value) => !hasNonNegativeMetric(value))) return null;
   const current = {
-    users: Number(currentRaw.users),
+    users: hasNonNegativeMetric(currentRaw.users) ? Number(currentRaw.users) : Number.NaN,
     sessions: Number(currentRaw.sessions),
     conversions: Number(currentRaw.conversions),
     engagedSessions: Number(currentRaw.engagedSessions),
@@ -212,12 +212,12 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
   }
 
   const previous = {
-    users: current.users - recent.users,
+    users: response?.usersComparisons?.find((window: any) => window.startDate === overviewStartDate && window.endDate === comparisonDate)?.users ?? Number.NaN,
     sessions: current.sessions - recent.sessions,
     conversions: current.conversions - recent.conversions,
     engagedSessions: current.engagedSessions - recent.engagedSessions,
   };
-  if (Object.values(previous).some((value) => !Number.isFinite(value) || value < 0)) return null;
+  if ([previous.sessions, previous.conversions, previous.engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
   return {
     current: {
       ...current,

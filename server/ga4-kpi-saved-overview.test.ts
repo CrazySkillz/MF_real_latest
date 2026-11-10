@@ -96,6 +96,30 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(storageMock.getSpendTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", date, "ga4");
   });
 
+  it("uses the period's distinct Users for KPIs, Benchmarks and alerts, excluding old daily-sum trends", async () => {
+    const saved: any = overview();
+    saved.campaignBreakdown.meta = { ...saved.campaignBreakdown.meta, propertyId,
+      distinctUsers: { version: 1, metric: "totalUsers", propertyId, startDate: "2026-10-15", endDate: date, total: 22 } };
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    storageMock.getPlatformKPIs.mockResolvedValue([{ id: "kpi-Users", metric: "Users" }]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue([{ id: "benchmark-Users", metric: "Users", benchmarkValue: "20" }]);
+    await run();
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Users", { currentValue: "22", publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Users", { currentValue: "22", publicationVersion });
+    expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({ value: "22", notes: expect.stringContaining("users:totalUsers:v1") }));
+    const decision = await resolveAlertCurrentValueForDecision({ id: "kpi-Users", campaignId, platformType: "google_analytics", metric: "users", currentValue: "999" } as any, new Map(), { useSavedOverview: true });
+    expect(Number(decision.currentValue)).toBe(22);
+    saved.campaignBreakdown.meta.distinctUsers = null;
+    storageMock.updateKPI.mockClear(); storageMock.updateBenchmark.mockClear();
+    const unavailable = await run();
+    expect(unavailable.kpiIdsSkipped).toContain("kpi-Users");
+    expect(unavailable.benchmarkIdsSkipped).toContain("benchmark-Users");
+    expect(storageMock.updateKPI).not.toHaveBeenCalledWith("kpi-Users", expect.anything());
+    const blocked = await resolveAlertCurrentValueForDecision({ id: "kpi-Users", campaignId, platformType: "google_analytics", metric: "users", currentValue: "999" } as any, new Map(), { useSavedOverview: true });
+    expect(blocked).toMatchObject({ __alertDecisionEligible: false, __alertDecisionReason: "unavailable" });
+    expect(isAlertDecisionBreached({ ...blocked, alertsEnabled: true, alertThreshold: "1", alertCondition: "above" })).toBe(false);
+  });
+
   it.each([0.75, 0.000075, 2])("V1-079 preserves conversion credit %s through goals, history, CPA and alert decisions", async credit => {
     const daily = rows().map((row, index) => ({ ...row, conversions: index === 0 ? 0 : credit }));
     storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => daily.filter(row => row.date >= start && row.date <= end));
@@ -295,7 +319,7 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-CPA", { currentValue: "3.33", publicationVersion });
     expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "140", publicationVersion });
     expect(provider.getTotalsWithRevenue).toHaveBeenCalled();
-    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaignId, propertyId);
   });
 
   it.each(["Revenue", "Spend"] as const)("still skips only dependent financial metrics when external %s reads fail", async (source) => {
@@ -381,7 +405,8 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     storageMock.updateKPI.mockClear();
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId, suppressAlerts: true });
     expect(storageMock.updateKPI.mock.calls).toEqual(firstWrites);
-    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    if (scope === "simulation") expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    else expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaignId, propertyId);
   });
 
   it("updates the same-day history target, variance and rating when the Benchmark target changes", async () => {

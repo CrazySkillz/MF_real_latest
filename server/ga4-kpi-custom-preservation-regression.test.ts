@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
+  getGA4OverviewSnapshot: vi.fn(async () => null),
   getGA4PublicationVersion: vi.fn(),
   getCampaign: vi.fn(),
   getCampaigns: vi.fn(),

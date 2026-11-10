@@ -392,6 +392,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
             row.isSimulated === false && normalizeGA4InsightsDailyMetricValues(row));
         const canUseRecentWindow = process.env.GA4_INCREMENTAL_REFRESH_ENABLED !== "false" && !opts.includeTargetDraft && completeHistory &&
           previousOverview?.windowStart === overviewStartDate && previousOverview?.windowEnd === reportingWindow.endDate &&
+          (previousOverview?.campaignBreakdown as any)?.meta?.distinctUsers?.version === 1 &&
           previousHistory?.version === 1 && previousHistory?.scope === historyScope && previousHistory?.reportingDate === reportingWindow.endDate;
         const recentStartDate = getReportingDateWindow(14, c.reportingTimeZone, now).startDate;
         let storageStartDate = hasCampaignFilter
@@ -485,6 +486,12 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
               )),
             ]);
+            const distinctDaily = new Map(campaignBreakdown.meta.distinctUsers?.daily.map(row => [row.date, row.users]));
+            if (campaignBreakdown.meta.distinctUsers?.version !== 1 || completeRows.some(row => !distinctDaily.has(String(row.date)))) {
+              throw Object.assign(new Error('GA4_DISTINCT_USERS_UNVERIFIED'), { ga4DailyStage: 'overview_users' });
+            }
+            // Correct only Users; sessions, conversion credits and financial inputs stay unchanged.
+            for (const row of completeRows) row.users = distinctDaily.get(String(row.date))!;
             const overviewRowsByDate = new Map(
               (Array.isArray(existingOverviewRows) ? existingOverviewRows : [])
                 .filter((row: any) => String(row.date) < storageStartDate)
@@ -523,6 +530,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
             const eventConversionSource = String((conversionEvents as any)?._reconciliationSource || "unknown")
               .replace(/[^a-z0-9_]/gi, "_");
             const reconciliationMismatches = [
+              overviewRows.some(row => Number(row.users) !== distinctDaily.get(String(row.date))) ? "daily_users" : "",
               Number(breakdownTotals.sessions || 0) !== expected.sessions ? "breakdown_sessions" : "",
               !conversionCreditsMatch(Number(breakdownTotals.conversions || 0), expected.conversions, Math.max(1, overviewRows.length + (campaignBreakdown?.rows?.length || 0))) ? "breakdown_conversions" : "",
               Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ? "breakdown_revenue" : "",

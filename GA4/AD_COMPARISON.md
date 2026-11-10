@@ -268,8 +268,7 @@ Rules:
 - `Conversion Rate` renders as `Overall Conversion Rate`.
 - `Overall Conversion Rate` is the session-weighted GA4 session key event rate across all compared rows.
 - Do not use key event count divided by sessions or an unweighted average of campaign-row rates.
-- `Users` sums GA4 `totalUsers` row values and keeps a tooltip because those
-  counts are non-additive across campaign rows.
+- Each campaign's `Users` comes from a native GA4 `totalUsers` query for that campaign and the displayed dates. `Total Users` comes from one query covering the complete selected scope; campaign counts can overlap and must not be added.
 - Every selected-metric total uses all compared rows, even though the chart shows at most 10.
 - `Campaigns Compared` counts distinct case-folded Overview campaign names, not just the visible bars.
 

@@ -16,7 +16,7 @@ export const resolveGA4KpiLiveValue = (args: {
   if (metric === "conversions") return String(Number(breakdownTotals.conversions || 0));
   if (metric === "conversion_rate") return computeConversionRatePercent(Number(breakdownTotals.conversions || 0), Number(breakdownTotals.sessions || 0)).toFixed(2);
   if (metric === "engagement_rate") return normalizeRateToPercent(overviewEngagementRate).toFixed(2);
-  if (metric === "users") return String(Math.round(Number(breakdownTotals.users || 0)));
+  if (metric === "users") return breakdownTotals.users == null ? "Unavailable" : String(Math.round(Number(breakdownTotals.users)));
   if (metric === "sessions") return String(Math.round(Number(breakdownTotals.sessions || 0)));
   if (metric === "pageviews") return String(Math.round(Number(breakdownTotals.pageviews || 0)));
   if (metric === "roas") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);

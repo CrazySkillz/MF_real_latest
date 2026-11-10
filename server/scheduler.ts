@@ -8,6 +8,7 @@ import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state
 import { getCampaignMetricTotals, parseGA4CampaignFilter } from './utils/campaign-current-values';
 import { getReportingDateWindow, resolveGA4ImportToDateWindow } from './utils/reporting-timezone';
 import { filterActiveSchedulerCampaigns } from './utils/campaign-scheduler-eligibility';
+import { getGA4DistinctUsers } from '../shared/ga4-traffic-window';
 
 interface SnapshotMetrics {
   totalImpressions: number;
@@ -152,7 +153,8 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   }
 
   // Fetch GA4 metrics (website analytics)
-  let ga4Data = { sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0 };
+  let ga4Data = { sessions: 0, users: 0 as number | null, pageviews: 0, conversions: 0, revenue: 0 };
+  let ga4UsersSnapshot: any = null;
   let ga4Connected = false;
   let ga4DailyRows: any[] = [];
   let ga4PropertyId: string | null = null;
@@ -164,9 +166,11 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       ga4PropertyId = String(ga4Conn.propertyId);
       ga4FinancialWindow = resolveGA4ImportToDateWindow(ga4Conn.importStartDate, campaign?.reportingTimeZone);
       ga4DailyRows = await storage.getGA4DailyMetrics(campaignId, ga4PropertyId, startDate, endDate);
+      ga4UsersSnapshot = ga4PropertyId === 'yesop' ? null : await storage.getGA4OverviewSnapshot(campaignId, ga4PropertyId).catch(() => null);
       ga4Data = {
         sessions: ga4DailyRows.reduce((s: number, m: any) => s + (m.sessions || 0), 0),
-        users: ga4DailyRows.reduce((s: number, m: any) => s + (m.users || 0), 0),
+        users: ga4PropertyId === 'yesop' ? ga4DailyRows.reduce((s: number, m: any) => s + (m.users || 0), 0)
+          : getGA4DistinctUsers(ga4UsersSnapshot, ga4FinancialWindow && ga4FinancialWindow.startDate > startDate ? ga4FinancialWindow.startDate : startDate, ga4FinancialWindow?.endDate || endDate),
         pageviews: ga4DailyRows.reduce((s: number, m: any) => s + (m.pageviews || 0), 0),
         conversions: ga4DailyRows.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
         revenue: ga4DailyRows.reduce((s: number, m: any) => s + parseNum(m.revenue), 0),
@@ -568,6 +572,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         label: "Google Analytics",
         category: "web_analytics",
         connected: ga4Connected,
+        usersReport: ga4UsersSnapshot ? { meta: ga4UsersSnapshot.campaignBreakdown?.meta } : undefined,
         capabilities: ["users", "sessions", "conversions", "revenue", "engagementRate"],
         includedMetrics: ga4Connected ? ["users", "sessions", "conversions", "revenue", "engagementRate"] : [],
         excludedMetrics: [
@@ -758,6 +763,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     performanceSummary,
     ...(usedSavedGA4Overview && ga4FinancialWindow ? { performanceSummaryVerification: {
       version: 1, campaignId, propertyId: ga4PropertyId, currency: campaign.currency, campaignFilter: campaign.ga4CampaignFilter,
+      usersDefinition: 'ga4_totalUsers_distinct_v1', distinctUsers: ga4UsersSnapshot?.campaignBreakdown?.meta?.distinctUsers ?? null,
       trafficWindow: { startDate, endDate }, nativeFinancialWindow: ga4FinancialWindow,
       importedFinancialWindow: { startDate: financialSourceStartDate, endDate: financialSourceEndDate },
       trafficRows: ga4DailyRows.map(row => ({ date: row.date, sessions: row.sessions, users: row.users, conversions: row.conversions })),
@@ -806,7 +812,8 @@ export async function recordCampaignMetrics(campaignId: string, opts: { allowSch
     const writeInput: GA4RefreshWriteInput = "refreshScope" in opts ? { refreshScope: opts.refreshScope }
       : { publicationVersion: opts.publicationVersion ?? { campaignId, version: await storage.getGA4PublicationVersion(campaignId) } };
     const metrics = await aggregateCampaignMetrics(campaignId, { useSavedOverview: opts.allowScheduledGA4 === true });
-    if (hasSnapshotMetricValue(metrics)) {
+    if (hasSnapshotMetricValue(metrics) || (opts.allowScheduledGA4 === true
+      && metrics.detailedMetrics?.performanceSummaryVerification?.version === 1)) {
       await storage.createMetricSnapshot({
         campaignId,
         totalImpressions: metrics.totalImpressions,

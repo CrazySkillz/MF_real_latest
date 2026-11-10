@@ -4,7 +4,7 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import pg from "pg";
 import { beforeAll, beforeEach, afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
-const storage = vi.hoisted(() => ({ getCampaign: vi.fn(), getGA4Connection: vi.fn(), getGA4Connections: vi.fn(), getGA4DailyMetrics: vi.fn(), getLinkedInConnection: vi.fn(), getMetaConnection: vi.fn(), getGoogleAdsConnection: vi.fn(), getCustomIntegration: vi.fn(), getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), getLatestCustomIntegrationMetrics: vi.fn() }));
+const storage = vi.hoisted(() => ({ getGA4OverviewSnapshot: vi.fn(async () => null), getCampaign: vi.fn(), getGA4Connection: vi.fn(), getGA4Connections: vi.fn(), getGA4DailyMetrics: vi.fn(), getLinkedInConnection: vi.fn(), getMetaConnection: vi.fn(), getGoogleAdsConnection: vi.fn(), getCustomIntegration: vi.fn(), getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), getLatestCustomIntegrationMetrics: vi.fn() }));
 const execute = vi.hoisted(() => vi.fn());
 vi.mock("./storage", () => ({ storage }));
 vi.mock("./db", () => ({ db: { execute }, pool: null }));

@@ -66,10 +66,26 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     for (const method of ["log", "warn", "error"] as const) vi.spyOn(console, method).mockImplementation(() => undefined);
     vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
     vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({ rows: [], totals: { conversions: 252 } } as any);
+    // Independent totalUsers response; these traffic fixtures contain no returning users.
+    // Overlapping-user query behavior is covered in ga4-distinct-users.test.ts.
+    vi.spyOn(ga4Service, "getDistinctUsersWithToken").mockImplementation(async (propertyId, _token, from, to, filter) => {
+      const selected = (Array.isArray(filter) ? filter : [filter]).filter(Boolean) as string[];
+      const source = empty ? [] : selected.flatMap(name => daily(name, false)).filter(row => {
+        const date = row.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+        return date >= from && date <= to;
+      });
+      const days = [];
+      for (let date = from; date <= to; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) {
+        days.push({ date, users: source.filter(row => row.date === date.replace(/-/g, "")).reduce((sum, row) => sum + row.totalUsers, 0) });
+      }
+      return { version: 1, metric: "totalUsers", propertyId, startDate: from, endDate: to,
+        total: source.reduce((sum, row) => sum + row.totalUsers, 0), daily: days, windows: [],
+        campaigns: selected.map(name => ({ name, users: empty ? 0 : daily(name, false).reduce((sum, row) => sum + row.totalUsers, 0) })) };
+    });
     vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
       const body = JSON.parse(init.body); requests.push(body);
       const metrics = body.metrics.map((m: any) => m.name);
-      const dimensions = body.dimensions.map((d: any) => d.name);
+      const dimensions = (body.dimensions || []).map((d: any) => d.name);
       const scope = JSON.stringify(body.dimensionFilter);
       const selected = names.filter(name => scope?.includes(name));
       const isDaily = metrics.includes("screenPageViews") && metrics.includes("conversions");
@@ -136,6 +152,25 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     const result = await captureDaily(undefined);
     expect(result.dailyRows.reduce((n: number, r: any) => n + r.sessions, 0)).toBe(2895);
     expect((await breakdown()).totals.sessions).toBe(2896);
+  });
+
+  it("publishes native daily distinct Users without changing adjacent traffic and financial values", async () => {
+    const original = vi.mocked(ga4Service.getDistinctUsersWithToken).getMockImplementation()!;
+    vi.mocked(ga4Service.getDistinctUsersWithToken).mockImplementation(async (...args) => {
+      const packet = await original(...args);
+      packet.total = 2100;
+      packet.daily.find(row => row.date === start)!.users = 2070;
+      return packet;
+    });
+    expect((await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"))).campaignIdsFailed).toEqual([]);
+    const [, , , , rows, overview] = persisted.replaceGA4DailyMetricsWindow.mock.lastCall!;
+    expect(rows.find((row: any) => row.date === start)).toMatchObject({ users: 2070, sessions: 2864, conversions: 248 });
+    expect(overview.campaignBreakdown.totals).toMatchObject({ users: 2100, sessions: 2895, conversions: 252, revenue: 63113.09 });
+  });
+  it("retains the last publication when the distinct-user provider query fails", async () => {
+    vi.mocked(ga4Service.getDistinctUsersWithToken).mockRejectedValue(new Error("GA4_DISTINCT_USERS_INCOMPLETE"));
+    expect((await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"))).campaignIdsFailed).toEqual([campaign.id]);
+    expect(persisted.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
   });
 
   it("uses the same real per-campaign traffic rows for both views despite a later provider revision", async () => {
@@ -365,6 +400,26 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     expect(result.campaignIdsFailed).toEqual([campaign.id]);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(`Refresh failed for campaign ${campaign.id}`), "GA4 reported activity for a date without a complete daily metric row");
     expect(persisted.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+  });
+
+  it("repairs historical Users when GA4 revises a date outside the incremental window", async () => {
+    revision = 0;
+    let savedRows: any[] = [], savedOverview: any;
+    persisted.getGA4DailyMetrics.mockImplementation(async () => structuredClone(savedRows));
+    persisted.getGA4OverviewSnapshot.mockImplementation(async () => structuredClone(savedOverview));
+    persisted.replaceGA4DailyMetricsWindow.mockImplementation(async (_id, _property, from, to, rows, overview) => {
+      savedRows = [...savedRows.filter(row => row.date < from || row.date > to), ...structuredClone(rows)];
+      savedOverview = structuredClone(overview); return { replaced: rows.length };
+    });
+    expect((await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"))).campaignIdsFailed).toEqual([]);
+    const native = vi.mocked(ga4Service.getDistinctUsersWithToken).getMockImplementation()!;
+    vi.mocked(ga4Service.getDistinctUsersWithToken).mockImplementation(async (...args) => {
+      const packet = await native(...args); packet.daily.find(row => row.date === start)!.users += 1; packet.total += 1; return packet;
+    });
+    expect((await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T12:10:00Z"))).campaignIdsFailed).toEqual([]);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.lastCall?.[2]).toBe(start);
+    expect(savedRows.find(row => row.date === start).users).toBe(2866);
+    expect(savedOverview.campaignBreakdown.totals.sessions).toBe(2895);
   });
 
   it("continues rejecting genuinely different financial values", async () => {

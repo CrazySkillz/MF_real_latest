@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 
 const storageMock = vi.hoisted(() => Object.fromEntries([
-  "getCampaign", "getGA4Connections", "getGA4DailyMetrics", "getRevenueTotalForRange", "getSpendTotalForRange",
+  "getGA4OverviewSnapshot", "getCampaign", "getGA4Connections", "getGA4DailyMetrics", "getRevenueTotalForRange", "getSpendTotalForRange",
   "getRevenueBreakdownBySource", "getSpendBreakdownBySource", "getGA4PublicationVersion", "getCampaignKPIs",
   "getCampaignBenchmarks", "updateKPI", "updateBenchmark",
 ].map(name => [name, vi.fn()])));
@@ -24,6 +24,7 @@ describe("campaign engagement uses the same weighted GA4 inputs", () => {
   beforeEach(() => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-17T08:00:00Z"));
     Object.values(storageMock).forEach(mock => mock.mockReset());
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ propertyId: "123", campaignBreakdown: { meta: { propertyId: "123", distinctUsers: { version: 1, metric: "totalUsers", propertyId: "123", startDate: "2026-10-15", endDate: "2026-10-16", total: 290, windows: [] } } } });
     storageMock.getCampaign.mockResolvedValue({ id: "c", currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: '["selected"]' });
     storageMock.getGA4Connections.mockResolvedValue([{ campaignId: "c", propertyId: "123", isPrimary: true, isActive: true, importStartDate: "2026-10-15" }]);
     storageMock.getGA4DailyMetrics.mockResolvedValue(rows());

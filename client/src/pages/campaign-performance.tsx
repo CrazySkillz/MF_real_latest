@@ -590,7 +590,7 @@ export default function CampaignPerformanceSummary() {
       }
     : {
         sessions: Number(liveScoringTrafficTotals.sessions),
-        users: Number(liveScoringTrafficTotals.users),
+        users: liveScoringTrafficTotals.users == null ? Number.NaN : Number(liveScoringTrafficTotals.users),
         conversions: Number(liveScoringTrafficTotals.conversions),
         pageviews: Number(liveScoringTrafficTotals.pageviews),
         engagedSessions: Number(liveScoringTrafficTotals.engagedSessions),
@@ -1480,7 +1480,7 @@ export default function CampaignPerformanceSummary() {
                     <p className="text-xs text-muted-foreground">
                       {overviewSourceLabel(overviewUsers, "Sources unavailable")}
                     </p>
-                    <p className="text-xs text-muted-foreground">GA4 users are summed daily counts, not unique people across the reporting window.</p>
+                    <p className="text-xs text-muted-foreground">Distinct GA4 users for the displayed dates and selected campaigns.</p>
                   </CardContent>
                 </Card>
 

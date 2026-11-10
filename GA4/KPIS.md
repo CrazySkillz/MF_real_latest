@@ -1,5 +1,7 @@
 # GA4 KPIs
 
+Users definition update (local, pending release): use native GA4 `totalUsers` for the exact reporting scope, never summed daily users. Missing native evidence blocks Users updates and alert decisions. New history is tagged so older daily-sum points do not affect new comparisons. See [implementation and release status](../docs/fixes/ga4-distinct-users.md).
+
 ## Purpose
 
 This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, gating, alerts, and refresh behavior.

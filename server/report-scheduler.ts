@@ -6,7 +6,7 @@ import { db } from "./db";
 import { emailService } from "./services/email-service";
 import { storage } from "./storage";
 import { campaigns, emailAlertEvents, linkedinReports, reportSendEvents, reportSnapshots } from "../shared/schema";
-import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { LinkedInReport } from "../shared/schema";
 import * as cron from "node-cron";
@@ -1396,6 +1396,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     scope: { campaignId, currency: campaign?.currency, reportingTimeZone: campaign?.reportingTimeZone, campaignFilter: campaign?.ga4CampaignFilter },
     performanceSummary, financialInputs, budgetPacing, financialDecisionContext, executiveSummary, trendAnalysis,
     cumulativeGA4Window, performancePageTrafficTotals, performancePageTotals,
+    usersDefinition: "ga4_totalUsers_distinct_v1", distinctUsers: (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers ?? null,
     trendWindowStart, trendWindowEnd, trendWindowRows, trendPreviousWindowRows, compatibleTrendFinancialDaily, executiveTrajectory,
     targets: { kpis: reportTargetInputs(kpis), benchmarks: reportTargetInputs(benchmarks) },
   });
@@ -1420,6 +1421,11 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       ])
     : [null, null];
   const performancePageTrafficTotals = Array.isArray(performancePageRows) ? summarizeGA4TrafficRows(performancePageRows) : null;
+  const usersSnapshot = cumulativeGA4Connection && cumulativeGA4Window
+    ? await storage.getGA4OverviewSnapshot(campaignId, String(cumulativeGA4Connection.propertyId)).catch(() => null) : null;
+  if (performancePageTrafficTotals && cumulativeGA4Window) {
+    performancePageTrafficTotals.users = getGA4DistinctUsers(usersSnapshot, cumulativeGA4Window.startDate, cumulativeGA4Window.endDate) ?? Number.NaN;
+  }
   const performanceFinancialConversions = Number(performancePageTotals?.financialConversions);
   const performanceFinancialConversionsAvailable = performancePageTotals?.financialConversionsAvailable === true
     && Number.isFinite(performanceFinancialConversions)
@@ -1519,7 +1525,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const trendRecentTrafficTotals = summarizeGA4TrafficRows(trendRecentTrafficRows);
   const trendPreviousTrafficTotals = performancePageTrafficTotals && trendComparisonDate >= String(cumulativeGA4Window?.startDate || "")
     ? {
-        users: performancePageTrafficTotals.users - trendRecentTrafficTotals.users,
+        users: getGA4DistinctUsers(usersSnapshot, String(cumulativeGA4Window?.startDate || ''), trendComparisonDate) ?? Number.NaN,
         sessions: performancePageTrafficTotals.sessions - trendRecentTrafficTotals.sessions,
         conversions: performancePageTrafficTotals.conversions - trendRecentTrafficTotals.conversions,
         engagedSessions: performancePageTrafficTotals.engagedSessions - trendRecentTrafficTotals.engagedSessions,
@@ -2018,12 +2024,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   };
   const addSelectedSectionBody = (section: string) => {
     addText(campaignDeepDiveTabLabels[section] || section, { size: 14, bold: true });
-    if (performancePageTrafficTotals) addText("GA4 users are summed daily counts, not unique people across the reporting window.", { size: 9 });
+    if (performancePageTrafficTotals) addText("Distinct GA4 users for the displayed dates and selected campaigns.", { size: 9 });
     if (section.startsWith("performance-summary:")) {
       const performanceCurrency = validExecutiveCurrency || "USD";
       addText("Key Outcomes", { bold: true, indent: 4 });
       ([
-        ["users", "Total Users (daily sum)"],
+        ["users", "Total Users"],
         ["sessions", "Total Sessions"],
         ["conversions", "Total Conversions"],
         ["revenue", "Total Revenue"],
@@ -2260,6 +2266,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         const webMetricTotal = (key: string): number | null => {
           const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(key));
           if (compatibleSources.length === 0) return null;
+          const ga4Source = compatibleSources.find((source: any) => source.id === "ga4");
+          if (key === "users" && ga4Source) return getGA4DistinctUsers(ga4Source.usersReport, trendWindowStart, trendWindowEnd);
           return compatibleSources.reduce((total: number, source: any) => total + sourceWindowRows(source)
             .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
         };
@@ -2310,7 +2318,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           const sum = (key: string): number | null => includedMetrics.includes(key)
             ? sourceWindowRows(source).reduce((total: number, row: any) => total + (Number(row?.metrics?.[key]) || 0), 0)
             : null;
-          const users = sum("users");
+          const userDates = sourceWindowRows(source).map((row: any) => String(row.date).slice(0, 10)).sort();
+          const users = source.id === "ga4" ? getGA4DistinctUsers(source.usersReport, userDates[0], userDates.at(-1)!) : sum("users");
           const sessions = sum("sessions");
           const clicks = sum("clicks");
           const impressions = sum("impressions");
@@ -2679,7 +2688,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
     y += metaCardHeight + 8;
     if (performancePageTrafficTotals) {
-      drawText("GA4 users are summed daily counts, not unique people across the reporting window.", margin, y + 3, { size: 7, color: colors.secondary, maxWidth: contentWidth });
+      drawText("Distinct GA4 users for the displayed dates and selected campaigns.", margin, y + 3, { size: 7, color: colors.secondary, maxWidth: contentWidth });
       y += 8;
     }
 
@@ -3045,6 +3054,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       const webMetricTotal = (key: string): number | null => {
         const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(key));
         if (compatibleSources.length === 0) return null;
+          const ga4Source = compatibleSources.find((source: any) => source.id === "ga4");
+          if (key === "users" && ga4Source) return getGA4DistinctUsers(ga4Source.usersReport, trendWindowStart, trendWindowEnd);
         return compatibleSources.reduce((total: number, source: any) => total + trendSourceWindowRows(source)
           .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
       };
@@ -3142,7 +3153,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           source,
           id: String(source?.id || `source_${index}`),
           label: String(source?.label || source?.id || "Connected Source"),
-          users: sum("users"), sessions, clicks, impressions, spend, conversions, revenue,
+          users: source.id === "ga4" ? getGA4DistinctUsers(source.usersReport, trendWindowStart, trendWindowEnd) : sum("users"), sessions, clicks, impressions, spend, conversions, revenue,
           ctr: impressions && impressions > 0 && clicks !== null ? (clicks / impressions) * 100 : null,
           cpc: spend && spend > 0 && clicks ? spend / clicks : null,
           cpa: spend && spend > 0 && conversions ? spend / conversions : null,

@@ -444,7 +444,6 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                           }}
                         />
                         <span className="text-sm flex-1">{c.name}</span>
-                        <span className="text-xs text-muted-foreground">{c.users.toLocaleString()} users</span>
                       </label>
                     );
                   })}

@@ -170,10 +170,10 @@ Important meaning:
 
 Important `Users` rule:
 
-- the top `Users` card follows the same persisted daily property/campaign/window rows as the other Summary cards
-- `Users` is the sum of GA4 daily `totalUsers` values in the selected completed-day window; it is not a cross-day deduplicated user count
-- the top `Users` card may show a short clarification tooltip:
-  `GA4 daily users summed for the selected completed-day window; the same user may appear on more than one day.`
+- `Users` is GA4 `totalUsers` queried without dimensions for the exact property, selected campaigns and completed-day period. Never add daily or campaign user counts to obtain this total.
+- Save the versioned native user results with the existing Overview snapshot. Summary, KPIs, Benchmarks, comparisons and reports read that same evidence. Missing evidence means unavailable, not zero or a daily-sum fallback.
+- Campaign, conversion-event and landing-page rows count distinct users within each row's scope; rows can overlap. Daily charts retain native distinct users per day.
+- Implementation and release evidence: `docs/fixes/ga4-distinct-users.md`. Older audit statements above describe their historical versions; they do not certify this change.
 
 ### Financial Cards
 

@@ -120,6 +120,24 @@ describe("GA4 Overview Landing Pages scheduled PDF value parity", () => {
 
   afterEach(() => vi.useRealTimers());
 
+  it("uses native period Users in Summary while preserving Landing Pages row Users", async () => {
+    const snapshot = await storageMock.getGA4OverviewSnapshot();
+    snapshot.campaignBreakdown.meta.propertyId = connection.propertyId;
+    snapshot.campaignBreakdown.meta.distinctUsers = { version: 1, metric: "totalUsers", propertyId: connection.propertyId, startDate: "2026-08-01", endDate: "2026-09-14", total: 4321, campaigns: [], daily: [], windows: [] };
+    // The prior daily sum is deliberately different from the native full-period count.
+    storageMock.getGA4DailyMetrics.mockResolvedValue(Array.from({ length: 45 }, (_, i) => ({ date: new Date(Date.UTC(2026, 7, i + 1)).toISOString().slice(0, 10), sessions: 0, users: 999, conversions: 0 })));
+    const summaryReport = { ...report, configuration: JSON.stringify({ sections: { overview: true }, subsections: { overview: { summary: true, landingPages: true } } }) };
+    await buildGA4ScheduledPdfAttachment({ report: summaryReport, reportName: report.name, windowStart: "2026-08-01", windowEnd: "2026-09-14", campaignName: campaign.name });
+    expect(pdfText.join("\n")).toContain("4,321");
+    expect(pdfText.join("\n")).not.toContain("44,955");
+    expect(pdfText).toContain("6");
+    pdfText.length = 0;
+    delete snapshot.campaignBreakdown.meta.distinctUsers;
+    await buildGA4ScheduledPdfAttachment({ report: summaryReport, reportName: report.name, windowStart: "2026-08-01", windowEnd: "2026-09-14", campaignName: campaign.name });
+    expect(pdfText.join("\n")).toContain("Unavailable");
+    expect(pdfText.join("\n")).not.toContain("44,955");
+  });
+
   it.each([false, true])("renders exact API values and the available history label when needed (%s)", async limited => {
     if (limited) {
       const snapshot = await storageMock.getGA4OverviewSnapshot();

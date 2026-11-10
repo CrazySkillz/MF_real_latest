@@ -1,5 +1,7 @@
 # GA4 Benchmarks
 
+Users definition update (local, pending release): use the same native GA4 `totalUsers` as Overview for the same reporting scope. Missing native evidence blocks Users updates and alert decisions. Historical daily-sum points remain preserved but excluded from new Users comparisons. See [implementation and release status](../docs/fixes/ga4-distinct-users.md).
+
 ## Purpose
 
 This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress rules, gating, alerts, and refresh behavior.

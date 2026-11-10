@@ -90,7 +90,7 @@ describe("ordered GA4 campaign snapshot saved financial inputs", () => {
     expect(result.detailedMetrics.performanceSummary.totals.revenue.value).toBe(140);
     expect(result.detailedMetrics.performanceSummary.totals.cpa.value).toBe(3.33);
     expect(provider.getTotalsWithRevenue).toHaveBeenCalled();
-    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaignId, propertyId);
     expect(storageMock.createMetricSnapshot).not.toHaveBeenCalled();
   });
 
@@ -216,7 +216,8 @@ describe("ordered GA4 campaign snapshot saved financial inputs", () => {
     const previousPath = await aggregateCampaignMetrics(campaignId);
     expect(await record()).toBe(true);
     expect(storageMock.createMetricSnapshot.mock.calls[0][0].metrics).toEqual(previousPath.detailedMetrics);
-    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    if (scope === "simulation") expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    else expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaignId, propertyId);
   });
 
   it("keeps ordinary non-GA4 snapshots working and defers ordinary GA4 calls", async () => {

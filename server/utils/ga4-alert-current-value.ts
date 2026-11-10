@@ -22,7 +22,7 @@ import {
   parseGA4FinancialNumber,
   selectGA4FinancialTotalsSource,
 } from "../../shared/ga4-financial-source";
-import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 import { getCampaignMetricTotals, resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
 import { getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./reporting-timezone";
@@ -358,7 +358,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
         (value) => Array.isArray(value) && value.length > 0).catch(() => null as any),
       !usesFinancialSource || useSavedOverview || isYesopMockProperty(propertyId) ? Promise.resolve(null)
         : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
-      usesFinancialSource
+      usesFinancialSource || metric === "users"
         ? readSource("overview-snapshot", [financialStartDate, endDate],
           () => storage.getGA4OverviewSnapshot(campaignId, propertyId),
           (value) => !!value).catch(() => null as any)
@@ -375,6 +375,11 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       return date >= startDate && date <= endDate;
     });
     let trafficTotals = summarizeGA4TrafficRows(trafficRows);
+    if (metric === "users" && !isYesopMockProperty(propertyId)) {
+      const users = getGA4DistinctUsers(overviewSnapshot, startDate, endDate);
+      if (users === null) return blockAlertDecision(resolved, "unavailable");
+      trafficTotals.users = users;
+    }
     const financialTotals = summarizeGA4TrafficRows(sourceRows);
     const savedFinancialCandidate = savedOverviewTotals?.ga4FinancialSource === "persisted_overview"
       && savedOverviewTotals.sessions === financialTotals.sessions

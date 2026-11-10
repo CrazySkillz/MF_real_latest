@@ -60,7 +60,7 @@ import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-
 import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
-import { addDerivedGA4EngagedSessions, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { addDerivedGA4EngagedSessions, getGA4DistinctUsers, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import {
   getGA4KpiMetricDependencies,
   isGA4FinancialKpiMetricIdentity,
@@ -3155,6 +3155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             label: "Google Analytics",
             category: "web_analytics",
             connected: Boolean(primaryGA4?.propertyId),
+            usersReport: primaryGA4?.propertyId ? { meta: ((await storage.getGA4OverviewSnapshot(campaignId, String(primaryGA4.propertyId)).catch(() => null))?.campaignBreakdown as any)?.meta } : undefined,
             capabilities: ["users", "sessions", "conversions", "revenue", "engagementRate"],
             includedMetrics: Boolean(primaryGA4?.propertyId) ? ["users", "sessions", "conversions", "revenue", "engagementRate"] : [],
             excludedMetrics: [
@@ -9727,7 +9728,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         overviewStartDate,
         endDate,
       );
-      const overviewTotals = summarizeGA4TrafficRows(overviewRows);
+      const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, String(selectedConnection.propertyId));
+      const overviewTotals = { ...summarizeGA4TrafficRows(overviewRows),
+        users: getGA4DistinctUsers(usersSnapshot, overviewStartDate, endDate) };
+      const usersComparisons = (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [];
       // Monthly Trends needs the two preceding calendar months plus the current month.
       // Reuse the scoped Overview read; keep daily coverage and refresh metadata unchanged.
       const monthlyStartDate = new Date(Date.UTC(Number(dataThroughDate.slice(0, 4)), Number(dataThroughDate.slice(5, 7)) - 3, 1)).toISOString().slice(0, 10);
@@ -9771,6 +9775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validationReadOnly: readOnly,
         overviewStartDate,
         overviewTotals,
+        usersComparisons,
         providerRefreshAttempted,
         providerRefreshOutcome,
         providerRefreshRowCount,
@@ -9836,10 +9841,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     if (startDate > window.endDate) return res.json({ ...base, verified: false, zeroDates: [], reason: "no_completed_import_days" });
     try {
-      const fetchPresence = (accessToken: string) => ga4Service.getTrendsDailyPresenceWithToken(
-        String(connection.propertyId), accessToken, startDate, window.endDate,
-        parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter), String((campaign as any)?.currency || "USD"),
-      );
+      const fetchPresence = async (accessToken: string) => {
+        const filter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+        const presence = await ga4Service.getTrendsDailyPresenceWithToken(
+          String(connection.propertyId), accessToken, startDate, window.endDate,
+          filter, String((campaign as any)?.currency || "USD"),
+        );
+        const distinctUsers = await ga4Service.getDistinctUsersWithToken(String(connection.propertyId), accessToken, startDate, window.endDate, filter);
+        const usersByDate = new Map(distinctUsers.daily.map(row => [row.date, row.users]));
+        return { ...presence, distinctUsers, dailyRows: presence.dailyRows.map(row => ({ ...row, users: usersByDate.get(row.date) })) };
+      };
       let providerPresence;
       try {
         providerPresence = await fetchPresence(String(connection.accessToken));
@@ -9922,7 +9933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         const providerDatesComplete = Array.from(presence).every((date) => providerByDate.has(date));
         providerCumulativeWindow.currentVerified = providerDatesComplete;
-        providerCumulativeWindow.currentTotals = providerDatesComplete ? summarizeProviderRows(providerDailyRows) : null;
+        providerCumulativeWindow.currentTotals = providerDatesComplete ? { ...summarizeProviderRows(providerDailyRows), users: providerPresence.distinctUsers.total } : null;
         if (!providerDatesComplete) {
           providerCumulativeWindow.reason = "provider_daily_history_incomplete";
         } else if (comparisonDate < configuredStart) {
@@ -9931,7 +9942,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           providerCumulativeWindow.comparisonTotals = summarizeProviderRows(
             providerDailyRows.filter((row: any) => row.date <= comparisonDate),
           );
-          providerCumulativeWindow.comparisonVerified = true;
+          const previousUsers = providerPresence.distinctUsers.windows.find(row => row.startDate === configuredStart && row.endDate === comparisonDate)?.users;
+          providerCumulativeWindow.comparisonTotals.users = previousUsers ?? null;
+          providerCumulativeWindow.comparisonVerified = previousUsers !== undefined;
         }
       }
       return res.json({ ...base, verified, providerVerified: true, providerZeroDatesVerified: true, providerZeroDates, zeroDatesVerified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), providerDailyRows, checkedAt: new Date().toISOString(),
@@ -13687,7 +13700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             revenueMetric: String(result?.meta?.revenueMetric || ''),
           },
           ...(validationReadOnly ? { validationReadOnly: true } : {}),
-          ...(debug ? { meta: result?.meta } : {}),
+          meta: debug ? result?.meta : { propertyId: resolvedPropertyId, distinctUsers: result?.meta?.distinctUsers },
           lastUpdated: snapshot.updatedAt,
         });
       }
@@ -15518,6 +15531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (propertyWindowRows.length > 0) {
             propertyWindowTrafficCandidate = {
               ...summarizeGA4TrafficRows(propertyWindowRows),
+              users: getGA4DistinctUsers(overviewSnapshot, currentValueWindow.startDate, endDateUsed),
               source: "ga4_property_window",
             };
             executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0
@@ -15564,7 +15578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ...exactFinancialCandidate,
                   conversions: parseNum(exactTrafficCandidate?.conversions),
                   sessions: parseNum(exactTrafficCandidate?.sessions),
-                  users: parseNum(exactTrafficCandidate?.users),
+                  users: exactTrafficCandidate?.users ?? null,
                   connected: true,
                   available: true,
                 }
@@ -15573,7 +15587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
             financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
             financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
-            financialWebAnalytics.users = parseNum(financialGa4Totals.users);
+            financialWebAnalytics.users = financialGa4Totals.users;
           }
           } catch {
             financialGa4Totals = { ...financialGa4Totals, available: false };
@@ -29175,7 +29189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (campaign as any).reportingTimeZone,
           (campaign as any).currency,
         );
-        const progress = filterGA4InsightsHistoryByScope(analytics.progress, marker);
+        const progress = filterGA4InsightsHistoryByScope(analytics.progress, marker)
+          .filter((point: any) => resolveGA4KpiMetricIdentity((okKpi as any).metric, (okKpi as any).name) !== "users" || String(point.notes || "").includes("users:totalUsers:v1"));
         const latest = progress[0] as any;
         const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
         const cutoff = new Date();
@@ -30436,7 +30451,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (campaign as any).reportingTimeZone,
           (campaign as any).currency,
         );
-        const history = filterGA4InsightsHistoryByScope(analytics.history, marker);
+        const history = filterGA4InsightsHistoryByScope(analytics.history, marker)
+          .filter((point: any) => resolveGA4KpiMetricIdentity((existing as any).metric, (existing as any).name) !== "users" || String(point.notes || "").includes("users:totalUsers:v1"));
         const variances = history.map((point: any) => Number(point?.variance)).filter(Number.isFinite);
         const recent = variances.slice(-3);
         const improving = recent.length >= 2 && recent.every((value, index) => index === 0 || value >= recent[index - 1]);
@@ -32172,8 +32188,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const scopedRows = ga4Daily.filter((row: any) => String(row.date) >= ga4Start && String(row.date) <= ga4End);
           if (scopedRows.length > 0) {
             const totals = summarizeGA4TrafficRows(scopedRows);
+            const usersSnapshot = await storage.getGA4OverviewSnapshot(id, primaryPropertyId);
             ga4Metrics = { sessions: totals.sessions, conversions: totals.conversions, pageviews: totals.pageviews,
-              users: totals.users, revenue: totals.revenue, bounceRate: totals.sessions > 0 ? (1 - totals.engagementRate) * 100 : null };
+              users: getGA4DistinctUsers(usersSnapshot, ga4Start, ga4End), revenue: totals.revenue, bounceRate: totals.sessions > 0 ? (1 - totals.engagementRate) * 100 : null };
           }
           ga4LastUpdate = scopedRows.map((row: any) => String(row.date)).sort().at(-1) || null;
         }

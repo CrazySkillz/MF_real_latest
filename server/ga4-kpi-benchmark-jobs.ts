@@ -10,7 +10,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
-import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { refreshCampaignCurrentValuesForCampaign, getCampaignMetricTotals } from "./utils/campaign-current-values";
 import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope } from "../shared/ga4-insights";
@@ -356,6 +356,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       ]);
       const trafficInputsAvailable = (Array.isArray(reportingRows) && reportingRows.length > 0) || isYesopMockProperty(propertyId);
       let trafficTotals = summarizeGA4TrafficRows(Array.isArray(reportingRows) ? reportingRows : []);
+      const distinctUsers = isYesopMockProperty(propertyId) ? trafficTotals.users
+        : getGA4DistinctUsers(await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null), reportingWindow.startDate, reportingWindow.endDate);
+      if (!isYesopMockProperty(propertyId)) trafficTotals.users = distinctUsers ?? 0;
       if (isYesopMockProperty(propertyId)) {
         const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue, 30);
         const baselineEngagedSessions = Math.round(baseline.sessions * baseline.engagementRate);
@@ -518,6 +521,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         spend: round2(spendValue ?? 0),
       } : null;
       const inputsForMetric = (metric: string) => {
+        if (metric === "users" && distinctUsers === null) return null;
         if (!isGA4FinancialKpiMetric(metric)) return inputs;
         const dependencies = getGA4KpiMetricDependencies(metric);
         if (!financialInputs) return null;
@@ -561,6 +565,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           const existingPts = filterGA4InsightsHistoryByScope(Array.isArray(existing) ? existing : [], historyScopeMarker)
             .map((p: any) => ({
               id: String(p?.id || ""),
+              notes: String(p?.notes || ""),
               value: Number(p?.value || 0) || 0,
               recordedAt: p?.recordedAt ? new Date(p.recordedAt) : new Date(0),
             }))
@@ -571,7 +576,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           if (hasExactDailyRow && (sameDatePts.length > 1 || (sameDatePts.length === 1 && !sameDatePts[0].id))) {
             throw new Error("KPI same-date progress is ambiguous");
           }
-          const otherDatePts = existingPts.filter((p) => isoDateUTC(p.recordedAt) !== date);
+          const otherDatePts = existingPts.filter((p) => isoDateUTC(p.recordedAt) !== date &&
+            (metricOrName !== "users" || p.notes.includes("users:totalUsers:v1")));
           const progressData = hasExactDailyRow ? (() => {
             const prev = otherDatePts.length > 0 ? otherDatePts[0].value : null;
             const newPoint = { value: valueNum, recordedAt };
@@ -582,7 +588,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
               rollingAverage30d: String(computeRollingAverage(otherDatePts, 30, newPoint, metricOrName)),
               trendDirection: computeTrendDirection(prev, valueNum),
               recordedAt,
-              notes: `auto:ga4_daily:${date};${historyScopeMarker}`,
+              notes: `auto:ga4_daily:${date};${historyScopeMarker}${metricOrName === "users" ? ";users:totalUsers:v1" : ""}`,
             };
           })() : null;
 
@@ -639,7 +645,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           if (historyResult.status === "rejected") throw historyResult.reason;
           const history = historyResult.value;
           const hist = filterGA4InsightsHistoryByScope(Array.isArray(history) ? history : [], historyScopeMarker);
-          const historyNotes = `auto:ga4_daily:${date};${historyScopeMarker}`;
+          const historyNotes = `auto:ga4_daily:${date};${historyScopeMarker}${metricKey === "users" ? ";users:totalUsers:v1" : ""}`;
           const already = hist.some((h: any) => h.notes === historyNotes);
           if (hasExactDailyRow) {
             const benchmarkValue = Number((b as any)?.benchmarkValue || 0) || 0;

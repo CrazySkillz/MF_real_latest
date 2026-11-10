@@ -30,6 +30,7 @@ function run(overrides: Record<string, any> = {}, configuration?: any, reportTyp
     overviewFinancialConversions: 5, overviewFinancialSpend: 20, financialRevenue: 130, financialConversions: 5, financialSpend: 20,
     ga4ToDateResp: { startDate: "2026-10-15", endDate: "2026-10-16" },
     overviewSummaryAvailable: true, financialRevenueAvailable: true, financialSpendAvailable: true,
+    overviewSummaryTotals: { users: 80 }, campaignBreakdownAgg: [], adComparisonChartRows: [], adComparisonMetric: "sessions",
     importedRevenueError: false, revenueSourcesError: false, revenueBreakdownError: false,
     spendSourcesError: false, spendToDateError: false, spendBreakdownError: false,
     spendSourceDefinitionsKnownEmpty: false, hasSpendSources: true,
@@ -56,6 +57,10 @@ describe("Browser GA4 report publication gate", () => {
     await expect(run({ [state]: true })).rejects.toThrow("latest displayed figures are still being checked");
   });
   it("accepts aligned figures", async () => { await expect(run()).resolves.toBe("ready"); });
+  it("blocks unverified distinct Users in selected Summary and comparison exports", async () => {
+    await expect(run({ overviewSummaryTotals: { users: null } }, undefined, "overview")).rejects.toThrow("unavailable: Summary");
+    await expect(run({ adComparisonChartRows: [{ name: "brand", users: Number.NaN }] }, { sections: { ads: true }, subsections: {}, adComparisonMetric: "users" }, "custom")).rejects.toThrow("Distinct GA4 Users are unavailable");
+  });
   it("checks saved report configuration with the same detail requirements and retains its malformed-config fallback", () => {
     const body = page.slice(start, page.indexOf("const downloadGA4Report = async", start))
       + "return (opts) => isGA4OverviewReportDetailBlocked(opts.reportType, opts.configuration);";

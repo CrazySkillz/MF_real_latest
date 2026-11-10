@@ -1,5 +1,7 @@
 # GA4 Reports
 
+Users definition update (local, pending release): new reports use native GA4 `totalUsers` for their exact date and campaign scope. Event and landing-page users retain their row scope. Missing native counts are unavailable; historical reports retain their original figures and are not re-certified. See [implementation and release status](../docs/fixes/ga4-distinct-users.md).
+
 ## Purpose
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.

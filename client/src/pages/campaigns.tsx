@@ -1826,7 +1826,6 @@ export default function Campaigns() {
                                         }}
                                       />
                                       <span className="text-sm flex-1">{c.name}</span>
-                                      <span className="text-xs text-muted-foreground">{c.users.toLocaleString()} users</span>
                                     </label>
                                   );
                                 })}

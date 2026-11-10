@@ -252,7 +252,7 @@ function setAuthoritativeFixture() {
     campaignBreakdown: {
       rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 150 }],
       totals: { ...dailyRow, revenue: 150 },
-      meta: { revenueMetric: "totalRevenue" },
+      meta: { propertyId: connection.propertyId, revenueMetric: "totalRevenue", distinctUsers: distinctUsersFixture(connection.importStartDate) },
     },
     landingPages: { rows: [], totals: {} },
     conversionEvents: { rows: [], totals: { conversions: 5 } },
@@ -289,7 +289,7 @@ function setAuthoritativeFixture() {
   resolveCampaignCurrentValueForAlertMock.mockImplementation(async (row: any) => row);
 
   ga4ServiceMock.getMetricsWithAutoRefresh.mockResolvedValue(dailyRow);
-  ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({ rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 150 }], totals: { ...dailyRow, revenue: 150 } });
+  ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({ rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 150 }], totals: { ...dailyRow, revenue: 150 }, meta: { propertyId: connection.propertyId, distinctUsers: distinctUsersFixture(connection.importStartDate) } });
   ga4ServiceMock.getLandingPagesReport.mockResolvedValue({ rows: [] });
   ga4ServiceMock.getConversionEventsReport.mockResolvedValue({ rows: [] });
   ga4ServiceMock.getTimeSeriesData.mockResolvedValue([dailyRow]);
@@ -301,11 +301,17 @@ function setAuthoritativeFixture() {
   });
 }
 
+function distinctUsersFixture(startDate: string) {
+  const daily = [];
+  for (let date = startDate; date <= dailyRow.date; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) daily.push({ date, users: date === dailyRow.date ? 80 : 0 });
+  return { version: 1, metric: "totalUsers", propertyId: connection.propertyId, startDate, endDate: dailyRow.date, total: 80,
+    campaigns: [{ name: "parity_campaign", users: 80 }], daily, windows: [] };
+}
 function setSavedReportPublication(startDate = connection.importStartDate, nativeRevenue = 150, importedRevenue = 50) {
   storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignId: campaign.id, propertyId: connection.propertyId,
     windowStart: startDate, windowEnd: dailyRow.date, campaignBreakdown: {
       rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: nativeRevenue }], totals: { ...dailyRow, revenue: nativeRevenue },
-      meta: { revenueMetric: "purchaseRevenue", currencyCode: "USD" },
+      meta: { propertyId: connection.propertyId, revenueMetric: "purchaseRevenue", currencyCode: "USD", distinctUsers: distinctUsersFixture(startDate) },
     }, landingPages: { rows: [] }, conversionEvents: { rows: [], totals: { conversions: 5 } } });
   const dates: string[] = [];
   for (let date = startDate; date <= dailyRow.date; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) dates.push(date);

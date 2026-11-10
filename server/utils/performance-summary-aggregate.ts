@@ -122,7 +122,7 @@ const mainSourceAdapters: SourceAdapter[] = [
         category: "web_analytics",
         connected: ga4Connected,
         capabilities: ["users", "sessions", "conversions", "revenue"],
-        includedMetrics: ga4Available ? ["users", "sessions", "conversions", "revenue"] : [],
+        includedMetrics: ga4Available ? [...(input.ga4?.users != null ? ["users"] : []), "sessions", "conversions", "revenue"] : [],
         excludedMetrics: [
           { metric: "impressions", reason: "GA4 is not an ad-impression source" },
           { metric: "clicks", reason: "GA4 is not an ad-click source" },
@@ -130,7 +130,7 @@ const mainSourceAdapters: SourceAdapter[] = [
           { metric: "leads", reason: "Leads are not available from GA4 unless mapped as conversions" },
         ],
         metrics: {
-          users: ga4Available ? parseNum(input.ga4?.users) : null,
+          users: ga4Available && input.ga4?.users != null ? parseNum(input.ga4?.users) : null,
           sessions: ga4Available ? parseNum(input.ga4?.sessions) : null,
           conversions: ga4Available ? parseNum(input.ga4?.conversions) : null,
           revenue: ga4Available ? parseNum(input.ga4?.revenue) : null,
@@ -358,7 +358,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const conversionSources = webSource ? [webSource] : webProviderConfigured ? [] : paidConversionSources;
   const leadsSources = paidMetricSources("leads").map((source) => source.id);
   const sessionSources = webSource ? [webSource] : [];
-  const userSources = webSource ? [webSource] : [];
+  const userSources = webSource && input.webAnalytics?.users != null ? [webSource] : [];
 
   const totalImpressions = sumPaidMetric("impressions");
   const totalClicks = sumPaidMetric("clicks");

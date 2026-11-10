@@ -1209,7 +1209,8 @@ describe("GA4 campaign value picker", () => {
 
     expect(result.rows).toEqual([]);
     expect(result.meta.sessionScopedAttributionAvailable).toBe(false);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.every(([, init]) => !JSON.parse(init.body).dimensions.some((d: any) => d.name === "pageLocation"))).toBe(true);
   });
   it("supplements only existing session-scoped landing rows by exact landing/source/medium match", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
@@ -1404,7 +1405,8 @@ describe("GA4 campaign value picker", () => {
 
     expect(result.rows).toEqual([]);
     expect(result.meta.sessionScopedAttributionAvailable).toBe(false);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.every(([, init]) => !JSON.parse(init.body).dimensions.some((d: any) => d.name === "pageLocation"))).toBe(true);
   });
 
 

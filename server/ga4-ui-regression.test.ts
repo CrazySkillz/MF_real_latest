@@ -242,7 +242,7 @@ describe("GA4 UI regression guard", () => {
     expect(conversionRoute).not.toContain("campaignStartDate");
     expect(routes).toContain("case '60days':");
     expect(routes).toContain("ga4DateRange = '60daysAgo';");
-    expect(landingMethod).toContain("dateRanges: [{ startDate: dateRange, endDate }]");
+    expect(landingMethod).toContain("dateRanges: [{ startDate: reportStartDate, endDate }]");
     expect(conversionMethod).toContain("dateRanges: [{ startDate: dateRange, endDate }]");
   });
 

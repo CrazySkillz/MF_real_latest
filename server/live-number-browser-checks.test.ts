@@ -75,6 +75,18 @@ describe("isolated browser monitoring boundaries", () => {
   it("uses session key-event rate rather than conversions divided by sessions", () => {
     expect(expectedBrowserCampaignRows(fixture(),now)[0].conversionRate).toBe(5);
   });
+  it("checks explicitly selected zero-activity campaigns without inventing missing Users evidence", () => {
+    const snapshot = fixture(); snapshot.usersDefinition = "ga4_totalUsers_distinct_v1";
+    const publication = snapshot.rows.ga4OverviewSnapshots[0];
+    publication.campaignBreakdown.rows = [];
+    publication.campaignBreakdown.meta.distinctUsers = { version: 1, metric: "totalUsers", propertyId: "123", startDate: "2026-11-04", endDate: "2026-11-04", total: 0,
+      campaigns: [{ name: "search", users: 0 }], daily: [], windows: [] };
+    const before = JSON.stringify(snapshot);
+    expect(expectedBrowserCampaignRows(snapshot, now)).toEqual([expect.objectContaining({ name: "search", users: 0, sessions: 0, conversions: 0, revenue: 0 })]);
+    expect(JSON.stringify(snapshot)).toBe(before);
+    publication.campaignBreakdown.meta.distinctUsers.campaigns = [];
+    expect(expectedBrowserCampaignRows(snapshot, now)[0].users).toBeNaN();
+  });
   it.each([0, 1.5, 25])("uses the pinned new definition for %s conversions without changing legacy checks", conversions => {
     const snapshot = fixture(); snapshot.comparisonRateDefinition = "conversions_per_session";
     snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows[0].conversions = conversions;

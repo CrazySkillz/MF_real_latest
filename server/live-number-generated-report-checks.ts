@@ -148,7 +148,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
       campaigns.set(item.campaign, current);
     }
     // The report retains explicitly selected campaigns with no provider rows.
-    for (const name of expected.scope.filter) if (![...campaigns.keys()].some(key => key.toLowerCase() === name.toLowerCase())) {
+    for (const name of expected.scope.filter) if (!Array.from(campaigns.keys()).some(key => key.toLowerCase() === name.toLowerCase())) {
       campaigns.set(name, { sessions: 0, users: 0, conversions: 0, revenue: 0, weightedRate: 0 });
     }
     const nativeCampaigns = Array.from(campaigns.entries()).map(([name, item]) => ({ name, ...item }));

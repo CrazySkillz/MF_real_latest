@@ -157,6 +157,9 @@ export function expectedBrowserCampaignRows(snapshot: LiveNumberSnapshot, now = 
     for (const field of ["sessions","users","conversions","revenue"] as const) value[field] += Number(row[field]);
     value.weighted += Number(row.sessions) * Number(row.sessionKeyEventRate || 0); groups.set(row.campaign,value);
   }
+  for (const name of e.scope.filter) if (!Array.from(groups.keys()).some(key => key.toLowerCase() === name.toLowerCase())) {
+    groups.set(name, { name, sessions: 0, users: 0, conversions: 0, revenue: 0, weighted: 0 });
+  }
   for (const row of groups.values()) row.users = monitoredUsers(snapshot, e.scope, row.name) ?? Number.NaN;
   const normalize = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
   for (const source of e.revenueSources) {

@@ -144,6 +144,10 @@ export async function checkGA4SourceNumbers(scope: { campaignId: string; connect
       // The current UI and Overview PDFs display counts/rates from these tables,
       // not their internal revenue field (which has no saved currency metadata).
       if (!stored || stored.propertyId !== result.propertyId || stored.revenueMetric !== result.revenueMetric) throw new Error("SOURCE_DETAIL_SCOPE_UNVERIFIED");
+      if (part === "landingPages" && ["historyLimited", "requestedStartDate", "startDate", "endDate"]
+        .some(key => ((result as any).meta?.[key] ?? null) !== (stored.meta?.[key] ?? null))) {
+        throw new Error("SOURCE_DETAIL_DATE_SCOPE_UNVERIFIED");
+      }
       checks.push(...compareProviderRows(`Overview / ${part}`, result.rows, stored.rows,
         part === "landingPages" ? ["landingPage", "source", "medium"] : ["eventName"],
         part === "landingPages" ? ["sessions", "users", "conversions"] : ["conversions"]));

@@ -4,7 +4,7 @@
   "credentialsEnvironmentPrefix": "LIVE_NUMBER_",
   "application": {
     "baseUrl": "https://app.mimosaas.app",
-    "expectedCommit": "df60585ebdee0cc0a38bfc13033ce773ff68fc8e",
+    "expectedCommit": "ecf805006bcc59bf39cf6d0e7af2a8f29bfeb867",
     "comparisonRateDefinition": "conversions_per_session"
   },
   "campaigns": [

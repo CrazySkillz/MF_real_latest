@@ -1,10 +1,10 @@
 {
-  "expectedCommit": "b359cd24283f63c789e008a49f9338706537612a",
+  "expectedCommit": "fa932c847cf76a6cd730eaf8c5df64f328da461b",
   "files": [
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "c0e2741c533ce98d746548f7f0569fcc55652d6ec83e2023f245026e1d25a6a9"
+      "after": "23d48f07613dcf84236ad70ae2f1e6e0b600eca3b9eb365e08f22c63e67bc6b6"
     },
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
@@ -14,13 +14,10 @@
     {
       "path": "server/ga4-scheduled-report-pdf.ts",
       "before": "53c136ffec1baa6f92c3d5df66abbbfb2f62a6d4a79a78ca7277bd3a941324d9",
-      "after": "b0dfffef42c0285abb26615cb8d6b2f605a8f451701caa23e182dbd3677e40b8"
+      "after": "9d8d577d469a1c81f7422dc0f846687adbac5f3038e063a7cbac3bcde08a96a1"
     }
   ],
   "equivalentCommits": [
-    "18ad162e54afc3bb11142e541c8e66ede4c7fd7d",
-    "525c64ea51fc61569799b29d2e417ecfe08f41cd",
-    "2bc1be0b6fdf782fefab9949e5fa2e8998c09595",
-    "df60585ebdee0cc0a38bfc13033ce773ff68fc8e"
+    "ecf805006bcc59bf39cf6d0e7af2a8f29bfeb867"
   ]
 }

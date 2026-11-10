@@ -37,7 +37,7 @@ index 1aa7650b..49e073f4 100644
              <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
            </CardContent>
 diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
-index 9d33bee3..a43a003e 100644
+index 9d33bee3..4f22616e 100644
 --- a/client/src/pages/ga4-metrics.tsx
 +++ b/client/src/pages/ga4-metrics.tsx
 @@ -1865,6 +1865,7 @@ export default function GA4Metrics() {
@@ -60,7 +60,50 @@ index 9d33bee3..a43a003e 100644
      },
      refetchIntervalInBackground: false,
      refetchOnWindowFocus: true, refetchOnReconnect: true,
-@@ -4130,12 +4134,11 @@ export default function GA4Metrics() {
+@@ -3216,29 +3220,7 @@ export default function GA4Metrics() {
+     adComparisonBreakdownPlaceholder ||
+     (adComparisonBreakdownError && adComparisonBreakdown === undefined);
+   const landingPagesUnavailable = !ga4ConnectionUsable || (landingPagesError && ga4LandingPages === undefined);
+-  const overviewLandingPageRows = (() => {
+-    const rows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];
+-    // User-requested mock rows for Promo's Overview only; never persist or export them.
+-    if (rows.length || campaignId !== "b74f98af-ede9-47af-9b19-0720ebb4d2c0" || selectedGA4PropertyId !== "542352127"
+-      || selectedGa4CampaignFilterList.length !== 2 || !["yesop_brand_search", "yesop_retargeting"].every(name => selectedGa4CampaignFilterList.includes(name))
+-      || landingPagesUnavailable || landingPagesError || ga4LandingPages?.success !== true || !overviewSummaryAvailable
+-      || !Number.isFinite(overviewSummaryTotals.sessions) || overviewSummaryTotals.sessions <= 0
+-      || !Number.isFinite(overviewSummaryTotals.conversions) || overviewSummaryTotals.conversions < 0) return rows;
+-    let sessionsLeft = overviewSummaryTotals.sessions, conversionsLeft = overviewSummaryTotals.conversions;
+-    return [
+-      { landingPage: "/", source: "google", medium: "cpc", sessionShare: 0.38, conversionShare: 0.30 },
+-      { landingPage: "/pricing", source: "google", medium: "cpc", sessionShare: 0.27, conversionShare: 0.31 },
+-      { landingPage: "/product", source: "google", medium: "display", sessionShare: 0.18, conversionShare: 0.18 },
+-      { landingPage: "/signup", source: "google", medium: "display", sessionShare: 0.10, conversionShare: 0.18 },
+-      { landingPage: "/blog/benchmarking", source: "google", medium: "cpc", sessionShare: 0.07, conversionShare: 0.03 },
+-    ].map(({ sessionShare, conversionShare, ...row }, index) => {
+-      const sessions = index === 4 ? sessionsLeft : Math.floor(overviewSummaryTotals.sessions * sessionShare);
+-      const conversions = index === 4 ? conversionsLeft : Math.floor(overviewSummaryTotals.conversions * conversionShare);
+-      sessionsLeft -= sessions;
+-      conversionsLeft -= conversions;
+-      return { ...row, sessions, users: Math.min(overviewSummaryTotals.users, Math.round(sessions * 0.94)), conversions };
+-    });
+-  })();
++  const overviewLandingPageRows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];
+   const conversionEventsUnavailable = !ga4ConnectionUsable || (conversionEventsError && ga4ConversionEvents === undefined);
+   const revenueSourcesUnavailable = revenueSourcesError && revenueSourcesResp === undefined;
+   const spendSourcesUnavailable = spendSourcesError && spendSourcesResp === undefined;
+@@ -4072,7 +4054,10 @@ export default function GA4Metrics() {
+           formatConversionCredit(Number(r?.conversions || 0)),
+           formatPercentage(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0),
+         ]),
+-        [52, 44, 22, 20, 28, 26]
++        [52, 44, 22, 20, 28, 26],
++        ga4LandingPages?.meta?.historyLimited
++          ? `Data from ${ga4LandingPages.meta.startDate} through ${ga4LandingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.` : undefined,
++        "No landing page data is available for the selected campaigns and dates.",
+       );
+ 
+       if (includeOverviewConversionEvents) addSimpleTable(
+@@ -4130,12 +4115,11 @@ export default function GA4Metrics() {
          current.users += Number(row?.users || 0);
          current.conversions += Number(row?.conversions || 0);
          current.revenue += Number(row?.revenue || 0);
@@ -74,7 +117,7 @@ index 9d33bee3..a43a003e 100644
        }));
        const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
          (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
-@@ -4145,8 +4148,8 @@ export default function GA4Metrics() {
+@@ -4145,8 +4129,8 @@ export default function GA4Metrics() {
        const totalMetric = selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
          ? (() => {
              const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
@@ -85,7 +128,7 @@ index 9d33bee3..a43a003e 100644
            })()
          : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
        if (rows.length === 0 && chartSummaryRows.length === 0) {
-@@ -4241,7 +4244,7 @@ export default function GA4Metrics() {
+@@ -4241,7 +4225,7 @@ export default function GA4Metrics() {
            }
  
            const adSummaryCards: [string, string][] = [
@@ -94,7 +137,7 @@ index 9d33bee3..a43a003e 100644
              ["Campaigns Compared", String(sortedByMetric.length)],
            ];
            const sumW = (CW - 4) / 2;
-@@ -6291,7 +6294,7 @@ export default function GA4Metrics() {
+@@ -6291,7 +6275,7 @@ export default function GA4Metrics() {
            revenue,
            unroundedRevenue: c.revenue,
            users,
@@ -103,7 +146,27 @@ index 9d33bee3..a43a003e 100644
            revenuePerSession: sessions > 0 ? revenue / sessions : 0,
          };
        })
-@@ -7490,6 +7493,7 @@ export default function GA4Metrics() {
+@@ -7406,7 +7390,9 @@ export default function GA4Metrics() {
+                     <div>
+                       <div className="mb-3">
+                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
+-                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope</p>
++                        <p className="text-sm text-muted-foreground/70">{ga4LandingPages?.meta?.historyLimited
++                          ? `Data from ${ga4LandingPages.meta.startDate} through ${ga4LandingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.`
++                          : "Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope"}</p>
+                       </div>
+                       <Card>
+                         <CardContent className="p-6">
+@@ -7472,7 +7458,7 @@ export default function GA4Metrics() {
+                             </div>
+                           ) : (
+                             <div className="text-sm text-muted-foreground/70">
+-                              Data coming soon
++                              No landing page data is available for the selected campaigns and dates.
+                             </div>
+                           )}
+                         </CardContent>
+@@ -7490,6 +7476,7 @@ export default function GA4Metrics() {
                      platformContext="ga4"
                      initialSource={editingSpendSource || undefined}
                      onProcessed={() => {
@@ -112,7 +175,7 @@ index 9d33bee3..a43a003e 100644
                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
 diff --git a/server/ga4-scheduled-report-pdf.ts b/server/ga4-scheduled-report-pdf.ts
-index 7a6f2207..ef221fae 100644
+index 7a6f2207..51f028ba 100644
 --- a/server/ga4-scheduled-report-pdf.ts
 +++ b/server/ga4-scheduled-report-pdf.ts
 @@ -998,7 +998,7 @@ async function buildGA4ReportPayload(report: any) {
@@ -132,7 +195,18 @@ index 7a6f2207..ef221fae 100644
        scope: { campaignId, propertyId, campaignFilter, currency: campaignCurrency, reportingTimeZone: reportCumulativeWindow.reportingTimeZone },
        trafficWindow: reportCumulativeWindow,
        financialWindow: { startDate: financialStartDate, endDate: financialEndDate, importedStartDate: importedRevenueStartDate, spendStartDate: spendSourceStartDate },
-@@ -1601,12 +1602,11 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+@@ -1524,7 +1525,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+           formatPct(Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0),
+         ]),
+         [52, 44, 22, 20, 28, 26],
+-        COLORS.overview
++        COLORS.overview,
++        payload.landingPages?.meta?.historyLimited
++          ? `Data from ${payload.landingPages.meta.startDate} through ${payload.landingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.` : undefined,
+       );
+     }
+     if (includeConversionEvents) {
+@@ -1601,12 +1604,11 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
        current.users += Number(row?.users || 0);
        current.conversions += Number(row?.conversions || 0);
        current.revenue += Number(row?.revenue || 0);
@@ -146,7 +220,7 @@ index 7a6f2207..ef221fae 100644
      }));
      const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
        (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
-@@ -1615,8 +1615,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+@@ -1615,8 +1617,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
      const totalMetric = selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
        ? (() => {
            const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
@@ -157,7 +231,7 @@ index 7a6f2207..ef221fae 100644
          })()
        : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
      const leaderMetric = selectedMetric;
-@@ -1664,7 +1664,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+@@ -1664,7 +1666,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
        doc.setFontSize(6.5); doc.setTextColor(...COLORS.textTert); doc.text(formatMetricValue(selectedMetric, maxValue), chartX + chartW, chartY + 1, { align: "right" });
        y += 58;
        const summaryMetricLabel = selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric]}`;

@@ -1,0 +1,120 @@
+{
+  "expectedCommit": "f7d6e0bf895936ef67f1865f0a4b4c387b6d29dc",
+  "files": [
+    {
+      "path": "client/src/components/AddSpendWizardModal.tsx",
+      "before": "1f37453680093d58621bc9fde5e5bc099af38a9252e9f0f3a49e447bac939bd0",
+      "after": "88f95507d7e305d4ea88ed04e5da338555e248af6d9abea090f9385fff1e82d4"
+    },
+    {
+      "path": "client/src/components/GA4ConnectionFlow.tsx",
+      "before": "2915e150a0908b46f0161d0a4d926a5177e38a41647fc5e5b1aa5904a7ead58c",
+      "after": "83610a5a9ff39b2a1a5008e809d43a0ee952da490139aa810872e456e161d3fe"
+    },
+    {
+      "path": "client/src/lib/trend-analysis-cumulative.ts",
+      "before": "011daff1a987c394db00db4f5e9962af0d0a80f2019c7ea56d6254bd21c587f6",
+      "after": "d36657b28667745e112dbe7ce3bfc72d59da8292da4768fadbb53d64bc868870"
+    },
+    {
+      "path": "client/src/pages/campaign-performance.tsx",
+      "before": "f620db9a84a73f8cf6f2405db1b1842f386b880312118c1eaf1d34fb79ca038e",
+      "after": "396f2dae1ca0b55f3b1990acc237467f18f19a821fb69a282620ef406e5b0129"
+    },
+    {
+      "path": "client/src/pages/campaigns.tsx",
+      "before": "ef0bc53839765e3e568c0b4acc6fbaa485a13e9ef72e817f8b6da20bf39f2749",
+      "after": "48cc340fdd6d2f5d4813888c3e133b7c5afb9f5f46bd8bbfe379878191623cfe"
+    },
+    {
+      "path": "client/src/pages/executive-summary.tsx",
+      "before": "13f37b1505c2cd4df65278d461eb0e2db5c57b135a787a4a5e4abe2bbc06a710",
+      "after": "98328e8e33dba73fae7471541af44c6477b4d788abd72f6fc42133ff35cbbba7"
+    },
+    {
+      "path": "client/src/pages/ga4-ad-comparison.tsx",
+      "before": "d7ddacff87f5f2496891cb14dea26d42586d4a9597b855cf0be0690cb05a6159",
+      "after": "2184d94fe806e44fbf3a36f2f61da6879d5a49efa40354e0b2a9f84f616fdc47"
+    },
+    {
+      "path": "client/src/pages/ga4-metrics.tsx",
+      "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
+      "after": "22b7a1a444171d267202381f8cbb9f82cbe01f066752639062aeb8b112cc7db4"
+    },
+    {
+      "path": "client/src/pages/trend-analysis.tsx",
+      "before": "0c463465ae5a277d47902b8c29218e5fe640eb730be28fcef38943ea7bdfcdf9",
+      "after": "e3f2078c015f113e8ef2f7cae6af71b35da361636476f581ea89e36d37fed8d4"
+    },
+    {
+      "path": "server/analytics.ts",
+      "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
+      "after": "c54c579fb62c34bf887f7fef626aa44636776951c3aa3a4ff254629bb3c44369"
+    },
+    {
+      "path": "server/ga4-daily-scheduler.ts",
+      "before": "48373a06062b31e6089d6d8ffdc1f6b77b0806a251543608751e1130da25d37c",
+      "after": "ad87be319c8fdfdac82e3a96f03f05a78c27568f08f2c02c18b8d42a8244e060"
+    },
+    {
+      "path": "server/ga4-kpi-benchmark-jobs.ts",
+      "before": "b4a3fb36dffc724a763e6afb32b4eec22c89d115ea9af271c59101a5263ea5aa",
+      "after": "5962377e5b4d68a59666ae1de54cbfaa9a80a7cdfac38ed18b659f8804256731"
+    },
+    {
+      "path": "server/ga4-scheduled-report-pdf.ts",
+      "before": "53c136ffec1baa6f92c3d5df66abbbfb2f62a6d4a79a78ca7277bd3a941324d9",
+      "after": "e94159f4ffca315d89b354cbb38e490c4819863b2711af8b5dbadf6c119fa460"
+    },
+    {
+      "path": "server/ga4-source-verification.ts",
+      "before": "f4c8595935a15069f04921916ae4b9938aa8b1e3ce76f7885c5cf10a225eeba7",
+      "after": "2df6d4cc54ca78849e41e24f78693d8414651bef86a69227a911443e6477d109"
+    },
+    {
+      "path": "server/report-scheduler.ts",
+      "before": "6a802103dca3ef8337d5bda4e4964ad2451da2ab1635b1dcd0a1a21b8abb9e77",
+      "after": "c49690cde8ce21b645fc1ad12065e49f76e0f9c04d4b20f01f541fb71254d13c"
+    },
+    {
+      "path": "server/routes-oauth.ts",
+      "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
+      "after": "c675310728c448c001c208acb491b655bd0ef08a40ed8b3947f6601e7a6cebbe"
+    },
+    {
+      "path": "server/scheduler.ts",
+      "before": "20dfb92f544d1ea4954ea3aef3f096204a52b29b6367c516b434bac4c41af256",
+      "after": "58f5b0879c0843bb91594fcc22701649b5f8aa3745f2627396b95824799c9ba8"
+    },
+    {
+      "path": "server/utils/campaign-current-values.ts",
+      "before": "e06a97f5007fad59b9ebcc4776759549f8034bde5dfaf8850d467fdad225d685",
+      "after": "3b43b8f92be64a44e812e40064af0f6039b00e7c66a8f14a271fcd5adb3196a3"
+    },
+    {
+      "path": "server/utils/ga4-alert-current-value.ts",
+      "before": "31293eb166296d3b7855736307422b1bdd8af1cab77c882e9577a189e77af65d",
+      "after": "eaad5984f38738ff8030eed3209d767494d07072d59a2c866290add886af8b7c"
+    },
+    {
+      "path": "server/utils/performance-summary-aggregate.ts",
+      "before": "190ea4b3593846c7720444f73a773248a17d89872c2c1c322817a2aeec1e6a97",
+      "after": "660755d62240d0eec50a3082da856e24912cf87a858f6ccedf79973e0d1fbf31"
+    },
+    {
+      "path": "server/utils/trend-analysis-aggregate.ts",
+      "before": "fb4e928df1b2663abb2800480796d6d5e253adb5366680d01b8a5400e8b99f2e",
+      "after": "d724f09de5fe23105aba4632c49a80c2b67de3629ca6614b86a75fcd75975b98"
+    },
+    {
+      "path": "shared/ga4-kpi-live-value.ts",
+      "before": "3ca00cddc3a1e645b937a2f0994b41ee7ef6dd14e32387efa8378ef04bc0b8e4",
+      "after": "cb2fa9cad741e7b6d9a1fa8ee7b0e242c6460a915e8a2f2a02bd973d35c0b825"
+    },
+    {
+      "path": "shared/ga4-traffic-window.ts",
+      "before": "3c0cb772db1f61e9d45ebad7673da2c49e97c91573563e2a4bfc072e21c7bc84",
+      "after": "c05e88d2f029a17e5a88abaeae4577678859253d12ecad064b6a4b25442eb0c3"
+    }
+  ]
+}

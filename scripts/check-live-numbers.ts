@@ -11,6 +11,7 @@ const outputApplicationSchema = z.object({
   baseUrl: z.string().url().refine(value => { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash && ["", "/"].includes(url.pathname); }),
   expectedCommit: z.string().regex(/^[a-f0-9]{40}$/),
   comparisonRateDefinition: z.literal("conversions_per_session").optional(),
+  usersDefinition: z.literal("ga4_totalUsers_distinct_v1").optional(),
 }).strict();
 
 export const liveNumberConfigSchema = z.object({
@@ -119,7 +120,7 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
       try {
         const before = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         if (before.campaign.reportingTimeZone !== reportingTimeZone) throw new Error("MONITOR_TIMEZONE_CHANGED");
-        const reportRead = restoreLegacyReportInputOrder(before);
+        const reportRead = { ...restoreLegacyReportInputOrder(before), usersDefinition: config.application?.usersDefinition };
         const checks = checkStoredNumbers(reportRead, now);
         checks.push(...await checkSavedReportNumbers(reportRead));
         if (!checks.some(check => check.section === "scope")) {

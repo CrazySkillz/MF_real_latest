@@ -13,7 +13,7 @@ import { deriveTrendFinancialRatios } from "../client/src/lib/trend-analysis-cum
 import { resolveFinancialPacingCalendar } from "../client/src/lib/financial-executive-actions";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 
-export type LiveNumberSnapshot = { campaign: Record<string, any>; rows: Record<string, any[]>; comparisonRateDefinition?: "conversions_per_session" };
+export type LiveNumberSnapshot = { campaign: Record<string, any>; rows: Record<string, any[]>; comparisonRateDefinition?: "conversions_per_session"; usersDefinition?: "ga4_totalUsers_distinct_v1" };
 export type NumberCheck = { section: string; code: string; status: "passed" | "difference" | "unverified"; subject?: string };
 export const monitorHash = (value: string) => createHash("sha256").update(value).digest("hex").slice(0, 12);
 export const snapshotFingerprint = (snapshot: LiveNumberSnapshot) => createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
@@ -72,6 +72,24 @@ export function resolveMonitorScope(snapshot: LiveNumberSnapshot, now = new Date
 }
 
 // Independent arithmetic over saved inputs. Never recomputes/persists application values.
+export function monitoredUsers(snapshot: LiveNumberSnapshot, scope: ReturnType<typeof resolveMonitorScope>, campaignName?: string): number | null {
+  const report = scope.publication.campaignBreakdown, packet = report?.meta?.distinctUsers;
+  if (packet || snapshot.usersDefinition === "ga4_totalUsers_distinct_v1") {
+    if (packet?.version !== 1 || packet.metric !== "totalUsers" || packet.propertyId !== scope.connection.propertyId ||
+        !dateIsValid(scope.startDate) || !dateIsValid(scope.endDate) || packet.startDate > scope.startDate || packet.endDate < scope.endDate ||
+        (scope.publication.windowStart && packet.startDate !== scope.publication.windowStart) || (scope.publication.windowEnd && packet.endDate !== scope.publication.windowEnd)) return null;
+    const fullWindow = packet.startDate === scope.startDate && packet.endDate === scope.endDate;
+    const raw = campaignName !== undefined ? fullWindow ? packet.campaigns?.find((row: any) => String(row.name).toLowerCase() === campaignName.toLowerCase())?.users : null
+      : fullWindow ? packet.total : packet.windows?.find((row: any) => row.startDate === scope.startDate && row.endDate === scope.endDate)?.users;
+    return Number.isSafeInteger(raw) && raw >= 0 ? raw : null;
+  }
+  // Compatibility is limited to deployments that have not adopted the new definition.
+  const rows = campaignName === undefined ? (snapshot.rows.ga4DailyMetrics || []).filter(row => row.propertyId === scope.connection.propertyId && row.date >= scope.startDate && row.date <= scope.endDate)
+    : (report?.rows || []).filter((row: any) => String(row.campaign).toLowerCase() === campaignName.toLowerCase());
+  const values = rows.map((row: any) => numberOrNull(row.users));
+  return values.length && values.every((value: number | null) => value !== null && value >= 0) ? values.reduce((sum: number, value: number) => sum + value, 0) : null;
+}
+
 export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date()): NumberCheck[] {
   const checks: NumberCheck[] = [];
   let scope: ReturnType<typeof resolveMonitorScope>;
@@ -94,6 +112,8 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
     checks.push({ section: "Overview / Insights / Trend Analysis", code: `DAILY_${metric}_VALID`, status: totals[metric] === null ? "unverified" : "passed" });
   }
   const saved = publication.campaignBreakdown.totals;
+  totals.users = monitoredUsers(snapshot, scope);
+  if (snapshot.usersDefinition || publication.campaignBreakdown.meta.distinctUsers) push("Overview / Campaign Comparison", "DISTINCT_USERS", totals.users, saved?.users);
   push("Overview / Campaign Comparison", "sessions", totals.sessions, saved?.sessions);
   push("Overview / Campaign Comparison", "conversions", totals.conversions, saved?.conversions);
   // Daily revenue is stored to cents. The documented bound is half a cent per day, not a percentage tolerance.
@@ -263,7 +283,12 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
       if (valid) {
         for (const metric of ["sessions", "users", "conversions"]) {
           const numbers = inputs.map((r: any) => numberOrNull(r[metric]));
-          push("Performance Summary", `SAVED_INPUT_${metric}`, numbers.every((n: any) => n !== null && n >= 0) ? numbers.reduce<number>((a, b) => a + b!, 0) : null, available(metric));
+          const packet = verification.distinctUsers;
+          const expected = metric === "users" && verification.usersDefinition === "ga4_totalUsers_distinct_v1"
+            ? monitoredUsers({ ...snapshot, usersDefinition: "ga4_totalUsers_distinct_v1" }, { ...scope, publication: { campaignBreakdown: { meta: { distinctUsers: packet } } }, startDate: trafficWindow.startDate > financialWindow.startDate ? trafficWindow.startDate : financialWindow.startDate, endDate: financialWindow.endDate })
+            : numbers.every((n: any) => n !== null && n >= 0) ? numbers.reduce<number>((a, b) => a + b!, 0) : null;
+          if (expected === null && available(metric) === null) continue;
+          push("Performance Summary", `SAVED_INPUT_${metric}`, expected, available(metric));
         }
         const native = numberOrNull(verification.nativeRevenue);
         const amounts: Array<number | null> = Array.isArray(verification.revenueSources) ? verification.revenueSources.map((s: any) => numberOrNull(s.value)) : [null];

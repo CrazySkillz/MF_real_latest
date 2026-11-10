@@ -29,6 +29,15 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("memory-bounded monitoring phases", () => {
+  it("uses the distinct-Users source version for provider and output checks without changing legacy live checks", async () => {
+    const config = JSON.parse(mocks.read()); config.application.usersDefinition = "ga4_totalUsers_distinct_v1";
+    mocks.read.mockReturnValue(JSON.stringify(config)); mocks.directory.mockReturnValue("verified-users-source");
+    const run = runNumberMonitorPhases("config.json");
+    expect(mocks.spawn.mock.calls[0][2].cwd).toBe("verified-users-source");
+    finish(0, receipt()); await vi.waitFor(() => expect(children).toHaveLength(2));
+    expect(mocks.spawn.mock.calls[1][2]).toMatchObject({ cwd: "verified-users-source", env: { MONITOR_USERS_DEFINITION: "ga4_totalUsers_distinct_v1" } });
+    finish(1, [{ section: "Output", code: "MATCH", status: "passed" }]); expect(await run).toBe(0);
+  });
   it("binds the corrected definition to verified replay source and clears inherited legacy overrides", async () => {
     const config = JSON.parse(mocks.read()); config.application.comparisonRateDefinition = "conversions_per_session";
     mocks.read.mockReturnValue(JSON.stringify(config)); mocks.directory.mockReturnValue("verified-test-source");

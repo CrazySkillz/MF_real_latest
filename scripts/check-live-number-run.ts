@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 import type { NumberCheck } from "../server/live-number-checks";
 import { monitorApplicationDirectory } from "./monitor-application-source";
 
-type Application = { baseUrl: string; expectedCommit: string; comparisonRateDefinition?: "conversions_per_session" };
+type Application = { baseUrl: string; expectedCommit: string; comparisonRateDefinition?: "conversions_per_session"; usersDefinition?: "ga4_totalUsers_distinct_v1" };
 const activeChildren = new Set<ReturnType<typeof spawn>>();
 const unverified = (code: string): NumberCheck[] => [{ section: "Application outputs", code, status: "unverified" }];
 export function writeMonitorOutput(value: string, output: Pick<Writable, "write"> = process.stdout): Promise<void> {
@@ -38,7 +38,7 @@ export async function checkApplicationOutputProcess(campaignHash: string, databa
   const checks: NumberCheck[] = await new Promise(resolve => {
     const child = spawn(process.execPath, ["--max-old-space-size=512", "--import", "tsx", "scripts/check-live-number-outputs.ts", campaignHash, databaseFingerprint, fingerprint],
       { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, cwd: directory,
-        env: { ...environment, MONITOR_COMPARISON_RATE_DEFINITION: application?.comparisonRateDefinition || "" } });
+        env: { ...environment, MONITOR_COMPARISON_RATE_DEFINITION: application?.comparisonRateDefinition || "", MONITOR_USERS_DEFINITION: application?.usersDefinition || "" } });
     activeChildren.add(child); child.once("close", () => activeChildren.delete(child)); child.once("error", () => activeChildren.delete(child));
     let output = "", tooLarge = false;
     const timer = setTimeout(() => child.kill(), 310_000).unref();
@@ -57,11 +57,13 @@ export async function checkApplicationOutputProcess(campaignHash: string, databa
 
 export async function runNumberMonitorPhases(configPath: string, scheduledOnly = false): Promise<number> {
   const config = JSON.parse(readFileSync(configPath, "utf8"));
+  const sourceDirectory = config.application?.usersDefinition ? monitorApplicationDirectory(config.application) : process.cwd();
+  const absoluteConfigPath = resolve(configPath);
   // The source CLI validates the complete config and database identity before it
   // can issue a fingerprint. Keep this process free of its large dependencies.
   const source = await new Promise<{ code: number; output: string }>(resolve => {
-    const child = spawn(process.execPath, ["--import", "tsx", "scripts/check-live-numbers.ts", configPath, ...(scheduledOnly ? ["--scheduled"] : [])],
-      { stdio: ["ignore", "pipe", "inherit"], windowsHide: true });
+    const child = spawn(process.execPath, ["--import", "tsx", "scripts/check-live-numbers.ts", absoluteConfigPath, ...(scheduledOnly ? ["--scheduled"] : [])],
+      { stdio: ["ignore", "pipe", "inherit"], windowsHide: true, cwd: sourceDirectory });
     activeChildren.add(child); child.once("close", () => activeChildren.delete(child)); child.once("error", () => activeChildren.delete(child));
     let output = "", tooLarge = false;
     const timer = setTimeout(() => child.kill(), 610_000).unref();

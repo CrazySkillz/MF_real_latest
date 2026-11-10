@@ -1,4 +1,4 @@
-import { compareNumber, dateIsValid, monitorHash, numberOrNull, parseMonitorMapping, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
+import { compareNumber, dateIsValid, monitorHash, monitoredUsers, numberOrNull, parseMonitorMapping, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { buildExecutiveSummaryFinancialSourceIdentity } from "./utils/executive-summary-daily-snapshot";
 import { resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
@@ -121,6 +121,7 @@ export function expectedOutputNumbers(snapshot: LiveNumberSnapshot, now = new Da
     const values = daily.map(row => numberOrNull(row[metric]));
     totals[metric] = values.length && values.every(value => value !== null) ? values.reduce<number>((sum, value) => sum + value!, 0) : null;
   }
+  totals.users = monitoredUsers(snapshot, scope);
   const sourceValues = (kind: "revenue" | "spend") => (rows[kind + "Sources"] || [])
     .filter(source => source.isActive && (!source.platformContext || source.platformContext === "ga4"))
     .map(source => {

@@ -28,6 +28,19 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   const manifestPath = join(root, "scripts/monitor-conversion-parity.json"), manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   manifest.equivalentCommits = ["b".repeat(40)]; writeFileSync(manifestPath, JSON.stringify(manifest));
   expect(monitorApplicationDirectory({ ...app, expectedCommit: "b".repeat(40) }, root)).toBe(prepared);
+  const usersApp = { ...app, expectedCommit: "c".repeat(40), usersDefinition: "ga4_totalUsers_distinct_v1" };
+  const extra = "shared/ga4-traffic-window.ts"; writeFileSync(join(root, extra), "old\n");
+  writeFileSync(join(root, "scripts/monitor-distinct-users.json"), JSON.stringify({ expectedCommit: usersApp.expectedCommit,
+    files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("distinct\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-distinct-users.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+distinct\n`).join("").replaceAll("\n", "\r\n"));
+  const usersPrepared = prepareMonitorApplication(root, true);
+  expect(monitorApplicationDirectory(usersApp, root)).toBe(usersPrepared);
+  expect(monitorApplicationDirectory(app, root)).toBe(prepared);
+  expect(readFileSync(join(usersPrepared, extra), "utf8").trim()).toBe("distinct");
+  expect(readFileSync(join(prepared, files[0]), "utf8").trim()).toBe("new");
+  expect(() => monitorApplicationDirectory({ ...usersApp, expectedCommit: app.expectedCommit }, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...usersApp, usersDefinition: "unknown" }, root)).toThrow();
+  writeFileSync(join(usersPrepared, extra), "tampered\n"); expect(() => monitorApplicationDirectory(usersApp, root)).toThrow();
   manifest.equivalentCommits = ["unverified"]; writeFileSync(manifestPath, JSON.stringify(manifest));
   expect(() => monitorApplicationDirectory(app, root)).toThrow("MONITOR_SOURCE_MANIFEST_INVALID");
   manifest.equivalentCommits = ["b".repeat(40)]; writeFileSync(manifestPath, JSON.stringify(manifest));

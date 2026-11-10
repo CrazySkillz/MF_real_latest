@@ -1,0 +1,1706 @@
+diff --git a/client/src/components/AddSpendWizardModal.tsx b/client/src/components/AddSpendWizardModal.tsx
+index 0347fc02..dd3347a9 100644
+--- a/client/src/components/AddSpendWizardModal.tsx
++++ b/client/src/components/AddSpendWizardModal.tsx
+@@ -1340,7 +1340,9 @@ export function AddSpendWizardModal(props: {
+       }));
+ 
+       setAdPlatformCampaigns(campaigns);
+-      setSelectedAdPlatformCampaignIds(campaigns.map(c => c.id));
++      setSelectedAdPlatformCampaignIds(platform === "google_ads"
++        ? campaigns.filter(c => selectedAdPlatformCampaignIds.includes(c.id)).map(c => c.id)
++        : campaigns.map(c => c.id));
+     } catch (e: any) {
+       if (platform === "google_ads" && accessRequest !== googleAdsAccessRequest.current) return;
+       toast({ title: "Preview failed", description: e?.message || "Could not fetch spend data.", variant: "destructive" });
+@@ -2485,10 +2487,10 @@ export function AddSpendWizardModal(props: {
+                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
+                         </Button>
+                       )}
+-                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformCampaigns.length > 0 && selectedAdPlatformCampaignIds.length > 0 && (
++                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformCampaigns.length > 0 && (selectedPlatform === "google_ads" || selectedAdPlatformCampaignIds.length > 0) && (
+                         <Button
+                           onClick={importAdPlatformSpend}
+-                          disabled={isProcessing || (isEditing && !hasMeaningfulAdPlatformEditChanges)}
++                          disabled={isProcessing || selectedAdPlatformCampaignIds.length === 0 || (isEditing && !hasMeaningfulAdPlatformEditChanges)}
+                         >
+                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
+                         </Button>
+diff --git a/client/src/components/GA4ConnectionFlow.tsx b/client/src/components/GA4ConnectionFlow.tsx
+index c5550c39..7a7894a5 100644
+--- a/client/src/components/GA4ConnectionFlow.tsx
++++ b/client/src/components/GA4ConnectionFlow.tsx
+@@ -444,7 +444,6 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
+                           }}
+                         />
+                         <span className="text-sm flex-1">{c.name}</span>
+-                        <span className="text-xs text-muted-foreground">{c.users.toLocaleString()} users</span>
+                       </label>
+                     );
+                   })}
+diff --git a/client/src/lib/trend-analysis-cumulative.ts b/client/src/lib/trend-analysis-cumulative.ts
+index 08de330b..efc8ae21 100644
+--- a/client/src/lib/trend-analysis-cumulative.ts
++++ b/client/src/lib/trend-analysis-cumulative.ts
+@@ -190,10 +190,10 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
+   if (responseStartDate > firstRecentDate.toISOString().slice(0, 10)) return null;
+ 
+   const currentRaw = response?.overviewTotals || {};
+-  if ([currentRaw.users, currentRaw.sessions, currentRaw.conversions, currentRaw.engagedSessions]
++  if ([currentRaw.sessions, currentRaw.conversions, currentRaw.engagedSessions]
+     .some((value) => !hasNonNegativeMetric(value))) return null;
+   const current = {
+-    users: Number(currentRaw.users),
++    users: hasNonNegativeMetric(currentRaw.users) ? Number(currentRaw.users) : Number.NaN,
+     sessions: Number(currentRaw.sessions),
+     conversions: Number(currentRaw.conversions),
+     engagedSessions: Number(currentRaw.engagedSessions),
+@@ -212,12 +212,12 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
+   }
+ 
+   const previous = {
+-    users: current.users - recent.users,
++    users: response?.usersComparisons?.find((window: any) => window.startDate === overviewStartDate && window.endDate === comparisonDate)?.users ?? Number.NaN,
+     sessions: current.sessions - recent.sessions,
+     conversions: current.conversions - recent.conversions,
+     engagedSessions: current.engagedSessions - recent.engagedSessions,
+   };
+-  if (Object.values(previous).some((value) => !Number.isFinite(value) || value < 0)) return null;
++  if ([previous.sessions, previous.conversions, previous.engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
+   return {
+     current: {
+       ...current,
+diff --git a/client/src/pages/campaign-performance.tsx b/client/src/pages/campaign-performance.tsx
+index 8660a0bb..5ae008cd 100644
+--- a/client/src/pages/campaign-performance.tsx
++++ b/client/src/pages/campaign-performance.tsx
+@@ -590,7 +590,7 @@ export default function CampaignPerformanceSummary() {
+       }
+     : {
+         sessions: Number(liveScoringTrafficTotals.sessions),
+-        users: Number(liveScoringTrafficTotals.users),
++        users: liveScoringTrafficTotals.users == null ? Number.NaN : Number(liveScoringTrafficTotals.users),
+         conversions: Number(liveScoringTrafficTotals.conversions),
+         pageviews: Number(liveScoringTrafficTotals.pageviews),
+         engagedSessions: Number(liveScoringTrafficTotals.engagedSessions),
+@@ -1480,7 +1480,7 @@ export default function CampaignPerformanceSummary() {
+                     <p className="text-xs text-muted-foreground">
+                       {overviewSourceLabel(overviewUsers, "Sources unavailable")}
+                     </p>
+-                    <p className="text-xs text-muted-foreground">GA4 users are summed daily counts, not unique people across the reporting window.</p>
++                    <p className="text-xs text-muted-foreground">Distinct GA4 users for the displayed dates and selected campaigns.</p>
+                   </CardContent>
+                 </Card>
+ 
+diff --git a/client/src/pages/campaigns.tsx b/client/src/pages/campaigns.tsx
+index d12f4d28..d43b84d0 100644
+--- a/client/src/pages/campaigns.tsx
++++ b/client/src/pages/campaigns.tsx
+@@ -1799,6 +1799,7 @@ export default function Campaigns() {
+                       {selectedWizardPlatform === 'google-analytics' && ga4ConfigSubStep === 'campaigns' && (
+                         <div className="space-y-4">
+                           <p className="text-sm text-muted-foreground">Select which GA4 campaigns (UTM campaign values) to track.</p>
++                          <p className="text-sm font-medium">Campaigns found in the last 30 days</p>
+                           {isGA4CampaignLoading ? (
+                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                               <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
+@@ -1825,7 +1826,6 @@ export default function Campaigns() {
+                                         }}
+                                       />
+                                       <span className="text-sm flex-1">{c.name}</span>
+-                                      <span className="text-xs text-muted-foreground">{c.users.toLocaleString()} users</span>
+                                     </label>
+                                   );
+                                 })}
+@@ -1834,8 +1834,11 @@ export default function Campaigns() {
+                           ) : null}
+                           {ga4CampaignDiscoveryError && <p role="alert" className="text-sm text-destructive">{ga4CampaignDiscoveryError}</p>}
+                             <div className="space-y-2">
+-                              <Label>GA4 campaignName</Label>
++                              <Label htmlFor="wizard-ga4-campaign-name">Enter GA4 Campaign Name</Label>
++                              <p id="wizard-ga4-campaign-name-help" className="text-xs text-muted-foreground">Enter additional campaign names below, including campaigns from before the last 30 days. Separate multiple names with commas.</p>
+                               <Input
++                                id="wizard-ga4-campaign-name"
++                                aria-describedby="wizard-ga4-campaign-name-help wizard-ga4-import-period-help"
+                                 value={selectedGA4CampaignValues.join(", ")}
+                                 onChange={(e) => setSelectedGA4CampaignValues(
+                                   e.target.value
+@@ -1845,13 +1848,26 @@ export default function Campaigns() {
+                                 )}
+                                 placeholder="e.g., brand_awareness, paid_social_q2"
+                               />
+-                              <p className="text-xs text-muted-foreground">If GA4 reporting is delayed, enter one or more expected UTM campaign values, separated by commas.</p>
++                              <p id="wizard-ga4-import-period-help" className="text-xs text-muted-foreground">Selecting older campaigns does not extend the 30-day import period.</p>
++                                <div className="space-y-2">
++                                  <p className="text-sm font-medium">Selected campaigns</p>
++                                  <ul aria-label="Selected GA4 campaigns" className="flex h-16 flex-wrap content-start items-start gap-2 overflow-y-auto [scrollbar-gutter:stable]">
++                                    {selectedGA4CampaignValues.length === 0 && (
++                                      <li className="text-sm text-muted-foreground">No campaigns selected</li>
++                                    )}
++                                    {selectedGA4CampaignValues.map((name, index) => (
++                                      <li key={`${index}-${name}`} className="max-w-full">
++                                        <Badge variant="secondary" className="max-w-full whitespace-normal break-all">{name}</Badge>
++                                      </li>
++                                    ))}
++                                  </ul>
++                                </div>
+                             </div>
+                           <div className="flex gap-2 pt-2">
+                             <Button type="button" variant="outline" className="flex-1" onClick={() => setGa4ConfigSubStep('property')}>
+                               <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                             </Button>
+-                            <Button type="button" className="flex-1" onClick={handleWizardSaveGA4Filter} disabled={selectedGA4CampaignValues.length === 0}>
++                            <Button type="button" className="min-w-0 flex-1" onClick={handleWizardSaveGA4Filter} disabled={selectedGA4CampaignValues.length === 0}>
+                               {selectedGA4CampaignValues.length > 1 ? `Save ${selectedGA4CampaignValues.length} campaigns` : "Save & Continue"}
+                             </Button>
+                           </div>
+diff --git a/client/src/pages/executive-summary.tsx b/client/src/pages/executive-summary.tsx
+index 140cfb57..4631c128 100644
+--- a/client/src/pages/executive-summary.tsx
++++ b/client/src/pages/executive-summary.tsx
+@@ -614,7 +614,7 @@ export default function ExecutiveSummary() {
+                             </div>
+                             <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
+                               {aggregateMetricSourceLabel(reachMetricKey)}
+-                              {reachMetricKey === "users" && performanceSummary?.totals?.users?.sources?.includes("ga4") && <span className="block">Summed daily users; not unique people across the reporting window.</span>}
++                              {reachMetricKey === "users" && performanceSummary?.totals?.users?.sources?.includes("ga4") && <span className="block">Distinct GA4 users for the displayed dates and selected campaigns.</span>}
+                             </div>
+                           </div>
+                         </div>
+diff --git a/client/src/pages/ga4-ad-comparison.tsx b/client/src/pages/ga4-ad-comparison.tsx
+index 1aa7650b..2c3bb2d9 100644
+--- a/client/src/pages/ga4-ad-comparison.tsx
++++ b/client/src/pages/ga4-ad-comparison.tsx
+@@ -30,6 +30,7 @@ interface GA4AdComparisonProps {
+   nativeRevenue?: number;
+   chartCampaignRows: CampaignAgg[];
+   chartRevenue?: number;
++  chartUsers?: number | null;
+   breakdownLoading: boolean;
+   breakdownUnavailable?: boolean;
+   breakdownStale?: boolean;
+@@ -67,6 +68,7 @@ function GA4AdComparison({
+   nativeRevenue,
+   chartCampaignRows,
+   chartRevenue,
++  chartUsers,
+   breakdownLoading,
+   breakdownUnavailable = false,
+   breakdownStale = false,
+@@ -109,15 +111,14 @@ function GA4AdComparison({
+       const key = row.name.toLocaleLowerCase("en-US");
+       const current = byName.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0, revenuePerSession: 0 };
+       current.sessions += row.sessions;
+-      current.users += row.users;
++      current.users = row.users;
+       current.conversions += row.conversions;
+       current.revenue += row.revenue;
+-      current.conversionRate += row.conversionRate * row.sessions;
+       byName.set(key, current);
+     }
+     return Array.from(byName.values()).map((row) => ({
+       ...row,
+-      conversionRate: row.sessions > 0 ? row.conversionRate / row.sessions : 0,
++      conversionRate: row.sessions > 0 ? row.conversions / row.sessions * 100 : 0,
+       revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
+     }));
+   }, [chartCampaignRows]);
+@@ -149,6 +150,7 @@ function GA4AdComparison({
+   }, [chartSummaryRows, selectedMetric]);
+ 
+   const fmtMetricValue = (metric: string, value: number) => {
++    if (metric === "users" && !Number.isFinite(value)) return "Unavailable";
+     if (metric === "revenue") return formatMoney(value);
+     if (metric === "conversionRate") return `${formatPct(value)}`;
+     if (metric === "conversions") return formatConversionCredit(value);
+@@ -161,14 +163,15 @@ function GA4AdComparison({
+   };
+ 
+   const totalMetric = useMemo(() => {
++    if (selectedMetric === "users") return chartUsers ?? Number.NaN;
+     if (selectedMetric === "revenue" && chartRevenue !== undefined) return chartRevenue;
+     if (selectedMetric === "conversionRate") {
+       const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
+-      const weightedRates = sortedByMetric.reduce((s, c) => s + c.conversionRate * c.sessions, 0);
+-      return totalSessions > 0 ? weightedRates / totalSessions : 0;
++      const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
++      return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+     }
+     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
+-  }, [sortedByMetric, selectedMetric, chartRevenue]);
++  }, [sortedByMetric, selectedMetric, chartRevenue, chartUsers]);
+ 
+   const summaryMetricLabel = selectedMetric === "revenue"
+     ? "Campaign Breakdown Revenue"
+@@ -304,7 +307,7 @@ function GA4AdComparison({
+       )}
+       {chartBreakdownLoading && chartSummaryRows.length === 0 ? (
+         <div className="h-80 bg-muted rounded animate-pulse" />
+-      ) : chartBreakdownUnavailable ? (
++      ) : chartBreakdownUnavailable || (selectedMetric === "users" && chartSummaryRows.some(row => !Number.isFinite(row.users))) ? (
+         <Card><CardContent className="p-8 text-center text-destructive">GA4 Overview Campaign Breakdown is unavailable.</CardContent></Card>
+       ) : chartSummaryRows.length === 0 ? (
+         <Card><CardContent className="p-8 text-center text-muted-foreground">No GA4 Overview Campaign Breakdown rows available.</CardContent></Card>
+@@ -347,13 +350,13 @@ function GA4AdComparison({
+                     <Info className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                   </TooltipTrigger>
+                   <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+-                    <p className="text-xs">User counts are approximate. GA4 users are non-additive - the same user visiting across multiple days, devices, or traffic sources is counted in each breakdown row. Per-campaign and total user counts may be higher than actual unique users.</p>
++                    <p className="text-xs">Distinct GA4 users for each campaign during the displayed dates. A user can visit several campaigns, so campaign counts must not be added to calculate total users.</p>
+                   </TooltipContent>
+                 </UITooltip>
+               )}
+             </div>
+             <div className="text-2xl font-bold text-foreground mt-1">
+-              {fmtMetricValue(selectedMetric, totalMetric)}
++              {selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, totalMetric)}
+             </div>
+             <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
+           </CardContent>
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 9d33bee3..c261fd73 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -42,6 +42,7 @@ import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisp
+ import { resolveGA4InsightsExecutiveFinancials } from "@/lib/ga4-insights-executive-financials";
+ import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
+ import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
++import { getGA4DistinctUsers } from "@shared/ga4-traffic-window";
+ import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
+ import { getGA4KpiReportingWindowLabel, resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
+ import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
+@@ -743,7 +744,7 @@ export default function GA4Metrics() {
+       case "Conversion Rate":
+         return "Overall conversion rate for the selected period";
+       case "Total Users":
+-        return "Total users for the selected period";
++        return "Distinct GA4 users for the displayed dates and selected campaigns";
+       case "Total Sessions":
+         return "Total sessions for the selected period";
+       default:
+@@ -1404,7 +1405,7 @@ export default function GA4Metrics() {
+       case "engagementRate":
+         return "Percent of sessions that were engaged (GA4 engagement rate)";
+       case "users":
+-        return "Total users for the selected period";
++        return "Distinct GA4 users for the displayed dates and selected campaigns";
+       case "sessions":
+         return "Total sessions for the selected period";
+       default:
+@@ -1865,6 +1866,7 @@ export default function GA4Metrics() {
+   const benchmarkAnalyticsFailed = benchmarkAnalyticsQueries.some((query: any) => query?.isError);
+ 
+   const ga4PublicationScope = JSON.stringify([campaignId, selectedGA4PropertyId]);
++  const [spendImportFollowUp, setSpendImportFollowUp] = useState({ scope: "", until: 0 });
+   const ga4PublicationReceipt = useRef({ scope: "", token: "", pending: false });
+   const [ga4PublicationSync, setGA4PublicationSync] = useState({ scope: "", pending: false, failed: false });
+   const { data: ga4PublicationStatus, dataUpdatedAt: ga4PublicationCheckedAt, isError: ga4PublicationStatusError, isFetchedAfterMount: ga4PublicationStatusChecked, refetch: refetchGA4PublicationStatus } = useQuery<any>({
+@@ -1874,7 +1876,10 @@ export default function GA4Metrics() {
+     refetchInterval: query => {
+       if (query.state.status === "error" || ga4PublicationSync.scope === ga4PublicationScope && ga4PublicationSync.failed) return 60_000;
+       const nextCheckAt = Date.parse(query.state.data?.nextCheckAt || "");
+-      return Number.isFinite(nextCheckAt) ? (nextCheckAt > Date.now() ? nextCheckAt - Date.now() : 60_000) : false;
++      const delay = Number.isFinite(nextCheckAt) ? (nextCheckAt > Date.now() ? nextCheckAt - Date.now() : 60_000) : false;
++      // Follow a just-saved Spend import briefly; values still wait for verified publication.
++      return delay && spendImportFollowUp.scope === ga4PublicationScope && spendImportFollowUp.until > Date.now()
++        && ["running", "delayed"].includes(query.state.data?.refreshStatus) ? Math.min(delay, 5_000) : delay;
+     },
+     refetchIntervalInBackground: false,
+     refetchOnWindowFocus: true, refetchOnReconnect: true,
+@@ -2444,14 +2449,14 @@ export default function GA4Metrics() {
+     sessions: Number(overviewTotalsSource?.sessions || 0),
+     conversions: Number(overviewTotalsSource?.conversions || 0),
+     revenue: Number(overviewTotalsSource?.revenue || 0),
+-    users: Number(overviewTotalsSource?.users || 0),
++    users: overviewSummarySource?.users ?? null,
+     pageviews: Number(overviewTotalsSource?.pageviews || 0),
+   };
+   const overviewSummaryTotals = {
+     sessions: Number(overviewSummarySource?.sessions || 0),
+     conversions: Number(overviewSummarySource?.conversions || 0),
+     revenue: Number(overviewSummarySource?.revenue || 0),
+-    users: Number(overviewSummarySource?.users || 0),
++    users: overviewSummarySource?.users ?? null,
+     pageviews: Number(overviewSummarySource?.pageviews || 0),
+   };
+   const overviewSummaryEngagementRate = (() => {
+@@ -3216,29 +3221,7 @@ export default function GA4Metrics() {
+     adComparisonBreakdownPlaceholder ||
+     (adComparisonBreakdownError && adComparisonBreakdown === undefined);
+   const landingPagesUnavailable = !ga4ConnectionUsable || (landingPagesError && ga4LandingPages === undefined);
+-  const overviewLandingPageRows = (() => {
+-    const rows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];
+-    // User-requested mock rows for Promo's Overview only; never persist or export them.
+-    if (rows.length || campaignId !== "b74f98af-ede9-47af-9b19-0720ebb4d2c0" || selectedGA4PropertyId !== "542352127"
+-      || selectedGa4CampaignFilterList.length !== 2 || !["yesop_brand_search", "yesop_retargeting"].every(name => selectedGa4CampaignFilterList.includes(name))
+-      || landingPagesUnavailable || landingPagesError || ga4LandingPages?.success !== true || !overviewSummaryAvailable
+-      || !Number.isFinite(overviewSummaryTotals.sessions) || overviewSummaryTotals.sessions <= 0
+-      || !Number.isFinite(overviewSummaryTotals.conversions) || overviewSummaryTotals.conversions < 0) return rows;
+-    let sessionsLeft = overviewSummaryTotals.sessions, conversionsLeft = overviewSummaryTotals.conversions;
+-    return [
+-      { landingPage: "/", source: "google", medium: "cpc", sessionShare: 0.38, conversionShare: 0.30 },
+-      { landingPage: "/pricing", source: "google", medium: "cpc", sessionShare: 0.27, conversionShare: 0.31 },
+-      { landingPage: "/product", source: "google", medium: "display", sessionShare: 0.18, conversionShare: 0.18 },
+-      { landingPage: "/signup", source: "google", medium: "display", sessionShare: 0.10, conversionShare: 0.18 },
+-      { landingPage: "/blog/benchmarking", source: "google", medium: "cpc", sessionShare: 0.07, conversionShare: 0.03 },
+-    ].map(({ sessionShare, conversionShare, ...row }, index) => {
+-      const sessions = index === 4 ? sessionsLeft : Math.floor(overviewSummaryTotals.sessions * sessionShare);
+-      const conversions = index === 4 ? conversionsLeft : Math.floor(overviewSummaryTotals.conversions * conversionShare);
+-      sessionsLeft -= sessions;
+-      conversionsLeft -= conversions;
+-      return { ...row, sessions, users: Math.min(overviewSummaryTotals.users, Math.round(sessions * 0.94)), conversions };
+-    });
+-  })();
++  const overviewLandingPageRows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];
+   const conversionEventsUnavailable = !ga4ConnectionUsable || (conversionEventsError && ga4ConversionEvents === undefined);
+   const revenueSourcesUnavailable = revenueSourcesError && revenueSourcesResp === undefined;
+   const spendSourcesUnavailable = spendSourcesError && spendSourcesResp === undefined;
+@@ -3404,7 +3387,7 @@ export default function GA4Metrics() {
+       metric: kpi?.metric,
+       name: kpi?.name,
+       listState: kpiListState,
+-      trafficState: kpiTrafficInputState,
++      trafficState: resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name) === "users" && breakdownTotals.users === null ? "unavailable" : kpiTrafficInputState,
+       revenueState: snapshotRevenueKpiInputState,
+       spendState: snapshotSpendKpiInputState,
+       financialConversionsState: snapshotConversionsKpiInputState,
+@@ -3437,7 +3420,7 @@ export default function GA4Metrics() {
+       metric: benchmark?.metric,
+       name: benchmark?.name,
+       listState: benchmarkListState,
+-      trafficState: trafficKpiInputState,
++      trafficState: resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name) === "users" && breakdownTotals.users === null ? "unavailable" : trafficKpiInputState,
+       revenueState: snapshotRevenueKpiInputState,
+       spendState: snapshotSpendKpiInputState,
+       financialConversionsState: snapshotConversionsKpiInputState,
+@@ -3639,7 +3622,8 @@ export default function GA4Metrics() {
+       const needsLandingPages = reportType !== "custom" || overviewSubsections.landingPages === true;
+       const needsConversionEvents = reportType !== "custom" || overviewSubsections.conversionEvents === true;
+       const unavailable: string[] = [];
+-      if (needsSummary && !overviewSummaryAvailable) unavailable.push("Summary");
++      if (needsSummary && (!overviewSummaryAvailable || overviewSummaryTotals.users === null)) unavailable.push("Summary");
++      if (needsCampaignBreakdown && campaignBreakdownAgg.some(row => !Number.isFinite(row.users))) unavailable.push("Campaign Users");
+       if (needsRevenue && (!financialRevenueAvailable || importedRevenueError || revenueSourcesError || revenueBreakdownError)) unavailable.push("Revenue");
+       if (needsRevenue && materializedRevenueUnavailable) unavailable.push("Revenue");
+       const reportHasNoSpendSource = spendSourceDefinitionsKnownEmpty && !hasSpendSources && !overviewFinancialSpendAvailable;
+@@ -3652,6 +3636,7 @@ export default function GA4Metrics() {
+       }
+     }
+     if (sections.ads) {
++      if (reportAdComparisonMetric === "users" && adComparisonChartRows.some(row => !Number.isFinite(row.users))) throw new Error("Distinct GA4 Users are unavailable for this report window");
+       const adsSubsections = customSubsections.ads || {};
+       const needsTopCampaigns = reportType !== 'custom' || adsSubsections.topCampaigns === true || adsSubsections.summary === true || adsSubsections.bestWorst === true;
+       const needsNativeDetail = reportType !== 'custom' || adsSubsections.allCampaigns === true || adsSubsections.revenueBreakdown === true;
+@@ -3899,7 +3884,7 @@ export default function GA4Metrics() {
+       const includeOverviewLandingPages = reportType !== "custom" || overviewSubsections.landingPages !== false;
+       const includeOverviewConversionEvents = reportType !== "custom" || overviewSubsections.conversionEvents !== false;
+       const reportingNotes = [
+-        "Users are summed daily counts, not unique people across the reporting window.",
++        "Users are distinct GA4 users for the displayed dates and scope. Campaign, event and landing-page rows can overlap and must not be added together.",
+         `GA4 metrics (Summary and tables): ${overviewGA4ReportingDate ? `${overviewGA4ReportingStartDate ? `Data from ${formatReportingDateLabel(overviewGA4ReportingStartDate)} through` : "Data through"} ${formatReportingDateLabel(overviewGA4ReportingDate)} (${overviewGA4ReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: ${overviewGA4UpdatedAt}.`,
+         ...(includeOverviewRevenue || includeOverviewSpend || includeOverviewPerformance ? [
+           `Revenue, Spend, ROAS, ROI and CPA: ${overviewFinancialReportingDate ? `Data through ${formatReportingDateLabel(overviewFinancialReportingDate)} (${overviewFinancialReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: ${overviewFinancialUpdatedAt}. Applies to available figures.`,
+@@ -4072,7 +4057,10 @@ export default function GA4Metrics() {
+           formatConversionCredit(Number(r?.conversions || 0)),
+           formatPercentage(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0),
+         ]),
+-        [52, 44, 22, 20, 28, 26]
++        [52, 44, 22, 20, 28, 26],
++        ga4LandingPages?.meta?.historyLimited
++          ? `Data from ${ga4LandingPages.meta.startDate} through ${ga4LandingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.` : undefined,
++        "No landing page data is available for the selected campaigns and dates.",
+       );
+ 
+       if (includeOverviewConversionEvents) addSimpleTable(
+@@ -4109,6 +4097,7 @@ export default function GA4Metrics() {
+         conversionRate: "Conversion Rate",
+       };
+       const fmtMetricValue = (metric: string, value: number) => {
++        if (metric === "users" && !Number.isFinite(value)) return "Unavailable";
+         if (metric === "revenue") return fC(value);
+         if (metric === "conversionRate") return fP(value);
+         if (metric === "conversions") return formatConversionCredit(Number(value || 0));
+@@ -4127,26 +4116,25 @@ export default function GA4Metrics() {
+         const key = String(row?.name || "").toLocaleLowerCase("en-US");
+         const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
+         current.sessions += Number(row?.sessions || 0);
+-        current.users += Number(row?.users || 0);
++        current.users = row.users;
+         current.conversions += Number(row?.conversions || 0);
+         current.revenue += Number(row?.revenue || 0);
+-        current.conversionRate = Number(current.conversionRate || 0) + Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
+         chartSummaryByCampaign.set(key, current);
+       }
+       const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
+         ...row,
+-        conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversionRate || 0) / Number(row.sessions) : 0,
++        conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversions || 0) / Number(row.sessions) * 100 : 0,
+       }));
+       const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
+         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
+         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
+         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
+       const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
+-      const totalMetric = selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
++      const totalMetric = selectedMetric === "users" ? overviewSummaryTotals.users ?? Number.NaN : selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
+         ? (() => {
+             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
+-            const weightedRates = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversionRate || 0) * Number(c?.sessions || 0), 0);
+-            return totalSessions > 0 ? weightedRates / totalSessions : 0;
++            const totalConversions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversions || 0), 0);
++            return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+           })()
+         : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
+       if (rows.length === 0 && chartSummaryRows.length === 0) {
+@@ -4241,7 +4229,7 @@ export default function GA4Metrics() {
+           }
+ 
+           const adSummaryCards: [string, string][] = [
+-            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
++            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+             ["Campaigns Compared", String(sortedByMetric.length)],
+           ];
+           const sumW = (CW - 4) / 2;
+@@ -4259,7 +4247,7 @@ export default function GA4Metrics() {
+           y += 24;
+           if (selectedMetric === "users") {
+             doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+-            doc.text("Users are summed campaign-row counts and are non-additive.", MX + 5, y - 2);
++            doc.text("Users are distinct within each campaign and period; campaign counts can overlap.", MX + 5, y - 2);
+             y += 4;
+           }
+         }
+@@ -4282,7 +4270,7 @@ export default function GA4Metrics() {
+           for (let i = 0; i < comparisonRows.length; i++) {
+             checkPage(9);
+             const r = comparisonRows[i] as any;
+-            const s = Number(r?.sessions || 0), u = Number(r?.users || 0);
++            const s = Number(r?.sessions || 0), u = Number(r?.users);
+             const cv = Number(r?.conversions || 0), rv = Number(r?.revenue || 0);
+             const rate = s > 0 ? (cv / s) * 100 : 0;
+             doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+@@ -4294,7 +4282,7 @@ export default function GA4Metrics() {
+             doc.text(trunc(String(r?.name || r?.campaign || "(not set)"), 28), colXs[1], y + 4);
+             doc.setTextColor(...C.textSec);
+             doc.text(fN(s), colXs[2], y + 4);
+-            doc.text(fN(u), colXs[3], y + 4);
++            doc.text(Number.isFinite(u) ? fN(u) : "Unavailable", colXs[3], y + 4);
+             doc.text(formatConversionCredit(cv), colXs[4], y + 4);
+             doc.text(fC(rv), colXs[5], y + 4);
+             doc.text(fP(rate), colXs[6], y + 4);
+@@ -6263,7 +6251,7 @@ export default function GA4Metrics() {
+     const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number; sessionKeyEventRateWeighted: number }>();
+     for (const r of rows) {
+       const name = String((r as any)?.campaign || "(not set)").trim();
+-      const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0, sessionKeyEventRateWeighted: 0 };
++      const existing = byName.get(name.toLowerCase()) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0, sessionKeyEventRateWeighted: 0 };
+       const s = Number((r as any)?.sessions || 0);
+       const u = Number((r as any)?.users || 0);
+       const c = Number((r as any)?.conversions || 0);
+@@ -6273,7 +6261,7 @@ export default function GA4Metrics() {
+       existing.conversions += c;
+       existing.revenue += rev;
+       existing.sessionKeyEventRateWeighted += s * Number((r as any)?.sessionKeyEventRate || 0);
+-      byName.set(name, existing);
++      byName.set(name.toLowerCase(), existing);
+     }
+ 
+     const filteredRows = Array.from(byName.values())
+@@ -6281,7 +6269,7 @@ export default function GA4Metrics() {
+     return filteredRows
+       .map((c) => {
+         const sessions = Number(c.sessions || 0);
+-        const users = Number(c.users || 0);
++        const users = getGA4DistinctUsers(ga4Breakdown, ga4Breakdown?.startDate, ga4Breakdown?.endDate, c.name) ?? Number.NaN;
+         const conversions = Number(c.conversions || 0);
+         const revenue = Number(Number(c.revenue || 0).toFixed(2));
+         return {
+@@ -6291,7 +6279,7 @@ export default function GA4Metrics() {
+           revenue,
+           unroundedRevenue: c.revenue,
+           users,
+-          conversionRate: sessions > 0 ? (c.sessionKeyEventRateWeighted / sessions) * 100 : 0,
++          conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+           revenuePerSession: sessions > 0 ? revenue / sessions : 0,
+         };
+       })
+@@ -6315,6 +6303,7 @@ export default function GA4Metrics() {
+       .filter((row) => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(row.name))))
+       .map((row) => ({
+         ...row,
++        users: getGA4DistinctUsers(adComparisonBreakdown, adComparisonBreakdown?.startDate, adComparisonBreakdown?.endDate, row.name) ?? Number.NaN,
+         revenue: Number(Number(row.revenue || 0).toFixed(2)),
+         conversionRate: row.sessions > 0 ? (row.conversions / row.sessions) * 100 : 0,
+         revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
+@@ -7050,12 +7039,12 @@ export default function GA4Metrics() {
+                                   </button>
+                                 </TooltipTrigger>
+                                 <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+-                                  GA4 daily users summed from the initial historical import through the latest completed day; the same user may appear on more than one day.
++                                  Distinct GA4 users from the initial import through the latest completed day, across the selected campaigns. Returning users count once for this period.
+                                 </TooltipContent>
+                               </UITooltip>
+                             </div>
+                             <p className="text-2xl font-bold text-foreground mt-1">
+-                              {renderSummaryValue(formatNumber(overviewSummaryTotals.users || 0))}
++                              {overviewSummaryTotals.users === null ? "Unavailable" : renderSummaryValue(formatNumber(overviewSummaryTotals.users))}
+                             </p>
+                           </CardContent>
+                         </Card>
+@@ -7299,7 +7288,7 @@ export default function GA4Metrics() {
+                                               </button>
+                                             </TooltipTrigger>
+                                             <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+-                                              Users are estimated per row. The same person can appear in more than one row, so row totals may be higher than the true number of unique users.
++                                              Distinct GA4 users for this row and the displayed dates. A user can appear in multiple rows; do not add rows to calculate total users.
+                                             </TooltipContent>
+                                           </UITooltip>
+                                         </div>
+@@ -7316,7 +7305,7 @@ export default function GA4Metrics() {
+                                         <tr key={c.name || idx} className="border-b last:border-b-0">
+                                           <td className="px-2 py-2 truncate" title={c.name}>{c.name}</td>
+                                           <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
+-                                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
++                                          <td className="px-2 py-2 text-right tabular-nums">{Number.isFinite(c.users) ? formatNumber(c.users) : "Unavailable"}</td>
+                                           <td className="px-2 py-2 text-right tabular-nums">{formatConversionCredit(c.conversions)}</td>
+                                           <td className="px-2 py-2 text-right tabular-nums">{formatPct(c.conversionRate)}</td>
+                                           <td className="px-2 py-2 text-right tabular-nums">{formatMoney(revenue)}</td>
+@@ -7369,7 +7358,7 @@ export default function GA4Metrics() {
+                                             </button>
+                                           </TooltipTrigger>
+                                           <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+-                                            Users are estimated per row. The same person can appear in more than one row, so row totals may be higher than the true number of unique users.
++                                            Distinct GA4 users for this row and the displayed dates. A user can appear in multiple rows; do not add rows to calculate total users.
+                                           </TooltipContent>
+                                         </UITooltip>
+                                       </div>
+@@ -7406,7 +7395,9 @@ export default function GA4Metrics() {
+                     <div>
+                       <div className="mb-3">
+                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
+-                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope</p>
++                        <p className="text-sm text-muted-foreground/70">{ga4LandingPages?.meta?.historyLimited
++                          ? `Data from ${ga4LandingPages.meta.startDate} through ${ga4LandingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.`
++                          : "Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope"}</p>
+                       </div>
+                       <Card>
+                         <CardContent className="p-6">
+@@ -7434,7 +7425,7 @@ export default function GA4Metrics() {
+                                             </button>
+                                           </TooltipTrigger>
+                                           <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+-                                            Users are directional and may overlap across landing pages, so row totals are not expected to equal Summary Users.
++                                            Distinct GA4 users for each landing page and Source/Medium during the displayed dates. Users can appear on multiple pages; row counts must not be added together.
+                                           </TooltipContent>
+                                         </UITooltip>
+                                       </div>
+@@ -7472,7 +7463,7 @@ export default function GA4Metrics() {
+                             </div>
+                           ) : (
+                             <div className="text-sm text-muted-foreground/70">
+-                              Data coming soon
++                              No landing page data is available for the selected campaigns and dates.
+                             </div>
+                           )}
+                         </CardContent>
+@@ -7490,6 +7481,7 @@ export default function GA4Metrics() {
+                     platformContext="ga4"
+                     initialSource={editingSpendSource || undefined}
+                     onProcessed={() => {
++                      setSpendImportFollowUp({ scope: ga4PublicationScope, until: Date.now() + 900_000 });
+                       void refetchGA4PublicationStatus();
+                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=ga4`], exact: false });
+                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`], exact: false });
+@@ -8591,7 +8583,7 @@ export default function GA4Metrics() {
+                                   { name: "Total Conversions", metric: "conversions", unit: "count", description: "Total GA4 conversions for the selected period" },
+                                   { name: "Conversion Rate", metric: "conversionRate", unit: "%", description: "Conversions ÷ Sessions × 100" },
+                                   { name: "Engagement Rate", metric: "engagementRate", unit: "%", description: "Engaged Sessions ÷ Sessions × 100" },
+-                                  { name: "Total Users", metric: "users", unit: "count", description: "Total users for the selected period" },
++                                  { name: "Total Users", metric: "users", unit: "count", description: "Distinct GA4 users for the displayed dates and selected campaigns" },
+                                   { name: "Total Sessions", metric: "sessions", unit: "count", description: "Total sessions for the selected period" },
+                                   { name: "Create Custom Benchmark", metric: "__custom__", unit: SELECT_UNIT as any, _isCustom: true },
+                                 ].map((template) => {
+@@ -9547,6 +9539,7 @@ export default function GA4Metrics() {
+                     nativeRevenue={adComparisonNativeRevenue}
+                     chartCampaignRows={adComparisonChartRows}
+                     chartRevenue={adComparisonChartRevenue}
++                              chartUsers={overviewSummaryTotals.users}
+                     breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}
+                     breakdownUnavailable={adComparisonBreakdownUnavailable}
+                     breakdownStale={Boolean(adComparisonBreakdownError && adComparisonBreakdown !== undefined)}
+@@ -10460,9 +10453,9 @@ export default function GA4Metrics() {
+                     },
+                     {
+                       name: "Total Users",
+-                      formula: "GA4 total users",
++                      formula: "GA4 totalUsers for the complete reporting period",
+                       unit: "count",
+-                      description: "Total users for the selected period",
++                      description: "Distinct GA4 users for the displayed dates and selected campaigns",
+                     },
+                     {
+                       name: "Create Custom KPI",
+diff --git a/client/src/pages/trend-analysis.tsx b/client/src/pages/trend-analysis.tsx
+index f84c0df4..3047d9ee 100644
+--- a/client/src/pages/trend-analysis.tsx
++++ b/client/src/pages/trend-analysis.tsx
+@@ -1,4 +1,5 @@
+ import { useParams } from "wouter";
++import { getGA4DistinctUsers } from "@shared/ga4-traffic-window";
+ import { useQuery, keepPreviousData } from "@tanstack/react-query";
+ import { TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare } from "lucide-react";
+ import Navigation from "@/components/layout/navigation";
+@@ -505,13 +506,13 @@ export default function TrendAnalysis() {
+   const currentTraffic = exactCumulativeTraffic?.current || (() => {
+     if (!cumulativeGA4CurrentCompatible) return null;
+     const totals = ga4Daily?.overviewTotals || {};
+-    if ([totals.users, totals.sessions, totals.conversions, totals.engagedSessions]
++    if ([totals.sessions, totals.conversions, totals.engagedSessions]
+       .some((value) => value === null || typeof value === "undefined" || value === "")) return null;
+-    const users = Number(totals.users);
++    const users = totals.users == null ? Number.NaN : Number(totals.users);
+     const sessions = Number(totals.sessions);
+     const conversions = Number(totals.conversions);
+     const engagedSessions = Number(totals.engagedSessions);
+-    if ([users, sessions, conversions, engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
++    if ([sessions, conversions, engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
+     return {
+       users, sessions, conversions, engagedSessions,
+       engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : null,
+@@ -737,7 +738,9 @@ export default function TrendAnalysis() {
+       const clicks = hasMetric("clicks") ? sum(items, "clicks") : null;
+       const impressions = hasMetric("impressions") ? sum(items, "impressions") : null;
+       const sessions = hasMetric("sessions") ? sum(items, "sessions") : null;
+-      const users = hasMetric("users") ? sum(items, "users") : null;
++      const ga4Source = aggregate?.sources?.find((source: any) => source.id === "ga4");
++      const dates = items.map(row => String(row.date).slice(0, 10)).sort();
++      const users = ga4Source ? getGA4DistinctUsers(ga4Source.usersReport, dates[0], dates.at(-1)!) : hasMetric("users") ? sum(items, "users") : null;
+       return {
+         spend,
+         revenue,
+@@ -1045,6 +1048,11 @@ export default function TrendAnalysis() {
+     const webMetricTotal = (metricName: string): number | null => {
+       const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(metricName));
+       if (compatibleSources.length === 0) return null;
++      const ga4Source = compatibleSources.find((source: any) => source.id === "ga4");
++      if (metricName === "users" && ga4Source) {
++        const dates = filterAggregateTrendWindow(ga4Source.dailyRows || [], aggregate, perfDays).map((row: any) => String(row.date).slice(0, 10)).sort();
++        return getGA4DistinctUsers(ga4Source.usersReport, dates[0], dates.at(-1)!);
++      }
+       return compatibleSources.reduce((total: number, source: any) => total + filterAggregateTrendWindow(
+         Array.isArray(source?.dailyRows) ? source.dailyRows : [], aggregate, perfDays,
+       ).reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[metricName]) || 0), 0), 0);
+@@ -1137,7 +1145,8 @@ export default function TrendAnalysis() {
+       const sum = (metricName: string) => hasMetric(metricName)
+         ? currentRows.reduce((total: number, row: any) => total + (Number(row?.metrics?.[metricName]) || 0), 0)
+         : null;
+-      const users = sum("users");
++      const userDates = currentRows.map((row: any) => String(row.date).slice(0, 10)).sort();
++      const users = source.id === "ga4" ? getGA4DistinctUsers(source.usersReport, userDates[0], userDates.at(-1)!) : sum("users");
+       const sessions = sum("sessions");
+       const impressions = sum("impressions");
+       const clicks = sum("clicks");
+@@ -1587,7 +1596,7 @@ export default function TrendAnalysis() {
+                         authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpc") || { label: 'CPC', value: null, change: null, invertColor: true },
+                         authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpm") || { label: 'CPM', value: null, change: null, invertColor: true },
+                         { label: 'Sessions', value: authoritativeHeadlineCurrent.sessions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.sessions), change: headlineComparison.sessions },
+-                        { label: usesCumulativeGA4Consumer || responseTrendAggregate?.sources?.some((source: any) => source.id === 'ga4') ? 'Users (daily sum)' : 'Users', value: authoritativeHeadlineCurrent.users === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.users), change: headlineComparison.users },
++                        { label: 'Users', value: authoritativeHeadlineCurrent.users === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.users), change: headlineComparison.users },
+                         { label: 'CVR', value: authoritativeHeadlineCurrent.cvr === null ? null : formatPct(authoritativeHeadlineCurrent.cvr), change: headlineComparison.cvr },
+                         { label: 'Engagement Rate', value: authoritativeHeadlineCurrent.engagementRate === null ? null : formatPct(authoritativeHeadlineCurrent.engagementRate), change: headlineComparison.engagementRate },
+                         { label: 'CTR', value: authoritativeHeadlineCurrent.ctr === null ? null : formatPct(authoritativeHeadlineCurrent.ctr), change: headlineComparison.ctr },
+diff --git a/server/analytics.ts b/server/analytics.ts
+index 9d9bb8b8..15cdd063 100644
+--- a/server/analytics.ts
++++ b/server/analytics.ts
+@@ -10,6 +10,7 @@ type CampaignFilter = string | string[] | undefined;
+ // Owned by one scheduler connection attempt; never persisted or shared across requests.
+ export type GA4DailyTrafficCapture = {
+   campaignId: string;
++  primaryScope?: { propertyId: string; startDate: string; endDate: string; campaigns: string[]; throughDate: string };
+   captured?: {
+     propertyId: string; startDate: string; endDate: string; currencyCode: string;
+     campaigns: Array<{ name: string; rows: any[] }>;
+@@ -1439,6 +1440,80 @@ export class GoogleAnalytics4Service {
+     }
+   }
+ 
++  // No date/campaign/device dimensions on aggregate requests: GA4 performs
++  // deduplication across the entire selected scope, including fallback dates.
++  async getDistinctUsersWithToken(
++    propertyId: string, accessToken: string, startDate: string, endDate: string,
++    campaignFilter: CampaignFilter, primaryScope?: GA4DailyTrafficCapture['primaryScope'],
++  ) {
++    const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
++    const names = this.normalizeCampaignFilter(campaignFilter);
++    if (!names.length || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
++      throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
++    }
++    const run = async (filter: any, from: string, to: string, daily = false): Promise<Array<{ date: string; users: number }>> => {
++      const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
++        method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
++        body: JSON.stringify({ dateRanges: [{ startDate: from, endDate: to }],
++          ...(daily ? { dimensions: [{ name: 'date' }], orderBys: [{ dimension: { dimensionName: 'date' } }] } : {}),
++          ...filter, metrics: [{ name: 'totalUsers' }], limit: 100000 }),
++      });
++      if (!response.ok) throw new Error(`GA4 distinct users API error: ${await response.text()}`);
++      const data = await response.json();
++      const rows = Array.isArray(data?.rows) ? data.rows : [];
++      if (Number(data?.rowCount ?? rows.length) !== rows.length || (!daily && rows.length > 1) ||
++          rows.some((row: any) => row.metricValues?.[0]?.value == null || row.metricValues[0].value === '' ||
++            !Number.isSafeInteger(Number(row.metricValues[0].value)) || Number(row.metricValues[0].value) < 0)) {
++        throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
++      }
++      const values = rows.map((row: any) => ({ date: daily ? String(row.dimensionValues?.[0]?.value || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3') : '', users: Number(row.metricValues[0].value) }));
++      if (daily && (new Set(values.map((row: any) => row.date)).size !== values.length ||
++          values.some((row: any) => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < from || row.date > to))) throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
++      return values;
++    };
++    if (primaryScope && (primaryScope.propertyId !== normalizedPropertyId || primaryScope.startDate !== startDate ||
++        primaryScope.endDate !== endDate || JSON.stringify(primaryScope.campaigns) !== JSON.stringify(names))) {
++      throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
++    }
++    const primaryDates = primaryScope ? [] : await run(this.buildCampaignDimensionFilter(names, 'sessionCampaignName'), startDate, endDate, true);
++    const throughDate = primaryScope?.throughDate ?? primaryDates.map(row => row.date).sort().at(-1) ?? '';
++    const scopeFor = (selected: string | string[]) => {
++      const primary = this.buildCampaignDimensionFilter(selected, 'sessionCampaignName')!.dimensionFilter;
++      const fallback = this.buildExactUtmCampaignPageLocationFilter(selected)!.dimensionFilter;
++      if (!throughDate) return { dimensionFilter: fallback };
++      if (throughDate >= endDate) return { dimensionFilter: primary };
++      const dateFilter = { filter: { fieldName: 'date', numericFilter: { operation: 'LESS_THAN_OR_EQUAL', value: { int64Value: throughDate.replace(/-/g, '') } } } };
++      return { dimensionFilter: { orGroup: { expressions: [
++        { andGroup: { expressions: [primary, dateFilter] } },
++        { andGroup: { expressions: [fallback, { notExpression: dateFilter }] } },
++      ] } } };
++    };
++    const fullScope = scopeFor(names);
++    const [aggregate, dailyRows] = await Promise.all([run(fullScope, startDate, endDate), run(fullScope, startDate, endDate, true)]);
++    const byDate = new Map(dailyRows.map(row => [row.date, row.users]));
++    if (byDate.size !== dailyRows.length || dailyRows.some(row => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < startDate || row.date > endDate)) {
++      throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
++    }
++    const daily: Array<{ date: string; users: number }> = [];
++    for (let date = startDate; date <= endDate; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) {
++      daily.push({ date, users: byDate.get(date) ?? 0 });
++    }
++    const total = aggregate[0]?.users ?? 0;
++    const campaigns: Array<{ name: string; users: number }> = [];
++    for (let i = 0; i < names.length; i += 4) campaigns.push(...await Promise.all(names.slice(i, i + 4).map(async name => ({ name, users: names.length === 1 ? total : (await run(scopeFor(name), startDate, endDate))[0]?.users ?? 0 }))));
++    const windows: Array<{ startDate: string; endDate: string; users: number }> = [];
++    for (const days of [7, 14, 30, 90]) {
++      const previousEnd = new Date(Date.parse(endDate) - days * 86400000).toISOString().slice(0, 10);
++      const recentStart = new Date(Date.parse(endDate) - (days - 1) * 86400000).toISOString().slice(0, 10);
++      for (const [from, to] of [[startDate, previousEnd], [recentStart, endDate]]) {
++        if (from < startDate || to < startDate || (from === startDate && to === endDate)) continue;
++        windows.push({ startDate: from, endDate: to, users: 0 });
++      }
++    }
++    for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { window.users = (await run(fullScope, window.startDate, window.endDate))[0]?.users ?? 0; }));
++    return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows };
++  }
++
+   async getMetricsWithToken(
+     propertyId: string,
+     accessToken: string,
+@@ -1832,6 +1907,7 @@ export class GoogleAnalytics4Service {
+       currencyCode?: string;
+       overviewCampaignAttribution?: Record<string, string | number | boolean>;
+       insightsLandingCoverage?: Record<string, string | number | boolean>;
++      distinctUsers?: Awaited<ReturnType<GoogleAnalytics4Service['getDistinctUsersWithToken']>>;
+     };
+   }> {
+     const connection = await storage.getGA4Connection(campaignId, propertyId);
+@@ -2644,12 +2720,15 @@ export class GoogleAnalytics4Service {
+     const resolvedRevenue = hasAggregateTotals ? Number.parseFloat(aggregateMetricValues[3]?.value || '0') || 0 : totalRevenue;
+     const resolvedEngagedSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[4]?.value || '0', 10) || 0 : totalEngagedSessions;
+ 
++    const distinctUsers = preferOverviewCampaignTotals && this.normalizeCampaignFilter(campaignFilter).length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && endDate
++      ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope)
++      : undefined;
+     return {
+       rows,
+       totals: {
+         sessions: totalSessions,
+         sessionsRaw: totalSessions,
+-        users: resolvedUsers,
++        users: distinctUsers?.total ?? resolvedUsers,
+         conversions: resolvedConversions,
+         revenue: Number(resolvedRevenue.toFixed(2)),
+         engagedSessions: resolvedEngagedSessions,
+@@ -2664,6 +2743,7 @@ export class GoogleAnalytics4Service {
+         ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
+         ...(overviewCampaignAttribution ? { overviewCampaignAttribution } : {}),
+         ...(insightsLandingCoverage ? { insightsLandingCoverage } : {}),
++        ...(distinctUsers ? { distinctUsers } : {}),
+       },
+     };
+   }
+@@ -3142,7 +3222,7 @@ export class GoogleAnalytics4Service {
+     currencyCode?: string,
+     overviewDailyTraffic?: GA4DailyTrafficCapture,
+   ): Promise<any[]> {
+-    if (overviewDailyTraffic) delete overviewDailyTraffic.captured;
++    if (overviewDailyTraffic) { delete overviewDailyTraffic.captured; delete overviewDailyTraffic.primaryScope; }
+     try {
+       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+       const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
+@@ -3313,6 +3393,10 @@ export class GoogleAnalytics4Service {
+         (latest: string, row: any) => providerDateKey(row) > latest ? providerDateKey(row) : latest,
+         "",
+       );
++      if (overviewDailyTraffic) overviewDailyTraffic.primaryScope = {
++        propertyId: normalizedPropertyId, startDate: dateRange, endDate, campaigns: this.normalizeCampaignFilter(campaignFilter),
++        throughDate: latestPrimaryDateKey.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'),
++      };
+       if (pageLocationCampaignFilter && (primaryRows.length === 0 || (completedEndDateKey && latestPrimaryDateKey < completedEndDateKey))) {
+         const fallbackStartDate = primaryRows.length > 0 && /^[0-9]{8}$/.test(latestPrimaryDateKey)
+           ? new Date(Date.UTC(
+diff --git a/server/ga4-daily-scheduler.ts b/server/ga4-daily-scheduler.ts
+index 3e447f26..3d9fd460 100644
+--- a/server/ga4-daily-scheduler.ts
++++ b/server/ga4-daily-scheduler.ts
+@@ -392,6 +392,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
+             row.isSimulated === false && normalizeGA4InsightsDailyMetricValues(row));
+         const canUseRecentWindow = process.env.GA4_INCREMENTAL_REFRESH_ENABLED !== "false" && !opts.includeTargetDraft && completeHistory &&
+           previousOverview?.windowStart === overviewStartDate && previousOverview?.windowEnd === reportingWindow.endDate &&
++          (previousOverview?.campaignBreakdown as any)?.meta?.distinctUsers?.version === 1 &&
+           previousHistory?.version === 1 && previousHistory?.scope === historyScope && previousHistory?.reportingDate === reportingWindow.endDate;
+         const recentStartDate = getReportingDateWindow(14, c.reportingTimeZone, now).startDate;
+         let storageStartDate = hasCampaignFilter
+@@ -485,6 +486,12 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
+                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
+               )),
+             ]);
++            const distinctDaily = new Map(campaignBreakdown.meta.distinctUsers?.daily.map(row => [row.date, row.users]));
++            if (campaignBreakdown.meta.distinctUsers?.version !== 1 || completeRows.some(row => !distinctDaily.has(String(row.date)))) {
++              throw Object.assign(new Error('GA4_DISTINCT_USERS_UNVERIFIED'), { ga4DailyStage: 'overview_users' });
++            }
++            // Correct only Users; sessions, conversion credits and financial inputs stay unchanged.
++            for (const row of completeRows) row.users = distinctDaily.get(String(row.date))!;
+             const overviewRowsByDate = new Map(
+               (Array.isArray(existingOverviewRows) ? existingOverviewRows : [])
+                 .filter((row: any) => String(row.date) < storageStartDate)
+@@ -523,6 +530,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
+             const eventConversionSource = String((conversionEvents as any)?._reconciliationSource || "unknown")
+               .replace(/[^a-z0-9_]/gi, "_");
+             const reconciliationMismatches = [
++              overviewRows.some(row => Number(row.users) !== distinctDaily.get(String(row.date))) ? "daily_users" : "",
+               Number(breakdownTotals.sessions || 0) !== expected.sessions ? "breakdown_sessions" : "",
+               !conversionCreditsMatch(Number(breakdownTotals.conversions || 0), expected.conversions, Math.max(1, overviewRows.length + (campaignBreakdown?.rows?.length || 0))) ? "breakdown_conversions" : "",
+               Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ? "breakdown_revenue" : "",
+@@ -1300,8 +1308,11 @@ export async function recoverInterruptedGA4Refreshes(targetCampaignId?: string):
+   const work = (await storage.getRecoverableGA4RefreshWork()).filter(item => !targetCampaignId || item.campaignId === targetCampaignId);
+   if (!work.length || (global as any).__ga4DailyRefreshInProgress || stoppedAt !== ga4DailySchedulerStatus.stoppedAt) return;
+   const completed = new Set<string>();
++  const recoveryFailures = new Set<string>();
+   alignedCampaignIdsInCurrentRun = completed;
+   (global as any).__ga4DailyRefreshInProgress = true;
++  // The health monitor needs the start of this active batch, not a previous scheduled run.
++  ga4DailySchedulerStatus.lastRunStartedAt = new Date();
+   beginFinancialDailySnapshotRefreshObservation("ga4_daily");
+   const campaigns = new Set<string>();
+   const pending = work.filter(item => {
+@@ -1330,12 +1341,31 @@ export async function recoverInterruptedGA4Refreshes(targetCampaignId?: string):
+           await runGA4DailyRefreshPipelineForTrigger("recovery", { campaignId: item.campaignId, workDueAt: item.dueAt,
+             suppressAlerts: item.suppressAlerts, refreshFinancialSources: true, revenueChange, ...(initialImport ? { initialImportWorkId: item.id } : {}) }, completed);
+         } catch (error: any) {
++          recoveryFailures.add(item.campaignId);
+           console.warn(`[GA4 Daily] Recovery attempt failed for campaign ${item.campaignId}:`, error?.message || error);
+         }
+       }
+     }));
+   } finally {
+-    if (completed === alignedCampaignIdsInCurrentRun) (global as any).__ga4DailyRefreshInProgress = false;
++    if (completed === alignedCampaignIdsInCurrentRun) {
++      // Only full, owned publication resolves that campaign's recorded stage failure.
++      if (ga4DailySchedulerStatus.lastRunStatus === "failed" && ga4DailySchedulerStatus.lastAlignedRefreshFailures.length > 0 &&
++          /^Aligned GA4 publication failed for \d+ campaign stage\(s\)$/.test(ga4DailySchedulerStatus.lastError || "")) {
++        const recovered = new Set(hashEvidenceIds(Array.from(completed)));
++        ga4DailySchedulerStatus.lastAlignedRefreshFailures = ga4DailySchedulerStatus.lastAlignedRefreshFailures
++          .filter(failure => !recovered.has(failure.campaignIdHash));
++        for (const campaignIdHash of hashEvidenceIds(Array.from(recoveryFailures))) {
++          if (!ga4DailySchedulerStatus.lastAlignedRefreshFailures.some(failure => failure.campaignIdHash === campaignIdHash))
++            ga4DailySchedulerStatus.lastAlignedRefreshFailures.push({ campaignIdHash, stage: "campaign_pipeline_failed" });
++        }
++        if (ga4DailySchedulerStatus.lastAlignedRefreshFailures.length === 0) {
++          ga4DailySchedulerStatus.lastRunStatus = "success";
++          ga4DailySchedulerStatus.lastError = null;
++          ga4DailySchedulerStatus.lastRunFinishedAt = new Date();
++        }
++      }
++      (global as any).__ga4DailyRefreshInProgress = false;
++    }
+   }
+ }
+ 
+diff --git a/server/ga4-kpi-benchmark-jobs.ts b/server/ga4-kpi-benchmark-jobs.ts
+index a8cc918c..bcaadba8 100644
+--- a/server/ga4-kpi-benchmark-jobs.ts
++++ b/server/ga4-kpi-benchmark-jobs.ts
+@@ -10,7 +10,7 @@ import {
+   resolveGA4KpiMetricIdentity,
+ } from "../shared/ga4-kpi-metric-identity";
+ import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+-import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
++import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+ import { refreshCampaignCurrentValuesForCampaign, getCampaignMetricTotals } from "./utils/campaign-current-values";
+ import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+ import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope } from "../shared/ga4-insights";
+@@ -356,6 +356,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
+       ]);
+       const trafficInputsAvailable = (Array.isArray(reportingRows) && reportingRows.length > 0) || isYesopMockProperty(propertyId);
+       let trafficTotals = summarizeGA4TrafficRows(Array.isArray(reportingRows) ? reportingRows : []);
++      const distinctUsers = isYesopMockProperty(propertyId) ? trafficTotals.users
++        : getGA4DistinctUsers(await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null), reportingWindow.startDate, reportingWindow.endDate);
++      if (!isYesopMockProperty(propertyId)) trafficTotals.users = distinctUsers ?? 0;
+       if (isYesopMockProperty(propertyId)) {
+         const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue, 30);
+         const baselineEngagedSessions = Math.round(baseline.sessions * baseline.engagementRate);
+@@ -518,6 +521,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
+         spend: round2(spendValue ?? 0),
+       } : null;
+       const inputsForMetric = (metric: string) => {
++        if (metric === "users" && distinctUsers === null) return null;
+         if (!isGA4FinancialKpiMetric(metric)) return inputs;
+         const dependencies = getGA4KpiMetricDependencies(metric);
+         if (!financialInputs) return null;
+@@ -561,6 +565,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
+           const existingPts = filterGA4InsightsHistoryByScope(Array.isArray(existing) ? existing : [], historyScopeMarker)
+             .map((p: any) => ({
+               id: String(p?.id || ""),
++              notes: String(p?.notes || ""),
+               value: Number(p?.value || 0) || 0,
+               recordedAt: p?.recordedAt ? new Date(p.recordedAt) : new Date(0),
+             }))
+@@ -571,7 +576,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
+           if (hasExactDailyRow && (sameDatePts.length > 1 || (sameDatePts.length === 1 && !sameDatePts[0].id))) {
+             throw new Error("KPI same-date progress is ambiguous");
+           }
+-          const otherDatePts = existingPts.filter((p) => isoDateUTC(p.recordedAt) !== date);
++          const otherDatePts = existingPts.filter((p) => isoDateUTC(p.recordedAt) !== date &&
++            (metricOrName !== "users" || p.notes.includes("users:totalUsers:v1")));
+           const progressData = hasExactDailyRow ? (() => {
+             const prev = otherDatePts.length > 0 ? otherDatePts[0].value : null;
+             const newPoint = { value: valueNum, recordedAt };
+@@ -582,7 +588,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
+               rollingAverage30d: String(computeRollingAverage(otherDatePts, 30, newPoint, metricOrName)),
+               trendDirection: computeTrendDirection(prev, valueNum),
+               recordedAt,
+-              notes: `auto:ga4_daily:${date};${historyScopeMarker}`,
++              notes: `auto:ga4_daily:${date};${historyScopeMarker}${metricOrName === "users" ? ";users:totalUsers:v1" : ""}`,
+             };
+           })() : null;
+ 
+@@ -639,7 +645,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
+           if (historyResult.status === "rejected") throw historyResult.reason;
+           const history = historyResult.value;
+           const hist = filterGA4InsightsHistoryByScope(Array.isArray(history) ? history : [], historyScopeMarker);
+-          const historyNotes = `auto:ga4_daily:${date};${historyScopeMarker}`;
++          const historyNotes = `auto:ga4_daily:${date};${historyScopeMarker}${metricKey === "users" ? ";users:totalUsers:v1" : ""}`;
+           const already = hist.some((h: any) => h.notes === historyNotes);
+           if (hasExactDailyRow) {
+             const benchmarkValue = Number((b as any)?.benchmarkValue || 0) || 0;
+diff --git a/server/ga4-scheduled-report-pdf.ts b/server/ga4-scheduled-report-pdf.ts
+index 7a6f2207..0ada53fa 100644
+--- a/server/ga4-scheduled-report-pdf.ts
++++ b/server/ga4-scheduled-report-pdf.ts
+@@ -6,7 +6,7 @@ import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveG
+ import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct, formatConversionCredit } from "../shared/metric-math";
+ import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
+ import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+-import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
++import { getGA4DistinctUsers, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+ import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
+ import { computeAttainmentPct, computeEffectiveDeltaPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiDataSufficiency, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
+ import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+@@ -829,6 +829,7 @@ async function buildGA4ReportPayload(report: any) {
+   dailySummedTotals.revenue = Number(dailySummedTotals.revenue.toFixed(2));
+   dailySummedTotals.engagementRate = dailySummedTotals.sessions > 0 ? dailySummedTotals.engagedSessions / dailySummedTotals.sessions : 0;
+   const overviewSummedTotals = summarizeGA4TrafficRows(overviewDailyRows);
++  const overviewUsers = getGA4DistinctUsers(breakdown, overviewStartDate, dailyEnd);
+   const latestOverview = useSavedOverview ? await storage.getGA4OverviewSnapshot(campaignId, propertyId) : null;
+   if (useSavedOverview && (failedParts.has("persisted daily metrics") || failedParts.has("persisted Overview Summary metrics") ||
+       !latestOverview || String(latestOverview.updatedAt) !== String(savedOverview!.updatedAt) ||
+@@ -871,7 +872,7 @@ async function buildGA4ReportPayload(report: any) {
+     sessions: Number(overviewTotalsSource?.sessions || 0),
+     conversions: Number(overviewTotalsSource?.conversions || 0),
+     revenue: Number(overviewTotalsSource?.revenue || 0),
+-    users: Number(overviewTotalsSource?.users || 0),
++    users: overviewUsers,
+     engagementRate: Number(overviewTotalsSource?.engagementRate || 0),
+   };
+   const ga4ToDateFinancialTotals = {
+@@ -997,8 +998,9 @@ async function buildGA4ReportPayload(report: any) {
+       const conversions = Number(row.conversions || 0);
+       return {
+         ...row,
++        users: getGA4DistinctUsers(breakdown, overviewStartDate, dailyEnd, row.name),
+         revenue,
+-        conversionRate: sessions > 0 ? (row.sessionKeyEventRateWeighted / sessions) * 100 : 0,
++        conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
+       };
+     })
+@@ -1043,6 +1045,7 @@ async function buildGA4ReportPayload(report: any) {
+       const conversions = Number(row.conversions || 0);
+       return {
+         ...row,
++        users: adComparisonWindow ? getGA4DistinctUsers(adComparisonBreakdown, adComparisonWindow.startDate, adComparisonWindow.endDate, row.name) : null,
+         revenue,
+         conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
+@@ -1094,6 +1097,7 @@ async function buildGA4ReportPayload(report: any) {
+       ...platformKPIs.map(async (target: any) => {
+         try {
+           const history = filterGA4InsightsHistoryByScope(await storage.getKPIProgress(target.id), marker)
++            .filter(point => resolveGA4KpiMetricIdentity(target.metric, target.name) !== "users" || String(point.notes || "").includes("users:totalUsers:v1"))
+             .filter(point => point.kpiId === target.id && Number.isFinite(new Date(point.recordedAt).getTime()) && new Date(point.recordedAt).toISOString().slice(0, 10) <= dailyEnd && String(point.value ?? "").trim() !== "" && Number.isFinite(Number(point.value)));
+           insightsKpiHistory.set(String(target.id), history);
+         } catch { failures.add("KPI"); }
+@@ -1101,6 +1105,7 @@ async function buildGA4ReportPayload(report: any) {
+       ...benchmarks.map(async (target: any) => {
+         try {
+           const history = filterGA4InsightsHistoryByScope(await storage.getBenchmarkHistory(target.id), marker)
++            .filter(point => resolveGA4KpiMetricIdentity(target.metric, target.name) !== "users" || String(point.notes || "").includes("users:totalUsers:v1"))
+             .filter(point => point.benchmarkId === target.id && Number.isFinite(new Date(point.recordedAt).getTime()) && new Date(point.recordedAt).toISOString().slice(0, 10) <= dailyEnd && String(point.variance ?? "").trim() !== "" && Number.isFinite(Number(point.variance)));
+           insightsBenchmarkHistory.set(String(target.id), history);
+         } catch { failures.add("Benchmark"); }
+@@ -1134,7 +1139,7 @@ async function buildGA4ReportPayload(report: any) {
+   }
+   const currency = String((campaign as any)?.currency || "USD");
+   const formatMoney = (value: number) => `${currency} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+-  const formatNumber = (value: number) => `${Math.round(Number(value || 0)).toLocaleString()}`;
++  const formatNumber = (value: number | null) => value == null || !Number.isFinite(value) ? "Unavailable" : `${Math.round(value).toLocaleString()}`;
+ 
+   const payload = {
+     campaign,
+@@ -1184,6 +1189,9 @@ async function buildGA4ReportPayload(report: any) {
+     },
+     reportCumulativeWindow,
+     verificationInputs: {
++      usersDefinition: "ga4_totalUsers_distinct_v1",
++      distinctUsers: (breakdown as any)?.meta?.distinctUsers ?? null,
++      comparisonRateDefinition: "conversions_per_session",
+       scope: { campaignId, propertyId, campaignFilter, currency: campaignCurrency, reportingTimeZone: reportCumulativeWindow.reportingTimeZone },
+       trafficWindow: reportCumulativeWindow,
+       financialWindow: { startDate: financialStartDate, endDate: financialEndDate, importedStartDate: importedRevenueStartDate, spendStartDate: spendSourceStartDate },
+@@ -1501,7 +1509,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+         payload.adComparisonChartRows.map((row: any) => [
+           String(row?.name || "(not set)"),
+           formatNumber(row?.sessions || 0),
+-          formatNumber(row?.users || 0),
++          formatNumber(row?.users ?? null),
+           formatConversionCredit(row?.conversions || 0),
+           formatPct(Number(row?.conversionRate || 0)),
+           formatMoney(Number(row?.revenue || 0)),
+@@ -1524,7 +1532,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+           formatPct(Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0),
+         ]),
+         [52, 44, 22, 20, 28, 26],
+-        COLORS.overview
++        COLORS.overview,
++        payload.landingPages?.meta?.historyLimited
++          ? `Data from ${payload.landingPages.meta.startDate} through ${payload.landingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.` : undefined,
+       );
+     }
+     if (includeConversionEvents) {
+@@ -1598,25 +1608,24 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+       const key = String(row?.name || "").toLocaleLowerCase("en-US");
+       const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
+       current.sessions += Number(row?.sessions || 0);
+-      current.users += Number(row?.users || 0);
++      current.users = row.users;
+       current.conversions += Number(row?.conversions || 0);
+       current.revenue += Number(row?.revenue || 0);
+-      current.conversionRate += Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
+       chartSummaryByCampaign.set(key, current);
+     }
+     const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
+       ...row,
+-      conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversionRate || 0) / Number(row.sessions) : 0,
++      conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversions || 0) / Number(row.sessions) * 100 : 0,
+     }));
+     const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
+       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
+       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
+       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
+-    const totalMetric = selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
++    const totalMetric = selectedMetric === "users" ? payload.breakdownTotals.users ?? Number.NaN : selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
+       ? (() => {
+           const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
+-          const weightedRates = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversionRate || 0) * Number(row?.sessions || 0), 0);
+-          return totalSessions > 0 ? weightedRates / totalSessions : 0;
++          const totalConversions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversions || 0), 0);
++          return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+         })()
+       : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
+     const leaderMetric = selectedMetric;
+@@ -1641,6 +1650,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+       y += 30;
+     }
+     if (includeTopCampaigns && sortedByMetric.length > 0) {
++      if (selectedMetric === "users" && sortedByMetric.some(row => row.users == null || !Number.isFinite(row.users))) throw new Error("Distinct GA4 Users are unavailable for this report window");
+       const chartData = sortedByMetric.slice(0, 10).map((row: any) => ({ name: String(row?.name || "(not set)"), value: Number(row?.[selectedMetric] || 0) }));
+       checkPage(70);
+       doc.setFillColor(...COLORS.white); doc.setDrawColor(...COLORS.cardBorder); doc.roundedRect(MX, y, CW, 52, 3, 3, "FD");
+@@ -1664,10 +1674,10 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+       doc.setFontSize(6.5); doc.setTextColor(...COLORS.textTert); doc.text(formatMetricValue(selectedMetric, maxValue), chartX + chartW, chartY + 1, { align: "right" });
+       y += 58;
+       const summaryMetricLabel = selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric]}`;
+-      metricCards([[summaryMetricLabel, formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
++      metricCards([[summaryMetricLabel, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
+       if (selectedMetric === "users") {
+         doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textTert);
+-        doc.text("Users are summed campaign-row counts and are non-additive.", MX, y);
++        doc.text("Users are distinct within each campaign and period; campaign counts can overlap.", MX, y);
+         y += 5;
+       }
+     }
+@@ -1682,7 +1692,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+       const allCampaignRows = rows.map((row: any, index: number) => ({ row, index }));
+       allCampaignRows.forEach(({ row, index }: { row: any; index: number }) => {
+         checkPage(9);
+-        const sessions = Number(row?.sessions || 0), users = Number(row?.users || 0);
++        const sessions = Number(row?.sessions || 0), users = row?.users == null ? null : Number(row.users);
+         const conversions = Number(row?.conversions || 0), revenue = Number(row?.revenue || 0);
+         const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+         doc.setDrawColor(...COLORS.divider); doc.setLineWidth(0.2); doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+@@ -1795,7 +1805,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+         ["METRIC", "VALUE", "NOTE"],
+         [
+           ["Sessions", formatNumber(payload.breakdownTotals.sessions), "Current GA4 total"],
+-          ["Users", formatNumber(payload.breakdownTotals.users), "Sum of daily users"],
++          ["Users", formatNumber(payload.breakdownTotals.users), "Distinct users for the reporting period"],
+           ["Conversions", formatConversionCredit(payload.breakdownTotals.conversions), ""],
+           ["Revenue", formatMoney(payload.financialRevenue), "Total across revenue sources"],
+           ...(payload.financialSpend > 0 ? [["Total Spend", formatMoney(payload.financialSpend), ""]] : []),
+diff --git a/server/ga4-source-verification.ts b/server/ga4-source-verification.ts
+index ca02f1c9..ff53ccfa 100644
+--- a/server/ga4-source-verification.ts
++++ b/server/ga4-source-verification.ts
+@@ -117,13 +117,28 @@ export async function checkGA4SourceNumbers(scope: { campaignId: string; connect
+   // Complete GA4 reports omit zero-activity dates. The API helper rejects partial/thresholded/sampled reports first.
+   const expectedDaily: any[] = [];
+   for (let date = scope.startDate; date <= scope.endDate; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) {
+-    expectedDaily.push(byDate.get(date) || { date, sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0, engagedSessions: 0, engagementRate: 0 });
++    expectedDaily.push({ ...(byDate.get(date) || { date, sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0, engagedSessions: 0, engagementRate: 0 }) });
+   }
+-  const checks = compareProviderRows("GA4 daily inputs / Insights / Trend Analysis", expectedDaily, savedDaily, ["date"],
+-    ["sessions", "users", "pageviews", "conversions", "revenue", "engagedSessions", "engagementRate"]);
+   const provider = await service.getAcquisitionBreakdown(campaignId, facade, scope.startDate, connection.propertyId,
+     breakdownLimit, scope.filter, scope.endDate, true, false, scope.currency, true, capture);
+   const saved = scope.publication.campaignBreakdown;
++  const distinctUsers = provider.meta.distinctUsers;
++  const savedUsers = saved?.meta?.distinctUsers;
++  const dailyUsers = new Map(distinctUsers?.daily.map(row => [row.date, row.users]));
++  const checks: NumberCheck[] = [];
++  if (distinctUsers?.version !== 1 || savedUsers?.version !== 1 || distinctUsers.metric !== 'totalUsers' || savedUsers.metric !== 'totalUsers' || distinctUsers.propertyId !== connection.propertyId ||
++      savedUsers.propertyId !== connection.propertyId || distinctUsers.startDate !== scope.startDate || savedUsers.startDate !== scope.startDate ||
++      distinctUsers.endDate !== scope.endDate || savedUsers.endDate !== scope.endDate || expectedDaily.some(row => !dailyUsers.has(row.date))) {
++    checks.push({ section: "Users across sections and reports", code: "DISTINCT_USERS_SCOPE_UNVERIFIED", status: "unverified" });
++  } else {
++    for (const row of expectedDaily) row.users = dailyUsers.get(row.date);
++    checks.push(compareNumber("Users across sections and reports", "SOURCE_DISTINCT_USERS", distinctUsers.total, savedUsers.total));
++    checks.push(...compareProviderRows("Daily distinct Users", distinctUsers.daily, savedUsers.daily, ["date"], ["users"]));
++    checks.push(...compareProviderRows("Campaign Users", distinctUsers.campaigns, savedUsers.campaigns, ["name"], ["users"]));
++    checks.push(...compareProviderRows("Historical Users comparisons", distinctUsers.windows, savedUsers.windows, ["startDate", "endDate"], ["users"]));
++  }
++  checks.push(...compareProviderRows("GA4 daily inputs / Insights / Trend Analysis", expectedDaily, savedDaily, ["date"],
++    ["sessions", "users", "pageviews", "conversions", "revenue", "engagedSessions", "engagementRate"]));
+   if (provider.meta.currencyCode !== scope.currency || provider.meta.revenueMetric !== saved.meta.revenueMetric
+     || JSON.stringify(provider.meta.dimensions) !== JSON.stringify(saved.meta.dimensions)) {
+     checks.push({ section: "Overview / Campaign Comparison", code: "PROVIDER_METRIC_DEFINITION_CHANGED", status: "unverified" });
+diff --git a/server/report-scheduler.ts b/server/report-scheduler.ts
+index 6f165787..afecfd1f 100644
+--- a/server/report-scheduler.ts
++++ b/server/report-scheduler.ts
+@@ -6,7 +6,7 @@ import { db } from "./db";
+ import { emailService } from "./services/email-service";
+ import { storage } from "./storage";
+ import { campaigns, emailAlertEvents, linkedinReports, reportSendEvents, reportSnapshots } from "../shared/schema";
+-import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
++import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+ import { and, desc, eq, sql } from "drizzle-orm";
+ import type { LinkedInReport } from "../shared/schema";
+ import * as cron from "node-cron";
+@@ -1396,6 +1396,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+     scope: { campaignId, currency: campaign?.currency, reportingTimeZone: campaign?.reportingTimeZone, campaignFilter: campaign?.ga4CampaignFilter },
+     performanceSummary, financialInputs, budgetPacing, financialDecisionContext, executiveSummary, trendAnalysis,
+     cumulativeGA4Window, performancePageTrafficTotals, performancePageTotals,
++    usersDefinition: "ga4_totalUsers_distinct_v1", distinctUsers: (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers ?? null,
+     trendWindowStart, trendWindowEnd, trendWindowRows, trendPreviousWindowRows, compatibleTrendFinancialDaily, executiveTrajectory,
+     targets: { kpis: reportTargetInputs(kpis), benchmarks: reportTargetInputs(benchmarks) },
+   });
+@@ -1420,6 +1421,11 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+       ])
+     : [null, null];
+   const performancePageTrafficTotals = Array.isArray(performancePageRows) ? summarizeGA4TrafficRows(performancePageRows) : null;
++  const usersSnapshot = cumulativeGA4Connection && cumulativeGA4Window
++    ? await storage.getGA4OverviewSnapshot(campaignId, String(cumulativeGA4Connection.propertyId)).catch(() => null) : null;
++  if (performancePageTrafficTotals && cumulativeGA4Window) {
++    performancePageTrafficTotals.users = getGA4DistinctUsers(usersSnapshot, cumulativeGA4Window.startDate, cumulativeGA4Window.endDate) ?? Number.NaN;
++  }
+   const performanceFinancialConversions = Number(performancePageTotals?.financialConversions);
+   const performanceFinancialConversionsAvailable = performancePageTotals?.financialConversionsAvailable === true
+     && Number.isFinite(performanceFinancialConversions)
+@@ -1519,7 +1525,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+   const trendRecentTrafficTotals = summarizeGA4TrafficRows(trendRecentTrafficRows);
+   const trendPreviousTrafficTotals = performancePageTrafficTotals && trendComparisonDate >= String(cumulativeGA4Window?.startDate || "")
+     ? {
+-        users: performancePageTrafficTotals.users - trendRecentTrafficTotals.users,
++        users: getGA4DistinctUsers(usersSnapshot, String(cumulativeGA4Window?.startDate || ''), trendComparisonDate) ?? Number.NaN,
+         sessions: performancePageTrafficTotals.sessions - trendRecentTrafficTotals.sessions,
+         conversions: performancePageTrafficTotals.conversions - trendRecentTrafficTotals.conversions,
+         engagedSessions: performancePageTrafficTotals.engagedSessions - trendRecentTrafficTotals.engagedSessions,
+@@ -2018,12 +2024,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+   };
+   const addSelectedSectionBody = (section: string) => {
+     addText(campaignDeepDiveTabLabels[section] || section, { size: 14, bold: true });
+-    if (performancePageTrafficTotals) addText("GA4 users are summed daily counts, not unique people across the reporting window.", { size: 9 });
++    if (performancePageTrafficTotals) addText("Distinct GA4 users for the displayed dates and selected campaigns.", { size: 9 });
+     if (section.startsWith("performance-summary:")) {
+       const performanceCurrency = validExecutiveCurrency || "USD";
+       addText("Key Outcomes", { bold: true, indent: 4 });
+       ([
+-        ["users", "Total Users (daily sum)"],
++        ["users", "Total Users"],
+         ["sessions", "Total Sessions"],
+         ["conversions", "Total Conversions"],
+         ["revenue", "Total Revenue"],
+@@ -2260,6 +2266,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+         const webMetricTotal = (key: string): number | null => {
+           const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(key));
+           if (compatibleSources.length === 0) return null;
++          const ga4Source = compatibleSources.find((source: any) => source.id === "ga4");
++          if (key === "users" && ga4Source) return getGA4DistinctUsers(ga4Source.usersReport, trendWindowStart, trendWindowEnd);
+           return compatibleSources.reduce((total: number, source: any) => total + sourceWindowRows(source)
+             .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
+         };
+@@ -2310,7 +2318,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+           const sum = (key: string): number | null => includedMetrics.includes(key)
+             ? sourceWindowRows(source).reduce((total: number, row: any) => total + (Number(row?.metrics?.[key]) || 0), 0)
+             : null;
+-          const users = sum("users");
++          const userDates = sourceWindowRows(source).map((row: any) => String(row.date).slice(0, 10)).sort();
++          const users = source.id === "ga4" ? getGA4DistinctUsers(source.usersReport, userDates[0], userDates.at(-1)!) : sum("users");
+           const sessions = sum("sessions");
+           const clicks = sum("clicks");
+           const impressions = sum("impressions");
+@@ -2679,7 +2688,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+     drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
+     y += metaCardHeight + 8;
+     if (performancePageTrafficTotals) {
+-      drawText("GA4 users are summed daily counts, not unique people across the reporting window.", margin, y + 3, { size: 7, color: colors.secondary, maxWidth: contentWidth });
++      drawText("Distinct GA4 users for the displayed dates and selected campaigns.", margin, y + 3, { size: 7, color: colors.secondary, maxWidth: contentWidth });
+       y += 8;
+     }
+ 
+@@ -3045,6 +3054,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+       const webMetricTotal = (key: string): number | null => {
+         const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(key));
+         if (compatibleSources.length === 0) return null;
++          const ga4Source = compatibleSources.find((source: any) => source.id === "ga4");
++          if (key === "users" && ga4Source) return getGA4DistinctUsers(ga4Source.usersReport, trendWindowStart, trendWindowEnd);
+         return compatibleSources.reduce((total: number, source: any) => total + trendSourceWindowRows(source)
+           .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
+       };
+@@ -3142,7 +3153,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+           source,
+           id: String(source?.id || `source_${index}`),
+           label: String(source?.label || source?.id || "Connected Source"),
+-          users: sum("users"), sessions, clicks, impressions, spend, conversions, revenue,
++          users: source.id === "ga4" ? getGA4DistinctUsers(source.usersReport, trendWindowStart, trendWindowEnd) : sum("users"), sessions, clicks, impressions, spend, conversions, revenue,
+           ctr: impressions && impressions > 0 && clicks !== null ? (clicks / impressions) * 100 : null,
+           cpc: spend && spend > 0 && clicks ? spend / clicks : null,
+           cpa: spend && spend > 0 && conversions ? spend / conversions : null,
+diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
+index 05ccd804..fc88fbab 100644
+--- a/server/routes-oauth.ts
++++ b/server/routes-oauth.ts
+@@ -60,7 +60,7 @@ import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-
+ import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
+ import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
+ import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+-import { addDerivedGA4EngagedSessions, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
++import { addDerivedGA4EngagedSessions, getGA4DistinctUsers, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+ import {
+   getGA4KpiMetricDependencies,
+   isGA4FinancialKpiMetricIdentity,
+@@ -3155,6 +3155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+             label: "Google Analytics",
+             category: "web_analytics",
+             connected: Boolean(primaryGA4?.propertyId),
++            usersReport: primaryGA4?.propertyId ? { meta: ((await storage.getGA4OverviewSnapshot(campaignId, String(primaryGA4.propertyId)).catch(() => null))?.campaignBreakdown as any)?.meta } : undefined,
+             capabilities: ["users", "sessions", "conversions", "revenue", "engagementRate"],
+             includedMetrics: Boolean(primaryGA4?.propertyId) ? ["users", "sessions", "conversions", "revenue", "engagementRate"] : [],
+             excludedMetrics: [
+@@ -9727,7 +9728,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         overviewStartDate,
+         endDate,
+       );
+-      const overviewTotals = summarizeGA4TrafficRows(overviewRows);
++      const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, String(selectedConnection.propertyId));
++      const overviewTotals = { ...summarizeGA4TrafficRows(overviewRows),
++        users: getGA4DistinctUsers(usersSnapshot, overviewStartDate, endDate) };
++      const usersComparisons = (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [];
+       // Monthly Trends needs the two preceding calendar months plus the current month.
+       // Reuse the scoped Overview read; keep daily coverage and refresh metadata unchanged.
+       const monthlyStartDate = new Date(Date.UTC(Number(dataThroughDate.slice(0, 4)), Number(dataThroughDate.slice(5, 7)) - 3, 1)).toISOString().slice(0, 10);
+@@ -9771,6 +9775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         validationReadOnly: readOnly,
+         overviewStartDate,
+         overviewTotals,
++        usersComparisons,
+         providerRefreshAttempted,
+         providerRefreshOutcome,
+         providerRefreshRowCount,
+@@ -9836,10 +9841,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
+     };
+     if (startDate > window.endDate) return res.json({ ...base, verified: false, zeroDates: [], reason: "no_completed_import_days" });
+     try {
+-      const fetchPresence = (accessToken: string) => ga4Service.getTrendsDailyPresenceWithToken(
+-        String(connection.propertyId), accessToken, startDate, window.endDate,
+-        parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter), String((campaign as any)?.currency || "USD"),
+-      );
++      const fetchPresence = async (accessToken: string) => {
++        const filter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
++        const presence = await ga4Service.getTrendsDailyPresenceWithToken(
++          String(connection.propertyId), accessToken, startDate, window.endDate,
++          filter, String((campaign as any)?.currency || "USD"),
++        );
++        const distinctUsers = await ga4Service.getDistinctUsersWithToken(String(connection.propertyId), accessToken, startDate, window.endDate, filter);
++        const usersByDate = new Map(distinctUsers.daily.map(row => [row.date, row.users]));
++        return { ...presence, distinctUsers, dailyRows: presence.dailyRows.map(row => ({ ...row, users: usersByDate.get(row.date) })) };
++      };
+       let providerPresence;
+       try {
+         providerPresence = await fetchPresence(String(connection.accessToken));
+@@ -9922,7 +9933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         };
+         const providerDatesComplete = Array.from(presence).every((date) => providerByDate.has(date));
+         providerCumulativeWindow.currentVerified = providerDatesComplete;
+-        providerCumulativeWindow.currentTotals = providerDatesComplete ? summarizeProviderRows(providerDailyRows) : null;
++        providerCumulativeWindow.currentTotals = providerDatesComplete ? { ...summarizeProviderRows(providerDailyRows), users: providerPresence.distinctUsers.total } : null;
+         if (!providerDatesComplete) {
+           providerCumulativeWindow.reason = "provider_daily_history_incomplete";
+         } else if (comparisonDate < configuredStart) {
+@@ -9931,7 +9942,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           providerCumulativeWindow.comparisonTotals = summarizeProviderRows(
+             providerDailyRows.filter((row: any) => row.date <= comparisonDate),
+           );
+-          providerCumulativeWindow.comparisonVerified = true;
++          const previousUsers = providerPresence.distinctUsers.windows.find(row => row.startDate === configuredStart && row.endDate === comparisonDate)?.users;
++          providerCumulativeWindow.comparisonTotals.users = previousUsers ?? null;
++          providerCumulativeWindow.comparisonVerified = previousUsers !== undefined;
+         }
+       }
+       return res.json({ ...base, verified, providerVerified: true, providerZeroDatesVerified: true, providerZeroDates, zeroDatesVerified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), providerDailyRows, checkedAt: new Date().toISOString(),
+@@ -13687,7 +13700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+             revenueMetric: String(result?.meta?.revenueMetric || ''),
+           },
+           ...(validationReadOnly ? { validationReadOnly: true } : {}),
+-          ...(debug ? { meta: result?.meta } : {}),
++          meta: debug ? result?.meta : { propertyId: resolvedPropertyId, distinctUsers: result?.meta?.distinctUsers },
+           lastUpdated: snapshot.updatedAt,
+         });
+       }
+@@ -15518,6 +15531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           if (propertyWindowRows.length > 0) {
+             propertyWindowTrafficCandidate = {
+               ...summarizeGA4TrafficRows(propertyWindowRows),
++              users: getGA4DistinctUsers(overviewSnapshot, currentValueWindow.startDate, endDateUsed),
+               source: "ga4_property_window",
+             };
+             executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0
+@@ -15564,7 +15578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+                   ...exactFinancialCandidate,
+                   conversions: parseNum(exactTrafficCandidate?.conversions),
+                   sessions: parseNum(exactTrafficCandidate?.sessions),
+-                  users: parseNum(exactTrafficCandidate?.users),
++                  users: exactTrafficCandidate?.users ?? null,
+                   connected: true,
+                   available: true,
+                 }
+@@ -15573,7 +15587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+             financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
+             financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
+             financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
+-            financialWebAnalytics.users = parseNum(financialGa4Totals.users);
++            financialWebAnalytics.users = financialGa4Totals.users;
+           }
+           } catch {
+             financialGa4Totals = { ...financialGa4Totals, available: false };
+@@ -29175,7 +29189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           (campaign as any).reportingTimeZone,
+           (campaign as any).currency,
+         );
+-        const progress = filterGA4InsightsHistoryByScope(analytics.progress, marker);
++        const progress = filterGA4InsightsHistoryByScope(analytics.progress, marker)
++          .filter((point: any) => resolveGA4KpiMetricIdentity((okKpi as any).metric, (okKpi as any).name) !== "users" || String(point.notes || "").includes("users:totalUsers:v1"));
+         const latest = progress[0] as any;
+         const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
+         const cutoff = new Date();
+@@ -30436,7 +30451,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           (campaign as any).reportingTimeZone,
+           (campaign as any).currency,
+         );
+-        const history = filterGA4InsightsHistoryByScope(analytics.history, marker);
++        const history = filterGA4InsightsHistoryByScope(analytics.history, marker)
++          .filter((point: any) => resolveGA4KpiMetricIdentity((existing as any).metric, (existing as any).name) !== "users" || String(point.notes || "").includes("users:totalUsers:v1"));
+         const variances = history.map((point: any) => Number(point?.variance)).filter(Number.isFinite);
+         const recent = variances.slice(-3);
+         const improving = recent.length >= 2 && recent.every((value, index) => index === 0 || value >= recent[index - 1]);
+@@ -32172,8 +32188,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           const scopedRows = ga4Daily.filter((row: any) => String(row.date) >= ga4Start && String(row.date) <= ga4End);
+           if (scopedRows.length > 0) {
+             const totals = summarizeGA4TrafficRows(scopedRows);
++            const usersSnapshot = await storage.getGA4OverviewSnapshot(id, primaryPropertyId);
+             ga4Metrics = { sessions: totals.sessions, conversions: totals.conversions, pageviews: totals.pageviews,
+-              users: totals.users, revenue: totals.revenue, bounceRate: totals.sessions > 0 ? (1 - totals.engagementRate) * 100 : null };
++              users: getGA4DistinctUsers(usersSnapshot, ga4Start, ga4End), revenue: totals.revenue, bounceRate: totals.sessions > 0 ? (1 - totals.engagementRate) * 100 : null };
+           }
+           ga4LastUpdate = scopedRows.map((row: any) => String(row.date)).sort().at(-1) || null;
+         }
+diff --git a/server/scheduler.ts b/server/scheduler.ts
+index 49388698..d59198de 100644
+--- a/server/scheduler.ts
++++ b/server/scheduler.ts
+@@ -8,6 +8,7 @@ import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state
+ import { getCampaignMetricTotals, parseGA4CampaignFilter } from './utils/campaign-current-values';
+ import { getReportingDateWindow, resolveGA4ImportToDateWindow } from './utils/reporting-timezone';
+ import { filterActiveSchedulerCampaigns } from './utils/campaign-scheduler-eligibility';
++import { getGA4DistinctUsers } from '../shared/ga4-traffic-window';
+ 
+ interface SnapshotMetrics {
+   totalImpressions: number;
+@@ -152,7 +153,8 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
+   }
+ 
+   // Fetch GA4 metrics (website analytics)
+-  let ga4Data = { sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0 };
++  let ga4Data = { sessions: 0, users: 0 as number | null, pageviews: 0, conversions: 0, revenue: 0 };
++  let ga4UsersSnapshot: any = null;
+   let ga4Connected = false;
+   let ga4DailyRows: any[] = [];
+   let ga4PropertyId: string | null = null;
+@@ -164,9 +166,11 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
+       ga4PropertyId = String(ga4Conn.propertyId);
+       ga4FinancialWindow = resolveGA4ImportToDateWindow(ga4Conn.importStartDate, campaign?.reportingTimeZone);
+       ga4DailyRows = await storage.getGA4DailyMetrics(campaignId, ga4PropertyId, startDate, endDate);
++      ga4UsersSnapshot = ga4PropertyId === 'yesop' ? null : await storage.getGA4OverviewSnapshot(campaignId, ga4PropertyId).catch(() => null);
+       ga4Data = {
+         sessions: ga4DailyRows.reduce((s: number, m: any) => s + (m.sessions || 0), 0),
+-        users: ga4DailyRows.reduce((s: number, m: any) => s + (m.users || 0), 0),
++        users: ga4PropertyId === 'yesop' ? ga4DailyRows.reduce((s: number, m: any) => s + (m.users || 0), 0)
++          : getGA4DistinctUsers(ga4UsersSnapshot, ga4FinancialWindow && ga4FinancialWindow.startDate > startDate ? ga4FinancialWindow.startDate : startDate, ga4FinancialWindow?.endDate || endDate),
+         pageviews: ga4DailyRows.reduce((s: number, m: any) => s + (m.pageviews || 0), 0),
+         conversions: ga4DailyRows.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
+         revenue: ga4DailyRows.reduce((s: number, m: any) => s + parseNum(m.revenue), 0),
+@@ -568,6 +572,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
+         label: "Google Analytics",
+         category: "web_analytics",
+         connected: ga4Connected,
++        usersReport: ga4UsersSnapshot ? { meta: ga4UsersSnapshot.campaignBreakdown?.meta } : undefined,
+         capabilities: ["users", "sessions", "conversions", "revenue", "engagementRate"],
+         includedMetrics: ga4Connected ? ["users", "sessions", "conversions", "revenue", "engagementRate"] : [],
+         excludedMetrics: [
+@@ -758,6 +763,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
+     performanceSummary,
+     ...(usedSavedGA4Overview && ga4FinancialWindow ? { performanceSummaryVerification: {
+       version: 1, campaignId, propertyId: ga4PropertyId, currency: campaign.currency, campaignFilter: campaign.ga4CampaignFilter,
++      usersDefinition: 'ga4_totalUsers_distinct_v1', distinctUsers: ga4UsersSnapshot?.campaignBreakdown?.meta?.distinctUsers ?? null,
+       trafficWindow: { startDate, endDate }, nativeFinancialWindow: ga4FinancialWindow,
+       importedFinancialWindow: { startDate: financialSourceStartDate, endDate: financialSourceEndDate },
+       trafficRows: ga4DailyRows.map(row => ({ date: row.date, sessions: row.sessions, users: row.users, conversions: row.conversions })),
+diff --git a/server/utils/campaign-current-values.ts b/server/utils/campaign-current-values.ts
+index 08d01aa1..65a75d56 100644
+--- a/server/utils/campaign-current-values.ts
++++ b/server/utils/campaign-current-values.ts
+@@ -1,5 +1,5 @@
+ import { conversionCreditsMatch, formatRoasRatio } from "../../shared/metric-math";
+-import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
++import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
+ import { storage, type GA4RefreshWriteInput } from "../storage";
+ import { ga4Service } from "../analytics";
+ import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
+@@ -19,6 +19,7 @@ export type CampaignMetricTotals = {
+   conversions: number;
+   financialConversions: number;
+   users: number;
++  usersAvailable?: boolean;
+   sessions: number;
+   engagementRate: number;
+   revenueBySource: Map<string, number>;
+@@ -153,6 +154,7 @@ async function getCampaignMetricTotalsForEndDate(
+   let conversions = 0;
+   let financialConversions: number | null = null;
+   let users = 0;
++  let usersAvailable = false;
+   let sessions = 0;
+   let engagementRate = 0;
+ 
+@@ -203,6 +205,12 @@ async function getCampaignMetricTotalsForEndDate(
+       ga4Revenue += parseNum((row as any)?.revenue);
+     }
+     engagementRate = summarizeGA4TrafficRows(rows).engagementRate * 100;
++    if (!isYesopMockProperty(propertyId)) {
++      const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null);
++      const distinctUsers = getGA4DistinctUsers(usersSnapshot, startDate, endDate);
++      usersAvailable = distinctUsers !== null;
++      users = distinctUsers ?? 0;
++    } else usersAvailable = true;
+     if (isYesopMockProperty(propertyId)) {
+       const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter);
+       sessions += baseline.sessions;
+@@ -349,6 +357,7 @@ async function getCampaignMetricTotalsForEndDate(
+     conversions,
+     financialConversions,
+     users: Math.round(users),
++    usersAvailable,
+     sessions: Math.round(sessions),
+     engagementRate: round2(engagementRate),
+     revenueBySource: new Map((revenueBreakdown || []).map((row: any) => [String(row?.sourceId || ""), parseNum(row?.revenue)])),
+@@ -379,7 +388,7 @@ function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricT
+   if (sourceId === "total_revenue") return totals.revenueAvailable === false ? null : totals.revenue;
+   if (sourceId === "total_spend") return totals.spendAvailable === false ? null : totals.spend;
+   if (sourceId === "total_conversions") return totals.ga4Available === false ? null : totals.conversions;
+-  if (sourceId === "total_users") return totals.ga4Available === false ? null : totals.users;
++  if (sourceId === "total_users") return totals.ga4Available === false || totals.usersAvailable === false ? null : totals.users;
+   if (sourceId === "total_sessions") return totals.ga4Available === false ? null : totals.sessions;
+   if (sourceId === "total_engagement_rate") return totals.ga4Available === false ? null : totals.engagementRate;
+   if (sourceId.startsWith("revenue-source:")) {
+@@ -392,7 +401,7 @@ function sourceValue(inputKey: string, sourceId: string, totals: CampaignMetricT
+   }
+   if (sourceId === "ga4" && inputKey === "revenue") return totals.ga4RevenueAvailable === false ? null : totals.ga4Revenue;
+   if (sourceId === "ga4" && inputKey === "conversions") return totals.ga4Available === false ? null : totals.conversions;
+-  if (sourceId === "ga4" && inputKey === "users") return totals.ga4Available === false ? null : totals.users;
++  if (sourceId === "ga4" && inputKey === "users") return totals.ga4Available === false || totals.usersAvailable === false ? null : totals.users;
+   if (sourceId === "ga4" && inputKey === "sessions") return totals.ga4Available === false ? null : totals.sessions;
+   if (sourceId === "ga4" && inputKey === "engagementRate") return totals.ga4Available === false ? null : totals.engagementRate;
+   return null;
+diff --git a/server/utils/ga4-alert-current-value.ts b/server/utils/ga4-alert-current-value.ts
+index 5aa87de3..c535818a 100644
+--- a/server/utils/ga4-alert-current-value.ts
++++ b/server/utils/ga4-alert-current-value.ts
+@@ -22,7 +22,7 @@ import {
+   parseGA4FinancialNumber,
+   selectGA4FinancialTotalsSource,
+ } from "../../shared/ga4-financial-source";
+-import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
++import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
+ import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
+ import { getCampaignMetricTotals, resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
+ import { getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./reporting-timezone";
+@@ -358,7 +358,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
+         (value) => Array.isArray(value) && value.length > 0).catch(() => null as any),
+       !usesFinancialSource || useSavedOverview || isYesopMockProperty(propertyId) ? Promise.resolve(null)
+         : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
+-      usesFinancialSource
++      usesFinancialSource || metric === "users"
+         ? readSource("overview-snapshot", [financialStartDate, endDate],
+           () => storage.getGA4OverviewSnapshot(campaignId, propertyId),
+           (value) => !!value).catch(() => null as any)
+@@ -375,6 +375,11 @@ export async function resolveAlertCurrentValueForDecision<T extends {
+       return date >= startDate && date <= endDate;
+     });
+     let trafficTotals = summarizeGA4TrafficRows(trafficRows);
++    if (metric === "users" && !isYesopMockProperty(propertyId)) {
++      const users = getGA4DistinctUsers(overviewSnapshot, startDate, endDate);
++      if (users === null) return blockAlertDecision(resolved, "unavailable");
++      trafficTotals.users = users;
++    }
+     const financialTotals = summarizeGA4TrafficRows(sourceRows);
+     const savedFinancialCandidate = savedOverviewTotals?.ga4FinancialSource === "persisted_overview"
+       && savedOverviewTotals.sessions === financialTotals.sessions
+diff --git a/server/utils/performance-summary-aggregate.ts b/server/utils/performance-summary-aggregate.ts
+index a9666961..7f7a2c26 100644
+--- a/server/utils/performance-summary-aggregate.ts
++++ b/server/utils/performance-summary-aggregate.ts
+@@ -122,7 +122,7 @@ const mainSourceAdapters: SourceAdapter[] = [
+         category: "web_analytics",
+         connected: ga4Connected,
+         capabilities: ["users", "sessions", "conversions", "revenue"],
+-        includedMetrics: ga4Available ? ["users", "sessions", "conversions", "revenue"] : [],
++        includedMetrics: ga4Available ? [...(input.ga4?.users != null ? ["users"] : []), "sessions", "conversions", "revenue"] : [],
+         excludedMetrics: [
+           { metric: "impressions", reason: "GA4 is not an ad-impression source" },
+           { metric: "clicks", reason: "GA4 is not an ad-click source" },
+@@ -130,7 +130,7 @@ const mainSourceAdapters: SourceAdapter[] = [
+           { metric: "leads", reason: "Leads are not available from GA4 unless mapped as conversions" },
+         ],
+         metrics: {
+-          users: ga4Available ? parseNum(input.ga4?.users) : null,
++          users: ga4Available && input.ga4?.users != null ? parseNum(input.ga4?.users) : null,
+           sessions: ga4Available ? parseNum(input.ga4?.sessions) : null,
+           conversions: ga4Available ? parseNum(input.ga4?.conversions) : null,
+           revenue: ga4Available ? parseNum(input.ga4?.revenue) : null,
+@@ -358,7 +358,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
+   const conversionSources = webSource ? [webSource] : webProviderConfigured ? [] : paidConversionSources;
+   const leadsSources = paidMetricSources("leads").map((source) => source.id);
+   const sessionSources = webSource ? [webSource] : [];
+-  const userSources = webSource ? [webSource] : [];
++  const userSources = webSource && input.webAnalytics?.users != null ? [webSource] : [];
+ 
+   const totalImpressions = sumPaidMetric("impressions");
+   const totalClicks = sumPaidMetric("clicks");
+diff --git a/server/utils/trend-analysis-aggregate.ts b/server/utils/trend-analysis-aggregate.ts
+index 113e9792..4d84df87 100644
+--- a/server/utils/trend-analysis-aggregate.ts
++++ b/server/utils/trend-analysis-aggregate.ts
+@@ -10,6 +10,7 @@ type TrendSourceInput = {
+   excludedMetrics: { metric: string; reason: string }[];
+   dailyRows: Array<{ date: string; metrics: Record<string, any> }>;
+   freshness?: Record<string, any>;
++  usersReport?: Record<string, any>;
+ };
+ 
+ type FinancialDailyRow = {
+@@ -58,6 +59,7 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput)
+       includedMetrics: Array.isArray(source.includedMetrics) ? source.includedMetrics.map(String) : [],
+       excludedMetrics: Array.isArray(source.excludedMetrics) ? source.excludedMetrics : [],
+       freshness: source.freshness,
++      ...(source.usersReport ? { usersReport: source.usersReport } : {}),
+       dailyRows: (Array.isArray(source.dailyRows) ? source.dailyRows : [])
+         .map((row) => ({
+           date: normalizeDate(row.date),
+diff --git a/shared/ga4-kpi-live-value.ts b/shared/ga4-kpi-live-value.ts
+index 93a30bfb..4ba99d18 100644
+--- a/shared/ga4-kpi-live-value.ts
++++ b/shared/ga4-kpi-live-value.ts
+@@ -16,7 +16,7 @@ export const resolveGA4KpiLiveValue = (args: {
+   if (metric === "conversions") return String(Number(breakdownTotals.conversions || 0));
+   if (metric === "conversion_rate") return computeConversionRatePercent(Number(breakdownTotals.conversions || 0), Number(breakdownTotals.sessions || 0)).toFixed(2);
+   if (metric === "engagement_rate") return normalizeRateToPercent(overviewEngagementRate).toFixed(2);
+-  if (metric === "users") return String(Math.round(Number(breakdownTotals.users || 0)));
++  if (metric === "users") return breakdownTotals.users == null ? "Unavailable" : String(Math.round(Number(breakdownTotals.users)));
+   if (metric === "sessions") return String(Math.round(Number(breakdownTotals.sessions || 0)));
+   if (metric === "pageviews") return String(Math.round(Number(breakdownTotals.pageviews || 0)));
+   if (metric === "roas") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);
+diff --git a/shared/ga4-traffic-window.ts b/shared/ga4-traffic-window.ts
+index 8923bba5..dc2671f9 100644
+--- a/shared/ga4-traffic-window.ts
++++ b/shared/ga4-traffic-window.ts
+@@ -11,6 +11,23 @@ export const addDerivedGA4EngagedSessions = <T extends Record<string, any>>(row:
+   return { ...row, engagedSessions: Math.max(0, Math.round(sessions * rate)) };
+ };
+ 
++// A multi-day audience cannot be reconstructed by adding daily unique counts.
++// Only a provider aggregate for the exact window may supply Users.
++export const getGA4DistinctUsers = (snapshot: any, startDate: string, endDate: string, campaignName?: string): number | null => {
++  const report = snapshot?.campaignBreakdown ?? snapshot;
++  const users = report?.meta?.distinctUsers;
++  if (users?.version !== 1 || users.metric !== "totalUsers" || users.propertyId !== report?.meta?.propertyId ||
++      (snapshot?.windowStart && snapshot.windowStart !== users.startDate) ||
++      (snapshot?.windowEnd && snapshot.windowEnd !== users.endDate)) return null;
++  const currentWindow = users.startDate === startDate && users.endDate === endDate;
++  const value = campaignName !== undefined
++    ? currentWindow ? users.campaigns?.find((row: any) => String(row.name).toLowerCase() === campaignName.toLowerCase())?.users : null
++    : currentWindow ? users.total
++    : startDate === endDate ? users.daily?.find((row: any) => row.date === startDate)?.users
++    : users.windows?.find((row: any) => row.startDate === startDate && row.endDate === endDate)?.users;
++  return value !== null && value !== undefined && Number.isSafeInteger(value) && value >= 0 ? value : null;
++};
++
+ export const summarizeGA4TrafficRows = (rows: any[]) => {
+   const totals = (Array.isArray(rows) ? rows : []).reduce((acc, rawRow) => {
+     const row = addDerivedGA4EngagedSessions(rawRow || {});

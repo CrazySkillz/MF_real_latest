@@ -127,6 +127,7 @@ export async function runApplicationOutputMonitor(campaignHash: string, database
     const before = await storage.getLiveNumberCheckSnapshot(campaignHash);
     if (snapshotFingerprint(before) !== expectedFingerprint) throw new Error("OUTPUT_INPUTS_CHANGED");
     if (process.env.MONITOR_COMPARISON_RATE_DEFINITION === "conversions_per_session") before.comparisonRateDefinition = "conversions_per_session";
+    if (process.env.MONITOR_USERS_DEFINITION === "ga4_totalUsers_distinct_v1") before.usersDefinition = "ga4_totalUsers_distinct_v1";
     const scope = resolveMonitorScope(before), id = encodeURIComponent(before.campaign.id), property = scope.connection.propertyId;
     campaignScope = before.campaign.id;
     // Executive's flag also selects its financial calculation scope. Preserve

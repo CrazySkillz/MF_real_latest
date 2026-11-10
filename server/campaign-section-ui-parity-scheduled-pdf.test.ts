@@ -895,6 +895,24 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     },
   );
 
+
+  it.each(["executive-summary", "trend-analysis"])("keeps zero counts and unavailable zero-denominator rates in %s", async type => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ date: "2026-08-27", users: 0, sessions: 0, conversions: 0, engagedSessions: 0 }]);
+    getCampaignMetricTotalsMock.mockResolvedValue({ users: 0, sessions: 0, conversions: 0, financialConversions: 0,
+      revenue: 0, ga4Revenue: 0, spend: 0, revenueAvailable: true, spendAvailable: true, spendRecordsAvailable: false,
+      ga4Available: true, ga4RevenueAvailable: true, financialConversionsAvailable: true, revenueBySource: new Map(), spendBySource: new Map() });
+    await buildPdfAttachmentForReport({ report: report(type, [type + ":overview"]), windowStart: "2026-07-29", windowEnd: "2026-08-27", campaignName: "Campaign" });
+    const start = pdfTextCalls.indexOf(type === "executive-summary" ? "Marketing Funnel Performance" : "Website Engagement & Conversion Summary");
+    const end = pdfTextCalls.indexOf(type === "executive-summary" ? "KPI Exceptions" : "Executive Recommendations", start + 1);
+    const text = pdfTextCalls.slice(start, end < 0 ? undefined : end);
+    expect(start).toBeGreaterThan(-1);
+    for (const key of ["SESSIONS", "CONVERSIONS"]) expect(text[text.indexOf(key) + 1]).toBe("0");
+    const rate = type === "executive-summary" ? "CONVERSION RATE" : "ENGAGEMENT RATE";
+    expect(text[text.indexOf(rate) + 1]).toMatch(/^Unavailable/);
+    expect(text[text.indexOf(rate) + 1]).not.toBe("0.0%");
+    if (type === "trend-analysis") expect(text[text.indexOf("CONVERSIONS PER 100 SESSIONS") + 1]).toBe("Unavailable");
+  });
+
   describe("Performance Summary dated financial movement", () => {
     const datedSource = (id: string) => ({ id, campaignId: "campaign-1", isActive: true, platformContext: "ga4", currency: "USD", sourceType: "csv", mappingConfig: { dateColumn: "Date" } });
     let daily: any[];

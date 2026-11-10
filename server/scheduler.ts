@@ -812,7 +812,8 @@ export async function recordCampaignMetrics(campaignId: string, opts: { allowSch
     const writeInput: GA4RefreshWriteInput = "refreshScope" in opts ? { refreshScope: opts.refreshScope }
       : { publicationVersion: opts.publicationVersion ?? { campaignId, version: await storage.getGA4PublicationVersion(campaignId) } };
     const metrics = await aggregateCampaignMetrics(campaignId, { useSavedOverview: opts.allowScheduledGA4 === true });
-    if (hasSnapshotMetricValue(metrics)) {
+    if (hasSnapshotMetricValue(metrics) || (opts.allowScheduledGA4 === true
+      && metrics.detailedMetrics?.performanceSummaryVerification?.version === 1)) {
       await storage.createMetricSnapshot({
         campaignId,
         totalImpressions: metrics.totalImpressions,

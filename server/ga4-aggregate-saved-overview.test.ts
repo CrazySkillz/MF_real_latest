@@ -220,6 +220,33 @@ describe("ordered GA4 campaign snapshot saved financial inputs", () => {
     else expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaignId, propertyId);
   });
 
+
+  it.each(["verified", "missing publication", "wrong currency", "wrong window"])("handles all-zero GA4 publication: %s", async state => {
+    const rows = dailyRows().map(row => ({ ...row, sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: "0.00", engagedSessions: 0, engagementRate: 0 }));
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => rows.filter(row => row.date >= start && row.date <= end));
+    const saved: any = overview();
+    saved.campaignBreakdown.totals = { users: 0, sessions: 0, conversions: 0, revenue: 0 };
+    saved.campaignBreakdown.meta.propertyId = propertyId;
+    saved.campaignBreakdown.meta.distinctUsers = { version: 1, metric: "totalUsers", propertyId, startDate: saved.windowStart, endDate: date,
+      total: 0, campaigns: [{ name: "sale_a", users: 0 }, { name: "sale_b", users: 0 }], daily: rows.map(row => ({ date: row.date, users: 0 })), windows: [] };
+    if (state === "wrong currency") saved.campaignBreakdown.meta.currencyCode = "USD";
+    if (state === "wrong window") saved.windowEnd = "2026-10-15";
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(state === "missing publication" ? null : saved);
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [], currency: "EUR" });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [], currency: "EUR" });
+    for (const method of ["getRevenueSources", "getRevenueBreakdownBySource", "getSpendBreakdownBySource"]) storageMock[method].mockResolvedValue([]);
+    expect(await record()).toBe(state === "verified");
+    if (state !== "verified") expect(storageMock.createMetricSnapshot).not.toHaveBeenCalled();
+    else {
+      expect(storageMock.createMetricSnapshot).toHaveBeenCalledTimes(1);
+      const snapshot = storageMock.createMetricSnapshot.mock.calls[0][0];
+      expect(snapshot).toMatchObject({ campaignId, totalConversions: 0, totalSpend: "0.00", publicationVersion: { campaignId, version: 1 } });
+      for (const key of ["sessions", "users", "conversions", "revenue"]) expect(snapshot.metrics.performanceSummary.totals[key]).toMatchObject({ value: 0, available: true });
+      for (const key of ["cvr", "roas", "roi", "cpa"]) expect(snapshot.metrics.performanceSummary.totals[key].available).toBe(false);
+    }
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
   it("keeps ordinary non-GA4 snapshots working and defers ordinary GA4 calls", async () => {
     expect(await recordCampaignMetrics(campaignId)).toBe(false);
     expect(storageMock.createMetricSnapshot).not.toHaveBeenCalled();

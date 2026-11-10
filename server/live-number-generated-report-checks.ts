@@ -1,5 +1,5 @@
 import { PDFParse } from "pdf-parse";
-import { compareNumber, dateIsValid, monitorHash, numberOrNull, parseMonitorMapping, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
+import { compareNumber, dateIsValid, monitorHash, monitoredUsers, numberOrNull, parseMonitorMapping, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 import { expectedOutputNumbers, expectedTargetNumbers } from "./live-number-output-checks";
 
 const diagnosticTypes = ["performance-summary", "financial-analysis", "trend-analysis", "executive-summary"];
@@ -161,6 +161,8 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
     for (const name of includeEmptySelections ? expected.scope.filter : []) if (!Array.from(campaigns.keys()).some(key => key.toLowerCase() === name.toLowerCase())) {
       campaigns.set(name, { sessions: 0, users: 0, conversions: 0, revenue: 0, weightedRate: 0 });
     }
+    if (snapshot.usersDefinition || expected.scope.publication.campaignBreakdown?.meta?.distinctUsers)
+      for (const [name, item] of Array.from(campaigns)) item.users = monitoredUsers(snapshot, expected.scope, name) ?? Number.NaN;
     const nativeCampaigns = Array.from(campaigns.entries()).map(([name, item]) => ({ name, ...item }));
     let allocationVerified = true;
     const normalize = (value: unknown) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");

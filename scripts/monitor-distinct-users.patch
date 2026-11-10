@@ -1334,7 +1334,7 @@ index 6f165787..2de400f9 100644
            cpc: spend && spend > 0 && clicks ? spend / clicks : null,
            cpa: spend && spend > 0 && conversions ? spend / conversions : null,
 diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
-index 05ccd804..fc88fbab 100644
+index 05ccd804..1e040ef0 100644
 --- a/server/routes-oauth.ts
 +++ b/server/routes-oauth.ts
 @@ -60,7 +60,7 @@ import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-
@@ -1450,7 +1450,18 @@ index 05ccd804..fc88fbab 100644
            }
            } catch {
              financialGa4Totals = { ...financialGa4Totals, available: false };
-@@ -29175,7 +29189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15907,6 +15921,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         });
+       }
+ 
++      if (useSavedOverview) {
++        ga4Totals.users = financialGa4Totals.users ?? null;
++        if (webAnalytics.provider === "ga4") webAnalytics.users = financialWebAnalytics.users ?? null;
++      }
+       res.json({
+         success: true,
+         campaignId,
+@@ -29175,7 +29193,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
            (campaign as any).reportingTimeZone,
            (campaign as any).currency,
          );
@@ -1460,7 +1471,7 @@ index 05ccd804..fc88fbab 100644
          const latest = progress[0] as any;
          const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
          const cutoff = new Date();
-@@ -30436,7 +30451,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -30436,7 +30455,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
            (campaign as any).reportingTimeZone,
            (campaign as any).currency,
          );
@@ -1470,7 +1481,7 @@ index 05ccd804..fc88fbab 100644
          const variances = history.map((point: any) => Number(point?.variance)).filter(Number.isFinite);
          const recent = variances.slice(-3);
          const improving = recent.length >= 2 && recent.every((value, index) => index === 0 || value >= recent[index - 1]);
-@@ -32172,8 +32188,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -32172,8 +32192,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
            const scopedRows = ga4Daily.filter((row: any) => String(row.date) >= ga4Start && String(row.date) <= ga4End);
            if (scopedRows.length > 0) {
              const totals = summarizeGA4TrafficRows(scopedRows);

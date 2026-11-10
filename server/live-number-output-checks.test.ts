@@ -24,6 +24,19 @@ const summary = () => ({ campaignId: "a", sources: [{ id: "ga4", connected: true
 const sectionChecks = (section: string, outputs: any, snapshot = fixture()) => checkApplicationOutputs(snapshot, outputs, now).filter(check => check.section === section);
 
 describe("remaining live monitor selections", () => {
+  it("checks campaign-row Users against GA4 distinct counts rather than accumulated row counts", () => {
+    const snapshot = fixture(); snapshot.usersDefinition = "ga4_totalUsers_distinct_v1"; snapshot.comparisonRateDefinition = "conversions_per_session";
+    const report = snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown;
+    report.rows = [{ campaign: "search", sessions: 20, users: 10, conversions: 1.5, revenue: 100, sessionKeyEventRate: 0.05 }];
+    report.meta.distinctUsers = { version: 1, metric: "totalUsers", propertyId: "123", startDate: "2026-11-04", endDate: "2026-11-04",
+      total: 8, campaigns: [{ name: "search", users: 8 }], daily: [], windows: [] };
+    const text = "search 20 8 1.5 7.5% EUR 100.00";
+    const rowChecks = (input: string) => checkReportDetailText(snapshot, input, "overview", now).filter(c => c.code.startsWith("CAMPAIGN_BREAKDOWN"));
+    expect(rowChecks(text).every(c => c.status === "passed")).toBe(true);
+    expect(rowChecks(text.replace("20 8", "20 10"))).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_1", status: "difference" }));
+    report.meta.distinctUsers.campaigns = [];
+    expect(rowChecks(text)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_1", status: "unverified" }));
+  });
   it("keeps exact days separate from calendar-month clamping, including leap years", () => {
     expect(monitorComparisonWindows("2024-03-31").find(item => item.key === "comparisonMonth")?.date).toBe("2024-02-29");
     expect(monitorComparisonWindows("2026-03-31").find(item => item.key === "comparisonMonth")?.date).toBe("2026-02-28");

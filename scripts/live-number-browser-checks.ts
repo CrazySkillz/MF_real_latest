@@ -196,11 +196,11 @@ export function checkNarrativeWindows(snapshot: LiveNumberSnapshot, text: string
   return checks;
 }
 
-async function cardValue(page: Page, label: string, scope?: string): Promise<string | null> {
+export async function cardValue(page: Page, label: string, scope?: string): Promise<string | null> {
   return page.evaluate(({ label, scope }) => {
     const root = scope ? document.getElementById(scope) : document;
     if (!root) return null;
-    const labels = [...root.querySelectorAll('p,h3,h4,div,span')].filter(el => el.children.length === 0 && el.textContent?.trim() === label && (el as HTMLElement).offsetHeight > 0);
+    const labels = [...root.querySelectorAll('p,h3,h4,div,span')].filter(el => [...el.children].every(child => child.tagName.toLowerCase() === "svg") && el.textContent?.trim() === label && (el as HTMLElement).offsetHeight > 0);
     for (const el of labels) {
       let parent = el.parentElement;
       for (let i = 0; parent && i < 4; i++, parent = parent.parentElement) {

@@ -441,6 +441,9 @@ describe("actual report detail values", () => {
     expect(checkReportDetailText(fixture(), text, "insights", now).every(check => check.status === "passed")).toBe(true);
     expect(checkReportDetailText(fixture(), text.replace("2026-11-04", "2026-11-03"), "insights", now)).toContainEqual(expect.objectContaining({ code: "INSIGHTS_TREND_DATES", status: "difference" }));
     expect(checkReportDetailText(fixture(), text.replace("Users 10", "Users 11"), "insights", now)).toContainEqual(expect.objectContaining({ code: "SUMMARY_users_0", status: "difference" }));
+    const distinct = text.replace("Sum of daily users", "Distinct users for the reporting period");
+    expect(checkReportDetailText(fixture(), distinct, "insights", now).every(check => check.status === "passed")).toBe(true);
+    expect(checkReportDetailText(fixture(), distinct.replace("Users 10", "Users 11"), "insights", now)).toContainEqual(expect.objectContaining({ code: "SUMMARY_users_0", status: "difference" }));
     const snapshot = fixture();
     snapshot.rows.ga4DailyMetrics.push({ ...snapshot.rows.ga4DailyMetrics[0], date: "2026-11-03" });
     expect(checkReportDetailText(snapshot, text, "insights", now).every(check => check.status === "passed")).toBe(true);

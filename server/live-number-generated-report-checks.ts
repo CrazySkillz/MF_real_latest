@@ -267,7 +267,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
   }
   if (type === "insights") {
     const start = lines.indexOf("Data Summary"), end = lines.indexOf("What to investigate next", start);
-    const summary = lines.slice(start + 1, end).map(line => line.replace(/ (Current GA4 total|Sum of daily users|Total across revenue sources)$/, ""));
+    const summary = lines.slice(start + 1, end).map(line => line.replace(/ (Current GA4 total|Sum of daily users|Distinct users for the reporting period|Total across revenue sources)$/, ""));
     for (const metric of ["sessions", "users", "conversions"]) row("SUMMARY_" + metric, metric[0].toUpperCase() + metric.slice(1), [[expected.totals[metric], metric === "conversions" ? 8 : 0]], summary);
     row("SUMMARY_revenue", "Revenue", [[expected.revenue, 2, "money"]], summary);
     const tableStart = lines.indexOf("DATE SESSIONS REVENUE CONVERSIONS"), tableEnd = lines.indexOf("Data Summary", tableStart);

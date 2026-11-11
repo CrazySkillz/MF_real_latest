@@ -16,5 +16,6 @@
       "campaignIdHash": "156b23ba019e",
       "reportingTimeZone": "Europe/Amsterdam"
     }
-  ]
+  ],
+  "reportingMode": "current_day"
 }

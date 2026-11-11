@@ -18719,6 +18719,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!existingSource || String((existingSource as any).sourceType || "").toLowerCase() !== "salesforce" || existingCtx !== platformCtx) {
           return res.status(404).json({ error: "Salesforce revenue source not found" });
         }
+        if (platformCtx === "ga4" && expectedSourceMappingConfig !== undefined && existingSource.mappingConfig !== expectedSourceMappingConfig) {
+          return res.status(409).json({ code: "SALESFORCE_REVENUE_SOURCE_CHANGED", error: "Salesforce settings changed. Close and reopen the editor before saving." });
+        }
       }
 
       const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId, refreshWriteInput);
@@ -20183,6 +20186,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
         if (!existingSource || String((existingSource as any).sourceType || "").toLowerCase() !== "hubspot" || existingCtx !== platformCtx) {
           return res.status(404).json({ error: "HubSpot revenue source not found" });
+        }
+        if (platformCtx === "ga4" && expectedSourceMappingConfig !== undefined && existingSource.mappingConfig !== expectedSourceMappingConfig) {
+          return res.status(409).json({ code: "HUBSPOT_REVENUE_SOURCE_CHANGED", error: "HubSpot settings changed. Close and reopen the editor before saving." });
         }
       }
 

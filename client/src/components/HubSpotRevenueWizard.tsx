@@ -30,6 +30,7 @@ export function HubSpotRevenueWizard(props: {
   campaignId: string;
   currency: string;
   sourceId?: string;
+  expectedSourceMappingConfig?: string;
   mode?: "connect" | "edit";
   initialMappingConfig?: {
     campaignProperty?: string;
@@ -665,6 +666,7 @@ export function HubSpotRevenueWizard(props: {
           valueSource: "revenue",
           revenueClassification,
           ...(sourceId ? { sourceId } : {}),
+          ...(mode === "edit" && sourceId && isGA4 ? { expectedSourceMappingConfig: props.expectedSourceMappingConfig || "" } : {}),
           days,
           dateField,
           campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null,

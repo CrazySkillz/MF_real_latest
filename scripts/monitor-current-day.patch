@@ -1915,7 +1915,7 @@ index 6f165787..fc726389 100644
    addText("Included sections", { size: 14, bold: true });
    if (selectedSections.length === 0) {
 diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
-index 05ccd804..bc6df4ef 100644
+index 05ccd804..e2c3aeac 100644
 --- a/server/routes-oauth.ts
 +++ b/server/routes-oauth.ts
 @@ -60,14 +60,14 @@ import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-
@@ -1972,19 +1972,22 @@ index 05ccd804..bc6df4ef 100644
            refreshScheduleTimeZone: schedulerConfig.reportingTimeZone,
            refreshScheduleHours: schedulerConfig.hours,
            refreshScheduleMinute: schedulerConfig.minute,
-@@ -9727,7 +9732,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9727,7 +9732,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
          overviewStartDate,
          endDate,
        );
 -      const overviewTotals = summarizeGA4TrafficRows(overviewRows);
 +      const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, String(selectedConnection.propertyId));
++      // Calendar rollover must not discard Users from the still-displayed publication.
++      const overviewPublishedEndDate = getLatestStoredDailyDate(overviewRows);
 +      const overviewTotals = { ...summarizeGA4TrafficRows(overviewRows),
-+        users: getGA4DistinctUsers(usersSnapshot, overviewStartDate, endDate) };
++        users: overviewPublishedEndDate && usersSnapshot?.windowEnd === overviewPublishedEndDate
++          ? getGA4DistinctUsers(usersSnapshot, overviewStartDate, overviewPublishedEndDate) : null };
 +      const usersComparisons = (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [];
        // Monthly Trends needs the two preceding calendar months plus the current month.
        // Reuse the scoped Overview read; keep daily coverage and refresh metadata unchanged.
        const monthlyStartDate = new Date(Date.UTC(Number(dataThroughDate.slice(0, 4)), Number(dataThroughDate.slice(5, 7)) - 3, 1)).toISOString().slice(0, 10);
-@@ -9771,6 +9779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9771,6 +9782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
          validationReadOnly: readOnly,
          overviewStartDate,
          overviewTotals,
@@ -1992,7 +1995,7 @@ index 05ccd804..bc6df4ef 100644
          providerRefreshAttempted,
          providerRefreshOutcome,
          providerRefreshRowCount,
-@@ -9836,10 +9845,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9836,10 +9848,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
      };
      if (startDate > window.endDate) return res.json({ ...base, verified: false, zeroDates: [], reason: "no_completed_import_days" });
      try {
@@ -2013,7 +2016,7 @@ index 05ccd804..bc6df4ef 100644
        let providerPresence;
        try {
          providerPresence = await fetchPresence(String(connection.accessToken));
-@@ -9922,7 +9937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9922,7 +9940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
          };
          const providerDatesComplete = Array.from(presence).every((date) => providerByDate.has(date));
          providerCumulativeWindow.currentVerified = providerDatesComplete;
@@ -2022,7 +2025,7 @@ index 05ccd804..bc6df4ef 100644
          if (!providerDatesComplete) {
            providerCumulativeWindow.reason = "provider_daily_history_incomplete";
          } else if (comparisonDate < configuredStart) {
-@@ -9931,7 +9946,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9931,7 +9949,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
            providerCumulativeWindow.comparisonTotals = summarizeProviderRows(
              providerDailyRows.filter((row: any) => row.date <= comparisonDate),
            );
@@ -2033,7 +2036,7 @@ index 05ccd804..bc6df4ef 100644
          }
        }
        return res.json({ ...base, verified, providerVerified: true, providerZeroDatesVerified: true, providerZeroDates, zeroDatesVerified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), providerDailyRows, checkedAt: new Date().toISOString(),
-@@ -13687,7 +13704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -13687,7 +13707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
              revenueMetric: String(result?.meta?.revenueMetric || ''),
            },
            ...(validationReadOnly ? { validationReadOnly: true } : {}),
@@ -2042,7 +2045,7 @@ index 05ccd804..bc6df4ef 100644
            lastUpdated: snapshot.updatedAt,
          });
        }
-@@ -15159,7 +15176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15159,7 +15179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
          && publishedOverview.windowEnd >= campaignToDateWindow.startDate && publishedOverview.windowEnd <= campaignToDateWindow.endDate
          ? publishedOverview.windowEnd : campaignToDateWindow?.endDate;
        const currentValueWindow = campaignToDateWindow ? {
@@ -2051,7 +2054,7 @@ index 05ccd804..bc6df4ef 100644
          startDate: campaignToDateWindow.startDate,
          endDate: publishedEndDate!,
          dataThroughDate: publishedEndDate!,
-@@ -15518,6 +15535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15518,6 +15538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
            if (propertyWindowRows.length > 0) {
              propertyWindowTrafficCandidate = {
                ...summarizeGA4TrafficRows(propertyWindowRows),
@@ -2059,7 +2062,7 @@ index 05ccd804..bc6df4ef 100644
                source: "ga4_property_window",
              };
              executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0
-@@ -15564,7 +15582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15564,7 +15585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                    ...exactFinancialCandidate,
                    conversions: parseNum(exactTrafficCandidate?.conversions),
                    sessions: parseNum(exactTrafficCandidate?.sessions),
@@ -2068,7 +2071,7 @@ index 05ccd804..bc6df4ef 100644
                    connected: true,
                    available: true,
                  }
-@@ -15573,7 +15591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15573,7 +15594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
              financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
              financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
              financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
@@ -2077,7 +2080,7 @@ index 05ccd804..bc6df4ef 100644
            }
            } catch {
              financialGa4Totals = { ...financialGa4Totals, available: false };
-@@ -15907,6 +15925,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15907,6 +15928,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
          });
        }
  
@@ -2088,7 +2091,7 @@ index 05ccd804..bc6df4ef 100644
        res.json({
          success: true,
          campaignId,
-@@ -26622,7 +26644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -26622,7 +26647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
        const provider = new GoogleAdsClient({ accessToken, developerToken, customerId: String(customerId), managerAccountId });
        const campaignStart = new Date((campaign as any)?.startDate || "2000-01-01");
        const startDate = Number.isNaN(campaignStart.getTime()) ? "2000-01-01" : campaignStart.toISOString().slice(0, 10);
@@ -2097,7 +2100,7 @@ index 05ccd804..bc6df4ef 100644
        const initialDailyMetrics = startDate <= endDate
          ? mapGoogleAdsDailyInsights(campaignId, await provider.getDailyMetrics(startDate, endDate))
          : [];
-@@ -29175,7 +29197,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -29175,7 +29200,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
            (campaign as any).reportingTimeZone,
            (campaign as any).currency,
          );
@@ -2107,7 +2110,7 @@ index 05ccd804..bc6df4ef 100644
          const latest = progress[0] as any;
          const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
          const cutoff = new Date();
-@@ -30436,7 +30459,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -30436,7 +30462,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
            (campaign as any).reportingTimeZone,
            (campaign as any).currency,
          );
@@ -2117,7 +2120,7 @@ index 05ccd804..bc6df4ef 100644
          const variances = history.map((point: any) => Number(point?.variance)).filter(Number.isFinite);
          const recent = variances.slice(-3);
          const improving = recent.length >= 2 && recent.every((value, index) => index === 0 || value >= recent[index - 1]);
-@@ -32172,8 +32196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -32172,8 +32199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
            const scopedRows = ga4Daily.filter((row: any) => String(row.date) >= ga4Start && String(row.date) <= ga4End);
            if (scopedRows.length > 0) {
              const totals = summarizeGA4TrafficRows(scopedRows);

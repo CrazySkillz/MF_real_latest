@@ -96,7 +96,7 @@ describe("Browser GA4 report publication gate", () => {
       const config = { sections: { insights: true }, subsections: { insights: { actions: true } } };
       await expect(run({ ga4InsightsContextFetching: 1 }, config, type)).rejects.toThrow("Insights context is still loading");
       await expect(run({ reportInsightsBreakdownError: true }, config, type)).rejects.toThrow("Insights channel data could not refresh");
-      await expect(run({ ga4InsightsDailyError: true }, config, type)).rejects.toThrow("completed-day history");
+      await expect(run({ ga4InsightsDailyError: true }, config, type)).rejects.toThrow("reporting history");
     }
   });
   it.each([

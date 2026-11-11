@@ -7585,7 +7585,7 @@ export default function GA4Metrics() {
                           const isGoogleSheets = sourceType === "google_sheets";
                           const isCsv = sourceType === "csv";
                           const hasSingleSourceBreakdown = sourceType === "shopify" || isGoogleSheets || isCsv;
-                          const sourceDisplayText = isGoogleSheets ? "Google Sheets" : isCsv ? "CSV" : revenueSourceDisplayLabel(s);
+                          const sourceDisplayText = isGoogleSheets ? "Google Sheets" : isCsv ? "CSV" : sourceType === "hubspot" ? "HubSpot" : revenueSourceDisplayLabel(s);
                           const isCrm = sourceType === "hubspot" || sourceType === "salesforce";
                           const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";
                           const latestRevenue = s.latestRevenue != null && Number.isFinite(Number(s.latestRevenue)) ? Number(s.latestRevenue) : Number(s.revenue || 0);
@@ -7617,7 +7617,7 @@ export default function GA4Metrics() {
                                     <p className="min-w-0 truncate font-medium text-foreground" title={sourceDisplayText + dateLabel}>
                                       {sourceDisplayText}{dateLabel}
                                     </p>
-                                    {(confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown) && ga4ConnectionUsable && (
+                                    {(confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown || s.sourceType !== "manual") && ga4ConnectionUsable && (
                                       <button disabled={!sourceActionsAvailable}
                                         onClick={() => {
                                           setShowRevenueSourcesDialog(false);
@@ -7643,19 +7643,6 @@ export default function GA4Metrics() {
                                 </span>
                                 {confirmedRevenueItems.length === 0 && !hasSingleSourceBreakdown && (
                                   <div className="flex items-center justify-end gap-1">
-                                    {ga4ConnectionUsable && s.sourceType !== "manual" && (
-                                      <button disabled={!sourceActionsAvailable}
-                                        onClick={() => {
-                                          setShowRevenueSourcesDialog(false);
-                                          setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: currentSource.mappingConfig, revenue: currentSource.revenue, materializedRevenueStatus: currentSource.materializedRevenueStatus });
-                                          setShowRevenueDialog(true);
-                                        }}
-                                        className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
-                                        title="Edit revenue source"
-                                      >
-                                        <Edit className="h-3.5 w-3.5" />
-                                      </button>
-                                    )}
                                     <button disabled={!sourceActionsAvailable}
                                       onClick={() => {
                                         setShowRevenueSourcesDialog(false);

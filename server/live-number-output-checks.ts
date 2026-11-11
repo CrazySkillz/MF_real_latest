@@ -177,13 +177,14 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
     if (wanted === null && actual === null) checks.push({ section, code: code + "_UNAVAILABLE", status: "passed", ...(subject ? { subject } : {}) });
     else checks.push(compareNumber(section, code, wanted, actual, { decimals, subject, conversions: code.toLowerCase().includes("conversions"), operations: 10000 }));
   };
-  const table = (section: string, saved: any[], returned: any, key: string, metrics: string[]) => {
+  const table = (section: string, saved: any[], returned: any, key: string | string[], metrics: string[]) => {
     if (!Array.isArray(returned)) { checks.push({ section, code: "OUTPUT_ROWS_UNVERIFIED", status: "unverified" }); return; }
-    const keys = saved.map(row => String(row[key])), actualKeys = returned.map(row => String(row[key]));
+    const identity = (row: any) => Array.isArray(key) ? JSON.stringify(key.map(field => String(row[field] ?? ""))) : String(row[key]);
+    const keys = saved.map(identity), actualKeys = returned.map(identity);
     flag(section, "ROW_IDENTITIES", new Set(keys).size === keys.length && new Set(actualKeys).size === actualKeys.length
       && JSON.stringify([...keys].sort()) === JSON.stringify([...actualKeys].sort()));
     for (const row of saved) {
-      const actual = returned.find(item => String(item[key]) === String(row[key])), subject = monitorHash(String(row[key]));
+      const actual = returned.find(item => identity(item) === identity(row)), subject = monitorHash(identity(row));
       for (const metric of metrics) if (row[metric] !== undefined) value(section, metric, row[metric], actual?.[metric], ["revenue", "spend"].includes(metric) ? 2 : undefined, subject);
     }
   };
@@ -205,7 +206,7 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
     if (key === "native" || key === "breakdown") for (const metric of ["users", "sessions", "conversions", "revenue", "engagedSessions", "engagementRate"]) {
       value(key + " response", metric, saved?.totals?.[metric], actual.totals?.[metric], ["revenue", "engagementRate"].includes(metric) ? 8 : undefined);
     }
-    if (key !== "native") table(key + " response", saved?.rows || [], actual.rows, key === "breakdown" ? "campaign" : key === "landing" ? "landingPage" : "eventName",
+    if (key !== "native") table(key + " response", saved?.rows || [], actual.rows, key === "breakdown" ? ["date", "campaign", "source", "medium", "channel", "device", "country"] : key === "landing" ? "landingPage" : "eventName",
       [...numericMetrics, "eventCount", "sessionKeyEventRate", "engagementRate"]);
   }
   for (const kind of ["revenue", "spend"] as const) {

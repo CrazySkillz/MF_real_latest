@@ -24,6 +24,23 @@ const summary = () => ({ campaignId: "a", sources: [{ id: "ga4", connected: true
 const sectionChecks = (section: string, outputs: any, snapshot = fixture()) => checkApplicationOutputs(snapshot, outputs, now).filter(check => check.section === section);
 
 describe("remaining live monitor selections", () => {
+  it("matches each GA4 campaign dimension row without confusing repeated campaign names", () => {
+    const snapshot = fixture(), saved = snapshot.rows.ga4OverviewSnapshots[0];
+    saved.campaignBreakdown.rows = [
+      { campaign: "search", date: "2026-11-04", source: "google", medium: "cpc", channel: "Paid Search", device: "desktop", country: "NL", sessions: 14, users: 14, conversions: 2, revenue: 248 },
+      { campaign: "search", date: "2026-11-04", source: "facebook", medium: "paid_social", channel: "Paid Social", device: "desktop", country: "NL", sessions: 4, users: 4, conversions: 1, revenue: 79 },
+    ];
+    const output = { ...structuredClone(saved.campaignBreakdown), propertyId: "123", startDate: "2026-11-04", endDate: "2026-11-04" };
+    output.rows.reverse();
+    const checks = () => sectionChecks("breakdown response", { breakdown: output }, snapshot);
+    expect(checks().every(c => c.status === "passed")).toBe(true);
+    output.rows[0].revenue = 80;
+    expect(checks()).toContainEqual(expect.objectContaining({ code: "revenue", status: "difference" }));
+    output.rows[0].revenue = 79; output.rows[0].medium = "cpc";
+    expect(checks()).toContainEqual(expect.objectContaining({ code: "ROW_IDENTITIES", status: "difference" }));
+    output.rows = [output.rows[1], output.rows[1]];
+    expect(checks()).toContainEqual(expect.objectContaining({ code: "ROW_IDENTITIES", status: "difference" }));
+  });
   it("checks campaign-row Users against GA4 distinct counts rather than accumulated row counts", () => {
     const snapshot = fixture(); snapshot.usersDefinition = "ga4_totalUsers_distinct_v1"; snapshot.comparisonRateDefinition = "conversions_per_session";
     const report = snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown;

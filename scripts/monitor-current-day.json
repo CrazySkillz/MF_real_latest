@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "efa23764ec738176683a82dceca00791815f9fd1",
+  "expectedCommit": "42ab8b8902f90336a5aa13626363a9761a2c0e04",
   "files": [
     {
       "path": "client/src/components/AddSpendWizardModal.tsx",
@@ -99,7 +99,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "3c8f8ec76fbee9c8750cfb7f210f9d9640c32bd7ef6371f3869b134bf0dd1552"
+      "after": "fb3a57a33256ebcf64753aebf5f9e4eadada657ff388418a39ea5353f3b0fd40"
     },
     {
       "path": "server/scheduler.ts",
@@ -115,6 +115,11 @@
       "path": "server/utils/executive-summary-daily-snapshot.ts",
       "before": "f44e3eca4b77c0a732034c1bb7df0cacd17d1390ebbaedfbeb5e4a346c973a0a",
       "after": "7451ee3626e353fcbd707b680bc7fb80f8b7c91706343d647289da25eb9b363e"
+    },
+    {
+      "path": "server/utils/financial-daily-comparison.ts",
+      "before": "df68c9d49859ede15cb0300563bd08dbf7121a1980d552326fbd5f9441a5abab",
+      "after": "99a2de18dea6c3b3c8b513ee6e4a2f6e5001eb5e9425e30779e712d3b5560cf6"
     },
     {
       "path": "server/utils/financial-daily-snapshot-readiness.ts",

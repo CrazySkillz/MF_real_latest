@@ -1884,7 +1884,7 @@ index 6f165787..fc726389 100644
    addText("Included sections", { size: 14, bold: true });
    if (selectedSections.length === 0) {
 diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
-index 05ccd804..59004d1d 100644
+index 05ccd804..bc6df4ef 100644
 --- a/server/routes-oauth.ts
 +++ b/server/routes-oauth.ts
 @@ -60,14 +60,14 @@ import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-
@@ -1904,7 +1904,28 @@ index 05ccd804..59004d1d 100644
  import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
  import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
  import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
-@@ -3155,6 +3155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -2995,8 +2995,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       const end = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() - 1));
+       const start = new Date(end.getTime());
+       start.setUTCDate(start.getUTCDate() - (days - 1));
+-      const startDate = formatISODateUTC(start);
+-      const endDate = formatISODateUTC(end);
++      let startDate = formatISODateUTC(start);
++      let endDate = formatISODateUTC(end);
+ 
+       const [campaign, ga4Connections, linkedInConn, metaConn, googleAdsConn, customIntegration] = await Promise.all([
+         storage.getCampaign(campaignId),
+@@ -3009,6 +3009,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+ 
+       const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
+       const primaryGA4PropertyId = String(primaryGA4?.propertyId || "");
++      if (primaryGA4PropertyId && getGA4ReportingWindowMode() === "initial_import_to_latest_available_day") {
++        ({ startDate, endDate } = getReportingDateWindow(days, campaign?.reportingTimeZone));
++      }
+       let ga4Rows: any[] = [];
+       if (primaryGA4PropertyId) {
+         const storedRows = await storage.getGA4DailyMetrics(campaignId, primaryGA4PropertyId, startDate, endDate).catch(() => [] as any[]);
+@@ -3155,6 +3158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
              label: "Google Analytics",
              category: "web_analytics",
              connected: Boolean(primaryGA4?.propertyId),
@@ -1912,7 +1933,7 @@ index 05ccd804..59004d1d 100644
              capabilities: ["users", "sessions", "conversions", "revenue", "engagementRate"],
              includedMetrics: Boolean(primaryGA4?.propertyId) ? ["users", "sessions", "conversions", "revenue", "engagementRate"] : [],
              excludedMetrics: [
-@@ -9606,6 +9607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9606,6 +9610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
          });
          return {
            expectedRefreshAt: expectedRefreshAtISO,
@@ -1920,7 +1941,7 @@ index 05ccd804..59004d1d 100644
            refreshScheduleTimeZone: schedulerConfig.reportingTimeZone,
            refreshScheduleHours: schedulerConfig.hours,
            refreshScheduleMinute: schedulerConfig.minute,
-@@ -9727,7 +9729,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9727,7 +9732,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
          overviewStartDate,
          endDate,
        );
@@ -1932,7 +1953,7 @@ index 05ccd804..59004d1d 100644
        // Monthly Trends needs the two preceding calendar months plus the current month.
        // Reuse the scoped Overview read; keep daily coverage and refresh metadata unchanged.
        const monthlyStartDate = new Date(Date.UTC(Number(dataThroughDate.slice(0, 4)), Number(dataThroughDate.slice(5, 7)) - 3, 1)).toISOString().slice(0, 10);
-@@ -9771,6 +9776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9771,6 +9779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
          validationReadOnly: readOnly,
          overviewStartDate,
          overviewTotals,
@@ -1940,7 +1961,7 @@ index 05ccd804..59004d1d 100644
          providerRefreshAttempted,
          providerRefreshOutcome,
          providerRefreshRowCount,
-@@ -9836,10 +9842,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9836,10 +9845,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
      };
      if (startDate > window.endDate) return res.json({ ...base, verified: false, zeroDates: [], reason: "no_completed_import_days" });
      try {
@@ -1961,7 +1982,7 @@ index 05ccd804..59004d1d 100644
        let providerPresence;
        try {
          providerPresence = await fetchPresence(String(connection.accessToken));
-@@ -9922,7 +9934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9922,7 +9937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
          };
          const providerDatesComplete = Array.from(presence).every((date) => providerByDate.has(date));
          providerCumulativeWindow.currentVerified = providerDatesComplete;
@@ -1970,7 +1991,7 @@ index 05ccd804..59004d1d 100644
          if (!providerDatesComplete) {
            providerCumulativeWindow.reason = "provider_daily_history_incomplete";
          } else if (comparisonDate < configuredStart) {
-@@ -9931,7 +9943,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -9931,7 +9946,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
            providerCumulativeWindow.comparisonTotals = summarizeProviderRows(
              providerDailyRows.filter((row: any) => row.date <= comparisonDate),
            );
@@ -1981,7 +2002,7 @@ index 05ccd804..59004d1d 100644
          }
        }
        return res.json({ ...base, verified, providerVerified: true, providerZeroDatesVerified: true, providerZeroDates, zeroDatesVerified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), providerDailyRows, checkedAt: new Date().toISOString(),
-@@ -13687,7 +13701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -13687,7 +13704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
              revenueMetric: String(result?.meta?.revenueMetric || ''),
            },
            ...(validationReadOnly ? { validationReadOnly: true } : {}),
@@ -1990,7 +2011,7 @@ index 05ccd804..59004d1d 100644
            lastUpdated: snapshot.updatedAt,
          });
        }
-@@ -15159,7 +15173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15159,7 +15176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
          && publishedOverview.windowEnd >= campaignToDateWindow.startDate && publishedOverview.windowEnd <= campaignToDateWindow.endDate
          ? publishedOverview.windowEnd : campaignToDateWindow?.endDate;
        const currentValueWindow = campaignToDateWindow ? {
@@ -1999,7 +2020,7 @@ index 05ccd804..59004d1d 100644
          startDate: campaignToDateWindow.startDate,
          endDate: publishedEndDate!,
          dataThroughDate: publishedEndDate!,
-@@ -15518,6 +15532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15518,6 +15535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
            if (propertyWindowRows.length > 0) {
              propertyWindowTrafficCandidate = {
                ...summarizeGA4TrafficRows(propertyWindowRows),
@@ -2007,7 +2028,7 @@ index 05ccd804..59004d1d 100644
                source: "ga4_property_window",
              };
              executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0
-@@ -15564,7 +15579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15564,7 +15582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                    ...exactFinancialCandidate,
                    conversions: parseNum(exactTrafficCandidate?.conversions),
                    sessions: parseNum(exactTrafficCandidate?.sessions),
@@ -2016,7 +2037,7 @@ index 05ccd804..59004d1d 100644
                    connected: true,
                    available: true,
                  }
-@@ -15573,7 +15588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15573,7 +15591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
              financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
              financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
              financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
@@ -2025,7 +2046,7 @@ index 05ccd804..59004d1d 100644
            }
            } catch {
              financialGa4Totals = { ...financialGa4Totals, available: false };
-@@ -15907,6 +15922,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -15907,6 +15925,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
          });
        }
  
@@ -2036,7 +2057,7 @@ index 05ccd804..59004d1d 100644
        res.json({
          success: true,
          campaignId,
-@@ -26622,7 +26641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -26622,7 +26644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
        const provider = new GoogleAdsClient({ accessToken, developerToken, customerId: String(customerId), managerAccountId });
        const campaignStart = new Date((campaign as any)?.startDate || "2000-01-01");
        const startDate = Number.isNaN(campaignStart.getTime()) ? "2000-01-01" : campaignStart.toISOString().slice(0, 10);
@@ -2045,7 +2066,7 @@ index 05ccd804..59004d1d 100644
        const initialDailyMetrics = startDate <= endDate
          ? mapGoogleAdsDailyInsights(campaignId, await provider.getDailyMetrics(startDate, endDate))
          : [];
-@@ -29175,7 +29194,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -29175,7 +29197,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
            (campaign as any).reportingTimeZone,
            (campaign as any).currency,
          );
@@ -2055,7 +2076,7 @@ index 05ccd804..59004d1d 100644
          const latest = progress[0] as any;
          const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
          const cutoff = new Date();
-@@ -30436,7 +30456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -30436,7 +30459,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
            (campaign as any).reportingTimeZone,
            (campaign as any).currency,
          );
@@ -2065,7 +2086,7 @@ index 05ccd804..59004d1d 100644
          const variances = history.map((point: any) => Number(point?.variance)).filter(Number.isFinite);
          const recent = variances.slice(-3);
          const improving = recent.length >= 2 && recent.every((value, index) => index === 0 || value >= recent[index - 1]);
-@@ -32172,8 +32193,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+@@ -32172,8 +32196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
            const scopedRows = ga4Daily.filter((row: any) => String(row.date) >= ga4Start && String(row.date) <= ga4End);
            if (scopedRows.length > 0) {
              const totals = summarizeGA4TrafficRows(scopedRows);
@@ -2228,6 +2249,28 @@ index 9e960d43..53d31c42 100644
      startDate: dateSchema,
      endDate: dateSchema,
      dataThroughDate: dateSchema,
+diff --git a/server/utils/financial-daily-comparison.ts b/server/utils/financial-daily-comparison.ts
+index 68770583..beaa084f 100644
+--- a/server/utils/financial-daily-comparison.ts
++++ b/server/utils/financial-daily-comparison.ts
+@@ -5,7 +5,7 @@ import {
+   getCampaignMetricTotalsAtDate,
+   type CampaignMetricTotals,
+ } from "./campaign-current-values";
+-import { resolveGA4ImportToDateWindow } from "./reporting-timezone";
++import { getGA4ReportingWindowMode, resolveGA4ImportToDateWindow } from "./reporting-timezone";
+ 
+ type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: string; sourceIds: string[] };
+ 
+@@ -94,7 +94,7 @@ export async function deriveFinancialDailyComparisonSnapshot(
+         campaignId,
+         version: "performance_summary_aggregate_v3",
+         currentValueWindow: {
+-          mode: "initial_import_to_latest_completed_day",
++          mode: getGA4ReportingWindowMode(),
+           startDate: financialWindowStartDate,
+           endDate: reportingDate,
+           dataThroughDate: reportingDate,
 diff --git a/server/utils/financial-daily-snapshot-readiness.ts b/server/utils/financial-daily-snapshot-readiness.ts
 index e6139f41..6b2a6b26 100644
 --- a/server/utils/financial-daily-snapshot-readiness.ts

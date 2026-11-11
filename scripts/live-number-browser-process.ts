@@ -10,6 +10,7 @@ export function browserSafeValue(value: any): any {
 export async function runBrowserProcess(snapshot: LiveNumberSnapshot, outputs: Record<string, any>, read: BrowserRead): Promise<NumberCheck[]> {
   return new Promise(resolveResult => {
     const env: NodeJS.ProcessEnv = {};
+    env.GA4_INCLUDE_CURRENT_DAY = process.env.GA4_INCLUDE_CURRENT_DAY === "true" ? "true" : "false";
     for (const name of ["PATH", "Path", "SystemRoot", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "HOME", "USERPROFILE", "LOCALAPPDATA", "PLAYWRIGHT_BROWSERS_PATH"]) if (process.env[name]) env[name] = process.env[name];
     if (process.platform === "linux") env.PLAYWRIGHT_BROWSERS_PATH ||= "0";
     const child = fork(resolve("scripts/live-number-browser-checks.ts"), ["--browser-worker"], { execArgv: ["--max-old-space-size=384", "--import", "tsx"], env, windowsHide: true, stdio: ["ignore", "ignore", "ignore", "ipc"] });

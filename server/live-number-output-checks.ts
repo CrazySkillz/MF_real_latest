@@ -1,4 +1,4 @@
-import { compareNumber, dateIsValid, monitorHash, monitoredUsers, numberOrNull, parseMonitorMapping, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
+import { compareNumber, dateIsValid, monitorHash, monitoredUsers, monitorWindowMode, numberOrNull, parseMonitorMapping, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { buildExecutiveSummaryFinancialSourceIdentity } from "./utils/executive-summary-daily-snapshot";
 import { resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
@@ -39,7 +39,7 @@ export function checkFinancialComparisonOutputs(snapshot: LiveNumberSnapshot, ou
       const reference = retained[0]?.metrics?.financialDaily;
       flag(`${side}_SCOPE`, returned.campaignId === snapshot.campaign.id && returned.snapshotType === "financial_daily"
         && returned.reportingDate === date && financial?.version === "financial_daily_snapshot_v1" && financial?.currency === (reference?.currency || scope.currency)
-        && financial?.currentValueWindow?.mode === (reference?.currentValueWindow?.mode || "initial_import_to_latest_completed_day")
+        && financial?.currentValueWindow?.mode === (reference?.currentValueWindow?.mode || monitorWindowMode())
         && financial?.currentValueWindow?.startDate === (reference?.currentValueWindow?.startDate || expectedStart) && financial?.currentValueWindow?.endDate === date
         && financial?.currentValueWindow?.dataThroughDate === date && financial?.currentValueWindow?.reportingTimeZone === (reference?.currentValueWindow?.reportingTimeZone || scope.reportingTimeZone));
       const compatible = returned.campaignId === snapshot.campaign.id && returned.snapshotType === "financial_daily" && returned.reportingDate === date

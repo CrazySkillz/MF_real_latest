@@ -79,6 +79,27 @@ describe("remaining live monitor selections", () => {
     previous.campaignId = "other";
     expect(checks()).toContainEqual(expect.objectContaining({ code: "previous_SCOPE", status: "difference" }));
   });
+  it("requires the current policy for derived history and the original policy for retained history", () => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    try {
+      const snapshot = fixture(), current = financial("2026-11-04", 100, 40, 1.5), previous = financial("2026-11-03");
+      current.metrics.financialDaily.currentValueWindow.mode = "initial_import_to_latest_available_day";
+      previous.metrics.financialDaily.currentValueWindow.mode = "initial_import_to_latest_available_day";
+      previous.metrics.financialDaily.inputs.spend = { value: null as any, available: false, sources: [] };
+      snapshot.rows.metricSnapshots = [current];
+      const outputs = { comparison1d: { current, previous, comparisonDate: "2026-11-03" } };
+      // Display compatibility uses the separately pinned application helper; this guard checks the monitor's window contract.
+      const checks = () => checkFinancialComparisonOutputs(snapshot, outputs, new Date("2026-11-04T13:00:00Z")).filter(c => c.section.endsWith("comparison1d") && c.code.endsWith("_SCOPE"));
+      expect(checks()).toHaveLength(2);
+      expect(checks().every(c => c.status === "passed")).toBe(true);
+      previous.metrics.financialDaily.currentValueWindow.mode = "initial_import_to_latest_completed_day";
+      expect(checks()).toContainEqual(expect.objectContaining({ code: "previous_SCOPE", status: "difference" }));
+      snapshot.rows.metricSnapshots.push(structuredClone(previous));
+      expect(checks().every(c => c.status === "passed")).toBe(true);
+      previous.metrics.financialDaily.currentValueWindow.mode = "initial_import_to_latest_available_day";
+      expect(checks()).toContainEqual(expect.objectContaining({ code: "previous_SCOPE", status: "difference" }));
+    } finally { vi.unstubAllEnvs(); }
+  });
   it("never passes missing responses, incomplete history or duplicate saved snapshots", () => {
     const snapshot = fixture();
     expect(checkFinancialComparisonOutputs(snapshot, {}, now).every(check => check.status === "unverified")).toBe(true);

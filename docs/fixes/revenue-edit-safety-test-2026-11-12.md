@@ -30,4 +30,4 @@ The test app's real HubSpot/Salesforce connection setup remains outside this cha
 
 ## UI validation
 
-On a connected test campaign, open Sources -> pencil. Open the same CRM source in two tabs. Save a selection in the first; saving the older editor must show a settings-changed message without replacing the first save. Close/reopen the older editor before editing again. In Shopify, change selections while returning through Review; only the latest preview may enable Update, and its confirmation must use the source currency. Use test records only.
+On a connected test campaign, open Sources -> pencil. Open the same CRM source in two tabs. Save a selection in the first; saving the older editor must show a settings-changed message without replacing the first save. Reload the older page and reopen the editor before editing again: reopening alone can retain cached source settings. In Shopify, change selections while returning through Review; only the latest preview may enable Update, and its confirmation must use the source currency. Use test records only.

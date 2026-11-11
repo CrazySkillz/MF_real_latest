@@ -41,7 +41,7 @@ describe.each(["hubspot", "salesforce"] as const)("%s stale edit protection", pr
   it("rejects the older tab before provider access and leaves the newer mapping intact", async () => {
     const saved = { mappingConfig: newer }, f = fixture(provider, saved), result = await f.invoke();
     expect(result.statusCode).toBe(409); expect(result.body.code).toBe(`${provider.toUpperCase()}_REVENUE_SOURCE_CHANGED`);
-    expect(result.body.error).toContain("Close and reopen"); expect(saved.mappingConfig).toBe(newer);
+    expect(result.body.error).toContain("Reload the page and reopen"); expect(saved.mappingConfig).toBe(newer);
     expect(result.body.reachedProvider).toBeUndefined();
   });
   it("allows the freshly reopened editor and retains scheduler compatibility", async () => {

@@ -198,7 +198,7 @@ describe('Batch 6 legacy ad-platform reprocessing isolation', () => {
     const run = bind(`const run = async () => { let attempted=0, succeeded=0, skipped=0, anyUpdated=false; ${code} return {succeeded,skipped,anyUpdated}; };`, 'run', {
       ...f.env, campaignId, guarded: false, campaign: { startDate: '2026-10-01', currency: 'EUR' },
       safeJsonParse: JSON.parse, isSourceOutsideCampaign: (row: any, id: string) => row.campaignId !== id,
-      getLatestCompleteReportingDate: () => '2026-10-24', refreshWriteInput: {},
+      getLatestCompleteReportingDate: () => '2026-10-24', getLatestGA4ReportingDate: () => '2026-10-24', refreshWriteInput: {},
     });
     return { run, read, replace, update };
   }

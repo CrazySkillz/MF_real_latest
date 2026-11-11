@@ -37,11 +37,12 @@ describe("GA4 Insights report parity", () => {
     expect(liveSection).not.toContain("Completed-day cutoff");
     for (const section of [reportSection, scheduledSection]) {
       expect(section).toContain("Completed-day cutoff");
+      expect(section).toContain("ga4ProvisionalNotice(");
+      expect(section).toContain("Data through");
     }
 
     for (const section of [liveSection, reportSection, scheduledSection]) {
       expect(section).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
-      expect(section).not.toContain("Data through");
       expect(section).not.toContain("7d/30d show rolling daily averages");
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");

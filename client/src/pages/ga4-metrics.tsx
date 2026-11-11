@@ -3064,16 +3064,16 @@ export default function GA4Metrics() {
   const financialWindowDescription = useMemo(() => {
     const windows: string[] = [];
     if (ga4HasRevenueMetric && (ga4ToDateResp as any)?.startDate && (ga4ToDateResp as any)?.endDate) {
-      windows.push(`GA4 native revenue ${String((ga4ToDateResp as any).startDate)} to ${String((ga4ToDateResp as any).endDate)} completed days`);
+      windows.push(`GA4 native revenue ${String((ga4ToDateResp as any).startDate)} to ${String((ga4ToDateResp as any).endDate)}${ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? " (includes provisional data)" : " completed days"}`);
     }
     if (revenueDisplaySources.length > 0 && (importedRevenueToDateResp as any)?.endDate) {
-      windows.push(`imported revenue source-to-date through completed ${trendsReportingTimeZoneLabel} day ${String((importedRevenueToDateResp as any).endDate)}`);
+      windows.push(`imported revenue source-to-date through ${ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? "available" : "completed"} ${trendsReportingTimeZoneLabel} day ${String((importedRevenueToDateResp as any).endDate)}`);
     }
     if (spendDisplaySources.length > 0 && (spendToDateResp as any)?.endDate) {
-      windows.push(`spend source-to-date through completed ${trendsReportingTimeZoneLabel} day ${String((spendToDateResp as any).endDate)}`);
+      windows.push(`spend source-to-date through ${ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? "available" : "completed"} ${trendsReportingTimeZoneLabel} day ${String((spendToDateResp as any).endDate)}`);
     }
     return windows.length > 0 ? `${windows.join("; ")}.` : "";
-  }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp]);
+  }, [ga4HasRevenueMetric, ga4ToDateResp, importedRevenueToDateResp, trendsReportingTimeZoneLabel, revenueDisplaySources, spendDisplaySources, spendToDateResp, ga4DailyResp?.reportingMode]);
   const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const hasPipelineProxy = !!pipelineProxyData?.success;
@@ -4395,7 +4395,7 @@ export default function GA4Metrics() {
         doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...C.textSec);
-        doc.text(`Completed-day cutoff: ${trendsDataThroughLabel}`, MX + 2, y + 4);
+        doc.text(ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? `Data through: ${trendsDataThroughLabel}` : `Completed-day cutoff: ${trendsDataThroughLabel}`, MX + 2, y + 4);
         doc.text(`Reporting timezone: ${trendsReportingTimeZoneLabel}`, MX + 68, y + 4);
         doc.text(`Last refreshed: ${trendsLastRefreshedLabel}`, MX + 2, y + 10);
         y += 14;
@@ -5397,7 +5397,7 @@ export default function GA4Metrics() {
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
     if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
-      return "GA4 recorded completed daily history; missing dates are unavailable";
+      return ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? "GA4 recorded daily history; missing dates are unavailable" : "GA4 recorded completed daily history; missing dates are unavailable";
     }
     if (id === "integrity:analytics_history_primary_property_only") return "KPI/Benchmark snapshot history + selected property";
     return "Current campaign data";
@@ -6237,11 +6237,12 @@ export default function GA4Metrics() {
 
   const insightsActionDescription = useMemo(() => {
     const availableDays = Number(findingsRollups?.availableDays || 0);
-    const completedDayLabel = `${availableDays} completed campaign day${availableDays === 1 ? "" : "s"}`;
-    const current3Coverage = `${findingsRollups.last3.startDate} to ${findingsRollups.last3.endDate}: ${findingsRollups.last3.days}/${findingsRollups.last3.expectedDays} completed days`;
-    const prior3Coverage = `${findingsRollups.prior3.startDate} to ${findingsRollups.prior3.endDate}: ${findingsRollups.prior3.days}/${findingsRollups.prior3.expectedDays} completed days`;
-    const current7Coverage = `${findingsRollups.last7.startDate} to ${findingsRollups.last7.endDate}: ${findingsRollups.last7.days}/${findingsRollups.last7.expectedDays} completed days`;
-    const prior7Coverage = `${findingsRollups.prior7.startDate} to ${findingsRollups.prior7.endDate}: ${findingsRollups.prior7.days}/${findingsRollups.prior7.expectedDays} completed days`;
+    const dayStatus = ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? "recorded" : "completed";
+    const completedDayLabel = dayStatus === "recorded" ? `${availableDays} recorded campaign days` : `${availableDays} completed campaign day${availableDays === 1 ? "" : "s"}`;
+    const current3Coverage = `${findingsRollups.last3.startDate} to ${findingsRollups.last3.endDate}: ${findingsRollups.last3.days}/${findingsRollups.last3.expectedDays} ${dayStatus} days`;
+    const prior3Coverage = `${findingsRollups.prior3.startDate} to ${findingsRollups.prior3.endDate}: ${findingsRollups.prior3.days}/${findingsRollups.prior3.expectedDays} ${dayStatus} days`;
+    const current7Coverage = `${findingsRollups.last7.startDate} to ${findingsRollups.last7.endDate}: ${findingsRollups.last7.days}/${findingsRollups.last7.expectedDays} ${dayStatus} days`;
+    const prior7Coverage = `${findingsRollups.prior7.startDate} to ${findingsRollups.prior7.endDate}: ${findingsRollups.prior7.days}/${findingsRollups.prior7.expectedDays} ${dayStatus} days`;
     if (ga4InsightsDailyError && ga4InsightsDailyResp === undefined) {
       return "GA4 trend history is unavailable. Trend recommendations are withheld; setup and verified KPI/Benchmark checks still run.";
     }
@@ -6252,7 +6253,7 @@ export default function GA4Metrics() {
       return `Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}. Short-window checks are active, but both adjacent 7-day calendar windows must be complete before 7-day comparisons run. ${completedDayLabel}.`;
     }
     return `Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}. Both windows are complete, so 7-day comparisons run alongside KPI/Benchmark checks. ${completedDayLabel}.`;
-  }, [ga4InsightsDailyError, ga4InsightsDailyResp, findingsRollups]);
+  }, [ga4InsightsDailyError, ga4InsightsDailyResp, findingsRollups, ga4DailyResp?.reportingMode]);
 
   // Collect GA4 campaign names from the current campaign's saved GA4 scope.
   const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
@@ -6581,7 +6582,7 @@ export default function GA4Metrics() {
     : ga4DailyRefreshStatus === "failed" ? "Last GA4 refresh failed"
     : ga4DailyRefreshStatus === "delayed" ? "GA4 update is overdue"
     : ga4DailyRefreshStatus === "pending" ? "Waiting for scheduled GA4 refresh"
-    : "Imported GA4 data, updated daily";
+    : ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? "Available GA4 data, updated at scheduled refreshes" : "Imported GA4 data, updated daily";
   const ga4DailyFreshnessAvailable = ga4ConnectionUsable && Boolean(ga4DailyResp);
   const ga4DailyFreshnessLabel = !ga4DailyFreshnessAvailable
     ? "Unavailable"
@@ -9783,7 +9784,7 @@ export default function GA4Metrics() {
                               : insightsTrendMode === "30d"
                                 ? { label: "30-day", current: trendsRollups.last30, prior: trendsRollups.prior30 }
                                 : null;
-                            const intradayHistoryNote = insightsTrendMode === "monthly" ? "" : ` Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.`;
+                            const intradayHistoryNote = insightsTrendMode === "monthly" ? "" : ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? " Today's available GA4 data is provisional." : ` Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.`;
                             if (rollingWindow) {
                               return (
                                 <div className="text-sm text-muted-foreground/70 py-4">
@@ -10378,7 +10379,7 @@ export default function GA4Metrics() {
                           </div>
                         </div>
                         <div className="rounded-lg border border-border bg-muted/30 p-4 text-foreground/80">
-                          GA4 metrics refresh in the background. Trends and report-date logic use completed {trendsReportingTimeZoneLabel} GA4 daily rows, so today's intraday GA4 data is excluded until it becomes a completed {trendsReportingTimeZoneLabel} day.
+                          {ga4ProvisionalNotice(ga4DailyResp?.reportingMode) || <>GA4 metrics refresh in the background. Trends and report-date logic use completed {trendsReportingTimeZoneLabel} GA4 daily rows, so today's intraday GA4 data is excluded until it becomes a completed {trendsReportingTimeZoneLabel} day.</>}
                         </div>
                       </CardContent>
                     </Card>

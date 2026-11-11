@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { financialDailySnapshotInputSchema } from "../shared/schema";
 import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
-import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { getReportingDateWindow, getGA4ReportingWindowMode, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
 import { getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest } from "./internal-request-auth";
@@ -50,7 +50,7 @@ describe("published GA4 readers", () => {
     bindings = { storage, ga4Service: provider, getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest, ensureCampaignAccess: vi.fn().mockResolvedValue({ ...campaign }),
       parseGA4CampaignFilter: (value: string) => value ? [value] : [], isNoRevenueFilter: () => false,
       normalizePropertyIdForMock: (id: string) => id.replace("properties/", ""), isYesopMockProperty: (id: string) => id === "yesop", isSupportedGA4ConnectionMethod: () => true,
-      getReportingDateWindow, resolveGA4ImportToDateWindow, isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource, financialDailySnapshotInputSchema,
+      getReportingDateWindow, getGA4ReportingWindowMode, resolveGA4ImportToDateWindow, isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource, financialDailySnapshotInputSchema,
       assertGA4InsightsFinancialCurrencyScope: () => {}, getDateRangeBounds: () => ({ startDate: "2026-07-19", endDate: "2026-10-16" }),
       getGA4DistinctUsers, summarizeGA4TrafficRows, resolveCampaignCumulativeFinancials, observeFinancialDailySnapshotReadiness: vi.fn(),
       getShopifyRevenueSourceFreshness: () => undefined,

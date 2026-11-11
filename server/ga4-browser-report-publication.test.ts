@@ -8,6 +8,7 @@ import * as targetMath from "../shared/kpi-math";
 import * as insightMath from "../shared/ga4-insights";
 import * as comparisonMath from "../shared/ga4-ad-comparison-cards";
 import { roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
+import { ga4ProvisionalNotice } from "../shared/ga4-financial-source";
 
 const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
 const start = page.indexOf("const isGA4OverviewReportDetailBlocked =");
@@ -17,6 +18,7 @@ if (start < 0 || end < start) throw new Error("Browser report preflight not foun
 const preflight = page.slice(start, end) + 'return "ready"; }; return downloadGA4Report;';
 function run(overrides: Record<string, any> = {}, configuration?: any, reportType = "custom", body = preflight) {
   const bindings: Record<string, any> = {
+    ga4ProvisionalNotice, ga4DailyResp: {},
     requestReportSaveFile: async () => undefined,
     ga4PublicationDisplayPending: false, ga4PublicationDisplayFailed: false,
     ga4InsightsContextFetching: 0, reportInsightsBreakdownError: false,

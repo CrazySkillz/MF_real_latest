@@ -17,6 +17,21 @@ function fixture(at = "2026-11-05T11:30:00Z", completedAt = "2026-11-05T07:00:24
 }
 const assess = (f: ReturnType<typeof fixture>, c: any = config) => assessHostedHealth(f.health, f.scheduler, c, f.now);
 describe("read-only hosted operations monitor", () => {
+  it("requires today's published date for a current-day app while preserving the live completed-day policy", () => {
+    const f = fixture("2026-11-05T11:30:00Z", "2026-11-05T07:00:24Z", "2026-11-05");
+    expect(assess(f, { ...config, reportingMode: "current_day" }).status).toBe("passed");
+    expect(assess(f).status).toBe("failed");
+    expect(assess(fixture(), { ...config, reportingMode: "current_day" }).status).toBe("failed");
+    expect(assess(fixture()).status).toBe("passed");
+  });
+  it("keeps the previous evening current before 08:00, then detects a missed current-day run", () => {
+    const early = fixture("2026-11-06T05:30:00Z", "2026-11-05T19:00:24Z", "2026-11-05");
+    early.scheduler.ga4DailyScheduler.nextRunAt = "2026-11-06T07:00:00Z";
+    expect(assess(early, { ...config, reportingMode: "current_day" }).status).toBe("passed");
+    const missed = fixture("2026-11-06T07:21:00Z", "2026-11-05T19:00:24Z", "2026-11-05");
+    missed.scheduler.ga4DailyScheduler.nextRunAt = "2026-11-06T13:00:00Z";
+    expect(assess(missed, { ...config, reportingMode: "current_day" }).failures).toContain("REFRESH_UNCONFIRMED:2e353d874c51");
+  });
   it('alerts on a durable first-import verification failure even after scheduler state resets', () => {
     const f = fixture();
     expect(assess(f, { ...config, initialImportVerificationFailures: ['a'.repeat(12)] })).toMatchObject({

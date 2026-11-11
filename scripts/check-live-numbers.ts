@@ -12,6 +12,7 @@ const outputApplicationSchema = z.object({
   expectedCommit: z.string().regex(/^[a-f0-9]{40}$/),
   comparisonRateDefinition: z.literal("conversions_per_session").optional(),
   usersDefinition: z.literal("ga4_totalUsers_distinct_v1").optional(),
+  reportingMode: z.enum(["completed_days", "current_day"]).optional(),
 }).strict();
 
 export const liveNumberConfigSchema = z.object({
@@ -90,6 +91,7 @@ export function readOnlyMonitorFetch(request: typeof fetch): typeof fetch {
 
 export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly = false) {
   const config = liveNumberConfigSchema.parse(configInput);
+  process.env.GA4_INCLUDE_CURRENT_DAY = config.application?.reportingMode === "current_day" ? "true" : "false";
   const dueCampaigns = config.campaigns.filter(campaign => !scheduledOnly || liveNumberCheckIsDue(campaign.reportingTimeZone));
   if (!dueCampaigns.length) return [{ campaignIdHash: "none", checkedAt: new Date().toISOString(), status: "not_due", checks: [] as NumberCheck[],
     scope: "No accuracy check scheduled for this slot; no database or provider queries made." }];

@@ -44,7 +44,7 @@ export function checkFinancialComparisonOutputs(snapshot: LiveNumberSnapshot, ou
         && financial?.currentValueWindow?.dataThroughDate === date && financial?.currentValueWindow?.reportingTimeZone === (reference?.currentValueWindow?.reportingTimeZone || scope.reportingTimeZone));
       const compatible = returned.campaignId === snapshot.campaign.id && returned.snapshotType === "financial_daily" && returned.reportingDate === date
         && financial?.version === "financial_daily_snapshot_v1" && financial?.currency === scope.currency
-        && financial?.currentValueWindow?.mode === "initial_import_to_latest_completed_day" && financial?.currentValueWindow?.startDate === expectedStart
+        && ["initial_import_to_latest_completed_day", "initial_import_to_latest_available_day"].includes(financial?.currentValueWindow?.mode) && financial?.currentValueWindow?.startDate === expectedStart
         && financial?.currentValueWindow?.endDate === date && financial?.currentValueWindow?.dataThroughDate === date
         && financial?.currentValueWindow?.reportingTimeZone === scope.reportingTimeZone;
       const consumer = resolveCompatibleTrendFinancialDaily({ snapshot: returned, campaignId: snapshot.campaign.id, comparisonDate: date,
@@ -297,7 +297,7 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
       const fallbackVerified = current && !previous && expected.revenueSources.length === 0 && previousDate >= scope.startDate
         && currentRows[0].campaignId === campaign.id && current.currency === scope.currency && current.ga4PropertyId === scope.connection.propertyId
         && current.ga4CampaignFilter === String(campaign.ga4CampaignFilter).trim()
-        && current.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+        && ["initial_import_to_latest_completed_day", "initial_import_to_latest_available_day"].includes(current.currentValueWindow?.mode)
         && current.currentValueWindow?.startDate === scope.startDate && current.currentValueWindow?.endDate === scope.endDate
         && current.currentValueWindow?.reportingTimeZone === scope.reportingTimeZone && current.totals?.revenue?.available === true
         && JSON.stringify(current.totals.revenue.sources) === '["ga4"]' && !current.sourceSignature?.some((id: string) => id.startsWith("revenue_source:"))

@@ -16,6 +16,9 @@ import { isAlertDecisionBreached } from "./utils/alert-decision";
 export type LiveNumberSnapshot = { campaign: Record<string, any>; rows: Record<string, any[]>; comparisonRateDefinition?: "conversions_per_session"; usersDefinition?: "ga4_totalUsers_distinct_v1" };
 export type NumberCheck = { section: string; code: string; status: "passed" | "difference" | "unverified"; subject?: string };
 export const monitorHash = (value: string) => createHash("sha256").update(value).digest("hex").slice(0, 12);
+export const monitorWindowMode = () => process.env.GA4_INCLUDE_CURRENT_DAY === "true" ? "initial_import_to_latest_available_day" : "initial_import_to_latest_completed_day";
+const monitorDateOffset = () => process.env.GA4_INCLUDE_CURRENT_DAY === "true" ? 1 : 0;
+const shiftMonitorDate = (date: string, days: number) => new Date(Date.parse(date + "T00:00:00Z") + days * 86400000).toISOString().slice(0, 10);
 export const snapshotFingerprint = (snapshot: LiveNumberSnapshot) => createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
 export const numberOrNull = (value: unknown): number | null => {
   if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim())) return null;
@@ -63,7 +66,7 @@ export function resolveMonitorScope(snapshot: LiveNumberSnapshot, now = new Date
   const publication = publications[0];
   if (publication.campaignId !== campaign.id || publication.windowStart !== connection.importStartDate
     || !dateIsValid(publication.windowStart) || !dateIsValid(publication.windowEnd) || publication.windowStart > publication.windowEnd
-    || publication.windowEnd !== getLatestCompleteReportingDate(campaign.reportingTimeZone, now)
+    || publication.windowEnd !== shiftMonitorDate(getLatestCompleteReportingDate(campaign.reportingTimeZone, now), monitorDateOffset())
     || publication.campaignBreakdown?.meta?.propertyId !== connection.propertyId
     || publication.campaignBreakdown?.meta?.currencyCode !== campaign.currency) throw new Error("PUBLICATION_SCOPE_UNVERIFIED");
   if ((rows.ga4RefreshWork || []).some(r => r.status === "running")) throw new Error("PUBLICATION_IN_PROGRESS");
@@ -228,7 +231,7 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
   const work = initial.length === 1 ? initial[0] : null, receipt = work?.scope?.initialImportVerification;
   const proof = receipt?.properties?.length === 1 ? receipt.properties[0] : null;
   const completed = new Date(work?.completedAt).getTime(), created = new Date(campaign.createdAt).getTime();
-  const due = getExpectedScheduledRefreshAt(endDate, { reportingTimeZone, hour: 8, hours: [8, 14, 20], minute: 0 }, now)!;
+  const due = getExpectedScheduledRefreshAt(shiftMonitorDate(endDate, -monitorDateOffset()), { reportingTimeZone, hour: 8, hours: [8, 14, 20], minute: 0 }, now)!;
   const awaitingFirstSummary = campaign.status === "active" && work?.campaignId === campaign.id && work.reportingDate === endDate
     && !String(work.scopeHash || "").startsWith("invalidated:") && receipt?.version === 1
     && ["id", "ownerId", "clientId", "currency", "reportingTimeZone", "ga4CampaignFilter"].every(key => work.scope.campaign?.[key] === campaign[key])
@@ -295,7 +298,7 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
         push("Performance Summary", "SAVED_INPUT_revenue", native !== null && amounts.every((n: any) => n !== null) ? native + amounts.reduce<number>((a, b) => a + b!, 0) : null, rev, 2);
         if (cost !== null) push("Performance Summary", "SAVED_INPUT_spend", verification.spendSourceIds?.length ? verification.spend : verification.fallbackSpend, cost, 2);
       }
-    } else if (!window || window.mode !== "initial_import_to_latest_completed_day" || window.startDate !== startDate
+    } else if (!window || window.mode !== monitorWindowMode() || window.startDate !== startDate
       || window.endDate !== endDate || window.dataThroughDate !== endDate || window.reportingTimeZone !== reportingTimeZone) {
       checks.push({ section: "Performance Summary", code: "SAVED_SOURCE_WINDOW_UNVERIFIED", status: "unverified" });
     } else {

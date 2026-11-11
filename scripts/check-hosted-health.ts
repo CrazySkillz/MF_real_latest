@@ -11,6 +11,7 @@ export const configSchema = z.object({
     return url.protocol === "https:" && !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash;
   }),
   expectedCommit: z.string().regex(/^[a-f0-9]{40}$/),
+  reportingMode: z.enum(["completed_days", "current_day"]).optional(),
   graceMinutes: z.number().int().min(5).max(60),
   maxResponseMilliseconds: z.number().int().min(100).max(15000).default(5000),
   enrollmentResolved: z.literal(true).optional(),
@@ -59,11 +60,13 @@ export function assessHostedHealth(health: unknown, scheduler: unknown, input: u
       // Evaluate the latest slot whose completion grace has elapsed, including yesterday before 08:00.
       const cutoff = new Date(now.getTime() - graceMs), zone = campaign.reportingTimeZone;
       const schedule = { reportingTimeZone: zone, hour: 8, hours: [8, 14, 20], minute: 0 };
-      let reportingDate = getLatestCompleteReportingDate(zone, cutoff);
-      let due = getExpectedScheduledRefreshAt(reportingDate, schedule, cutoff)!;
+      const shiftDate = (date: string, days: number) => new Date(Date.parse(date + "T00:00:00Z") + days * 86_400_000).toISOString().slice(0, 10);
+      const offset = config.reportingMode === "current_day" ? 1 : 0;
+      let reportingDate = shiftDate(getLatestCompleteReportingDate(zone, cutoff), offset);
+      let due = getExpectedScheduledRefreshAt(shiftDate(reportingDate, -offset), schedule, cutoff)!;
       if (due > cutoff) {
         reportingDate = new Date(Date.parse(reportingDate + "T00:00:00Z") - 86_400_000).toISOString().slice(0, 10);
-        due = getExpectedScheduledRefreshAt(reportingDate, schedule, cutoff)!;
+        due = getExpectedScheduledRefreshAt(shiftDate(reportingDate, -offset), schedule, cutoff)!;
       }
       if (campaign.monitorFrom && Date.parse(campaign.monitorFrom) > due.getTime()) {
         pending.push(`FIRST_SCHEDULED_REFRESH_PENDING:${campaign.campaignIdHash}`);
@@ -74,7 +77,7 @@ export function assessHostedHealth(health: unknown, scheduler: unknown, input: u
       const dateValid = marker && /^\d{4}-\d{2}-\d{2}$/.test(marker.reportingDate)
         && Number.isFinite(Date.parse(marker.reportingDate + "T00:00:00Z"))
         && new Date(marker.reportingDate + "T00:00:00Z").toISOString().slice(0, 10) === marker.reportingDate
-        && marker.reportingDate >= reportingDate && marker.reportingDate <= getLatestCompleteReportingDate(zone, now);
+        && marker.reportingDate >= reportingDate && marker.reportingDate <= shiftDate(getLatestCompleteReportingDate(zone, now), offset);
       if (markers.length > 1 || (marker && Date.parse(marker.completedAt) > now.getTime())) failures.push(`INVALID_COMPLETION:${campaign.campaignIdHash}`);
       else if (!marker || !dateValid || Date.parse(marker.completedAt) < due.getTime()) {
         if (runningWithinGrace) pending.push(`REFRESH_IN_PROGRESS:${campaign.campaignIdHash}`);

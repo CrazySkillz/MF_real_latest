@@ -10,7 +10,8 @@ export function resolveMonitorEnrollment(numberInput: unknown, healthInput: unkn
 }>, now = new Date(), initialImportVerificationFailures: string[] = []) {
   const numbers = liveNumberConfigSchema.parse(numberInput), health = configSchema.parse(healthInput);
   if (!numbers.application || new URL(numbers.application.baseUrl).origin !== new URL(health.baseUrl).origin
-    || numbers.application.expectedCommit !== health.expectedCommit) throw new Error("MONITOR_APPLICATION_IDENTITY_MISMATCH");
+    || numbers.application.expectedCommit !== health.expectedCommit
+    || (numbers.application.reportingMode || "completed_days") !== (health.reportingMode || "completed_days")) throw new Error("MONITOR_APPLICATION_IDENTITY_MISMATCH");
   if (campaigns.some(c => !Number.isFinite(Date.parse(c.monitorFrom)) || Date.parse(c.monitorFrom) > now.getTime())) throw new Error("MONITOR_ENROLLMENT_DATE_INVALID");
   return {
     numbers: liveNumberConfigSchema.parse({ ...numbers, enrollmentResolved: true,

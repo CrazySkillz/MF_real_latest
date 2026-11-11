@@ -1,11 +1,12 @@
 {
   "baseUrl": "https://marketforensics-test.onrender.com",
-  "expectedCommit": "b8283c1a00e062229b4592e331fcc5b5aada71b9",
+  "expectedCommit": "efa23764ec738176683a82dceca00791815f9fd1",
   "graceMinutes": 20,
   "campaigns": [
     {
       "campaignIdHash": "2e353d874c51",
       "reportingTimeZone": "Europe/Amsterdam"
     }
-  ]
+  ],
+  "reportingMode": "current_day"
 }

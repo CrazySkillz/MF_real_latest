@@ -38,6 +38,19 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory(app, root)).toBe(prepared);
   expect(readFileSync(join(usersPrepared, extra), "utf8").trim()).toBe("distinct");
   expect(readFileSync(join(prepared, files[0]), "utf8").trim()).toBe("new");
+  const currentApp = { ...usersApp, expectedCommit: "d".repeat(40), reportingMode: "current_day" };
+  writeFileSync(join(root, "scripts/monitor-current-day.json"), JSON.stringify({ expectedCommit: currentApp.expectedCommit,
+    files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("current\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+current\n`).join(""));
+  const currentPrepared = prepareMonitorApplication(root, true, true);
+  expect(monitorApplicationDirectory(currentApp, root)).toBe(currentPrepared);
+  expect(monitorApplicationDirectory(usersApp, root)).toBe(usersPrepared);
+  expect(readFileSync(join(usersPrepared, extra), "utf8").trim()).toBe("distinct");
+  expect(readFileSync(join(currentPrepared, extra), "utf8").trim()).toBe("current");
+  expect(() => monitorApplicationDirectory({ ...currentApp, reportingMode: "completed_days" }, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ expectedCommit: currentApp.expectedCommit, reportingMode: "current_day" }, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...currentApp, reportingMode: "unknown" }, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...currentApp, expectedCommit: usersApp.expectedCommit }, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...usersApp, expectedCommit: app.expectedCommit }, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...usersApp, usersDefinition: "unknown" }, root)).toThrow();
   writeFileSync(join(usersPrepared, extra), "tampered\n"); expect(() => monitorApplicationDirectory(usersApp, root)).toThrow();

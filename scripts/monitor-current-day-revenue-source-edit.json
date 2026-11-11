@@ -1,0 +1,186 @@
+{
+  "expectedCommit": "6a224ae43d3944153f9fe96a30f6b5a2f2864501",
+  "files": [
+    {
+      "path": "client/src/components/AddRevenueWizardModal.tsx",
+      "before": "e08386021c5329572769a483fa57932a27c1fb7f9de03e6c43b24b26035f230d",
+      "after": "07c069caa68a443001e0977408004821585912e19055ffea0d30a8ea567c01cd"
+    },
+    {
+      "path": "client/src/components/AddSpendWizardModal.tsx",
+      "before": "1f37453680093d58621bc9fde5e5bc099af38a9252e9f0f3a49e447bac939bd0",
+      "after": "88f95507d7e305d4ea88ed04e5da338555e248af6d9abea090f9385fff1e82d4"
+    },
+    {
+      "path": "client/src/components/GA4ConnectionFlow.tsx",
+      "before": "2915e150a0908b46f0161d0a4d926a5177e38a41647fc5e5b1aa5904a7ead58c",
+      "after": "83610a5a9ff39b2a1a5008e809d43a0ee952da490139aa810872e456e161d3fe"
+    },
+    {
+      "path": "client/src/lib/trend-analysis-cumulative.ts",
+      "before": "011daff1a987c394db00db4f5e9962af0d0a80f2019c7ea56d6254bd21c587f6",
+      "after": "a855516eaa35bbb649838ca652aca9c3e1d9cb82de9f76e56e1f4bc5234731f4"
+    },
+    {
+      "path": "client/src/pages/campaign-performance.tsx",
+      "before": "f620db9a84a73f8cf6f2405db1b1842f386b880312118c1eaf1d34fb79ca038e",
+      "after": "396f2dae1ca0b55f3b1990acc237467f18f19a821fb69a282620ef406e5b0129"
+    },
+    {
+      "path": "client/src/pages/campaigns.tsx",
+      "before": "ef0bc53839765e3e568c0b4acc6fbaa485a13e9ef72e817f8b6da20bf39f2749",
+      "after": "48cc340fdd6d2f5d4813888c3e133b7c5afb9f5f46bd8bbfe379878191623cfe"
+    },
+    {
+      "path": "client/src/pages/executive-summary.tsx",
+      "before": "13f37b1505c2cd4df65278d461eb0e2db5c57b135a787a4a5e4abe2bbc06a710",
+      "after": "d4f4112e047db8780347ee0f1ee9053a47e35323d5de5275301c18f9f8946912"
+    },
+    {
+      "path": "client/src/pages/financial-analysis.tsx",
+      "before": "b04f5cade091cf52d5b9ef022feb528337f7677ede67779fb272afa8d283d3b9",
+      "after": "8fb2d0ba3d14778b2800271305b8b6ce161c328fa1640c9822f367fc6cb2ec4a"
+    },
+    {
+      "path": "client/src/pages/ga4-ad-comparison.tsx",
+      "before": "d7ddacff87f5f2496891cb14dea26d42586d4a9597b855cf0be0690cb05a6159",
+      "after": "2184d94fe806e44fbf3a36f2f61da6879d5a49efa40354e0b2a9f84f616fdc47"
+    },
+    {
+      "path": "client/src/pages/ga4-metrics.tsx",
+      "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
+      "after": "06d1533203329c7d835ecc317e6f1d80d8af7e78011e0c78bf90d6fc8dd1be33"
+    },
+    {
+      "path": "client/src/pages/reports.tsx",
+      "before": "2dc8645e3ca2557992d0e25af59ec3cfc038d526183aa5ba389081c0ec9b703a",
+      "after": "118c253c81780d01e64cf711f4d3a27c7f4ea22b2efa2c8a108298006aab153c"
+    },
+    {
+      "path": "client/src/pages/trend-analysis.tsx",
+      "before": "0c463465ae5a277d47902b8c29218e5fe640eb730be28fcef38943ea7bdfcdf9",
+      "after": "0be1fc50deb1a3019cd2b756f5cf9d0d015726b1ae7d0885a84cded0bac6d6bf"
+    },
+    {
+      "path": "server/analytics.ts",
+      "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
+      "after": "c54c579fb62c34bf887f7fef626aa44636776951c3aa3a4ff254629bb3c44369"
+    },
+    {
+      "path": "server/auto-refresh-scheduler.ts",
+      "before": "d644502695607a4452247fdd7d30a98263a4d7c016a9de397f930b6d995ac7c9",
+      "after": "06925aa0039c1b18c70c2232ca6731cf226a4db7ca930cb18996783962878c7c"
+    },
+    {
+      "path": "server/ga4-daily-scheduler.ts",
+      "before": "48373a06062b31e6089d6d8ffdc1f6b77b0806a251543608751e1130da25d37c",
+      "after": "c16b0b10a08ed7758db830e21253d729689072cbc3234d83a0c58dcdf4c756d4"
+    },
+    {
+      "path": "server/ga4-kpi-benchmark-jobs.ts",
+      "before": "b4a3fb36dffc724a763e6afb32b4eec22c89d115ea9af271c59101a5263ea5aa",
+      "after": "dd7dc51c4b4cee4cf710dc35cf4195812421f95e6e107fcdce87b1a70848830d"
+    },
+    {
+      "path": "server/ga4-scheduled-report-pdf.ts",
+      "before": "53c136ffec1baa6f92c3d5df66abbbfb2f62a6d4a79a78ca7277bd3a941324d9",
+      "after": "71140072baae5efbf562629c2c2db046500e3c0f72ac78f241d3153d493a2216"
+    },
+    {
+      "path": "server/ga4-source-verification.ts",
+      "before": "f4c8595935a15069f04921916ae4b9938aa8b1e3ce76f7885c5cf10a225eeba7",
+      "after": "2df6d4cc54ca78849e41e24f78693d8414651bef86a69227a911443e6477d109"
+    },
+    {
+      "path": "server/google-ads-scheduler.ts",
+      "before": "35c05a0db4d0c21d23a4bc368c08c190c83ece57dd0ab98a151a9aa1d2b211e0",
+      "after": "3caef3bbe75ed81770d6e480c5df5909a00716d015f786236811a341fa211580"
+    },
+    {
+      "path": "server/report-scheduler.ts",
+      "before": "6a802103dca3ef8337d5bda4e4964ad2451da2ab1635b1dcd0a1a21b8abb9e77",
+      "after": "8e57b2d00b416b4412cd5ae0879a763e488cdc9273440cb5b73bac9330c6d297"
+    },
+    {
+      "path": "server/routes-oauth.ts",
+      "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
+      "after": "f93b51a1c6485090f71e79ce9c25d29461a3114ecd962efced9431515d74596d"
+    },
+    {
+      "path": "server/scheduler.ts",
+      "before": "20dfb92f544d1ea4954ea3aef3f096204a52b29b6367c516b434bac4c41af256",
+      "after": "f46f68b6a181892d3138d10bf7dd81f91abaf9441cab60d42eb3455242a9c6c8"
+    },
+    {
+      "path": "server/utils/campaign-current-values.ts",
+      "before": "e06a97f5007fad59b9ebcc4776759549f8034bde5dfaf8850d467fdad225d685",
+      "after": "3b43b8f92be64a44e812e40064af0f6039b00e7c66a8f14a271fcd5adb3196a3"
+    },
+    {
+      "path": "server/utils/executive-summary-daily-snapshot.ts",
+      "before": "f44e3eca4b77c0a732034c1bb7df0cacd17d1390ebbaedfbeb5e4a346c973a0a",
+      "after": "7451ee3626e353fcbd707b680bc7fb80f8b7c91706343d647289da25eb9b363e"
+    },
+    {
+      "path": "server/utils/financial-daily-comparison.ts",
+      "before": "df68c9d49859ede15cb0300563bd08dbf7121a1980d552326fbd5f9441a5abab",
+      "after": "99a2de18dea6c3b3c8b513ee6e4a2f6e5001eb5e9425e30779e712d3b5560cf6"
+    },
+    {
+      "path": "server/utils/financial-daily-snapshot-readiness.ts",
+      "before": "ae1bf1ea8f2f294fa08275c251929c57aedecb3440506e172fd0f4513fbd15b9",
+      "after": "3c8a180f7b154f6877994414372c3cfe8f75fc3eaf712a978d8e6a573302d06d"
+    },
+    {
+      "path": "server/utils/financial-daily-snapshot-writer.ts",
+      "before": "9251b708d0e0f9e0473406b50ba67e65ecf1a6067ec8c1536ea723f3886a4e9e",
+      "after": "99e0029b1542995720e4545b85d98f81cfe1774cb59443d0cba002ea3291651a"
+    },
+    {
+      "path": "server/utils/ga4-alert-current-value.ts",
+      "before": "31293eb166296d3b7855736307422b1bdd8af1cab77c882e9577a189e77af65d",
+      "after": "48e3b40942bc6ce372547602e245ac3d18e734190d1fa16445601e5ab9ca66fb"
+    },
+    {
+      "path": "server/utils/performance-summary-aggregate.ts",
+      "before": "190ea4b3593846c7720444f73a773248a17d89872c2c1c322817a2aeec1e6a97",
+      "after": "718c958fcfa3585def800a59bffb0ac38b17ecac63e81fb5b058baa606d7a2b2"
+    },
+    {
+      "path": "server/utils/reporting-timezone.ts",
+      "before": "e89ecba48d7bea593d7b4f68ec56e2d8130e3ba7d30b1d106f903b6285a8ac5e",
+      "after": "b08d29bc6d21c3afef6461cb1c3010ac54715a494d1aabd2534ddd5f67704f8e"
+    },
+    {
+      "path": "server/utils/trend-analysis-aggregate.ts",
+      "before": "fb4e928df1b2663abb2800480796d6d5e253adb5366680d01b8a5400e8b99f2e",
+      "after": "d724f09de5fe23105aba4632c49a80c2b67de3629ca6614b86a75fcd75975b98"
+    },
+    {
+      "path": "shared/ga4-financial-source.ts",
+      "before": "74b19510d8a599a2f29ae1414b338e156c5c529538bc43d1002ae18b66f530ef",
+      "after": "8c340989610d1b5427b66b7198554cb7a22fa4fe63a3f79e4aebf1b9c2bc9412"
+    },
+    {
+      "path": "shared/ga4-kpi-consumer-state.ts",
+      "before": "16bc7ad7800ac9dbce85903452def997f8c7b186db1f193bf89c8590f9da6e32",
+      "after": "c71227d6aa99376ace05c4fabf07e9c5c779c1d43d00e1e8495be53ad986e087"
+    },
+    {
+      "path": "shared/ga4-kpi-live-value.ts",
+      "before": "3ca00cddc3a1e645b937a2f0994b41ee7ef6dd14e32387efa8378ef04bc0b8e4",
+      "after": "cb2fa9cad741e7b6d9a1fa8ee7b0e242c6460a915e8a2f2a02bd973d35c0b825"
+    },
+    {
+      "path": "shared/ga4-traffic-window.ts",
+      "before": "3c0cb772db1f61e9d45ebad7673da2c49e97c91573563e2a4bfc072e21c7bc84",
+      "after": "c05e88d2f029a17e5a88abaeae4577678859253d12ecad064b6a4b25442eb0c3"
+    },
+    {
+      "path": "shared/schema.ts",
+      "before": "34b22e5c75cb3e263df57b0e2b7a2cfea6ec353a68ff2a0654f7815277ebe731",
+      "after": "c41d05cc4b1f0789ff8566a53d20c42fbc146679d5a0114971a98acea6da6d34"
+    }
+  ],
+  "equivalentCommits": []
+}

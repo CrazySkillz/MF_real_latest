@@ -25,10 +25,13 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.usersDefinition !== undefined && application.usersDefinition !== "ga4_totalUsers_distinct_v1") throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   if (application.usersDefinition && application.comparisonRateDefinition === undefined) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   if (application.comparisonRateDefinition === undefined) return root;
+  const editPath = join(root, "scripts/monitor-current-day-revenue-source-edit.json");
+  const sourceEdit = application.reportingMode === "current_day" && existsSync(editPath)
+    && revision(root, true, true, "-revenue-source-edit").expectedCommit === application.expectedCommit;
   const wordingPath = join(root, "scripts/monitor-current-day-revenue-wording.json");
   const wording = application.reportingMode === "current_day" && existsSync(wordingPath)
     && (() => { const value = revision(root, true, true, "-revenue-wording"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
-  const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
+  const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", sourceEdit ? "-revenue-source-edit" : wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
   if (application.comparisonRateDefinition !== "conversions_per_session" || ![pinned.expectedCommit, ...(pinned.equivalentCommits || [])].includes(application.expectedCommit)
     || pinned.files.some(file => digest(join(directory, file.path)) !== file.after)) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   return directory;
@@ -58,5 +61,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (existsSync("scripts/monitor-distinct-users.json")) prepareMonitorApplication(process.cwd(), true);
   if (existsSync("scripts/monitor-current-day.json")) prepareMonitorApplication(process.cwd(), true, true);
   if (existsSync("scripts/monitor-current-day-revenue-wording.json")) prepareMonitorApplication(process.cwd(), true, true, "-revenue-wording");
+  if (existsSync("scripts/monitor-current-day-revenue-source-edit.json")) prepareMonitorApplication(process.cwd(), true, true, "-revenue-source-edit");
   console.log("Pinned test application replay source verified");
 }

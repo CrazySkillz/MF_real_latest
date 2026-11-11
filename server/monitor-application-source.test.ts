@@ -62,6 +62,18 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   writeFileSync(wordingManifestPath, JSON.stringify(wordingManifest));
   expect(monitorApplicationDirectory({ ...wordingApp, expectedCommit: "f".repeat(40) }, root)).toBe(wordingPrepared);
   expect(() => monitorApplicationDirectory({ ...wordingApp, expectedCommit: "0".repeat(40) }, root)).toThrow();
+  const editApp = { ...currentApp, expectedCommit: "1".repeat(40) };
+  writeFileSync(join(root, "scripts/monitor-current-day-revenue-source-edit.json"), JSON.stringify({ expectedCommit: editApp.expectedCommit,
+    files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("edit\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-revenue-source-edit.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+edit\n`).join(""));
+  const editPrepared = prepareMonitorApplication(root, true, true, "-revenue-source-edit");
+  expect(monitorApplicationDirectory(editApp, root)).toBe(editPrepared);
+  expect(monitorApplicationDirectory({ ...wordingApp, expectedCommit: "f".repeat(40) }, root)).toBe(wordingPrepared);
+  expect(readFileSync(join(wordingPrepared, extra), "utf8").trim()).toBe("wording");
+  expect(readFileSync(join(editPrepared, extra), "utf8").trim()).toBe("edit");
+  expect(() => monitorApplicationDirectory({ ...editApp, expectedCommit: "2".repeat(40) }, root)).toThrow();
+  writeFileSync(join(editPrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory(editApp, root)).toThrow();
   writeFileSync(join(wordingPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(wordingApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...currentApp, reportingMode: "completed_days" }, root)).toThrow();

@@ -38,7 +38,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("ga4Totals.conversions = parseNum(ga4Totals.conversions) + persistedGA4.conversions;");
     expect(route).toContain('ga4Totals.mergedSource = "ga4_daily_metrics";');
     expect(route).toContain("resolveGA4ImportToDateWindow((persistedPrimaryGA4 as any)?.importStartDate");
-    expect(route).toContain('mode: "initial_import_to_latest_completed_day" as const');
+    expect(route).toContain('mode: getGA4ReportingWindowMode()');
     expect(route).toContain('const spendStartDate = "1900-01-01";');
     expect(route).toContain('const financialSpendDataThroughDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);');
     expect(route).toContain('const spendEndDate = financialSpendDataThroughDate;');

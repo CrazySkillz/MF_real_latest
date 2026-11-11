@@ -12,7 +12,7 @@ import {
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { refreshCampaignCurrentValuesForCampaign, getCampaignMetricTotals } from "./utils/campaign-current-values";
-import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { getGA4ReportingDateWindow as getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope } from "../shared/ga4-insights";
 import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";

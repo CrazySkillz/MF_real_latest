@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ga4ProvisionalNotice } from "@shared/ga4-financial-source";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye, Info, X } from "lucide-react";
@@ -298,7 +299,7 @@ export default function FinancialAnalysis() {
   const performanceSummary = outcomeTotals?.performanceSummary;
   const currentValueWindow = performanceSummary?.currentValueWindow;
   const hasCampaignToDateWindow = performanceSummary?.version === "performance_summary_aggregate_v3"
-    && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
     && currentValueWindow.startDate <= currentValueWindow.endDate
@@ -342,7 +343,7 @@ export default function FinancialAnalysis() {
     && effectiveSnapshot?.reportingDate === financialComparisonDate
     && snapshotFinancialDaily?.version === "financial_daily_snapshot_v1"
     && snapshotFinancialDaily?.currency === campaignCurrency
-    && snapshotFinancialDaily?.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && (snapshotFinancialDaily?.currentValueWindow?.mode === "initial_import_to_latest_completed_day" || snapshotFinancialDaily?.currentValueWindow?.mode === "initial_import_to_latest_available_day")
     && snapshotFinancialDaily?.currentValueWindow?.startDate === currentValueWindow?.startDate
     && snapshotFinancialDaily?.currentValueWindow?.endDate === financialComparisonDate
     && snapshotFinancialDaily?.currentValueWindow?.dataThroughDate === financialComparisonDate
@@ -1188,6 +1189,7 @@ export default function FinancialAnalysis() {
           {/* Legacy tab renderer retained as a non-rendering rollback reference. */}
           {((): boolean => false)() && (
           <Tabs defaultValue="overview" className="space-y-6">
+            {ga4ProvisionalNotice(currentValueWindow?.mode) && <p className="text-sm text-muted-foreground">{ga4ProvisionalNotice(currentValueWindow?.mode)}</p>}
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="roi-roas">ROI & ROAS</TabsTrigger>

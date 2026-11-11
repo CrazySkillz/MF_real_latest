@@ -2,10 +2,10 @@ import { buildGA4InsightsRollups, buildGA4InsightsHistoryScopeMarker, filterGA4I
 import { conversionCreditsMatch, computeProgress, formatRoasRatio } from "../shared/metric-math";
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4ReportingWindowMode, getGA4ReportingDateWindow as getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct, formatConversionCredit } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
-import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+import { ga4ProvisionalNotice, normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { getGA4DistinctUsers, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
 import { computeAttainmentPct, computeEffectiveDeltaPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiDataSufficiency, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
@@ -397,9 +397,10 @@ const buildInsightsItems = (payload: any) => {
       }
     }
   } else {
+    const dayStatus = ga4ProvisionalNotice(payload.reportingMode) ? "recorded" : "completed";
     items.push({ severity: "info", title: "Trend signals need more history", category: "trends",
-      dataBasis: "GA4 recorded completed daily history; missing dates are unavailable", confidence: "High",
-      description: `Current 7-day window ${rollups.last7.startDate} to ${rollups.last7.endDate}: ${rollups.last7.days}/7 completed days. Prior 7-day window ${rollups.prior7.startDate} to ${rollups.prior7.endDate}: ${rollups.prior7.days}/7 completed days. Current 3-day window ${rollups.last3.startDate} to ${rollups.last3.endDate}: ${rollups.last3.days}/3 completed days. Prior window ${rollups.prior3.startDate} to ${rollups.prior3.endDate}: ${rollups.prior3.days}/3 completed days. Both adjacent calendar windows must be complete before comparisons run; ${rollups.availableDays} recorded campaign dates are available.`,
+      dataBasis: ga4ProvisionalNotice(payload.reportingMode) ? "GA4 recorded daily history; missing dates are unavailable" : "GA4 recorded completed daily history; missing dates are unavailable", confidence: "High",
+      description: `Current 7-day window ${rollups.last7.startDate} to ${rollups.last7.endDate}: ${rollups.last7.days}/7 ${dayStatus} days. Prior 7-day window ${rollups.prior7.startDate} to ${rollups.prior7.endDate}: ${rollups.prior7.days}/7 ${dayStatus} days. Current 3-day window ${rollups.last3.startDate} to ${rollups.last3.endDate}: ${rollups.last3.days}/3 ${dayStatus} days. Prior window ${rollups.prior3.startDate} to ${rollups.prior3.endDate}: ${rollups.prior3.days}/3 ${dayStatus} days. Both adjacent calendar windows must be complete before comparisons run; ${rollups.availableDays} recorded campaign dates are available.`,
       recommendation: "Check the daily refresh. Comparisons require recorded data for every day in both windows." });
   }
   const unverifiedTargets: Array<{ name: string; detail: string; unavailable: boolean }> = [];
@@ -539,9 +540,9 @@ const buildInsightsItems = (payload: any) => {
   return items.sort((a, b) => order[a.severity] - order[b.severity] || categoryOrder[a.category] - categoryOrder[b.category]);
 };
 
-const buildInsightsActionDescription = (availableDays: number) => {
+const buildInsightsActionDescription = (availableDays: number, reportingMode?: string) => {
   const days = Math.max(0, Number(availableDays || 0));
-  const dayLabel = `${days} completed GA4 day${days === 1 ? "" : "s"}`;
+  const dayLabel = `${days} ${ga4ProvisionalNotice(reportingMode) ? "recorded" : "completed"} GA4 day${days === 1 ? "" : "s"}`;
   if (days < 6) {
     return `Only ${dayLabel} available. Trend and anomaly checks need at least 6 days; financial setup and saved-target checks still run.`;
   }
@@ -1188,7 +1189,9 @@ async function buildGA4ReportPayload(report: any) {
       lastRefreshedAt: lastDailyRefreshAt,
     },
     reportCumulativeWindow,
+    reportingMode: getGA4ReportingWindowMode(),
     verificationInputs: {
+      reportingMode: getGA4ReportingWindowMode(),
       usersDefinition: "ga4_totalUsers_distinct_v1",
       distinctUsers: (breakdown as any)?.meta?.distinctUsers ?? null,
       comparisonRateDefinition: "conversions_per_session",
@@ -1438,7 +1441,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const metadata = [
     [`Campaign: ${String(campaignName || (payload.campaign as any)?.name || "—")}`, `Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`],
     [standaloneAdComparison ? `Property: ${propertyNameLabel}${propertyIdLabel ? ` (${propertyIdLabel})` : ""}` : `Property: ${String(payload.connection?.displayName || payload.connection?.propertyName || payload.connection?.propertyId || "")}`,
-      standaloneAdComparison ? (campaignFilterLabel ? `Filter: ${campaignFilterLabel}` : "") : `Completed data through: ${payload.reportCumulativeWindow.endDate} (${formatReportingTimeZoneLabel(payload.reportCumulativeWindow.reportingTimeZone)})`],
+      standaloneAdComparison ? (campaignFilterLabel ? `Filter: ${campaignFilterLabel}` : "") : `Data through: ${payload.reportCumulativeWindow.endDate} (${formatReportingTimeZoneLabel(payload.reportCumulativeWindow.reportingTimeZone)})`],
   ].map(cells => cells.map(cell => doc.splitTextToSize(cell, CW / 2 - 12) as string[]));
   const metadataHeights = metadata.map(cells => Math.max(...cells.map(lines => lines.length)) * 4 + 4);
   doc.setFillColor(...COLORS.cardBg);
@@ -1448,6 +1451,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     y += metadataHeights[idx];
   });
   y += 14;
+
+  const provisionalNotice = ga4ProvisionalNotice(payload.reportingMode);
+  if (provisionalNotice) {
+    const lines = doc.splitTextToSize(provisionalNotice, CW);
+    doc.text(lines, MX, y);
+    y += lines.length * 4 + 5;
+  }
 
   if (sections.overview) {
     const s = cfg.subsections?.overview || {};
@@ -1749,7 +1759,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.textSec);
-    doc.text(`Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}`, MX, y + 4);
+    doc.text(ga4ProvisionalNotice(payload.reportingMode) ? `Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}` : `Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}`, MX, y + 4);
     doc.text(`Reporting timezone: ${formatReportingTimeZoneLabel(payload.insightsFreshness.reportingTimeZone)}`, MX + 66, y + 4);
     doc.text(`Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}`, MX, y + 10);
     y += 14;
@@ -1818,7 +1828,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
     if (includeActions) {
       if (!onlyActions) sectionTitle("What to investigate next", COLORS.insights, 16);
-      const actionLines = doc.splitTextToSize(buildInsightsActionDescription(Number(payload.insightsRollups.availableDays || 0)), CW - 8) as string[];
+      const actionLines = doc.splitTextToSize(buildInsightsActionDescription(Number(payload.insightsRollups.availableDays || 0), payload.reportingMode), CW - 8) as string[];
       if (actionLines.length > 0) {
         checkPage(actionLines.length * 4.5 + 6);
         doc.setFontSize(8);

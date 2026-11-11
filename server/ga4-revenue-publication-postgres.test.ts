@@ -503,6 +503,23 @@ describe.skipIf(!testUrl)("sale-date eligibility and durable revenue publication
     expect(await storage.getGA4RevenuePublication("a", day)).toEqual(before);
     expect((await storage.getRecoverableGA4RefreshWork()).map(item => item.id)).toEqual(work.map(item => item.id));
   });
+  it.each(["hubspot", "salesforce"] as const)("rejects a %s pipeline change during current-day publication without altering the last good financial snapshot", async kind => {
+    const source = await save(kind); const scope = await claim(); const prior = await publish(scope, false);
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    try {
+      const snapshot = { ...prior, currentValueWindow: { ...prior.currentValueWindow, mode: "initial_import_to_latest_available_day" as const },
+        revenuePublication: await storage.getGA4RevenuePublication("a", day) };
+      expect(Object.keys(snapshot.revenuePublication.pipelineSources || {})).toEqual([source.id]);
+      await storage.upsertFinancialDailySnapshot(snapshot);
+      const before = await storage.getLatestFinancialDailySnapshot("a", day);
+      await pool.query("UPDATE revenue_sources SET mapping_config=$1 WHERE id=$2", [JSON.stringify({ pipelineEnabled: true, pipelineTotalToDate: 200 }), source.id]);
+      await expect(storage.upsertFinancialDailySnapshot(snapshot)).rejects.toThrow("GA4_REFRESH_PUBLICATION_CHANGED");
+      expect(await storage.getLatestFinancialDailySnapshot("a", day)).toEqual(before);
+      snapshot.revenuePublication = await storage.getGA4RevenuePublication("a", day);
+      await expect(storage.upsertFinancialDailySnapshot(snapshot)).resolves.toBeDefined();
+      expect(await storage.getLatestFinancialDailySnapshot("b", day)).toBeNull();
+    } finally { vi.unstubAllEnvs(); }
+  });
   it("preserves pending work on rename and replaces it only after an analytics input changes", async () => {
     await save("csv"); const previous = (await storage.getRecoverableGA4RefreshWork())[0];
     await storage.updateCampaign("a", { name: "Updated campaign" });

@@ -156,15 +156,15 @@ export default function ExecutiveSummary() {
   const aggregateSources = Array.isArray((performanceSummary as any)?.sources) ? (performanceSummary as any).sources : [];
   const ga4AggregateSource = aggregateSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
   const hasAuthoritativeGA4Window = (performanceSummary as any)?.version === "performance_summary_aggregate_v3"
-    && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
     && currentValueWindow?.dataThroughDate === currentValueWindow?.endDate
     && Array.isArray(ga4AggregateSource?.includedMetrics)
     && ["users", "sessions", "conversions", "revenue"].every((metricName) => ga4AggregateSource.includedMetrics.includes(metricName));
-  const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+  const executiveWindowDescription = (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
     && currentValueWindow.startDate <= currentValueWindow.endDate
-    ? `Through ${currentValueWindow.endDate}`
+    ? `Through ${currentValueWindow.endDate}${currentValueWindow.mode === "initial_import_to_latest_available_day" ? " (includes provisional data)" : ""}`
     : "Current view";
   const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
   const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;

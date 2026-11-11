@@ -1128,7 +1128,7 @@ export const financialDailySnapshotInputSchema = z.object({
   reportingDate: financialSnapshotDateSchema,
   currency: z.string().regex(/^[A-Z]{3}$/),
   currentValueWindow: z.object({
-    mode: z.literal("initial_import_to_latest_completed_day"),
+    mode: z.enum(["initial_import_to_latest_completed_day", "initial_import_to_latest_available_day"]),
     startDate: financialSnapshotDateSchema,
     endDate: financialSnapshotDateSchema,
     dataThroughDate: financialSnapshotDateSchema,

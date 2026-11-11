@@ -613,3 +613,62 @@ describe("gated financial daily snapshot writer", () => {
     expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({ revenuePublication: receipt }));
   });
 });
+
+describe("current-day financial publication", () => {
+  it("publishes a Closed Won transition and the next day's additional source without a pipeline/revenue gap", async () => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    try {
+      let saved: any;
+      const publish = async (date: string, won: boolean, secondSource: boolean, failed = false) => {
+        beginFinancialDailySnapshotRefreshObservation("financial_sources");
+        beginFinancialDailySnapshotRefreshObservation("ga4_daily");
+        for (const stage of ["financial_sources", "ga4_daily"] as const) recordFinancialDailySnapshotRefreshEvidence(stage, {
+          campaignId, reportingDate: date, status: failed && stage === "financial_sources" ? "failed" : "success",
+          completedAt: `${date}T19:01:00.000Z`, failures: failed && stage === "financial_sources" ? ["provider_failed"] : [],
+        });
+        const crm = { id: "crm-1", sourceType: "hubspot", currency: "USD", mappingConfig: JSON.stringify({
+          platformContext: "ga4", pipelineEnabled: true, pipelineStageId: "open", pipelineProxyMode: "current_stage",
+          pipelineTotalToDate: won ? 0 : 200, pipelineCurrency: "USD", pipelineLastUpdatedAt: `${date}T19:00:20Z`,
+          pipelineValueRevenueTotals: won ? [] : [{ campaignValue: "deal-1", revenue: 200 }],
+        }) };
+        const imported = (won ? 200 : 0) + (secondSource ? 30 : 0);
+        const sources = [crm, ...(secondSource ? [{ id: "sheet-2", sourceType: "google_sheets", currency: "USD", mappingConfig: "{}" }] : [])];
+        const deps = dependencies({
+          now: () => new Date(`${date}T19:02:00Z`),
+          getGA4OverviewSnapshot: vi.fn().mockResolvedValue({ ...overviewSnapshot(100), windowEnd: date }),
+          getCampaignMetricTotals: vi.fn().mockResolvedValue({ revenue: 100 + imported, ga4Revenue: 100, spend: 10,
+            conversions: 251, financialConversions: 251, ga4Available: true, ga4RevenueAvailable: true, ga4FinancialSource: "saved_overview",
+            spendAvailable: true, revenueAvailable: true, financialConversionsAvailable: true }),
+          getRevenueTotalForRange: vi.fn().mockImplementation(async (_id, start, end) => {
+            expect(start).toBe("1900-01-01"); expect(end).toBe(date);
+            return { totalRevenue: imported, currency: "USD", sourceIds: sources.map(source => source.id) };
+          }),
+          getSpendTotalForRange: vi.fn().mockResolvedValue({ totalSpend: 10, currency: "USD", sourceIds: ["spend-1"] }),
+          getRevenueSources: vi.fn().mockResolvedValue(sources),
+          getRevenueBreakdownBySource: vi.fn().mockResolvedValue([
+            { sourceId: "crm-1", revenue: won ? 200 : 0, currency: "USD" },
+            ...(secondSource ? [{ sourceId: "sheet-2", revenue: 30, currency: "USD" }] : []),
+          ]),
+          getGA4RevenuePublication: vi.fn().mockImplementation(async () => ({ version: 1, reportingDate: date,
+            sources: Object.fromEntries(sources.map(source => [source.id, "guarded-input-hash"])), pendingSourceIds: [] })),
+          upsertFinancialDailySnapshot: vi.fn().mockImplementation(async (value: any) => { saved = structuredClone(value); }),
+        });
+        return writeFinancialDailySnapshotIfReady({ campaignId, reportingDate: date }, deps);
+      };
+      expect((await publish("2026-08-21", false, false)).status).toBe("written");
+      expect(Number(saved.inputs.revenue.value)).toBe(100);
+      expect(saved.revenuePublication.display.sources[0].mappingConfig.pipelineTotalToDate).toBe(200);
+      const lastGood = structuredClone(saved);
+      expect((await publish("2026-08-21", true, false, true)).status).toBe("blocked");
+      expect(saved).toEqual(lastGood);
+      expect((await publish("2026-08-21", true, false)).status).toBe("written");
+      expect(Number(saved.inputs.revenue.value)).toBe(300);
+      expect(saved.revenuePublication.display.sources[0].mappingConfig.pipelineTotalToDate).toBe(0);
+      expect((await publish("2026-08-22", true, true)).status).toBe("written");
+      expect(Number(saved.inputs.revenue.value)).toBe(330);
+      expect(Number(saved.inputs.spend.value)).toBe(10);
+      expect(saved.currentValueWindow).toMatchObject({ mode: "initial_import_to_latest_available_day", endDate: "2026-08-22" });
+      expect(saved.revenuePublication.display.sources.map((source: any) => source.sourceId)).toEqual(["crm-1", "sheet-2"]);
+    } finally { vi.unstubAllEnvs(); }
+  });
+});

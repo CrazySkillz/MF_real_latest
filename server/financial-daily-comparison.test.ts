@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   deriveFinancialDailyComparisonSnapshot,
   resolveFinancialDailyComparisonPrevious,
@@ -53,6 +53,17 @@ const dependencies = (overrides: Record<string, unknown> = {}) => ({
 }) as any;
 
 describe("read-only financial daily comparison derivation", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it.each(["true", "false"])("derives dated history using the active policy without rewriting saved history: %s", async enabled => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", enabled);
+    const deps = dependencies(), result = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate }, deps);
+    expect((result?.metrics as any).financialDaily.currentValueWindow).toMatchObject({
+      mode: enabled === "true" ? "initial_import_to_latest_available_day" : "initial_import_to_latest_completed_day", endDate: reportingDate,
+    });
+    expect((result?.metrics as any).financialDaily.inputs.revenue.value).toBe("150.00");
+    const stored = { id: "old", metrics: { financialDaily: { currentValueWindow: { mode: "initial_import_to_latest_completed_day" } } } } as any;
+    expect(await resolveFinancialDailyComparisonPrevious({ campaignId, reportingDate, storedPrevious: stored }, deps)).toBe(stored);
+  });
   it("retains signed refunds in exact-date financial comparison inputs", async () => {
     const deps = dependencies();
     const totals = await deps.getCampaignMetricTotalsAtDate();

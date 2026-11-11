@@ -57,7 +57,20 @@ describe("GA4 report saved publication", () => {
     storageMock.getPlatformKPIs.mockResolvedValue([]); storageMock.getPlatformBenchmarks.mockResolvedValue([]);
     for (const mock of Object.values(provider)) mock.mockRejectedValue(new Error("later provider response must not be queried"));
   });
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
+
+  it.each(["overview", "custom"])("renders current-day %s PDF from its saved inputs and labels it provisional", async type => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    vi.setSystemTime(new Date("2026-10-16T19:05:00Z"));
+    const saved: any = snapshot(); saved.metrics.financialDaily.currentValueWindow.mode = "initial_import_to_latest_available_day";
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    const configuration = type === "custom" ? { sections: { overview: true }, subsections: { overview: { summary: true, revenue: true, spend: true, performance: true } } } : undefined;
+    expect((await build(type, configuration))?.length).toBeGreaterThan(100);
+    expect(printed.join(" ")).toContain("provisional");
+    expect(printed.join(" ")).toContain("130.01");
+    expect(printed.join(" ")).toContain("20.00");
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
 
   it("renders past-dated spend from a source connected today without changing the report boundary", async () => {
     const saved = snapshot(); saved.metrics.financialDaily.inputs.spend.value = "1100.00";

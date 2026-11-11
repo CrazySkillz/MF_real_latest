@@ -19,7 +19,7 @@ import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
-import { getLatestCompleteReportingDate, getNextDailyRunAt, getReportingDateEndAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getLatestCompleteReportingDate, getLatestGA4ReportingDate, getNextDailyRunAt, getReportingDateEndAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { aggregateCsvRevenueRows, normalizeFinancialSourceDateKey } from "./utils/csv";
 import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid, readCompleteGoogleSheetsData } from "./utils/google-sheets-revenue-ranges";
 import { findInvalidGoogleSheetsRevenueAmountRows } from "./utils/google-sheets-revenue-amount";
@@ -347,7 +347,7 @@ export async function hasCompletedDaySalesforceEvidence(
   loadBreakdown = (campaignId: string, endDate: string) => storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", endDate, "ga4"),
 ): Promise<boolean> {
   const mapping = safeJsonParse(source?.mappingConfig);
-  const reportingDate = getLatestCompleteReportingDate(campaign?.reportingTimeZone, now);
+  const reportingDate = getLatestGA4ReportingDate(campaign?.reportingTimeZone, now);
   const completedDayEnd = getReportingDateEndAt(reportingDate, campaign?.reportingTimeZone);
   const lastSyncedAt = new Date(mapping?.lastSyncedAt || "");
   const currency = String(source?.currency || "").trim().toUpperCase();
@@ -675,7 +675,7 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     const total = Number(totalRevenue.toFixed(2));
     const sourceId = String(source.id);
     const endDate = platformContext === "ga4"
-      ? getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone)
+      ? getLatestGA4ReportingDate((campaign as any)?.reportingTimeZone)
       : new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const records = total > 0
       ? dateCol && dailyRevenueMap.size > 0
@@ -1289,7 +1289,7 @@ export async function runDailyAutoRefreshOnce(
               : null;
             const campaignStart = new Date((campaign as any)?.startDate || "1900-01-01");
             const startDate = Number.isNaN(campaignStart.getTime()) ? "1900-01-01" : campaignStart.toISOString().slice(0, 10);
-            const endDate = getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone);
+            const endDate = getLatestGA4ReportingDate((campaign as any)?.reportingTimeZone);
 
             let rows: any[] = [];
             let providerFresh = false;
@@ -1435,7 +1435,7 @@ export async function runDailyAutoRefreshOnce(
           runStartedAt: startedAtDate,
         });
         if (linkedInConnectionCheckFailed) failures.push("linkedin_connection_check_failed");
-        const reportingDate = getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, startedAtDate);
+        const reportingDate = getLatestGA4ReportingDate((campaign as any)?.reportingTimeZone, startedAtDate);
         recordFinancialDailySnapshotRefreshEvidence("financial_sources", {
           campaignId,
           reportingDate,

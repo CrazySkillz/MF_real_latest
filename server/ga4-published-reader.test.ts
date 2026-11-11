@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { financialDailySnapshotInputSchema } from "../shared/schema";
 import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
-import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { getReportingDateWindow, getGA4ReportingDateWindow, getGA4ReportingWindowMode, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
 import { getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest } from "./internal-request-auth";
@@ -50,7 +51,7 @@ describe("published GA4 readers", () => {
     bindings = { storage, ga4Service: provider, getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest, ensureCampaignAccess: vi.fn().mockResolvedValue({ ...campaign }),
       parseGA4CampaignFilter: (value: string) => value ? [value] : [], isNoRevenueFilter: () => false,
       normalizePropertyIdForMock: (id: string) => id.replace("properties/", ""), isYesopMockProperty: (id: string) => id === "yesop", isSupportedGA4ConnectionMethod: () => true,
-      getReportingDateWindow, resolveGA4ImportToDateWindow, isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource, financialDailySnapshotInputSchema,
+      getReportingDateWindow, getGA4ReportingWindowMode, resolveGA4ImportToDateWindow, isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource, financialDailySnapshotInputSchema,
       assertGA4InsightsFinancialCurrencyScope: () => {}, getDateRangeBounds: () => ({ startDate: "2026-07-19", endDate: "2026-10-16" }),
       getGA4DistinctUsers, summarizeGA4TrafficRows, resolveCampaignCumulativeFinancials, observeFinancialDailySnapshotReadiness: vi.fn(),
       getShopifyRevenueSourceFreshness: () => undefined,
@@ -64,8 +65,32 @@ describe("published GA4 readers", () => {
       buildCampaignPerformanceSummaryAggregate: (input: any) => buildPerformanceSummaryAggregate({ ...input, platformSources: [] }),
     };
   });
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
   const req = (query: any = {}) => ({ params: { id: campaign.id }, query: { propertyId: connection.propertyId, ...query } });
+
+  it.each([["true", true, "2026-11-11"], ["false", true, "2026-11-09"], ["true", false, "2026-11-09"]])(
+    "keeps Trend query and output dates aligned without changing other platforms: %s/%s", async (enabled, hasGA4, endDate) => {
+      vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", String(enabled)); vi.setSystemTime(new Date("2026-11-10T23:30:00Z"));
+      storage.getGA4Connections.mockResolvedValue(hasGA4 ? [connection] : []);
+      storage.getGoogleAdsConnection = vi.fn().mockResolvedValue(null);
+      storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, currency: "EUR", sourceIds: [] });
+      storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, currency: "EUR", sourceIds: [] });
+      storage.getGA4DailyMetrics.mockImplementation(async (_c, _p, start, end) => [
+        { date: "2026-11-09", sessions: 9, revenue: 90 }, { date: "2026-11-11", sessions: 1, revenue: 10 },
+      ].filter(row => row.date >= start && row.date <= end));
+      const res = response(); await route("/api/campaigns/:id/trend-analysis", { ...bindings,
+        getReportingDateWindow: getGA4ReportingDateWindow, formatISODateUTC: (date: Date) => date.toISOString().slice(0, 10),
+        dateRangeToDays: () => 7, parseNum: (value: any) => Number(value || 0), buildTrendAnalysisAggregate,
+        db: { execute: vi.fn().mockResolvedValue({ rows: [] }) }, sql: Object.assign(() => "", { join: () => "" }),
+      })(req({ days: 7 }), res);
+      expect(res.code).toBe(200); expect(res.body.trendAnalysis.endDate).toBe(endDate);
+      const startDate = endDate === "2026-11-11" ? "2026-11-05" : "2026-11-03";
+      expect(res.body.trendAnalysis.startDate).toBe(startDate);
+      if (hasGA4) {
+        expect(storage.getGA4DailyMetrics).toHaveBeenCalledWith(campaign.id, connection.propertyId, startDate, endDate);
+        expect(res.body.trendAnalysis.sources[0].dailyRows.length).toBe(enabled === "true" ? 2 : 1);
+      } else expect(storage.getGA4DailyMetrics).not.toHaveBeenCalled();
+    });
 
   it("reads the saved current native total even with an expired provider token", async () => {
     storage.getGA4Connection.mockResolvedValue({ ...connection, accessToken: null });

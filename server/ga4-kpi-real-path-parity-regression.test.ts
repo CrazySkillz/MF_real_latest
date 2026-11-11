@@ -681,7 +681,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
-  it.each([[false, 80], [false, 0]])(
+  it.each([[false, 80], [true, 80], [false, 0], [true, 0]])(
     "retains published Users across midnight and advances after publication: current day %s, users %s", async (currentDay, users) => {
       vi.useRealTimers(); vi.useFakeTimers({ toFake: ["Date"] });
       vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", String(currentDay));

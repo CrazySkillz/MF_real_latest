@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "b8283c1a00e062229b4592e331fcc5b5aada71b9",
+  "expectedCommit": "1fb6a38b9d01fb47397b7ce3afd4bc130a9c2349",
   "files": [
     {
       "path": "client/src/components/AddSpendWizardModal.tsx",
@@ -79,7 +79,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "2b37ee9e7df749afdec51d987d7f7200495a517c477cd57021b85124a86dee18"
+      "after": "d7e68b8aad9d19ea1efa6ac9c7f0fb223354111381d0b114596a2d00b35a5c51"
     },
     {
       "path": "server/scheduler.ts",

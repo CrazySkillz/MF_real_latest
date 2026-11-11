@@ -70,7 +70,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('const isGoogleSheets = sourceType === "google_sheets";');
     expect(ga4Metrics).toContain('const isCsv = sourceType === "csv";');
     expect(ga4Metrics).toContain('const hasSingleSourceBreakdown = sourceType === "shopify" || isGoogleSheets || isCsv;');
-    expect(ga4Metrics).toContain('const sourceDisplayText = isGoogleSheets ? "Google Sheets" : isCsv ? "CSV" : revenueSourceDisplayLabel(s);');
+    expect(ga4Metrics).toContain('const sourceDisplayText = isGoogleSheets ? "Google Sheets" : isCsv ? "CSV" : sourceType === "hubspot" ? "HubSpot" : revenueSourceDisplayLabel(s);');
     expect(ga4Metrics).toContain('const csvFileName = String(s.displayName || cfg?.displayName || "CSV").trim() || "CSV";');
     expect(ga4Metrics).toContain('const sourceDetailText = isGoogleSheets && String(cfg?.sheetName || "").trim() ? String(cfg.sheetName) : isCsv ? csvFileName : sourceTypeText;');
     expect(ga4Metrics).toContain('{hasSingleSourceBreakdown && (');

@@ -612,7 +612,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(revenueWizardMount).not.toContain("refreshRevenue");
     expect(revenueWizardMount).not.toContain("run-now");
 
-    expect(revenueSourcesDialog).toContain('title="Edit revenue source"');
+    expect(revenueSourcesDialog).toContain('title={sourceType === "salesforce" ? "Edit Salesforce revenue source" : "Edit revenue source"}');
     expect(revenueSourcesDialog).toContain('title="Remove revenue source"');
     expect(revenueSourcesDialog).toContain("setEditingRevenueSource");
     expect(revenueSourcesDialog).toContain("setDeletingRevenueSourceId");

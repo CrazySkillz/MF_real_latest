@@ -3682,7 +3682,7 @@ export default function GA4Metrics() {
         && /^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate)
         && Boolean(String((ga4InsightsDailyResp as any)?.reportingTimeZone || "").trim());
       if (!historyReady) {
-        throw new Error("Cannot generate the Insights report until its completed-day history is available. Wait for Reports data to finish loading, then try again.");
+        throw new Error("Cannot generate the Insights report until its reporting history is available. Wait for Reports data to finish loading, then try again.");
       }
       if ((reportType !== "custom" || customSubsections.insights?.actions) &&
           reportInsightsBreakdownError) {

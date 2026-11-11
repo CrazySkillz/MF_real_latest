@@ -1534,7 +1534,7 @@ export default function TrendAnalysis() {
                       <p className="font-medium text-foreground">{trendDataStale ? "Trend data may be stale" : "Some Trend data is unavailable"}</p>
                       <p className="text-sm text-muted-foreground">
                         {trendDataStale
-                          ? "Showing the latest available Trend values. Latest completed-day coverage or a background refresh could not be verified."
+                          ? "Showing the latest available Trend values. Latest reporting-date coverage or a background refresh could not be verified."
                           : "Available values remain shown; failed inputs and dependent sections are withheld."}
                       </p>
                     </div>

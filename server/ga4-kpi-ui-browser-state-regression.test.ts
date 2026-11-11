@@ -55,8 +55,8 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
   });
 
   it("states the exact standard reporting windows, including legacy aliases", () => {
-    expect(getGA4KpiReportingWindowLabel("totalSessions")).toBe("Initial import through latest completed reporting day");
-    expect(getGA4KpiReportingWindowLabel("Engagement Rate")).toBe("Initial import through latest completed reporting day");
+    expect(getGA4KpiReportingWindowLabel("totalSessions")).toBe("Initial import through latest published reporting date");
+    expect(getGA4KpiReportingWindowLabel("Engagement Rate")).toBe("Initial import through latest published reporting date");
     expect(getGA4KpiReportingWindowLabel("totalRevenue")).toBe("Connected-source financial inputs");
     expect(getGA4KpiReportingWindowLabel("ROAS")).toBe("Connected-source financial inputs");
     expect(getGA4KpiReportingWindowLabel("__custom__")).toBe("Saved custom value (no standard GA4 reporting window)");

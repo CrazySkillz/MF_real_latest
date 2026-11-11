@@ -681,6 +681,61 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
+  it.each([[false, 80], [false, 0]])(
+    "retains published Users across midnight and advances after publication: current day %s, users %s", async (currentDay, users) => {
+      vi.useRealTimers(); vi.useFakeTimers({ toFake: ["Date"] });
+      vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", String(currentDay));
+      const saved: any = structuredClone(await storageMock.getGA4OverviewSnapshot());
+      saved.campaignBreakdown.meta.distinctUsers.total = users;
+      const rows = [{ ...dailyRow, users, updatedAt: "2026-07-31T18:05:00.000Z" }];
+      storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+      storageMock.getGA4DailyMetrics.mockImplementation(async (_c, _p, from, to) => rows.filter(row => row.date >= from && row.date <= to));
+      const url = `${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?days=30&propertyId=${encodeURIComponent(connection.propertyId)}`;
+      try {
+        vi.setSystemTime(new Date(currentDay ? "2026-07-31T21:59:00Z" : "2026-08-01T21:59:00Z"));
+        expect((await (await fetch(url)).json()).overviewTotals.users).toBe(users);
+        vi.setSystemTime(new Date(currentDay ? "2026-07-31T22:01:00Z" : "2026-08-01T22:01:00Z"));
+        const retained = await (await fetch(url)).json();
+        expect(retained).toMatchObject({ latestStoredDailyDate: "2026-07-31", dataThroughDate: "2026-08-01",
+          overviewTotals: { users, sessions: 100, conversions: 5, revenue: 150, engagementRate: 0.6 }, providerRefreshAttempted: false });
+        expect(retained.refreshScheduleHours).toEqual([8, 14, 20]);
+        // A subsequent successful publication includes a returning user: do not add daily Users.
+        vi.setSystemTime(new Date(currentDay ? "2026-08-01T06:10:00Z" : "2026-08-02T06:10:00Z"));
+        rows.push({ ...dailyRow, date: "2026-08-01", users: 20, updatedAt: new Date().toISOString() });
+        saved.windowEnd = "2026-08-01";
+        Object.assign(saved.campaignBreakdown.meta.distinctUsers, { endDate: saved.windowEnd, total: Number(users) + 10 });
+        const advanced = await (await fetch(url)).json();
+        expect(advanced).toMatchObject({ latestStoredDailyDate: "2026-08-01",
+          overviewTotals: { users: Number(users) + 10, sessions: 200, conversions: 10, revenue: 300, engagementRate: 0.6 } });
+        expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaign.id, connection.propertyId);
+        expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
+        expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+        expect(storageMock.upsertGA4DailyMetrics).not.toHaveBeenCalled();
+      } finally { vi.unstubAllEnvs(); }
+    });
+
+  it.each(["missing snapshot", "missing packet", "wrong start", "wrong property", "snapshot ahead", "snapshot behind", "missing daily rows"])(
+    "withholds overnight Users for incompatible publication data: %s", async (kind) => {
+      vi.useRealTimers(); vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-08-01T22:01:00Z"));
+      const saved: any = structuredClone(await storageMock.getGA4OverviewSnapshot());
+      const packet = saved.campaignBreakdown.meta.distinctUsers;
+      if (kind === "missing packet") delete saved.campaignBreakdown.meta.distinctUsers;
+      if (kind === "wrong start") { saved.windowStart = "2026-07-03"; packet.startDate = saved.windowStart; }
+      if (kind === "wrong property") packet.propertyId = "another-property";
+      if (kind === "snapshot ahead") {
+        saved.windowEnd = packet.endDate = "2026-08-01";
+        packet.windows = [{ startDate: connection.importStartDate, endDate: dailyRow.date, users: 80 }];
+      }
+      if (kind === "snapshot behind") saved.windowEnd = packet.endDate = "2026-07-30";
+      if (kind === "missing daily rows") storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+      storageMock.getGA4OverviewSnapshot.mockResolvedValue(kind === "missing snapshot" ? null : saved);
+      const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?propertyId=${encodeURIComponent(connection.propertyId)}`);
+      expect(response.status).toBe(200);
+      expect((await response.json()).overviewTotals.users).toBeNull();
+      expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
+      expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+    });
+
   it("exposes retained financial updates through the actual read APIs without hiding newer GA4 values", async () => {
     vi.useRealTimers();
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -852,6 +907,12 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       expect(JSON.stringify(failed)).not.toContain("private provider failure detail");
       expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
       expect(ga4ServiceMock.getTimeSeriesData).toHaveBeenCalledTimes(1);
+
+      vi.setSystemTime(new Date("2026-08-01T22:01:00Z"));
+      const overnight = await (await fetch(url)).json();
+      expect(overnight.overviewTotals).toEqual(failed.overviewTotals);
+      expect(overnight.overviewTotals.users).toBe(80);
+      vi.setSystemTime(new Date("2026-08-01T12:01:00Z"));
 
       storageMock.getGA4Connection.mockResolvedValue({ ...connection, id: "reconnected-property" });
       const reconnected = await (await fetch(url)).json();

@@ -27,7 +27,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.comparisonRateDefinition === undefined) return root;
   const wordingPath = join(root, "scripts/monitor-current-day-revenue-wording.json");
   const wording = application.reportingMode === "current_day" && existsSync(wordingPath)
-    && JSON.parse(readFileSync(wordingPath, "utf8")).expectedCommit === application.expectedCommit;
+    && (() => { const value = revision(root, true, true, "-revenue-wording"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
   if (application.comparisonRateDefinition !== "conversions_per_session" || ![pinned.expectedCommit, ...(pinned.equivalentCommits || [])].includes(application.expectedCommit)
     || pinned.files.some(file => digest(join(directory, file.path)) !== file.after)) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");

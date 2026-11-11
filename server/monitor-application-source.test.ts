@@ -56,6 +56,12 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory(currentApp, root)).toBe(currentPrepared);
   expect(readFileSync(join(currentPrepared, files[0]), "utf8").trim()).toBe("current");
   expect(readFileSync(join(wordingPrepared, files[0]), "utf8").trim()).toBe("wording");
+  const wordingManifestPath = join(root, "scripts/monitor-current-day-revenue-wording.json");
+  const wordingManifest = JSON.parse(readFileSync(wordingManifestPath, "utf8"));
+  wordingManifest.equivalentCommits = ["f".repeat(40)];
+  writeFileSync(wordingManifestPath, JSON.stringify(wordingManifest));
+  expect(monitorApplicationDirectory({ ...wordingApp, expectedCommit: "f".repeat(40) }, root)).toBe(wordingPrepared);
+  expect(() => monitorApplicationDirectory({ ...wordingApp, expectedCommit: "0".repeat(40) }, root)).toThrow();
   writeFileSync(join(wordingPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(wordingApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...currentApp, reportingMode: "completed_days" }, root)).toThrow();

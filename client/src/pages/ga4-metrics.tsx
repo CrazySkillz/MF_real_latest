@@ -7632,6 +7632,9 @@ export default function GA4Metrics() {
                                       </button>
                                     )}
                                   </div>
+                                  {isCrm && <p className="text-xs text-muted-foreground/70">
+                                    Confirmed revenue only.{cfg?.pipelineEnabled === true && " Pipeline Proxy is shown separately."}
+                                  </p>}
                                   {!hasSingleSourceBreakdown && sourceType !== "hubspot" && sourceType !== "salesforce" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
                                   {pendingCompletedDay && <p className="text-xs text-amber-700 dark:text-amber-300">Pending for totals · included through {formatReportingDateLabel(s.completedDayEndDate)}: {formatMoney(completedDayRevenue)}</p>}
                                 </div>

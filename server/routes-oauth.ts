@@ -9733,8 +9733,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate,
       );
       const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, String(selectedConnection.propertyId));
+      // Calendar rollover must not discard Users from the still-displayed publication.
+      const overviewPublishedEndDate = getLatestStoredDailyDate(overviewRows);
       const overviewTotals = { ...summarizeGA4TrafficRows(overviewRows),
-        users: getGA4DistinctUsers(usersSnapshot, overviewStartDate, endDate) };
+        users: overviewPublishedEndDate && usersSnapshot?.windowEnd === overviewPublishedEndDate
+          ? getGA4DistinctUsers(usersSnapshot, overviewStartDate, overviewPublishedEndDate) : null };
       const usersComparisons = (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [];
       // Monthly Trends needs the two preceding calendar months plus the current month.
       // Reuse the scoped Overview read; keep daily coverage and refresh metadata unchanged.

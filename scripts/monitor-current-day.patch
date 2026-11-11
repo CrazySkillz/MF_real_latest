@@ -1,3 +1,16 @@
+diff --git a/client/src/components/AddRevenueWizardModal.tsx b/client/src/components/AddRevenueWizardModal.tsx
+index cb180622..de572675 100644
+--- a/client/src/components/AddRevenueWizardModal.tsx
++++ b/client/src/components/AddRevenueWizardModal.tsx
+@@ -1850,7 +1850,7 @@ export function AddRevenueWizardModal(props: {
+ 
+   const description = step === "select"
+     ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : platformContext === 'instagram' ? "Choose the source that attributes revenue back to Instagram ad activity." : platformContext === 'tiktok' ? "Choose the source that attributes revenue back to TikTok ad activity." : platformContext === 'google_sheets' ? "Choose the confirmed revenue source for Google Sheets analytics." : platformContext === 'custom_integration' ? "Choose the confirmed revenue source for Custom Integration analytics." : "Choose where your revenue data comes from.")
+-    : `Currency: ${currency} • Revenue ${platformContext === "ga4" ? "is reported through the latest completed day" : "uses all available mapped records"}`;
++    : `Currency: ${currency} • Revenue ${platformContext === "ga4" ? "is reported through the campaign's reporting cutoff" : "uses all available mapped records"}`;
+ 
+   const shouldShowGoogleSheetsCreatePicker = !isEditing && (platformContext === "google_sheets" || platformContext === "custom_integration") && !sheetsConnectionId;
+   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";
 diff --git a/client/src/components/AddSpendWizardModal.tsx b/client/src/components/AddSpendWizardModal.tsx
 index 0347fc02..dd3347a9 100644
 --- a/client/src/components/AddSpendWizardModal.tsx
@@ -322,7 +335,7 @@ index 1aa7650b..2c3bb2d9 100644
              <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
            </CardContent>
 diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
-index 9d33bee3..4cd5ed11 100644
+index 9d33bee3..e57a61cb 100644
 --- a/client/src/pages/ga4-metrics.tsx
 +++ b/client/src/pages/ga4-metrics.tsx
 @@ -37,11 +37,12 @@ import { useToast } from "@/hooks/use-toast";
@@ -523,6 +536,15 @@ index 9d33bee3..4cd5ed11 100644
        const adsSubsections = customSubsections.ads || {};
        const needsTopCampaigns = reportType !== 'custom' || adsSubsections.topCampaigns === true || adsSubsections.summary === true || adsSubsections.bestWorst === true;
        const needsNativeDetail = reportType !== 'custom' || adsSubsections.allCampaigns === true || adsSubsections.revenueBreakdown === true;
+@@ -3683,7 +3682,7 @@ export default function GA4Metrics() {
+         && /^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate)
+         && Boolean(String((ga4InsightsDailyResp as any)?.reportingTimeZone || "").trim());
+       if (!historyReady) {
+-        throw new Error("Cannot generate the Insights report until its completed-day history is available. Wait for Reports data to finish loading, then try again.");
++        throw new Error("Cannot generate the Insights report until its reporting history is available. Wait for Reports data to finish loading, then try again.");
+       }
+       if ((reportType !== "custom" || customSubsections.insights?.actions) &&
+           reportInsightsBreakdownError) {
 @@ -3884,6 +3883,13 @@ export default function GA4Metrics() {
      if ((campaign as any)?.ga4CampaignFilter) doc.text(`Filter: ${String((campaign as any).ga4CampaignFilter)}`, metaCol2X, y + 15);
      y += 30;
@@ -931,7 +953,7 @@ index 4850669b..eb31a4b6 100644
  
      addText("Included sections", { size: 14, bold: true });
 diff --git a/client/src/pages/trend-analysis.tsx b/client/src/pages/trend-analysis.tsx
-index f84c0df4..814dc780 100644
+index f84c0df4..3872d28d 100644
 --- a/client/src/pages/trend-analysis.tsx
 +++ b/client/src/pages/trend-analysis.tsx
 @@ -1,4 +1,6 @@
@@ -1017,6 +1039,15 @@ index f84c0df4..814dc780 100644
  
              {/* ═══════════ TAB 1: EXECUTIVE OVERVIEW ═══════════ */}
              <TabsContent value="overview" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>
+@@ -1523,7 +1534,7 @@ export default function TrendAnalysis() {
+                       <p className="font-medium text-foreground">{trendDataStale ? "Trend data may be stale" : "Some Trend data is unavailable"}</p>
+                       <p className="text-sm text-muted-foreground">
+                         {trendDataStale
+-                          ? "Showing the latest available Trend values. Latest completed-day coverage or a background refresh could not be verified."
++                          ? "Showing the latest available Trend values. Latest reporting-date coverage or a background refresh could not be verified."
+                           : "Available values remain shown; failed inputs and dependent sections are withheld."}
+                       </p>
+                     </div>
 @@ -1587,7 +1598,7 @@ export default function TrendAnalysis() {
                          authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpc") || { label: 'CPC', value: null, change: null, invertColor: true },
                          authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpm") || { label: 'CPM', value: null, change: null, invertColor: true },
@@ -2562,6 +2593,19 @@ index ed01c7ad..fdf3150e 100644
  export function parseGA4FinancialNumber(value: unknown): number | null {
    if (typeof value !== "number" && typeof value !== "string") return null;
    if (typeof value === "string" && value.trim() === "") return null;
+diff --git a/shared/ga4-kpi-consumer-state.ts b/shared/ga4-kpi-consumer-state.ts
+index 76cb557c..bd3f9c2e 100644
+--- a/shared/ga4-kpi-consumer-state.ts
++++ b/shared/ga4-kpi-consumer-state.ts
+@@ -30,7 +30,7 @@ export function getGA4KpiReportingWindowLabel(metric: unknown, name?: unknown):
+   if (identity === "revenue" || identity === "roas" || identity === "roi" || identity === "cpa") {
+     return "Connected-source financial inputs";
+   }
+-  if (identity) return "Initial import through latest completed reporting day";
++  if (identity) return "Initial import through latest published reporting date";
+   return "Saved custom value (no standard GA4 reporting window)";
+ }
+ 
 diff --git a/shared/ga4-kpi-live-value.ts b/shared/ga4-kpi-live-value.ts
 index 93a30bfb..4ba99d18 100644
 --- a/shared/ga4-kpi-live-value.ts

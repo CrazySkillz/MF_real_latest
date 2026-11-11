@@ -1,6 +1,11 @@
 {
-  "expectedCommit": "42ab8b8902f90336a5aa13626363a9761a2c0e04",
+  "expectedCommit": "85245cb0666fb87505bb06ba9ce0adebce194f91",
   "files": [
+    {
+      "path": "client/src/components/AddRevenueWizardModal.tsx",
+      "before": "e08386021c5329572769a483fa57932a27c1fb7f9de03e6c43b24b26035f230d",
+      "after": "07c069caa68a443001e0977408004821585912e19055ffea0d30a8ea567c01cd"
+    },
     {
       "path": "client/src/components/AddSpendWizardModal.tsx",
       "before": "1f37453680093d58621bc9fde5e5bc099af38a9252e9f0f3a49e447bac939bd0",
@@ -44,7 +49,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "97e14bff4120862a1888af82dfdfb2be60cf142db9b6ac026b3e41f99ff18c03"
+      "after": "331641373c0435e7a5eec3591a99fc9650bfdbe192ebc447c6312b6096eda1a4"
     },
     {
       "path": "client/src/pages/reports.tsx",
@@ -54,7 +59,7 @@
     {
       "path": "client/src/pages/trend-analysis.tsx",
       "before": "0c463465ae5a277d47902b8c29218e5fe640eb730be28fcef38943ea7bdfcdf9",
-      "after": "c5b5bf78bb6c2211c264105b38f45dccfdd52611c733c19e6f7ac9685d730176"
+      "after": "0be1fc50deb1a3019cd2b756f5cf9d0d015726b1ae7d0885a84cded0bac6d6bf"
     },
     {
       "path": "server/analytics.ts",
@@ -155,6 +160,11 @@
       "path": "shared/ga4-financial-source.ts",
       "before": "74b19510d8a599a2f29ae1414b338e156c5c529538bc43d1002ae18b66f530ef",
       "after": "8c340989610d1b5427b66b7198554cb7a22fa4fe63a3f79e4aebf1b9c2bc9412"
+    },
+    {
+      "path": "shared/ga4-kpi-consumer-state.ts",
+      "before": "16bc7ad7800ac9dbce85903452def997f8c7b186db1f193bf89c8590f9da6e32",
+      "after": "c71227d6aa99376ace05c4fabf07e9c5c779c1d43d00e1e8495be53ad986e087"
     },
     {
       "path": "shared/ga4-kpi-live-value.ts",

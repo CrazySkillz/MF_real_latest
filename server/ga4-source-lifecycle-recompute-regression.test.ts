@@ -258,7 +258,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(manualSpendRoute).not.toContain('storage.createSpendSource(');
 
     const revenueSourcesModal = sliceBetween(ga4Page, '>Revenue Sources</DialogTitle>', '>Spend Sources</DialogTitle>');
-    expect(revenueSourcesModal).toContain('{ga4ConnectionUsable && s.sourceType !== "manual" && (');
+    expect(revenueSourcesModal).toContain('{(confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown || s.sourceType !== "manual") && ga4ConnectionUsable && (');
     expect(revenueSourcesModal).toContain('setDeletingRevenueSourceId(s.sourceId);');
     expect(revenueSourcesModal).toContain('title="Remove revenue source"');
 
@@ -300,7 +300,7 @@ describe("GA4 source lifecycle recompute route guards", () => {
     expect(ga4Page).toContain('const landingPagesUnavailable = !ga4ConnectionUsable');
     expect(ga4Page).toContain('const conversionEventsUnavailable = !ga4ConnectionUsable');
     expect(ga4Page).toContain('{ga4ConnectionUsable && <button');
-    expect(ga4Page).toContain('{ga4ConnectionUsable && s.sourceType !== "manual" && (');
+    expect(ga4Page).toContain('{(confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown || s.sourceType !== "manual") && ga4ConnectionUsable && (');
     expect(ga4Page).toContain('setDeletingRevenueSourceId(s.sourceId);');
     expect(ga4Page).toContain('setDeletingSpendSourceId(s.sourceId);');
   });

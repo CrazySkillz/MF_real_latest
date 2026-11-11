@@ -124,7 +124,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
     const pattern = new RegExp(`^${escape(name)} ${values.map(([, , unit]) => `${unit === "money" ? escape(expected.scope.currency) + " " : ""}${unit === "%" ? numeric.replace("|Unavailable)", "%|Unavailable)") : numeric}`).join(" ")}$`);
     const found = subset.map(line => line.match(pattern)).filter(Boolean), subject = monitorHash(name);
     if (code === "CAMPAIGN_BREAKDOWN") {
-      const names = [...new Set([...(expected.scope.publication.campaignBreakdown?.rows || []).map((item: any) => String(item.campaign)), ...expected.scope.filter])];
+      const names = Array.from(new Set<string>([...(expected.scope.publication.campaignBreakdown?.rows || []).map((item: any) => String(item.campaign)), ...expected.scope.filter]));
       for (const line of subset) {
         const clipped = line.match(/^(.+?)… (.+)$/);
         if (!clipped || !name.startsWith(clipped[1]) || names.filter(candidate => candidate.startsWith(clipped[1])).length !== 1) continue;

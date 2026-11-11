@@ -72,6 +72,17 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(readFileSync(join(wordingPrepared, extra), "utf8").trim()).toBe("wording");
   expect(readFileSync(join(editPrepared, extra), "utf8").trim()).toBe("edit");
   expect(() => monitorApplicationDirectory({ ...editApp, expectedCommit: "2".repeat(40) }, root)).toThrow();
+  const safetyApp = { ...currentApp, expectedCommit: "3".repeat(40) };
+  writeFileSync(join(root, "scripts/monitor-current-day-revenue-edit-safety.json"), JSON.stringify({ expectedCommit: safetyApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("safe\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-revenue-edit-safety.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+safe\n`).join(""));
+  const safetyPrepared = prepareMonitorApplication(root, true, true, "-revenue-edit-safety");
+  expect(monitorApplicationDirectory(safetyApp, root)).toBe(safetyPrepared);
+  expect(monitorApplicationDirectory(editApp, root)).toBe(editPrepared);
+  expect(readFileSync(join(editPrepared, extra), "utf8").trim()).toBe("edit");
+  expect(readFileSync(join(safetyPrepared, extra), "utf8").trim()).toBe("safe");
+  expect(() => monitorApplicationDirectory({ ...safetyApp, expectedCommit: "4".repeat(40) }, root)).toThrow();
+  writeFileSync(join(safetyPrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory(safetyApp, root)).toThrow();
   writeFileSync(join(editPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(editApp, root)).toThrow();
   writeFileSync(join(wordingPrepared, extra), "tampered\n");

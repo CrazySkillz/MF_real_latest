@@ -25,7 +25,7 @@ import {
 import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 import { getCampaignMetricTotals, resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
-import { getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./reporting-timezone";
+import { getGA4ExpectedDailyRefreshAt as getExpectedDailyRefreshAt, getGA4ExpectedScheduledRefreshAt as getExpectedScheduledRefreshAt, getGA4ReportingDateWindow as getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./reporting-timezone";
 import { isSupportedGA4ConnectionMethod } from "./ga4-service-account";
 
 const isGA4Platform = (value: unknown) => {

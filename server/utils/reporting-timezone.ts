@@ -78,6 +78,24 @@ export function getLatestCompleteReportingDate(reportingTimeZone: any, now = new
   return addDaysToDateOnly(currentDateOnlyInTimeZone(now, tz), -1);
 }
 
+// Opt-in rollout for GA4 and its attached financial sources. Calendar comparison
+// dates and unrelated platforms retain the completed-day helpers below.
+export function isGA4CurrentDayReportingEnabled(): boolean {
+  return process.env.GA4_INCLUDE_CURRENT_DAY === "true";
+}
+
+export function getLatestGA4ReportingDate(reportingTimeZone: any, now = new Date()): string {
+  return isGA4CurrentDayReportingEnabled()
+    ? currentDateOnlyInTimeZone(now, normalizeReportingTimeZone(reportingTimeZone))
+    : getLatestCompleteReportingDate(reportingTimeZone, now);
+}
+
+export function getGA4ReportingWindowMode() {
+  return isGA4CurrentDayReportingEnabled()
+    ? "initial_import_to_latest_available_day" as const
+    : "initial_import_to_latest_completed_day" as const;
+}
+
 export function getReportingDateEndAt(reportingDate: any, reportingTimeZone: any): Date | null {
   const dateOnly = String(reportingDate || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null;
@@ -104,6 +122,13 @@ export function getReportingDateWindow(days: number, reportingTimeZone: any, now
     endDate: dataThroughDate,
     startDate: addDaysToDateOnly(dataThroughDate, -(boundedDays - 1)),
   };
+}
+
+export function getGA4ReportingDateWindow(days: number, reportingTimeZone: any, now = new Date()) {
+  const window = getReportingDateWindow(days, reportingTimeZone, now);
+  if (!isGA4CurrentDayReportingEnabled()) return window;
+  const endDate = getLatestGA4ReportingDate(reportingTimeZone, now);
+  return { ...window, dataThroughDate: endDate, endDate, startDate: addDaysToDateOnly(window.startDate, 1) };
 }
 
 export function getReportingComparisonBoundary(
@@ -142,7 +167,7 @@ export function resolveGA4ImportToDateWindow(
   reportingTimeZone: any,
   now = new Date(),
 ) {
-  const reportingWindow = getReportingDateWindow(1, reportingTimeZone, now);
+  const reportingWindow = getGA4ReportingDateWindow(1, reportingTimeZone, now);
   const configuredStartDate = String(importStartDate || "").trim();
   const startDate = configuredStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
   const parsedStartDate = new Date(`${startDate}T00:00:00.000Z`);
@@ -193,6 +218,12 @@ export function getExpectedDailyRefreshAt(dataThroughDate: any, reportingTimeZon
   return zonedDateTimeToUTC(normalizeReportingTimeZone(reportingTimeZone), refreshDay.year, refreshDay.month, refreshDay.day, safeHour, safeMinute);
 }
 
+export function getGA4ExpectedDailyRefreshAt(dataThroughDate: any, reportingTimeZone: any, hour: number, minute: number): Date | null {
+  const date = isGA4CurrentDayReportingEnabled() && /^\d{4}-\d{2}-\d{2}$/.test(String(dataThroughDate))
+    ? addDaysToDateOnly(String(dataThroughDate), -1) : dataThroughDate;
+  return getExpectedDailyRefreshAt(date, reportingTimeZone, hour, minute);
+}
+
 export function getExpectedScheduledRefreshAt(dataThroughDate: any, config: {
   reportingTimeZone: string; hour: number; hours?: number[]; minute: number;
 }, now = new Date()): Date | null {
@@ -203,6 +234,15 @@ export function getExpectedScheduledRefreshAt(dataThroughDate: any, config: {
     .sort((a, b) => a.getTime() - b.getTime());
   // Before the first run, retain its upcoming deadline; later, require the latest due run.
   return expected.filter((date) => date.getTime() <= now.getTime()).at(-1) || expected[0] || null;
+}
+
+export function getGA4ExpectedScheduledRefreshAt(dataThroughDate: any, config: {
+  reportingTimeZone: string; hour: number; hours?: number[]; minute: number;
+}, now = new Date()): Date | null {
+  // The same wall-clock slots apply whether the data cutoff is today or yesterday.
+  const scheduleDate = isGA4CurrentDayReportingEnabled() && /^\d{4}-\d{2}-\d{2}$/.test(String(dataThroughDate))
+    ? addDaysToDateOnly(String(dataThroughDate), -1) : dataThroughDate;
+  return getExpectedScheduledRefreshAt(scheduleDate, config, now);
 }
 
 export function resolveGA4RefreshStatus(input: {

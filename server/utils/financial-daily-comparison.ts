@@ -5,7 +5,7 @@ import {
   getCampaignMetricTotalsAtDate,
   type CampaignMetricTotals,
 } from "./campaign-current-values";
-import { resolveGA4ImportToDateWindow } from "./reporting-timezone";
+import { getGA4ReportingWindowMode, resolveGA4ImportToDateWindow } from "./reporting-timezone";
 
 type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: string; sourceIds: string[] };
 
@@ -94,7 +94,7 @@ export async function deriveFinancialDailyComparisonSnapshot(
         campaignId,
         version: "performance_summary_aggregate_v3",
         currentValueWindow: {
-          mode: "initial_import_to_latest_completed_day",
+          mode: getGA4ReportingWindowMode(),
           startDate: financialWindowStartDate,
           endDate: reportingDate,
           dataThroughDate: reportingDate,

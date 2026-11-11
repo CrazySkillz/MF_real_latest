@@ -30,7 +30,7 @@ export function getGA4KpiReportingWindowLabel(metric: unknown, name?: unknown): 
   if (identity === "revenue" || identity === "roas" || identity === "roi" || identity === "cpa") {
     return "Connected-source financial inputs";
   }
-  if (identity) return "Initial import through latest completed reporting day";
+  if (identity) return "Initial import through latest published reporting date";
   return "Saved custom value (no standard GA4 reporting window)";
 }
 

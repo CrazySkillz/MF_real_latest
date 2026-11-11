@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createHash } from "crypto";
 import { financialDailySnapshotInputSchema, type MetricSnapshot, type Campaign, type GA4Connection, type GA4DailyMetric, type RevenueSource, type RevenueRecord } from "../../shared/schema";
-import { getExpectedDailyRefreshAt } from "./reporting-timezone";
+import { getGA4ExpectedDailyRefreshAt as getExpectedDailyRefreshAt } from "./reporting-timezone";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, selectRevenueRecordTotal } from "./revenue-record-total";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -20,7 +20,7 @@ export const executiveSummaryDailySnapshotInputSchema = z.object({
   ga4CampaignFilter: z.string(),
   performanceSummaryVersion: z.literal("performance_summary_aggregate_v3"),
   currentValueWindow: z.object({
-    mode: z.literal("initial_import_to_latest_completed_day"),
+    mode: z.enum(["initial_import_to_latest_completed_day", "initial_import_to_latest_available_day"]),
     startDate: dateSchema,
     endDate: dateSchema,
     dataThroughDate: dateSchema,

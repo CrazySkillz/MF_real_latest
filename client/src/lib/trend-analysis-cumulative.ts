@@ -288,7 +288,7 @@ export const resolveCompatibleTrendFinancialDaily = (args: {
     && snapshot?.reportingDate === comparisonDate
     && financialDaily?.version === "financial_daily_snapshot_v1"
     && financialDaily?.currency === campaignCurrency
-    && financialDaily?.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && (financialDaily?.currentValueWindow?.mode === "initial_import_to_latest_completed_day" || financialDaily?.currentValueWindow?.mode === "initial_import_to_latest_available_day")
     && financialDaily?.currentValueWindow?.startDate === expectedStartDate
     && financialDaily?.currentValueWindow?.endDate === comparisonDate
     && financialDaily?.currentValueWindow?.dataThroughDate === comparisonDate

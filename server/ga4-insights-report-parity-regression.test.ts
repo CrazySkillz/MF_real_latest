@@ -37,11 +37,12 @@ describe("GA4 Insights report parity", () => {
     expect(liveSection).not.toContain("Completed-day cutoff");
     for (const section of [reportSection, scheduledSection]) {
       expect(section).toContain("Completed-day cutoff");
+      expect(section).toContain("ga4ProvisionalNotice(");
+      expect(section).toContain("Data through");
     }
 
     for (const section of [liveSection, reportSection, scheduledSection]) {
       expect(section).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
-      expect(section).not.toContain("Data through");
       expect(section).not.toContain("7d/30d show rolling daily averages");
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");
@@ -112,7 +113,7 @@ describe("GA4 Insights report parity", () => {
     expect(page).toContain('enabled: (activeTab === "insights" || activeTab === "reports")');
     expect(page).toContain("if (sections.insights) {");
     expect(page).toContain("const historyReady = ga4InsightsDailyResp !== undefined");
-    expect(page).toContain("Cannot generate the Insights report until its completed-day history is available.");
+    expect(page).toContain("Cannot generate the Insights report until its reporting history is available.");
     expect(reportSection).toContain('const trendSorted = [...(insightsTrendMode === "monthly" ? trendsMonthlyRows : trendsDailyRows)]');
     expect(reportSection).toContain("trendsRollups.last7");
     expect(reportSection).toContain("trendsRollups.prior7");

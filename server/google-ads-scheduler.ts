@@ -9,7 +9,7 @@ import { db } from "./db";
 import { googleAdsConnections, googleAdsDailyMetrics, ga4GoogleAdsSpendConnections } from "../shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { enrichPlatformWithGA4Revenue } from "./utils/ga4RevenueEnrichment";
-import { getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getReportingDateWindow, getGA4ReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { buildGA4GoogleAdsSpendMaterialization } from "./ga4-google-ads-spend";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { isSupportedGoogleAdsSpendConnectionMethod } from "./utils/google-ads-service-account";
@@ -210,7 +210,7 @@ async function fetchRealGoogleAdsData(
   }
   const startDateIso = iso(startDate);
   const reportingTimeZone = normalizeReportingTimeZone((campaign as any)?.reportingTimeZone);
-  const endDateIso = getReportingDateWindow(1, reportingTimeZone).endDate;
+  const endDateIso = (connection.spendOnly ? getGA4ReportingDateWindow : getReportingDateWindow)(1, reportingTimeZone).endDate;
   if (startDateIso > endDateIso) throw new Error(`Google Ads has no completed reporting day for campaign ${campaignId}`);
   const account = await client.getCustomerAccount();
   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
@@ -280,7 +280,7 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
   }
   const campaignStart = new Date(campaign.startDate || "1900-01-01");
   const startDate = Number.isNaN(campaignStart.getTime()) ? "1900-01-01" : campaignStart.toISOString().slice(0, 10);
-  const endDate = getReportingDateWindow(1, campaign.reportingTimeZone).endDate;
+  const endDate = getGA4ReportingDateWindow(1, campaign.reportingTimeZone).endDate;
   if (startDate > endDate) throw new Error(`Google Ads has no completed reporting day for campaign ${campaignId}`);
   const refreshedAt = connection.lastRefreshAt ? new Date(connection.lastRefreshAt) : null;
   if (!refreshedAt || !Number.isFinite(refreshedAt.getTime()) || Date.now() - refreshedAt.getTime() > 6 * 60 * 60 * 1000) {

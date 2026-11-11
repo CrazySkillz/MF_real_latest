@@ -28,7 +28,7 @@ type PerformanceSummaryAggregateInput = {
   campaignId: string;
   dateRange: string;
   currentValueWindow?: {
-    mode: "initial_import_to_latest_completed_day";
+    mode: "initial_import_to_latest_completed_day" | "initial_import_to_latest_available_day";
     startDate: string;
     endDate: string;
     dataThroughDate: string;
@@ -275,7 +275,7 @@ export const getPerformanceSummaryMainSourceAdapterIds = () => mainSourceAdapter
 
 export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggregateInput) {
   const sourceBreakdown: SourceBreakdown[] = [];
-  const currentValueWindow = input.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+  const currentValueWindow = (input.currentValueWindow?.mode === "initial_import_to_latest_completed_day" || input.currentValueWindow?.mode === "initial_import_to_latest_available_day")
     && /^\d{4}-\d{2}-\d{2}$/.test(input.currentValueWindow.startDate)
     && /^\d{4}-\d{2}-\d{2}$/.test(input.currentValueWindow.endDate)
     && input.currentValueWindow.startDate <= input.currentValueWindow.endDate

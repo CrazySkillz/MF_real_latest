@@ -4,7 +4,7 @@ import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service, type GA4DailyTraffi
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedScheduledRefreshAt, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4ExpectedScheduledRefreshAt as getExpectedScheduledRefreshAt, getLatestGA4ReportingDate as getLatestCompleteReportingDate, getGA4ReportingDateWindow as getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
 import { addGA4InsightsDateDays, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { beginFinancialDailySnapshotRefreshObservation, getFinancialDailySnapshotRefreshEvidence, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";

@@ -1,4 +1,5 @@
 import { formatConversionCredit, formatRoasRatio } from "../shared/metric-math";
+import { ga4ProvisionalNotice } from "../shared/ga4-financial-source";
 import { buildGoogleSheetsMetricSummary } from "./utils/google-sheets-aggregate-source";
 import { filterGoogleSheetsRows } from "./utils/googleSheetsSelection";
 import { hasCompleteGoogleSheetsCache } from "./utils/google-sheets-revenue-ranges";
@@ -26,7 +27,7 @@ import { getCampaignMetricTotals } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
-import { getLatestCompleteReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { getLatestGA4ReportingDate as getLatestCompleteReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { createReportPdfArtifact, readReportPdfArtifact, attachReportVerification, reportTargetInputs } from "./utils/report-pdf-artifact";
 import { randomUUID } from "node:crypto";
 import { getGA4AlignedRefreshState, isGA4AlignedRefreshReady } from "./ga4-daily-scheduler";
@@ -1746,7 +1747,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const isCampaignDeepDiveCustomReportComposition = String(report?.platformType || "").trim().toLowerCase() === "campaign_deepdive"
     && String(report?.reportType || "").trim().toLowerCase() === "custom";
   const hasCertifiedCustomReportMetricWindow = performanceSummary?.version === "performance_summary_aggregate_v3"
-    && executiveCurrentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && (executiveCurrentValueWindow?.mode === "initial_import_to_latest_completed_day" || executiveCurrentValueWindow?.mode === "initial_import_to_latest_available_day")
     && /^\d{4}-\d{2}-\d{2}$/.test(String(executiveCurrentValueWindow?.startDate || ""))
     && /^\d{4}-\d{2}-\d{2}$/.test(String(executiveCurrentValueWindow?.endDate || ""))
     && executiveCurrentValueWindow.startDate <= executiveCurrentValueWindow.endDate
@@ -1762,7 +1763,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const executiveAllSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
   const executiveGA4Source = executiveAllSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
   const executiveHasAuthoritativeGA4Window = performanceSummary?.version === "performance_summary_aggregate_v3"
-    && executiveCurrentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && (executiveCurrentValueWindow?.mode === "initial_import_to_latest_completed_day" || executiveCurrentValueWindow?.mode === "initial_import_to_latest_available_day")
     && executiveCurrentValueWindow?.dataThroughDate === executiveCurrentValueWindow?.endDate
     && Array.isArray(executiveGA4Source?.includedMetrics)
     && ["users", "sessions", "conversions", "revenue"].every((metricName) => executiveGA4Source.includedMetrics.includes(metricName));
@@ -2481,7 +2482,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       }
     } else if (section === "executive-summary:overview") {
       const currentValueWindow = executiveSummary?.performanceSummary?.currentValueWindow;
-      const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+      const executiveWindowDescription = (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
         && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
         && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
         && currentValueWindow.startDate <= currentValueWindow.endDate
@@ -2688,6 +2689,11 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     drawText(reportType === "executive-summary" ? executiveMetricBasis : customReportWindowLabel, margin + 6, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 10 });
     drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
     y += metaCardHeight + 8;
+    const provisionalNotice = ga4ProvisionalNotice(executiveCurrentValueWindow?.mode);
+    if (provisionalNotice) {
+      drawText(provisionalNotice, margin, y + 3, { size: 7, color: colors.secondary, maxWidth: contentWidth });
+      y += 14;
+    }
     if (performancePageTrafficTotals) {
       drawText("Distinct GA4 users for the displayed dates and selected campaigns.", margin, y + 3, { size: 7, color: colors.secondary, maxWidth: contentWidth });
       y += 8;
@@ -3300,7 +3306,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
 
     if (reportType === "executive-summary") {
       const currentValueWindow = executiveSummary?.performanceSummary?.currentValueWindow;
-      const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+      const executiveWindowDescription = (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
         && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
         && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
         && currentValueWindow.startDate <= currentValueWindow.endDate
@@ -3603,6 +3609,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         ? customReportWindowLabel
         : `Window: ${windowStart} to ${windowEnd}`);
   addText(`Generated: ${displayGeneratedAt.setLocale("en-US").toFormat("M/d/yyyy, h:mm:ss a")} (${displayGeneratedAt.zoneName || "UTC"})`);
+  const provisionalNotice = ga4ProvisionalNotice(executiveCurrentValueWindow?.mode);
+  if (provisionalNotice) addText(provisionalNotice);
   y += 4;
   addText("Included sections", { size: 14, bold: true });
   if (selectedSections.length === 0) {

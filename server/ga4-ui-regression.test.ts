@@ -394,7 +394,7 @@ describe("GA4 UI regression guard", () => {
     expect(summarySection).toContain("renderSummaryValue(formatConversionCredit(overviewSummaryTotals.conversions || 0))");
     expect(summarySection).not.toContain("ga4Metrics?.conversions");
     expect(summarySection).toContain('data-testid="ga4-refresh-status">{ga4RefreshStatusText}');
-    expect(summarySection).toContain("Distinct GA4 users from the initial import through the latest completed day, across the selected campaigns. Returning users count once for this period.");
+    expect(summarySection).toContain("Distinct GA4 users for the displayed reporting period, across the selected campaigns. Returning users count once for this period.");
     expect(summarySection).not.toContain("Unique GA4 users for the selected property");
     expect(summarySection).not.toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
   });
@@ -810,7 +810,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Reporting timezone: ${trendsReportingTimeZoneLabel}");
     expect(ga4Metrics).toContain("Last refreshed: ${trendsLastRefreshedLabel}");
 
-    expect(pdf).toContain("GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow");
+    expect(pdf).toContain("getGA4ReportingDateWindow as getReportingDateWindow");
     expect(pdf).toContain("const reportingWindow = getReportingDateWindow(includesInsights ? 60 : lookbackDays, (campaign as any)?.reportingTimeZone);");
     expect(pdf).toContain("insightsFreshness: {");
     expect(pdf).toContain("lastRefreshedAt: lastDailyRefreshAt");

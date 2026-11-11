@@ -1,3 +1,30 @@
+export function ga4ProvisionalNotice(mode: unknown): string {
+  return mode === "initial_import_to_latest_available_day"
+    ? "Includes available data through the last successful update. Today's figures are provisional and may change."
+    : "";
+}
+
+// The published financial snapshot owns both sides of a CRM stage transition.
+// This validates the same cached fields used by the CRM Pipeline Proxy routes.
+export function publishedGA4PipelineData(source: any, currency: string) {
+  const cfg = source?.mappingConfig || {};
+  if (cfg.pipelineEnabled !== true) return null;
+  const total = cfg.pipelineTotalToDate;
+  const items = cfg.pipelineValueRevenueTotals;
+  const valid = (source.sourceType === "hubspot" ? !!cfg.pipelineStageId : !!cfg.pipelineStageName)
+    && typeof total === "number" && Number.isFinite(total) && total >= 0
+    && cfg.pipelineProxyMode === "current_stage" && !cfg.pipelineWarning
+    && Number.isFinite(Date.parse(cfg.pipelineLastUpdatedAt))
+    && (cfg.pipelineCurrency === currency || (total === 0 && !cfg.pipelineCurrency))
+    && Array.isArray(items) && items.every((item: any) => typeof item?.revenue === "number" && Number.isFinite(item.revenue))
+    && Math.abs(items.reduce((sum: number, item: any) => sum + item.revenue, 0) - total) < 0.01;
+  return { success: !!valid, sourceId: source.sourceId, pipelineEnabled: true,
+    pipelineStageLabel: cfg.pipelineStageLabel || cfg.pipelineStageName || cfg.pipelineStageId,
+    currency: cfg.pipelineCurrency || null, lastUpdatedAt: cfg.pipelineLastUpdatedAt || null,
+    totalToDate: valid ? total : null, pipelineValueRevenueTotals: valid ? items : [],
+    mode: cfg.pipelineProxyMode, warning: valid ? null : "Pipeline Proxy has not completed the financial update." };
+}
+
 export function parseGA4FinancialNumber(value: unknown): number | null {
   if (typeof value !== "number" && typeof value !== "string") return null;
   if (typeof value === "string" && value.trim() === "") return null;

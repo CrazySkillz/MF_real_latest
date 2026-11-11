@@ -553,7 +553,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain('aggregateMetricAvailable(metricName) ? (metricName === "conversions" ? formatConversionCredit(aggregateMetricValue(metricName)) : Math.trunc(aggregateMetricValue(metricName)).toLocaleString()) : "Unavailable";');
     expect(page).toContain("return `${aggregateMetricValue(metricName).toFixed(2)}x`;");
-    expect(page).toContain('? `Through ${currentValueWindow.endDate}`');
+    expect(page).toContain('? `Through ${currentValueWindow.endDate}${currentValueWindow.mode === "initial_import_to_latest_available_day" ? " (includes provisional data)" : ""}`');
     expect(page).toContain('`${executiveWindowDescription}: ${executiveMetricParts.join(", ")}.`');
     expect(page).toContain('`${executiveWindowDescription}: ROI and ROAS are unavailable.`');
     expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");
@@ -636,7 +636,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("KPI Status Unavailable");
     expect(page).toContain("No KPI Exceptions");
     expect(page).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
-    expect(page).toContain('`Through ${currentValueWindow.endDate}`');
+    expect(page).toContain('`Through ${currentValueWindow.endDate}${currentValueWindow.mode === "initial_import_to_latest_available_day" ? " (includes provisional data)" : ""}`');
     expect(page).toContain("No campaign KPI has both an available value and a positive target in its configured connected-source reporting window.");
     expect(page).toContain("No below-target KPI was found among campaign KPIs evaluated in their configured connected-source reporting windows.");
     expect(page).toContain("{executiveBenchmarkExceptions.length > 0 && (");

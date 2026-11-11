@@ -20,7 +20,7 @@ import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccount
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, getGoogleAdsServiceAccountLoginCustomerId, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4ReportingWindowMode, getLatestGA4ReportingDate as getLatestCompleteReportingDate, getReportingComparisonBoundary, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, evaluateExecutiveSummaryTrajectory, type ExecutiveSummaryDailySnapshotInput, type ExecutiveSummaryRevenueHistory } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -43,6 +43,7 @@ const devLog = (...args: any[]) => {
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
 export type GA4RevenuePublication = { version: 1; reportingDate: string; sources: Record<string, string>; pendingSourceIds: string[];
+  pipelineSources?: Record<string, string>;
   display?: { nativeRevenue: number; sources: Array<{ sourceId: string; sourceType: string; displayName: string; revenue: number; mappingConfig: Record<string, any> }>;
     spendSources?: Array<{ sourceId: string; sourceType: string; displayName: string; spend: number; mappingConfig: Record<string, any> }> } };
 export type GA4RevenuePublicationStatus = Record<string, { status: "published" | "pending" | "failed"; hash: string }>;
@@ -2043,7 +2044,7 @@ export class DatabaseStorage implements IStorage {
           || typeof totals?.conversions !== "number" || !Number.isFinite(totals.conversions) || totals.conversions < 0) return undefined;
         const parsed = financialDailySnapshotInputSchema.safeParse({
           version: "financial_daily_snapshot_v1", campaignId, reportingDate: work.reportingDate, currency,
-          currentValueWindow: { mode: "initial_import_to_latest_completed_day", startDate: overview.windowStart,
+          currentValueWindow: { mode: getGA4ReportingWindowMode(), startDate: overview.windowStart,
             endDate: work.reportingDate, dataThroughDate: work.reportingDate, reportingTimeZone: normalizeReportingTimeZone(scope.scope.campaign.reportingTimeZone) },
           inputs: { revenue: { value: totals.revenue.toFixed(2), available: true, sources: ["ga4"] },
             conversions: { value: totals.conversions, available: true, sources: ["ga4"] },
@@ -2886,7 +2887,7 @@ export class DatabaseStorage implements IStorage {
 
   // Revenue methods
   private async readGA4RevenuePublication(tx: any, campaignId: string, reportingDate: string): Promise<GA4RevenuePublication> {
-    const sources = await tx.select({ id: revenueSources.id, sourceType: revenueSources.sourceType, currency: revenueSources.currency })
+    const sources = await tx.select({ id: revenueSources.id, sourceType: revenueSources.sourceType, currency: revenueSources.currency, mappingConfig: revenueSources.mappingConfig })
       .from(revenueSources).where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.isActive, true),
         or(eq(revenueSources.platformContext, 'ga4'), isNull(revenueSources.platformContext)))).orderBy(revenueSources.id);
     const rows = await tx.select({ sourceId: revenueRecords.revenueSourceId, date: revenueRecords.date,
@@ -2907,7 +2908,12 @@ export class DatabaseStorage implements IStorage {
     }
     return { version: 1, reportingDate, sources: Object.fromEntries(sources.map((source: any) => [source.id,
       createHash('sha256').update(JSON.stringify([source.sourceType, source.currency, (included.get(source.id) || []).sort()])).digest('hex'),
-    ])), pendingSourceIds: Array.from(pending).sort() };
+    ])), pendingSourceIds: Array.from(pending).sort(),
+      ...(getGA4ReportingWindowMode() === "initial_import_to_latest_available_day" ? {
+        pipelineSources: Object.fromEntries(sources.filter((source: any) => ["hubspot", "salesforce"].includes(source.sourceType))
+          .map((source: any) => [source.id, createHash('sha256').update(String(source.mappingConfig || "{}")).digest('hex')])),
+      } : {}),
+    };
   }
 
   async getGA4RevenuePublication(campaignId: string, reportingDate: string): Promise<GA4RevenuePublication> {
@@ -7252,6 +7258,7 @@ export class DatabaseStorage implements IStorage {
         if (revenuePublication.version !== 1 || revenuePublication.reportingDate !== reportingDate
           || Object.keys(current.sources).length !== Object.keys(revenuePublication.sources || {}).length
           || Object.entries(current.sources).some(([sourceId, hash]) => revenuePublication.sources[sourceId] !== hash)) throw new Error('GA4_REFRESH_PUBLICATION_CHANGED');
+        if (JSON.stringify(current.pipelineSources) !== JSON.stringify(revenuePublication.pipelineSources)) throw new Error('GA4_REFRESH_PUBLICATION_CHANGED');
       }
       const [snapshot] = await tx
         .insert(metricSnapshots)

@@ -45,6 +45,7 @@ describe("GA4 publication in the rendered page", () => {
     let campaignCurrency = "EUR"; let financialCurrency = "EUR"; let financialRevenue: number | undefined; let failNative = false;
     let conversionCredit: number | undefined;
     let financialPublished = false;
+    let provisional = false; let publishedProxy = 200; let confirmedCRM = 0;
     let financialRequests = 0;
     const updatedAt = () => `${day === "2026-10-17" ? "2026-10-18" : "2026-10-19"}T${generation === 1 ? "06" : "12"}:06:00.000Z`;
     const totals = () => ({ sessions: generation === 1 ? 2977 : 3100, users: generation === 1 ? 2978 : 3101, conversions: conversionCredit ?? (generation === 1 ? 262 : 275), revenue: financialRevenue ?? (generation === 1 ? 65659.50 : 68000), engagedSessions: 2200, engagementRate: 0.724, pageviews: 4100 });
@@ -86,6 +87,18 @@ describe("GA4 publication in the rendered page", () => {
       else if (url.pathname.endsWith("/platforms/google_analytics/benchmarks")) data = [{ id: "b-a", name: "Sessions comparison", metric: "sessions", currentValue: String(totals().sessions), benchmarkValue: "4000", unit: "number", platform: "google_analytics", campaignId: "a", benchmarkType: "custom", alertsEnabled: false }];
       else if (url.pathname.includes("/platforms/google_analytics/")) data = [];
       else if (url.pathname.includes("revenue") || url.pathname.includes("spend")) data = { success: true, sources: [], sourceIds: [], totalRevenue: 0, totalSpend: 0, spendToDate: 0, rows: [], endDate: day };
+      if (provisional && url.pathname.endsWith("/ga4-daily")) data.reportingMode = "initial_import_to_latest_available_day";
+      if (provisional && data.snapshot?.metrics?.financialDaily) {
+        const financial = data.snapshot.metrics.financialDaily;
+        financial.currentValueWindow.mode = "initial_import_to_latest_available_day";
+        data.snapshot.metrics.revenuePublication = { version: 1, reportingDate: day, sources: { crm: "verified" }, pendingSourceIds: [],
+          display: { nativeRevenue: 100, sources: [{ sourceId: "crm", sourceType: "hubspot", displayName: "Deals", revenue: confirmedCRM,
+            mappingConfig: { platformContext: "ga4", selectedValues: ["search"], pipelineEnabled: true, pipelineStageId: "open", pipelineStageLabel: "Open",
+              pipelineTotalToDate: publishedProxy, pipelineValueRevenueTotals: publishedProxy ? [{ campaignValue: "search", revenue: publishedProxy }] : [],
+              pipelineCurrency: financialCurrency, pipelineLastUpdatedAt: updatedAt(), pipelineProxyMode: "current_stage" } }] } };
+      }
+      if (provisional && url.pathname.endsWith("/pipeline-proxy")) data = { success: true, sourceId: "crm", pipelineEnabled: true,
+        mode: "current_stage", totalToDate: 0, pipelineValueRevenueTotals: [], currency: financialCurrency, lastUpdatedAt: updatedAt() };
       if (conversionCredit !== undefined && /\/platforms\/google_analytics\/(kpis|benchmarks)$/.test(url.pathname)) {
         data.push({ id: "fraction", name: "Conversion credit", metric: "conversions", currentValue: String(conversionCredit), unit: "count", platformType: "google_analytics", campaignId: "a", timeframe: "campaign-to-date", period: "campaign-to-date", targetValue: "10", benchmarkValue: "10", benchmarkType: "goal", alertsEnabled: false });
       }
@@ -255,6 +268,19 @@ describe("GA4 publication in the rendered page", () => {
       await browserExpect(page.locator("#ga4-kpi-k-a")).toContainText("3,100");
       await page.getByRole("tab", { name: "Benchmarks", exact: true }).click();
       await browserExpect(page.locator("#ga4-benchmark-fraction")).toContainText("0.000075");
+      // The provider cache has already moved the deal to Closed Won. Both cards
+      // must retain their saved update until the complete financial publication arrives.
+      await page.getByRole("tab", { name: "Overview", exact: true }).click();
+      provisional = true; financialRevenue = 100; confirmedCRM = 0;
+      await page.evaluate(() => (window as any).testRefreshPublication());
+      await browserExpect(page.getByTestId("ga4-provisional-notice")).toContainText("provisional");
+      const pipelineCard = page.getByText("Expected Revenue", { exact: true }).locator("../..");
+      await browserExpect(pipelineCard).toContainText("$200.00");
+      await browserExpect(revenueCard).toContainText("$100.00");
+      publishedProxy = 0; confirmedCRM = 200; financialRevenue = 300;
+      await page.evaluate(() => (window as any).testRefreshPublication());
+      await browserExpect(pipelineCard).toContainText("$0.00");
+      await browserExpect(revenueCard).toContainText("$300.00");
       expect(errors).toEqual([]);
     } catch (error) {
       console.error({ browserErrors: errors, requests, pageText: (await page.locator("body").innerText()).slice(0, 4000) });

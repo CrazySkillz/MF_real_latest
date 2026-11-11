@@ -20,6 +20,7 @@ const endpoint = (provider = 'hubspot') => ({ success: true, pipelineEnabled: tr
 function read(kind: keyof typeof files, data: any, options: any = {}) {
   const sources = options.sources ?? [source('hubspot')];
   const env: any = {
+    campaignId: 'campaign-a', financialDailySnapshotResp: undefined, ga4DailyResp: {},
     useMemo: (f: any) => f(), revenueSourcesResp: { sources }, revenueDisplaySources: sources, selectedGa4CampaignFilterList: ['selected'],
     hubspotPipelineProxyData: data, salesforcePipelineProxyData: options.salesforce, hubspotPipelineProxyError: !!options.error, salesforcePipelineProxyError: false, campaignCurrency: 'USD',
     activeGoogleSheetsRevenueSources: sources, parseRevenueSourceConfig: (s: any) => JSON.parse(s.mappingConfig), googleSheetsRevenueCurrency: 'USD',

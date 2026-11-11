@@ -270,7 +270,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
 
     expect(action.type).toBe("warning");
     expect(action.title).toBe("Review Conversion Rate");
-    expect(action.message).toContain("Verified 12.85% from initial import through latest completed reporting day versus the 15% KPI target");
+    expect(action.message).toContain("Verified 12.85% from initial import through latest published reporting date versus the 15% KPI target");
     expect(action.message).not.toContain("13.25%");
   });
 

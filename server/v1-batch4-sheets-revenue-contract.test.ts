@@ -76,7 +76,7 @@ function fixture(values: unknown[][], currency = "EUR", persist?: (...args: any[
     sendBadRequest: (res: any, error: string) => res.status(400).json({ success: false, error }),
     refreshGoogleSheetsToken: vi.fn(async () => "renewed-fixture-token"),
     googleAdsCampaignIdFromValueOrMapping: () => null,
-    getReportingDateWindow: () => ({ endDate: date }), getLatestCompleteReportingDate: () => date, yesterdayUTC: () => date,
+    getReportingDateWindow: () => ({ endDate: date }), getLatestCompleteReportingDate: () => date, getLatestGA4ReportingDate: () => date, yesterdayUTC: () => date,
     recomputeCampaignDerivedValues: recompute,
     isSourceOutsideCampaign: (source: any, campaignId: string) => source.campaignId !== campaignId,
     console: { log: vi.fn(), warn: vi.fn(), error: vi.fn() },

@@ -6,7 +6,7 @@ import { db } from './db';
 import { sql } from 'drizzle-orm';
 import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state';
 import { getCampaignMetricTotals, parseGA4CampaignFilter } from './utils/campaign-current-values';
-import { getReportingDateWindow, resolveGA4ImportToDateWindow } from './utils/reporting-timezone';
+import { getGA4ReportingDateWindow as getReportingDateWindow, resolveGA4ImportToDateWindow } from './utils/reporting-timezone';
 import { filterActiveSchedulerCampaigns } from './utils/campaign-scheduler-eligibility';
 import { getGA4DistinctUsers } from '../shared/ga4-traffic-window';
 

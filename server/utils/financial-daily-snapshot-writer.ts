@@ -1,5 +1,5 @@
 import type { FinancialDailySnapshotInput } from "../../shared/schema";
-import { parseGA4FinancialNumber } from "../../shared/ga4-financial-source";
+import { parseGA4FinancialNumber, publishedGA4PipelineData } from "../../shared/ga4-financial-source";
 import { storage, type GA4RefreshWriteInput, type GA4RevenuePublication } from "../storage";
 import { getCampaignMetricTotals, parseGA4CampaignFilter, type CampaignMetricTotals } from "./campaign-current-values";
 import { resolveCampaignCumulativeFinancials } from "./campaign-cumulative-financials";
@@ -7,7 +7,7 @@ import {
   observeFinancialDailySnapshotReadiness,
   recordFinancialDailySnapshotWriteOutcome,
 } from "./financial-daily-snapshot-observation";
-import { isCreatedThroughReportingDate, resolveGA4ImportToDateWindow } from "./reporting-timezone";
+import { isCreatedThroughReportingDate, getGA4ReportingWindowMode, resolveGA4ImportToDateWindow } from "./reporting-timezone";
 
 type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: string; sourceIds: string[] };
 
@@ -130,7 +130,7 @@ export async function writeFinancialDailySnapshotIfReady(
     campaignId,
     version: "performance_summary_aggregate_v3",
     currentValueWindow: {
-      mode: "initial_import_to_latest_completed_day" as const,
+      mode: getGA4ReportingWindowMode(),
       startDate: window.startDate,
       endDate: reportingDate,
       dataThroughDate: reportingDate,
@@ -184,11 +184,19 @@ export async function writeFinancialDailySnapshotIfReady(
         let config: any = {};
         try { config = JSON.parse(source.mappingConfig || "{}"); } catch {}
         // Only presentation fields, never credentials or connection configuration.
-        const mappingConfig = Object.fromEntries(["sheetName", "selectedValues", "campaignMappings", "campaignValueRevenueTotals", "dateField", "pipelineEnabled"]
+        const mappingConfig = Object.fromEntries(["sheetName", "selectedValues", "campaignMappings", "campaignValueRevenueTotals", "dateField", "pipelineEnabled",
+          ...(getGA4ReportingWindowMode() === "initial_import_to_latest_available_day" ? ["platformContext", "pipelineStageId", "pipelineStageName", "pipelineStageLabel", "pipelineTotalToDate", "pipelineValueRevenueTotals", "pipelineCurrency", "pipelineLastUpdatedAt", "pipelineProxyMode", "pipelineWarning"] : [])]
           .filter(key => config?.[key] !== undefined).map(key => [key, config[key]]));
         return { sourceId: source.id, sourceType: source.sourceType, displayName: source.displayName || source.sourceType,
           revenue: amounts.get(source.id) ?? 0, mappingConfig };
       }) };
+    }
+  }
+
+  if (getGA4ReportingWindowMode() === "initial_import_to_latest_available_day") {
+    if (!revenuePublication?.display || revenuePublication.display.sources.some(source =>
+      ["hubspot", "salesforce"].includes(source.sourceType) && publishedGA4PipelineData(source, currency)?.success === false)) {
+      return { status: "blocked", reasons: ["pipeline_publication_unavailable"], snapshot: cumulative.snapshot };
     }
   }
 

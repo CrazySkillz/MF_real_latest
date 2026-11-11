@@ -113,7 +113,7 @@ describe("GA4 Insights report parity", () => {
     expect(page).toContain('enabled: (activeTab === "insights" || activeTab === "reports")');
     expect(page).toContain("if (sections.insights) {");
     expect(page).toContain("const historyReady = ga4InsightsDailyResp !== undefined");
-    expect(page).toContain("Cannot generate the Insights report until its completed-day history is available.");
+    expect(page).toContain("Cannot generate the Insights report until its reporting history is available.");
     expect(reportSection).toContain('const trendSorted = [...(insightsTrendMode === "monthly" ? trendsMonthlyRows : trendsDailyRows)]');
     expect(reportSection).toContain("trendsRollups.last7");
     expect(reportSection).toContain("trendsRollups.prior7");

@@ -15,4 +15,4 @@ Path traced: scoped scheduler publication → daily facts and Overview snapshot 
 - Added coverage: before/after midnight, subsequent successful publication, failed refresh crossing midnight, zero Users, missing snapshot/packet/daily rows, wrong start/property and snapshot dates ahead/behind the daily publication. No provider fetch or storage write is introduced.
 - Existing report, scope and neighboring calculation checks passed. No source import, historical PDF rewrite or campaign configuration change is required.
 
-Deployment evidence will be recorded separately. This fix is authorized for the Render test app only; live deployment remains outstanding.
+The test-app correction was deployed and verified on 11 November 2026. This live-release branch contains the identical Users runtime change on the existing live version, without the separate current-day reporting changes. Its regression cases retain the live completed-day policy; both reporting modes were already exercised on the test-app branch. Live deployment and verification are authorized; final deployment evidence is recorded separately.

@@ -24,6 +24,21 @@ const summary = () => ({ campaignId: "a", sources: [{ id: "ga4", connected: true
 const sectionChecks = (section: string, outputs: any, snapshot = fixture()) => checkApplicationOutputs(snapshot, outputs, now).filter(check => check.section === section);
 
 describe("remaining live monitor selections", () => {
+  it("verifies all numbers in a uniquely shortened browser PDF campaign row and rejects ambiguous names", () => {
+    const snapshot = fixture(), name = "mimosaas_landing_browser_demo_20261110";
+    snapshot.campaign.ga4CampaignFilter = JSON.stringify([name]); snapshot.comparisonRateDefinition = "conversions_per_session";
+    snapshot.rows.revenueSources = []; snapshot.rows.revenueRecords = [];
+    snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.rows = [{ campaign: name, sessions: 26, users: 26, conversions: 3, revenue: 327 }];
+    const text = "mimosaas_landing_browser_de… 26 26 3 11.5% EUR 327.00";
+    const checks = (input: string) => checkReportDetailText(snapshot, input, "overview", now).filter(c => c.code.startsWith("CAMPAIGN_BREAKDOWN"));
+    expect(checks(text)).toHaveLength(5); expect(checks(text).every(c => c.status === "passed")).toBe(true);
+    expect(checks(text.replace("327.00", "328.00"))).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_4", status: "difference" }));
+    expect(checks(text.replace("11.5%", "12.0%"))).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_3", status: "difference" }));
+    expect(checks(text.replace("browser_de", "wrong"))).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_ROW_UNVERIFIED", status: "unverified" }));
+    expect(checks(text + "\n" + text)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_ROW_UNVERIFIED", status: "unverified" }));
+    snapshot.campaign.ga4CampaignFilter = JSON.stringify([name, "mimosaas_landing_browser_demo_other"]);
+    expect(checks(text)).toContainEqual(expect.objectContaining({ code: "CAMPAIGN_BREAKDOWN_ROW_UNVERIFIED", status: "unverified" }));
+  });
   it("matches each GA4 campaign dimension row without confusing repeated campaign names", () => {
     const snapshot = fixture(), saved = snapshot.rows.ga4OverviewSnapshots[0];
     saved.campaignBreakdown.rows = [

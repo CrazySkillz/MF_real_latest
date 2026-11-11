@@ -123,6 +123,15 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
   const row = (code: string, name: string, values: Array<[unknown, number | undefined, string?]>, subset = lines) => {
     const pattern = new RegExp(`^${escape(name)} ${values.map(([, , unit]) => `${unit === "money" ? escape(expected.scope.currency) + " " : ""}${unit === "%" ? numeric.replace("|Unavailable)", "%|Unavailable)") : numeric}`).join(" ")}$`);
     const found = subset.map(line => line.match(pattern)).filter(Boolean), subject = monitorHash(name);
+    if (code === "CAMPAIGN_BREAKDOWN") {
+      const names = [...new Set([...(expected.scope.publication.campaignBreakdown?.rows || []).map((item: any) => String(item.campaign)), ...expected.scope.filter])];
+      for (const line of subset) {
+        const clipped = line.match(/^(.+?)… (.+)$/);
+        if (!clipped || !name.startsWith(clipped[1]) || names.filter(candidate => candidate.startsWith(clipped[1])).length !== 1) continue;
+        const match = `${name} ${clipped[2]}`.match(pattern);
+        if (match) found.push(match);
+      }
+    }
     // PDF extraction can put a wrapped campaign name on separate lines before
     // its numeric cells. Rejoin only an exact expected name, never its values.
     for (let i = 0; i < subset.length; i++) {

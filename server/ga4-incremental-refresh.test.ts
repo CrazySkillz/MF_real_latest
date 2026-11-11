@@ -81,6 +81,32 @@ describe("GA4 correction windows and full-history repair", () => {
     expect(summarizeGA4TrafficRows(stored)).toMatchObject({ sessions: 30, conversions: 6 });
   });
 
+  it("imports today's available GA4 rows at each slot, replaces them on rerun, and advances on day two", async () => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    facts.push(row("2026-10-18", 5));
+    for (const hour of [6, 12, 18]) {
+      facts[facts.length - 1] = row("2026-10-18", hour + 1);
+      const result = await run(`2026-10-18T${String(hour).padStart(2, "0")}:00:00Z`);
+      expect(result.campaignIdsFailed).toEqual([]);
+      expect(mocks.provider.getTimeSeriesData.mock.lastCall?.[5]).toBe("2026-10-18");
+      expect(mocks.provider.getAcquisitionBreakdown.mock.lastCall?.[6]).toBe("2026-10-18");
+      expect(mocks.provider.getLandingPagesReport.mock.lastCall?.[6]).toBe("2026-10-18");
+      expect(mocks.provider.getConversionEventsReport.mock.lastCall?.[6]).toBe("2026-10-18");
+      expect(stored.filter(r => r.date === "2026-10-18")).toHaveLength(1);
+      expect(stored.at(-1)?.sessions).toBe(hour + 1);
+      expect(snapshot.campaignBreakdown.totals).toEqual(expected());
+    }
+    const lastGood = structuredClone(snapshot);
+    mocks.provider.getTimeSeriesData.mockRejectedValueOnce(new Error("provider unavailable"));
+    expect((await run("2026-10-18T18:10:00Z")).campaignIdsFailed).toEqual([campaign.id]);
+    expect(snapshot).toEqual(lastGood);
+    facts.push(row("2026-10-19", 6));
+    expect((await run("2026-10-19T06:00:00Z")).campaignIdsFailed).toEqual([]);
+    expect(stored.at(-1)?.date).toBe("2026-10-19");
+    expect(stored.filter(r => r.date === "2026-10-18")).toHaveLength(1);
+    expect(snapshot.campaignBreakdown.totals).toEqual(expected());
+  });
+
   it("checks 14 recent days on a later same-day run while keeping cumulative reports and history", async () => {
     await prime();
     const old = structuredClone(stored.filter(r => r.date < recent));

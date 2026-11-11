@@ -2,10 +2,10 @@ import { buildGA4InsightsRollups, buildGA4InsightsHistoryScopeMarker, filterGA4I
 import { conversionCreditsMatch, computeProgress, formatRoasRatio } from "../shared/metric-math";
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4ReportingWindowMode, getGA4ReportingDateWindow as getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct, formatConversionCredit } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
-import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
+import { ga4ProvisionalNotice, normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { getGA4DistinctUsers, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
 import { computeAttainmentPct, computeEffectiveDeltaPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiDataSufficiency, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
@@ -1188,7 +1188,9 @@ async function buildGA4ReportPayload(report: any) {
       lastRefreshedAt: lastDailyRefreshAt,
     },
     reportCumulativeWindow,
+    reportingMode: getGA4ReportingWindowMode(),
     verificationInputs: {
+      reportingMode: getGA4ReportingWindowMode(),
       usersDefinition: "ga4_totalUsers_distinct_v1",
       distinctUsers: (breakdown as any)?.meta?.distinctUsers ?? null,
       comparisonRateDefinition: "conversions_per_session",
@@ -1438,7 +1440,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const metadata = [
     [`Campaign: ${String(campaignName || (payload.campaign as any)?.name || "—")}`, `Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`],
     [standaloneAdComparison ? `Property: ${propertyNameLabel}${propertyIdLabel ? ` (${propertyIdLabel})` : ""}` : `Property: ${String(payload.connection?.displayName || payload.connection?.propertyName || payload.connection?.propertyId || "")}`,
-      standaloneAdComparison ? (campaignFilterLabel ? `Filter: ${campaignFilterLabel}` : "") : `Completed data through: ${payload.reportCumulativeWindow.endDate} (${formatReportingTimeZoneLabel(payload.reportCumulativeWindow.reportingTimeZone)})`],
+      standaloneAdComparison ? (campaignFilterLabel ? `Filter: ${campaignFilterLabel}` : "") : `Data through: ${payload.reportCumulativeWindow.endDate} (${formatReportingTimeZoneLabel(payload.reportCumulativeWindow.reportingTimeZone)})`],
   ].map(cells => cells.map(cell => doc.splitTextToSize(cell, CW / 2 - 12) as string[]));
   const metadataHeights = metadata.map(cells => Math.max(...cells.map(lines => lines.length)) * 4 + 4);
   doc.setFillColor(...COLORS.cardBg);
@@ -1448,6 +1450,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     y += metadataHeights[idx];
   });
   y += 14;
+
+  const provisionalNotice = ga4ProvisionalNotice(payload.reportingMode);
+  if (provisionalNotice) {
+    const lines = doc.splitTextToSize(provisionalNotice, CW);
+    doc.text(lines, MX, y);
+    y += lines.length * 4 + 5;
+  }
 
   if (sections.overview) {
     const s = cfg.subsections?.overview || {};

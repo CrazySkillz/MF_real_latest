@@ -1,4 +1,5 @@
 import { formatConversionCredit } from "@shared/metric-math";
+import { ga4ProvisionalNotice } from "@shared/ga4-financial-source";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Navigation from "@/components/layout/navigation";
@@ -1066,7 +1067,7 @@ export default function Reports() {
     const customReportCurrentValueWindow = customReportPerformanceSummary?.currentValueWindow;
     const customReportGA4Source = customReportAllSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
     const customReportHasAuthoritativeGA4Window = customReportPerformanceSummary?.version === "performance_summary_aggregate_v3"
-      && customReportCurrentValueWindow?.mode === "initial_import_to_latest_completed_day"
+      && (customReportCurrentValueWindow?.mode === "initial_import_to_latest_completed_day" || customReportCurrentValueWindow?.mode === "initial_import_to_latest_available_day")
       && customReportCurrentValueWindow?.dataThroughDate === customReportCurrentValueWindow?.endDate
       && Array.isArray(customReportGA4Source?.includedMetrics)
       && ["users", "sessions", "conversions", "revenue"].every((metricName) => customReportGA4Source.includedMetrics.includes(metricName));
@@ -1679,7 +1680,7 @@ export default function Reports() {
       const trajectory = customReportHasAuthoritativeGA4Window ? null : campaignExecutiveSummary?.health?.trajectory;
       const trendPct = customReportHasAuthoritativeGA4Window ? 0 : Number(campaignExecutiveSummary?.health?.trendPercentage) || 0;
       const currentValueWindow = customReportCurrentValueWindow;
-      const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+      const executiveWindowDescription = (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
         && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
         && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
         && currentValueWindow.startDate <= currentValueWindow.endDate
@@ -1811,7 +1812,7 @@ export default function Reports() {
       const trendSources = Array.isArray(campaignTrendAnalysis?.sources) ? campaignTrendAnalysis.sources : [];
       const cumulativeGA4Window = customReportSources.length === 1
         && customReportSources[0]?.id === "ga4"
-        && customReportPerformanceSummary?.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+        && (customReportPerformanceSummary?.currentValueWindow?.mode === "initial_import_to_latest_completed_day" || customReportPerformanceSummary?.currentValueWindow?.mode === "initial_import_to_latest_available_day")
         ? customReportPerformanceSummary.currentValueWindow
         : null;
       const trendWindowEnd = String(cumulativeGA4Window?.dataThroughDate || campaignTrendAnalysis?.endDate || "");
@@ -1990,6 +1991,8 @@ export default function Reports() {
     addText(report.name, { size: 18, bold: true });
     addText(`Report Type: ${getReportTypeLabel(report.type)}`);
     addText(`Generated: ${new Date().toLocaleString()}`);
+    const provisionalNotice = ga4ProvisionalNotice(customReportCurrentValueWindow?.mode);
+    if (provisionalNotice) addText(provisionalNotice);
     yPosition += 4;
 
     addText("Included sections", { size: 14, bold: true });

@@ -67,7 +67,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate, buildGoogleSheetsMetricSummary, googleSheetsMetricTotal, getGoogleSheetsSummaryDisplayValue, parseGoogleSheetsMetricNumber } from "./utils/google-sheets-aggregate-source";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4RefreshStatus, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow as getCompletedReportingDateWindow, getGA4ReportingWindowMode, getGA4ExpectedDailyRefreshAt as getExpectedDailyRefreshAt, getGA4ExpectedScheduledRefreshAt as getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestGA4ReportingDate as getLatestCompleteReportingDate, getGA4ReportingDateWindow as getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4RefreshStatus, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -9607,6 +9607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         return {
           expectedRefreshAt: expectedRefreshAtISO,
+          reportingMode: getGA4ReportingWindowMode(),
           refreshScheduleTimeZone: schedulerConfig.reportingTimeZone,
           refreshScheduleHours: schedulerConfig.hours,
           refreshScheduleMinute: schedulerConfig.minute,
@@ -15172,7 +15173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         && publishedOverview.windowEnd >= campaignToDateWindow.startDate && publishedOverview.windowEnd <= campaignToDateWindow.endDate
         ? publishedOverview.windowEnd : campaignToDateWindow?.endDate;
       const currentValueWindow = campaignToDateWindow ? {
-        mode: "initial_import_to_latest_completed_day" as const,
+        mode: getGA4ReportingWindowMode(),
         startDate: campaignToDateWindow.startDate,
         endDate: publishedEndDate!,
         dataThroughDate: publishedEndDate!,
@@ -26640,7 +26641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const provider = new GoogleAdsClient({ accessToken, developerToken, customerId: String(customerId), managerAccountId });
       const campaignStart = new Date((campaign as any)?.startDate || "2000-01-01");
       const startDate = Number.isNaN(campaignStart.getTime()) ? "2000-01-01" : campaignStart.toISOString().slice(0, 10);
-      const endDate = getReportingDateWindow(1, campaignTimeZone).endDate;
+      const endDate = (spendOnly ? getReportingDateWindow : getCompletedReportingDateWindow)(1, campaignTimeZone).endDate;
       const initialDailyMetrics = startDate <= endDate
         ? mapGoogleAdsDailyInsights(campaignId, await provider.getDailyMetrics(startDate, endDate))
         : [];

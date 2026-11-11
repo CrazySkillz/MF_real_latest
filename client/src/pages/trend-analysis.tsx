@@ -1,4 +1,5 @@
 import { useParams } from "wouter";
+import { ga4ProvisionalNotice } from "@shared/ga4-financial-source";
 import { getGA4DistinctUsers } from "@shared/ga4-traffic-window";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare } from "lucide-react";
@@ -467,7 +468,7 @@ export default function TrendAnalysis() {
   const cumulativeGA4CurrentCompatible = usesCumulativeGA4Consumer
     && performanceSummary?.campaignId === campaignId
     && performanceSummary?.version === "performance_summary_aggregate_v3"
-    && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
     && ISO_DATE_PATTERN.test(String(currentValueWindow?.startDate || ""))
     && ISO_DATE_PATTERN.test(String(currentValueWindow?.endDate || ""))
     && currentValueWindow.startDate <= currentValueWindow.endDate
@@ -494,7 +495,7 @@ export default function TrendAnalysis() {
   const hasAuthoritativeHeadlineWindow = performanceSummary?.campaignId === campaignId
     && performanceSummary?.version === "performance_summary_aggregate_v3"
     && performanceMainSources.length > 0
-    && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
     && ISO_DATE_PATTERN.test(String(currentValueWindow?.startDate || ""))
     && ISO_DATE_PATTERN.test(String(currentValueWindow?.endDate || ""))
     && currentValueWindow.startDate <= currentValueWindow.endDate
@@ -1521,6 +1522,7 @@ export default function TrendAnalysis() {
 
           {/* One executive Trend Analysis view. Legacy tab panels remain unmounted below for contract-safe cleanup. */}
           <Tabs value="overview" className="space-y-6">
+            {ga4ProvisionalNotice(currentValueWindow?.mode) && <p className="text-sm text-muted-foreground">{ga4ProvisionalNotice(currentValueWindow?.mode)}</p>}
 
             {/* ═══════════ TAB 1: EXECUTIVE OVERVIEW ═══════════ */}
             <TabsContent value="overview" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>

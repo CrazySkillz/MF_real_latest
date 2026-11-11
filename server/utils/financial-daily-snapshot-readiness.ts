@@ -78,7 +78,9 @@ export function assessFinancialDailySnapshotReadiness(input: {
     if (String(evidence?.reportingDate || "").trim() !== reportingDate) reasons.push(`${name}_reporting_date_mismatch`);
     if (evidence?.status !== "success") reasons.push(`${name}_not_successful`);
     if (!validTimestamp(evidence?.completedAt || null)) reasons.push(`${name}_completion_missing`);
-    else if (snapshot && dateInTimeZone(evidence.completedAt!, reportingTimeZone)! <= reportingDate) {
+    else if (snapshot && (snapshot.currentValueWindow.mode === "initial_import_to_latest_available_day"
+      ? dateInTimeZone(evidence.completedAt!, reportingTimeZone)! < reportingDate
+      : dateInTimeZone(evidence.completedAt!, reportingTimeZone)! <= reportingDate)) {
       reasons.push(`${name}_completed_before_reporting_day_closed`);
     }
     if (!Array.isArray(evidence?.failures) || evidence.failures.length > 0) reasons.push(`${name}_has_failures`);

@@ -37,7 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct, formatConversionCredit } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
-import { normalizeGA4CampaignAllocationKey, resolveGA4OverviewFinancialRefreshWarning, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
+import { ga4ProvisionalNotice, publishedGA4PipelineData, normalizeGA4CampaignAllocationKey, resolveGA4OverviewFinancialRefreshWarning, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "@shared/ga4-campaign-breakdown";
 import { resolveGA4InsightsExecutiveFinancials } from "@/lib/ga4-insights-executive-financials";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
@@ -2817,7 +2817,15 @@ export default function GA4Metrics() {
   const persistedFinancialSourceCleanupAvailable =
     revenueDisplaySources.length > 0 || spendDisplaySources.length > 0;
   const pipelineProxyData = useMemo(() => {
-    const sourceDefs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
+    const snapshot = financialDailySnapshotResp?.snapshot;
+    const publishedMode = ga4DailyResp?.reportingMode === "initial_import_to_latest_available_day"
+      || snapshot?.metrics?.financialDaily?.currentValueWindow?.mode === "initial_import_to_latest_available_day";
+    const publishedSources = snapshot?.campaignId === campaignId && snapshot?.metrics?.financialDaily?.currency === campaignCurrency
+      && snapshot?.metrics?.financialDaily?.currentValueWindow?.mode === "initial_import_to_latest_available_day"
+      ? snapshot?.metrics?.revenuePublication?.display?.sources : null;
+    const sourceDefs = publishedMode && Array.isArray(publishedSources)
+      ? publishedSources.map((source: any) => ({ ...source, id: source.sourceId, platformContext: "ga4" }))
+      : Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
     const scopedCampaignValues = Array.isArray(selectedGa4CampaignFilterList)
       ? selectedGa4CampaignFilterList.map((v: any) => String(v || "").trim()).filter(Boolean)
       : [];
@@ -2849,7 +2857,13 @@ export default function GA4Metrics() {
       return sorted.find(sourceMatchesGa4Scope) || null;
     };
     const getPipelineSourceData = (sourceType: "salesforce" | "hubspot", endpointData: any, label: string, requestFailed: boolean) => {
-      const eligible = [...sourceDefs, ...(Array.isArray(revenueDisplaySources) ? revenueDisplaySources : [])].filter((s: any) =>
+      if (publishedMode) {
+        const published = Array.isArray(publishedSources) ? publishedSources.filter((source: any) => source.sourceType === sourceType && source.mappingConfig?.pipelineEnabled === true) : [];
+        const selected = selectPipelineSource(published.map((source: any) => ({ ...source, id: source.sourceId }))) || (published.length === 1 ? published[0] : null);
+        endpointData = selected ? publishedGA4PipelineData(selected, campaignCurrency) : null;
+        requestFailed = !endpointData?.success;
+      }
+      const eligible = [...sourceDefs, ...(!publishedMode && Array.isArray(revenueDisplaySources) ? revenueDisplaySources : [])].filter((s: any) =>
         s?.isActive !== false && String(s?.sourceType || "").toLowerCase() === sourceType && hasPipelineConfig(s));
       const endpointSource = eligible.find((source: any) => String(source?.id || "") === String(endpointData?.sourceId || "")
         && (sourceMatchesGa4Scope(source) || sourceDefs.filter((s: any) =>
@@ -2912,7 +2926,7 @@ export default function GA4Metrics() {
           : Array.isArray(entry.selectedValues) ? entry.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [],
       })),
     };
-  }, [hubspotPipelineProxyData, hubspotPipelineProxyError, revenueDisplaySources, revenueSourcesResp, salesforcePipelineProxyData, salesforcePipelineProxyError, selectedGa4CampaignFilterList, campaignCurrency]);
+  }, [hubspotPipelineProxyData, hubspotPipelineProxyError, revenueDisplaySources, revenueSourcesResp, salesforcePipelineProxyData, salesforcePipelineProxyError, selectedGa4CampaignFilterList, campaignCurrency, campaignId, financialDailySnapshotResp, ga4DailyResp?.reportingMode]);
   // Availability flags for UI gating (KPI/Benchmark templates):
   // - Spend is "available" if a spend source exists (even if value is 0).
   // - Revenue is "available" if GA4 has a revenue metric configured OR an imported revenue source exists.
@@ -3868,6 +3882,13 @@ export default function GA4Metrics() {
     if (ga4m?.propertyId) doc.text(`Property: ${String(ga4m?.displayName || ga4m?.propertyName || "")} (${ga4m.propertyId})`, metaCol1X, y + 15);
     if ((campaign as any)?.ga4CampaignFilter) doc.text(`Filter: ${String((campaign as any).ga4CampaignFilter)}`, metaCol2X, y + 15);
     y += 30;
+
+    const provisionalNotice = ga4ProvisionalNotice(ga4DailyResp?.reportingMode);
+    if (provisionalNotice) {
+      const lines = doc.splitTextToSize(provisionalNotice, CW);
+      doc.text(lines, MX, y);
+      y += lines.length * 4 + 5;
+    }
 
     const selectedCustomKpiIds = reportType === "custom" ? new Set((normalizedReportConfig.selectedKpiIds || []).map(String)) : null;
     const selectedCustomBenchmarkIds = reportType === "custom" ? new Set((normalizedReportConfig.selectedBenchmarkIds || []).map(String)) : null;
@@ -7008,6 +7029,7 @@ export default function GA4Metrics() {
                   </div>
                 )}
 
+                {ga4ProvisionalNotice(ga4DailyResp?.reportingMode) && <p className="text-sm text-muted-foreground" data-testid="ga4-provisional-notice">{ga4ProvisionalNotice(ga4DailyResp?.reportingMode)}</p>}
                 <TabsContent value="overview" className="fade-in">
                   <div className="space-y-8">
                     <div className="text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">
@@ -7039,7 +7061,7 @@ export default function GA4Metrics() {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                  Distinct GA4 users from the initial import through the latest completed day, across the selected campaigns. Returning users count once for this period.
+                                  Distinct GA4 users for the displayed reporting period, across the selected campaigns. Returning users count once for this period.
                                 </TooltipContent>
                               </UITooltip>
                             </div>
@@ -7329,7 +7351,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Conversion Events</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through {overviewGA4ReportingDate || "the last successful update"} for this property and campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -7397,7 +7419,7 @@ export default function GA4Metrics() {
                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
                         <p className="text-sm text-muted-foreground/70">{ga4LandingPages?.meta?.historyLimited
                           ? `Data from ${ga4LandingPages.meta.startDate} through ${ga4LandingPages.meta.endDate}. Earlier landing page data is unavailable in GA4.`
-                          : "Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope"}</p>
+                          : `Cumulative from the initial GA4 import through ${overviewGA4ReportingDate || "the last successful update"} for this property and campaign scope`}</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -8084,7 +8106,7 @@ export default function GA4Metrics() {
                       <div>
                         <h2 className="text-lg font-semibold text-foreground">Key Performance Indicators</h2>
                         <p className="text-sm text-muted-foreground/70 mt-1">
-                          KPI current values use the initial import boundary through the latest completed reporting day.
+                          KPI current values use the initial import boundary through the displayed reporting date.
                         </p>
                       </div>
                       <Button size="sm" onClick={openCreateKPI} disabled={isAnalyticsSavePending}>

@@ -2995,8 +2995,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const end = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() - 1));
       const start = new Date(end.getTime());
       start.setUTCDate(start.getUTCDate() - (days - 1));
-      const startDate = formatISODateUTC(start);
-      const endDate = formatISODateUTC(end);
+      let startDate = formatISODateUTC(start);
+      let endDate = formatISODateUTC(end);
 
       const [campaign, ga4Connections, linkedInConn, metaConn, googleAdsConn, customIntegration] = await Promise.all([
         storage.getCampaign(campaignId),
@@ -3009,6 +3009,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
       const primaryGA4PropertyId = String(primaryGA4?.propertyId || "");
+      if (primaryGA4PropertyId && getGA4ReportingWindowMode() === "initial_import_to_latest_available_day") {
+        ({ startDate, endDate } = getReportingDateWindow(days, campaign?.reportingTimeZone));
+      }
       let ga4Rows: any[] = [];
       if (primaryGA4PropertyId) {
         const storedRows = await storage.getGA4DailyMetrics(campaignId, primaryGA4PropertyId, startDate, endDate).catch(() => [] as any[]);

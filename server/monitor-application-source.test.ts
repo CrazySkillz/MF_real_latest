@@ -89,7 +89,14 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory(safetyApp, root)).toBe(safetyPrepared);
   expect(readFileSync(join(safetyPrepared, extra), "utf8").trim()).toBe("safe");
   expect(readFileSync(join(reviewPrepared, extra), "utf8").trim()).toBe("review");
+  const reviewManifestPath = join(root, "scripts/monitor-current-day-shopify-review.json");
+  const reviewManifest = JSON.parse(readFileSync(reviewManifestPath, "utf8"));
+  reviewManifest.equivalentCommits = ["6".repeat(40)]; writeFileSync(reviewManifestPath, JSON.stringify(reviewManifest));
+  expect(monitorApplicationDirectory({ ...reviewApp, expectedCommit: "6".repeat(40) }, root)).toBe(reviewPrepared);
+  expect(() => monitorApplicationDirectory({ ...reviewApp, expectedCommit: "7".repeat(40) }, root)).toThrow();
+  expect(monitorApplicationDirectory(reviewApp, root)).toBe(reviewPrepared);
   writeFileSync(join(reviewPrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory({ ...reviewApp, expectedCommit: "6".repeat(40) }, root)).toThrow();
   expect(() => monitorApplicationDirectory(reviewApp, root)).toThrow();
   writeFileSync(join(safetyPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(safetyApp, root)).toThrow();

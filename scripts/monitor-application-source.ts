@@ -27,7 +27,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.comparisonRateDefinition === undefined) return root;
   const reviewPath = join(root, "scripts/monitor-current-day-shopify-review.json");
   const shopifyReview = application.reportingMode === "current_day" && existsSync(reviewPath)
-    && revision(root, true, true, "-shopify-review").expectedCommit === application.expectedCommit;
+    && (() => { const value = revision(root, true, true, "-shopify-review"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const safetyPath = join(root, "scripts/monitor-current-day-revenue-edit-safety.json");
   const editSafety = application.reportingMode === "current_day" && existsSync(safetyPath)
     && revision(root, true, true, "-revenue-edit-safety").expectedCommit === application.expectedCommit;

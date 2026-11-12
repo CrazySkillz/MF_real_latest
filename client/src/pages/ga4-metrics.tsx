@@ -1877,7 +1877,7 @@ export default function GA4Metrics() {
       if (query.state.status === "error" || ga4PublicationSync.scope === ga4PublicationScope && ga4PublicationSync.failed) return 60_000;
       const nextCheckAt = Date.parse(query.state.data?.nextCheckAt || "");
       const delay = Number.isFinite(nextCheckAt) ? (nextCheckAt > Date.now() ? nextCheckAt - Date.now() : 60_000) : false;
-      // Follow a just-saved Spend import briefly; values still wait for verified publication.
+      // Follow a just-saved Revenue or Spend import briefly; values still wait for verified publication.
       return delay && spendImportFollowUp.scope === ga4PublicationScope && spendImportFollowUp.until > Date.now()
         && ["running", "delayed"].includes(query.state.data?.refreshStatus) ? Math.min(delay, 5_000) : delay;
     },
@@ -7528,6 +7528,7 @@ export default function GA4Metrics() {
                     initialSource={editingRevenueSource || undefined}
                     platformContext="ga4"
                     onSuccess={() => {
+                      setSpendImportFollowUp({ scope: ga4PublicationScope, until: Date.now() + 900_000 });
                       void refetchGA4PublicationStatus();
                       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot"] });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });

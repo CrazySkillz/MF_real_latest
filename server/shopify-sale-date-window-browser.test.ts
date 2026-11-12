@@ -43,7 +43,7 @@ describe('Shopify order history wizard in Chromium with isolated HTTP', () => {
       await f.page.getByRole('button', { name: 'Continue', exact: true }).click();
       await f.page.getByRole('button', { name: /campaign3_eur_test/ }).click();
       await f.page.getByRole('button', { name: 'Continue', exact: true }).click();
-      await f.page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await browserExpect(f.page.getByText('Review Settings', { exact: true })).toBeVisible();
       await browserExpect(f.page.getByRole('button', { name: 'Import revenue' })).toBeEnabled();
       await browserExpect(f.page.getByText('€785.95', { exact: true }).first()).toBeVisible();
       await f.page.getByRole('button', { name: 'Import revenue' }).click();
@@ -60,7 +60,7 @@ describe('Shopify order history wizard in Chromium with isolated HTTP', () => {
       await f.page.getByRole('button', { name: 'Continue', exact: true }).click();
       await browserExpect(f.page.getByRole('button', { name: /campaign3_eur_test/ })).toBeVisible();
       await f.page.getByRole('button', { name: 'Continue', exact: true }).click();
-      await f.page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await browserExpect(f.page.getByText('Review Settings', { exact: true })).toBeVisible();
       await browserExpect(f.page.getByRole('button', { name: 'Update revenue' })).toBeVisible();
       await browserExpect.poll(() => f.bodies.length).toBeGreaterThan(0);
       expect(f.requests.find(url => url.pathname.endsWith('/status'))?.searchParams.get('sourceId')).toBe('shopify-source');

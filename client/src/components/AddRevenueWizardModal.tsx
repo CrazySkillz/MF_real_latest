@@ -1394,8 +1394,7 @@ export function AddRevenueWizardModal(props: {
     if (step === "shopify") {
       const previousShopifyStep =
         shopifyWizardStep === "complete" ? "review" :
-        shopifyWizardStep === "review" ? "revenue" :
-        shopifyWizardStep === "revenue" ? "crosswalk" :
+        shopifyWizardStep === "review" ? "crosswalk" :
         shopifyWizardStep === "crosswalk" ? "campaign-field" :
         null;
       if (previousShopifyStep) {

@@ -96,10 +96,11 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(() => monitorApplicationDirectory({ ...reviewApp, expectedCommit: "7".repeat(40) }, root)).toThrow();
   expect(monitorApplicationDirectory(reviewApp, root)).toBe(reviewPrepared);
   const followupApp = { ...currentApp, expectedCommit: "8".repeat(40) };
-  writeFileSync(join(root, "scripts/monitor-current-day-revenue-followup.json"), JSON.stringify({ expectedCommit: followupApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("followup\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-revenue-followup.json"), JSON.stringify({ expectedCommit: followupApp.expectedCommit, equivalentCommits: ["9".repeat(40)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("followup\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-revenue-followup.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+followup\n`).join(""));
   const followupPrepared = prepareMonitorApplication(root, true, true, "-revenue-followup");
   expect(monitorApplicationDirectory(followupApp, root)).toBe(followupPrepared);
+  expect(monitorApplicationDirectory({ ...followupApp, expectedCommit: "9".repeat(40) }, root)).toBe(followupPrepared);
   expect(monitorApplicationDirectory({ ...reviewApp, expectedCommit: "6".repeat(40) }, root)).toBe(reviewPrepared);
   expect(readFileSync(join(reviewPrepared, extra), "utf8").trim()).toBe("review");
   expect(readFileSync(join(followupPrepared, extra), "utf8").trim()).toBe("followup");

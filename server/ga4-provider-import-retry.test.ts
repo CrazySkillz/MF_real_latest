@@ -25,6 +25,8 @@ function fixture(provider: "salesforce" | "shopify", override: any = {}) {
     campaignField: "Campaign", selectedValues: ["sale"], revenueField: "Amount", revenueMetric: "current_total_price",
     days: 90, requestDays: 90, dateField: "CloseDate", campaignDisplayName: "Sale", selectedCampaignMappings: [],
     pipelineEnabled: false, revenueClassification: "offsite_not_in_ga4", effectiveSalesforceCurrency: "EUR",
+    props: { expectedSourceMappingConfig: '{"selectedValues":["sale"]}' },
+    previewLoading: false, previewError: null, preview: { totalRevenue: 250 },
     formatReviewCurrency: (n: number) => `EUR ${n.toFixed(2)}`, ...override };
   const invoke = new Function(...Object.keys(deps), ts.transpileModule(`return (${callback});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(deps));
   return { invoke, fetch, onSuccess, toast, setStep };
@@ -60,6 +62,7 @@ describe("provider final-save retry identity", () => {
     edit.fetch.mockResolvedValueOnce(Response.json({ success: true, totalRevenue: 250 })); await edit.invoke();
     expect(edit.fetch.mock.calls[0][1].headers).not.toHaveProperty("X-Import-Request-Id");
     expect(JSON.parse(edit.fetch.mock.calls[0][1].body).sourceId).toBe("saved-source");
+    if (provider === "salesforce") expect(JSON.parse(edit.fetch.mock.calls[0][1].body).expectedSourceMappingConfig).toBe('{"selectedValues":["sale"]}');
   });
   it("separates campaign/source requests and cannot clear a newer pending identity", () => {
     const a = getFinancialImportRequestId("a", "revenue:csv"), b = getFinancialImportRequestId("b", "revenue:csv"), spend = getFinancialImportRequestId("a", "spend:csv");

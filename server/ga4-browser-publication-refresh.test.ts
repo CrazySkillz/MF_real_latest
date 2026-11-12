@@ -524,9 +524,15 @@ describe("GA4 browser publication coordination", () => {
         setDeletingHubSpotRevenueItemPending: noop, setDeletingHubSpotRevenueItem: noop, setDeletingSalesforceRevenueItemPending: noop, setDeletingSalesforceRevenueItem: noop,
       });
       await callbackFn({ preventDefault: noop });
-      if (marker === "AddSpendWizardModal") {
+      if (marker === "AddSpendWizardModal" || marker === "AddRevenueWizardModal") {
         expect(followUp).toHaveBeenCalledWith({ scope: JSON.stringify(["a", "123"]), until: expect.any(Number) });
         expect(followUp.mock.calls[0][0].until).toBeGreaterThanOrEqual(before + 900_000);
+        const view = browser();
+        view.spendFollowUp = followUp.mock.calls[0][0];
+        expect(view.render().queryOptions.refetchInterval({ state: { status: "success", data: {
+          refreshStatus: "running", nextCheckAt: new Date(Date.now() + 60_000).toISOString(),
+        } } })).toBe(5_000);
+        view.client.clear();
       } else expect(followUp).not.toHaveBeenCalled();
       if (ok) await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
       else { await vi.waitFor(() => expect(toast).toHaveBeenCalled()); expect(refresh).not.toHaveBeenCalled(); }

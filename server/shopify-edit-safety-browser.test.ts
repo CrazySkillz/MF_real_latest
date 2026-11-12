@@ -8,16 +8,20 @@ describe("Shopify edit previews and confirmation in the actual browser component
     const result = await build({ stdin: { contents: `import React from 'react';import {createRoot} from 'react-dom/client';
       import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
       import {ShopifyRevenueWizard} from './client/src/components/ShopifyRevenueWizard';
+      import {AddRevenueWizardModal} from './client/src/components/AddRevenueWizardModal';
       import {Toaster} from './client/src/components/ui/toaster';
+      const cfg=window.fixture, mapping={campaignField:'tags',selectedValues:['A']};
       createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient()}>
-      <ShopifyRevenueWizard campaignId="a" platformContext="ga4" mode="edit" sourceId="source-a"
-        initialMappingConfig={{campaignField:'tags',selectedValues:['A']}} onSuccess={value=>window.saved=value}/><Toaster/></QueryClientProvider>);`,
+      {cfg.embedded ? <AddRevenueWizardModal open onOpenChange={()=>{}} campaignId="a" currency="EUR" dateRange="30days" initialStep="shopify"
+        initialSource={cfg.edit ? {id:'source-a',sourceType:'shopify',mappingConfig:JSON.stringify(mapping)} : undefined}/>
+      : <ShopifyRevenueWizard campaignId="a" platformContext="ga4" mode="edit" sourceId="source-a"
+        initialMappingConfig={mapping} onSuccess={value=>window.saved=value}/>}<Toaster/></QueryClientProvider>);`,
       loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic",
       define: { "process.env.NODE_ENV": '"test"', "import.meta.env": "{}" } });
     bundle = result.outputFiles[0].text; browser = await chromium.launch({ headless: true });
   }, 60_000);
   afterAll(async () => browser?.close());
-  async function fixture(currency = "EUR") {
+  async function fixture(currency = "EUR", options = { embedded: false, edit: true }) {
     const context = await browser.newContext({ viewport: { width: 1400, height: 1100 }, locale: "en-US", serviceWorkers: "block" });
     const page = await context.newPage(), pending: Route[] = [], saves: any[] = [], errors: string[] = [];
     page.setDefaultTimeout(8000); page.on("pageerror", error => errors.push(error.message));
@@ -25,7 +29,7 @@ describe("Shopify edit previews and confirmation in the actual browser component
       const req = route.request(), url = new URL(req.url());
       if (url.hostname !== "shopify-edit-fixture.test") { errors.push("External request blocked"); await route.abort(); return; }
       if (url.pathname === "/fixture.js") { await route.fulfill({ contentType: "application/javascript", body: bundle }); return; }
-      if (!url.pathname.startsWith("/api/")) { await route.fulfill({ contentType: "text/html", body: '<div id="root"></div><script src="/fixture.js"></script>' }); return; }
+      if (!url.pathname.startsWith("/api/")) { await route.fulfill({ contentType: "text/html", body: `<div id="root"></div><script>window.fixture=${JSON.stringify(options)}</script><script src="/fixture.js"></script>` }); return; }
       let json: any = {};
       if (url.pathname.endsWith("/status")) json = { connected: true, oauthAvailable: true, authType: "oauth", shopName: "Fixture", shopDomain: "fixture.myshopify.com" };
       else if (url.pathname.endsWith("/unique-values")) json = { success: true, values: [{ value: "A", count: 1 }, { value: "B", count: 1 }] };
@@ -39,13 +43,16 @@ describe("Shopify edit previews and confirmation in the actual browser component
     await page.goto("https://shopify-edit-fixture.test/");
     const next = () => page.getByRole("button", { name: "Continue", exact: true }).click();
     await browserExpect(page.getByText("Fixture", { exact: true })).toBeVisible();
-    await next(); await browserExpect(page.getByRole("button", { name: /^A\s/ })).toBeVisible(); await next(); await next();
+    await next(); await browserExpect(page.getByRole("button", { name: /^A\s/ })).toBeVisible();
+    if (!options.edit) await page.getByRole("button", { name: /^A\s/ }).click();
+    await next();
+    await browserExpect(page.getByText("Review Settings", { exact: true })).toBeVisible();
+    await browserExpect(page.getByText("Revenue metric: Current total price after returns, refunds, and order adjustments", { exact: true })).toBeVisible();
     await browserExpect.poll(() => pending.length).toBe(1);
     return { page, pending, saves, errors, next, async chooseB() {
       await page.getByRole("button", { name: "Back", exact: true }).click();
-      await page.getByRole("button", { name: "Back", exact: true }).click();
       await page.getByRole("button", { name: /^A\s/ }).click(); await page.getByRole("button", { name: /^B\s/ }).click();
-      await next(); await next(); await browserExpect.poll(() => pending.length).toBe(2);
+      await next(); await browserExpect.poll(() => pending.length).toBe(2);
     }, async respond(index: number, failed = false) {
       await pending[index].fulfill({ status: failed ? 503 : 200, json: failed ? { error: "Preview unavailable" } : {
         success: true, currency, totalRevenue: index === 0 ? 100 : 200, totalConversions: 1,
@@ -65,7 +72,7 @@ describe("Shopify edit previews and confirmation in the actual browser component
       await f.page.evaluate(() => new Promise(requestAnimationFrame));
       await browserExpect(f.page.getByText(amount, { exact: true }).first()).toBeVisible();
       await update.click(); await browserExpect.poll(() => f.saves.length).toBe(1);
-      expect(f.saves[0]).toMatchObject({ sourceId: "source-a", selectedValues: ["B"], platformContext: "ga4" });
+      expect(f.saves[0]).toMatchObject({ sourceId: "source-a", selectedValues: ["B"], platformContext: "ga4", revenueMetric: "current_total_price", valueSource: "revenue" });
       await browserExpect(f.page.getByText(`Revenue connected: ${amount}.`, { exact: true })).toBeVisible();
       expect(f.errors).toEqual([]);
     } finally { await f.close(); }
@@ -89,6 +96,21 @@ describe("Shopify edit previews and confirmation in the actual browser component
       await browserExpect(f.page.getByRole("button", { name: "Update revenue", exact: true })).toBeEnabled();
       await browserExpect(f.page.getByText("€200.00", { exact: true }).first()).toBeVisible(); expect(f.saves).toEqual([]);
       expect(f.errors).toEqual([]);
+    } finally { await f.close(); }
+  }, 30_000);
+  it.each([true, false])("preserves selections through both modal Back controls (edit=%s)", async edit => {
+    const f = await fixture("EUR", { embedded: true, edit });
+    try {
+      await browserExpect(f.page.getByText("Select Revenue Definition", { exact: true })).toHaveCount(0);
+      for (const outer of [true, false]) {
+        const back = f.page.getByRole("button", { name: "Back", exact: true });
+        await (outer ? back.first() : back.last()).click();
+        await browserExpect(f.page.getByText("Link Campaign to Shopify Value(s)", { exact: true })).toBeVisible();
+        await browserExpect(f.page.getByRole("button", { name: /^A\s/ }).getByRole("checkbox")).toBeChecked();
+        await f.next();
+        await browserExpect(f.page.getByText("Review Settings", { exact: true })).toBeVisible();
+      }
+      expect(f.saves).toEqual([]); expect(f.errors).toEqual([]);
     } finally { await f.close(); }
   }, 30_000);
 });

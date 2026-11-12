@@ -8,9 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, ClipboardCheck, DollarSign, Link2, Loader2, Target } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Link2, Loader2, Target } from "lucide-react";
 
-type Step = "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
+type Step = "campaign-field" | "crosswalk" | "review" | "complete";
 type UniqueValue = { value: string; count: number };
 type ShopifyOrderWindowStatus = {
   mode: "recent" | "full";
@@ -415,7 +415,6 @@ export function ShopifyRevenueWizard(props: {
     () => [
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ],
     []
@@ -516,8 +515,7 @@ export function ShopifyRevenueWizard(props: {
       return;
     }
     if (step === "crosswalk") return setStep("campaign-field");
-    if (step === "revenue") return setStep("crosswalk");
-    if (step === "review") return setStep("revenue");
+    if (step === "review") return setStep("crosswalk");
     if (step === "complete") return setStep("review");
   };
 
@@ -552,10 +550,6 @@ export function ShopifyRevenueWizard(props: {
         });
         return;
       }
-      setStep("revenue");
-      return;
-    }
-    if (step === "revenue") {
       setStep("review");
       return;
     }
@@ -723,12 +717,6 @@ export function ShopifyRevenueWizard(props: {
                 Link Campaign to Shopify Value(s)
               </>
             )}
-            {step === "revenue" && (
-              <>
-                <DollarSign className="w-5 h-5 text-green-600" />
-                Select Revenue Definition
-              </>
-            )}
             {step === "review" && (
               <>
                 <ClipboardCheck className="w-5 h-5 text-blue-600" />
@@ -745,7 +733,6 @@ export function ShopifyRevenueWizard(props: {
           <CardDescription>
             {step === "campaign-field" && `Choose how MimoSaaS should attribute Shopify orders to this ${isLinkedIn ? "LinkedIn" : "campaign"}.`}
             {step === "crosswalk" && "Select the Shopify value(s) that map to this campaign."}
-            {step === "revenue" && "Choose what revenue field MimoSaaS should sum from matched orders."}
             {step === "review" && "Confirm your selections and process revenue metrics."}
             {step === "complete" &&
               (isLinkedIn
@@ -972,17 +959,6 @@ export function ShopifyRevenueWizard(props: {
             </div>
           )}
 
-          {step === "revenue" && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Revenue metric</Label>
-                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
-                  Current total price after returns, refunds, and order adjustments
-                </div>
-              </div>
-            </div>
-          )}
-
           {step === "review" && (
             <div className="space-y-3 text-sm text-foreground/80">
               <div>
@@ -1004,7 +980,7 @@ export function ShopifyRevenueWizard(props: {
                 </div>
               )}
               <div>
-                <strong>Revenue metric:</strong> Current total price after adjustments
+                <strong>Revenue metric:</strong> Current total price after returns, refunds, and order adjustments
               </div>
               <div className="rounded-md border border-border bg-muted/40 p-3">
                 <div className="font-medium">Preview</div>

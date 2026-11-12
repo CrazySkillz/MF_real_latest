@@ -101,6 +101,18 @@ describe("HubSpot review currency browser regression", () => {
     return { page, posts, saveIds, completedPreviews, errors, close: async () => { await context.close(); expect(errors, JSON.stringify(errors)).toEqual([]); } };
   }
 
+  it("carries the exact saved source snapshot through the parent editor into an update", async () => {
+    const f = await fixture("EUR", 125.75, { edit: true, revenueOnly: true });
+    try {
+      await f.page.getByRole("button", { name: "Update revenue", exact: true }).click();
+      await browserExpect.poll(() => f.posts.filter(body => !body.previewOnly).length).toBe(1);
+      const body = f.posts.find(body => !body.previewOnly);
+      expect(body.sourceId).toBe("source-a");
+      expect(JSON.parse(body.expectedSourceMappingConfig)).toMatchObject({ selectedValues: ["yesop_prospecting"], pipelineEnabled: true, lastTotalRevenue: 75 });
+      expect(body.pipelineEnabled).toBe(false);
+    } finally { await f.close(); }
+  });
+
   it.each(["network", "invalid-json", "missing-success"] as const)("keeps one import identity after a %s response and never displays an invented zero", async lostSave => {
     const f = await fixture("EUR", 125.75, { direct: true, lostSave });
     try {

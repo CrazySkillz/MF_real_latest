@@ -2854,6 +2854,7 @@ export function AddRevenueWizardModal(props: {
                   campaignId={campaignId}
                   currency={currency}
                   sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot" ? String(initialSource?.id || "") : undefined}
+                  expectedSourceMappingConfig={typeof initialSource?.mappingConfig === "string" ? initialSource.mappingConfig : undefined}
                   platformContext={platformContext}
                   mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot" ? "edit" : "connect"}
                   externalBackNonce={hubspotBackNonce}
@@ -2878,6 +2879,7 @@ export function AddRevenueWizardModal(props: {
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
                   sourceId={isSalesforceEditing ? String(salesforceEditSource?.id || "") : undefined}
+                  expectedSourceMappingConfig={typeof salesforceEditSource?.mappingConfig === "string" ? salesforceEditSource.mappingConfig : undefined}
                   initialFocusValue={isSalesforceEditing ? String(salesforceEditSource?.focusedRevenueValue || "") : undefined}
                   platformContext={platformContext}
                   autoStartOAuth={!isSalesforceEditing}

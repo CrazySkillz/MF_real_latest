@@ -78,6 +78,7 @@ export function ShopifyRevenueWizard(props: {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<any>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewRequestRef = useRef(0);
 
   // OAuth / connection
   const [shopName, setShopName] = useState<string | null>(null);
@@ -559,7 +560,7 @@ export function ShopifyRevenueWizard(props: {
       return;
     }
     if (step === "review") {
-      if (isRepair && !preview?.repairConfirmation) return;
+      if (previewLoading || previewError || !preview || (isRepair && !preview.repairConfirmation)) return;
       setIsSaving(true);
       try {
         const importRequestId = isGA4 && !editSourceId ? getFinancialImportRequestId(campaignId, "revenue:shopify") : undefined;
@@ -609,7 +610,7 @@ export function ShopifyRevenueWizard(props: {
           ...(!repairPass ? { variant: "destructive" as const } : {}),
         } : {
           title: json.alreadySaved ? "Import already saved" : "Revenue imported",
-          description: json.alreadySaved ? "The previous import was saved. Review its current values in Revenue Sources." : `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+          description: json.alreadySaved ? "The previous import was saved. Review its current values in Revenue Sources." : json.currency ? `Revenue connected: ${Number(json?.totalRevenue || 0).toLocaleString(undefined, { style: "currency", currency: json.currency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : "Revenue saved. Review its current value in Revenue Sources.",
         });
         onSuccess?.({ ...json, ...(isRepair ? { repairInventory } : {}) });
         setStep("complete");
@@ -627,6 +628,7 @@ export function ShopifyRevenueWizard(props: {
   };
 
   const fetchPreview = async () => {
+    const requestId = ++previewRequestRef.current;
     setPreviewLoading(true);
     setPreviewError(null);
     try {
@@ -649,12 +651,14 @@ export function ShopifyRevenueWizard(props: {
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load preview");
+      if (requestId !== previewRequestRef.current) return;
       setPreview(json);
     } catch (error: any) {
+      if (requestId !== previewRequestRef.current) return;
       setPreview(null);
       setPreviewError(error?.message || "Failed to load Shopify preview");
     } finally {
-      setPreviewLoading(false);
+      if (requestId === previewRequestRef.current) setPreviewLoading(false);
     }
   };
 
@@ -662,6 +666,7 @@ export function ShopifyRevenueWizard(props: {
   useEffect(() => {
     if (step !== "review") return;
     void fetchPreview();
+    return () => { previewRequestRef.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, campaignField, revenueMetric, requestDays, platformContext, editSourceId, selectedValues.join("|"), campaignDisplayName, selectedCampaignMappings]);
 
@@ -1104,7 +1109,7 @@ export function ShopifyRevenueWizard(props: {
                 valuesLoading || isSaving ||
                 (step === "campaign-field" && orderWindowBlocked) ||
                 (step === "crosswalk" && selectedValues.length === 0) ||
-                (step === "review" && (previewLoading || !!previewError || (isRepair && !preview?.repairConfirmation)))
+                (step === "review" && (previewLoading || !!previewError || !preview || (isRepair && !preview?.repairConfirmation)))
               }>
                 {step === "review" ? (isSaving ? "Processing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
               </Button>

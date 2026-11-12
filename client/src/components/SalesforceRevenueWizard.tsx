@@ -29,6 +29,7 @@ const MAX_SALESFORCE_VALUE_SEARCH_LENGTH = 80;
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
   sourceId?: string;
+  expectedSourceMappingConfig?: string;
   initialFocusValue?: string;
   mode?: "connect" | "edit";
   initialMappingConfig?: {
@@ -932,6 +933,7 @@ export function SalesforceRevenueWizard(props: {
         headers: { "Content-Type": "application/json", ...(importRequestId ? { "X-Import-Request-Id": importRequestId } : {}) },
         body: JSON.stringify({
           ...(mode === "edit" && sourceId ? { sourceId } : {}),
+          ...(mode === "edit" && sourceId && platformContext === "ga4" ? { expectedSourceMappingConfig: props.expectedSourceMappingConfig || "" } : {}),
           campaignField,
           selectedValues,
           revenueField,

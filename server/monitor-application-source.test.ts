@@ -81,6 +81,16 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(readFileSync(join(editPrepared, extra), "utf8").trim()).toBe("edit");
   expect(readFileSync(join(safetyPrepared, extra), "utf8").trim()).toBe("safe");
   expect(() => monitorApplicationDirectory({ ...safetyApp, expectedCommit: "4".repeat(40) }, root)).toThrow();
+  const reviewApp = { ...currentApp, expectedCommit: "5".repeat(40) };
+  writeFileSync(join(root, "scripts/monitor-current-day-shopify-review.json"), JSON.stringify({ expectedCommit: reviewApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("review\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-shopify-review.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+review\n`).join(""));
+  const reviewPrepared = prepareMonitorApplication(root, true, true, "-shopify-review");
+  expect(monitorApplicationDirectory(reviewApp, root)).toBe(reviewPrepared);
+  expect(monitorApplicationDirectory(safetyApp, root)).toBe(safetyPrepared);
+  expect(readFileSync(join(safetyPrepared, extra), "utf8").trim()).toBe("safe");
+  expect(readFileSync(join(reviewPrepared, extra), "utf8").trim()).toBe("review");
+  writeFileSync(join(reviewPrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory(reviewApp, root)).toThrow();
   writeFileSync(join(safetyPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(safetyApp, root)).toThrow();
   writeFileSync(join(editPrepared, extra), "tampered\n");

@@ -1,6 +1,6 @@
 {
   "baseUrl": "https://app.mimosaas.app",
-  "expectedCommit": "439cef5f3d2e838f5320fd7a9340e858d912fa45",
+  "expectedCommit": "3671e579a39b73e6c4ed74ba23e0a5d67d0acc28",
   "graceMinutes": 20,
   "maxResponseMilliseconds": 5000,
   "campaigns": [

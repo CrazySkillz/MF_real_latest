@@ -7573,7 +7573,11 @@ export default function GA4Metrics() {
                             <p className="font-medium tabular-nums text-foreground">{revenueSnapshotDisplay ? formatMoney(revenueSnapshotDisplay.nativeRevenue) : initialNativeRevenue != null ? formatMoney(initialNativeRevenue) : "—"}</p>
                           </div>
                         )}
-                        {totalRevenueDisplaySources.map((s: any) => {
+                        {[...totalRevenueDisplaySources].sort((a: any, b: any) =>
+                          String(a.sourceType || "").trim().toLowerCase().localeCompare(
+                            String(b.sourceType || "").trim().toLowerCase(),
+                          ),
+                        ).map((s: any) => {
                           const currentSource = revenueDisplaySources.find((source: any) => source.sourceId === s.sourceId);
                           const currentDefinition = revenueSourcesResp?.sources?.find((source: any) => source.id === s.sourceId && source.isActive !== false);
                           const sourceActionsAvailable = ga4ConnectionUsable && !!currentSource && !!currentDefinition

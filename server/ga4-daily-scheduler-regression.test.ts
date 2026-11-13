@@ -150,6 +150,64 @@ describe("GA4 startup recovery after a missed scheduled slot", () => {
     });
   });
 
+  describe("restart after an overnight CSV publication using saved GA4 inputs", () => {
+    let published: any;
+    let updatedAt: string;
+    beforeEach(() => {
+      vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+      vi.setSystemTime(new Date("2026-11-13T05:23:17Z"));
+      marker = "ga4_aligned_refresh_v1:2026-11-13:2026-11-13T01:10:52Z";
+      updatedAt = "2026-11-12T19:00:39Z";
+      published = { currency: "EUR", currentValueWindow: {
+        mode: "initial_import_to_latest_available_day", startDate: "2026-09-04", endDate: "2026-11-13",
+        dataThroughDate: "2026-11-13", nativeDataThroughDate: "2026-11-12", reportingTimeZone: "Europe/Amsterdam",
+      }, inputs: { revenue: { available: true }, conversions: { available: true }, spend: { available: true } } };
+      vi.mocked(storage.getGA4OverviewSnapshot).mockImplementation(async () => ({
+        windowStart: "2026-09-04", windowEnd: "2026-11-12", updatedAt: new Date(updatedAt),
+        campaignBreakdown: { meta: { currencyCode: "EUR" } }, conversionEvents: { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION },
+      } as any));
+      vi.mocked(storage.getLatestGA4DailyMetric).mockResolvedValue({ date: "2026-11-12" } as any);
+      vi.mocked(storage.getFinancialDailyComparisonData).mockImplementation(async (_id, date) => ({
+        current: { metrics: { financialDaily: date === "2026-11-13" ? published : {
+          ...published, currentValueWindow: { ...published.currentValueWindow, endDate: "2026-11-12", dataThroughDate: "2026-11-12", nativeDataThroughDate: undefined },
+        } } }, previous: null,
+      } as any));
+      vi.mocked(storage.getExecutiveSummaryDailyComparisonData).mockImplementation(async (id, date) => ({
+        current: { notes: id === campaign.id && date === "2026-11-13" ? marker : null }, previous: null,
+      } as any));
+    });
+
+    it("restores the current publication without repeating provider calls or writes", async () => {
+      const runPipeline = vi.fn(async () => { throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST"); });
+      await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual([]);
+      expect(runPipeline).not.toHaveBeenCalled();
+      expect(await getGA4AlignedRefreshState(campaign.id)).toEqual({ reportingDate: "2026-11-13", completedAt: "2026-11-13T01:10:52Z" });
+    });
+
+    it.each([
+      ["missing marker", () => { marker = null; }],
+      ["future marker", () => { marker = "ga4_aligned_refresh_v1:2026-11-13:2026-11-13T06:00:00Z"; }],
+      ["older marker", () => { marker = "ga4_aligned_refresh_v1:2026-11-13:2026-11-12T13:00:00Z"; }],
+      ["wrong marker date", () => { marker = "ga4_aligned_refresh_v1:2026-11-12:2026-11-13T01:10:52Z"; }],
+      ["missed native slot", () => { updatedAt = "2026-11-12T13:00:39Z"; }],
+      ["future native timestamp", () => { updatedAt = "2026-11-13T06:00:00Z"; }],
+      ["invalid native timestamp", () => { updatedAt = "invalid"; }],
+      ["wrong native coverage", () => { published.currentValueWindow.nativeDataThroughDate = "2026-11-11"; }],
+      ["wrong currency", () => { published.currency = "USD"; }],
+      ["wrong timezone", () => { published.currentValueWindow.reportingTimeZone = "UTC"; }],
+      ["wrong import start", () => { published.currentValueWindow.startDate = "2026-09-05"; }],
+      ["unavailable revenue", () => { published.inputs.revenue.available = false; }],
+      ["next scheduled slot", () => { vi.setSystemTime(new Date("2026-11-13T07:00:01Z")); }],
+    ])("does not hide recovery for %s", async (_name, change) => {
+      change();
+      const runPipeline = vi.fn(async () => undefined);
+      await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual([campaign.id]);
+      expect(runPipeline).toHaveBeenCalledExactlyOnceWith("snapshot_bootstrap", {
+        campaignId: campaign.id, suppressAlerts: false, refreshFinancialSources: true,
+      });
+    });
+  });
+
   it.each([
     ["2026-10-17T18:29:59Z", "2026-10-17T12:42:00Z", false],
     ["2026-10-17T18:30:42Z", "2026-10-17T12:42:00Z", true],

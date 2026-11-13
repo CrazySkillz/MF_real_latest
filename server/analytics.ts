@@ -310,14 +310,15 @@ export class GoogleAnalytics4Service {
       dimensions: Array<{ name: string }> = dims,
       reportLimit: number = limit,
       orderMetric: 'sessions' | 'conversions' = 'sessions',
-      offset = 0
+      offset = 0,
+      conversionTotalOnly = false
     ) => {
       const boundedLimit = Math.min(Math.max(reportLimit, 1), 10000);
       const requestBody = {
         dateRanges: [{ startDate: reportStartDate, endDate }],
         dimensions,
         ...(scopeFilter ? scopeFilter : {}),
-        metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
+        metrics: conversionTotalOnly ? [{ name: 'conversions' }] : [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
         orderBys: [
           { metric: { metricName: orderMetric }, desc: true },
           ...dimensions.map((dimension) => ({ dimension: { dimensionName: dimension.name } })),
@@ -501,7 +502,22 @@ export class GoogleAnalytics4Service {
 
     const supplementFromConversionFallback = async (accessToken: string, base: any) => {
       if (!hasMissingConversionTrafficRows(base)) return base;
-      const conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions', true);
+      let conversionRes;
+      try { conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions', true); }
+      catch (error: any) {
+        if (!pageLocationCampaignFilter || error?.code !== 'GA4_DATA_QUALITY_UNAVAILABLE' || JSON.stringify(error.reasons) !== '["sampling"]') throw error;
+        // Only an independently verified zero can make this supplemental detail unnecessary.
+        // The shared quality gate still rejects sampling and every other restriction.
+        const total = await run(accessToken, 'totalRevenue', pageLocationCampaignFilter, [], 1, 'conversions', 0, true);
+        const rows = total?.rows === undefined ? [] : total.rows;
+        const conversionHeader = total?.metricHeaders?.length === 1 && total.metricHeaders[0]?.name === 'conversions';
+        const zeroTotal = Array.isArray(rows) && rows.length <= 1 && Number(total?.rowCount ?? rows.length) === rows.length
+          && (rows.length === 0 ? (conversionHeader || (total?.kind === 'analyticsData#runReport' && total.metricHeaders === undefined))
+            : (conversionHeader && rows[0]?.metricValues?.length === 1
+            && /^0(?:\.0+)?$/.test(String(rows[0].metricValues[0]?.value))));
+        if (zeroTotal) return base;
+        throw error;
+      }
       if (!conversionRes || isEmptyResult(conversionRes)) return base;
       return supplementMissingConversionRows(base, conversionRes);
     };

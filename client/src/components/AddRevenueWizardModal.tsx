@@ -2289,17 +2289,17 @@ export function AddRevenueWizardModal(props: {
                         Re-upload to replace the stored rows. Campaign selections can be updated from the retained file data without re-uploading.
                       </div>
                     )}
+                    {isEditing && (
+                      <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                        <span className="text-muted-foreground">Current file:</span>{" "}
+                        <span className="font-medium break-all">{String(initialSource?.displayName || csvPrefill?.displayName || "Filename unavailable")}</span>
+                      </div>
+                    )}
 
                     <div className="space-y-2">
                       <div className="space-y-2">
-                        {isEditing && (
-                          <p className="text-sm break-all">
-                            <span className="font-medium">Current CSV:</span>{" "}
-                            {String(initialSource?.displayName || csvPrefill?.displayName || "Filename unavailable")}
-                          </p>
-                        )}
                         <div className="flex items-center justify-between gap-2">
-                          <Label htmlFor="revenue-csv-file">{isEditing ? "Replace CSV (optional)" : "Upload file (CSV)"}</Label>
+                          <Label htmlFor="revenue-csv-file">{isEditing ? "Choose replacement file (CSV)" : "Upload file (CSV)"}</Label>
                           {csvFile && (
                             <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
                               Remove file

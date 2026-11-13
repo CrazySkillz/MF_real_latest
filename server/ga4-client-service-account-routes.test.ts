@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { z } from "zod";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { retryWithBackoff } from "./utils/retry";
 
 // Execute the actual registered handlers and ownership guard with synthetic provider transport/storage.
 const source = ts.createSourceFile("routes.ts", readFileSync("server/routes-oauth.ts", "utf8"), ts.ScriptTarget.Latest, true);
@@ -32,7 +33,8 @@ function fixture(options: { status?: string; selfService?: boolean; googleStatus
   };
   const request = vi.fn(async () => { effects.push("google-read"); return new Response("{}", { status: options.googleStatus || 200 }); });
   const env: Record<string, any> = {
-    z, storage, fetch: request, AbortSignal,
+    z, storage, fetch: request, AbortSignal, retryWithBackoff,
+    console: { info: vi.fn(), warn: vi.fn() },
     getAuth: (req: any) => ({ userId: req.actor }), isInternalAutoRefreshRequest: () => false,
     getGA4ServiceAccountPublicStatus: () => ({ enabled: true, email: null, selfService: true }),
     getGA4ServiceAccountConfig: () => ({ email: "existing@fixture.invalid", allowedPropertyIds: new Set(["542352127"]) }),
@@ -54,6 +56,77 @@ function fixture(options: { status?: string; selfService?: boolean; googleStatus
   };
   return { call, effects, connections, storage, env, request, binding };
 }
+
+function connectionClock() {
+  vi.useFakeTimers();
+  vi.spyOn(AbortSignal, "timeout").mockImplementation(ms => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new DOMException("The operation was aborted due to timeout", "TimeoutError")), ms);
+    return controller.signal;
+  });
+}
+const delayed = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
+  signal.throwIfAborted();
+  const abort = () => { clearTimeout(timer); reject(signal.reason); };
+  const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, ms);
+  signal.addEventListener("abort", abort, { once: true });
+});
+afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
+
+describe("initial GA4 connection deadline and diagnostics", () => {
+  it("accepts a valid property response taking 16 seconds without saving early", async () => {
+    connectionClock(); const f = fixture();
+    f.request.mockImplementation(async (_url: any, init: any) => { await delayed(16_000, init.signal); return new Response("{}"); });
+    const pending = f.call("connect");
+    await vi.advanceTimersByTimeAsync(15_000); expect(f.connections).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect((await pending).status).toBe(200); expect(f.connections).toHaveLength(1); expect(f.request).toHaveBeenCalledTimes(1);
+  });
+  it("keeps queue waiting separate from the provider request budget", async () => {
+    connectionClock(); const f = fixture();
+    f.storage.withGA4PropertyRequest = async (_id, signal, operation) => { await delayed(20_000, signal); return operation(signal); };
+    f.request.mockImplementation(async (_url: any, init: any) => { await delayed(15_000, init.signal); return new Response("{}"); });
+    const pending = f.call("connect"); await vi.advanceTimersByTimeAsync(35_000);
+    expect((await pending).status).toBe(200); expect(f.connections).toHaveLength(1);
+  });
+  it("retries only the timed-out read and saves exactly once after a successful retry", async () => {
+    connectionClock(); const f = fixture(); let calls = 0;
+    f.request.mockImplementation(async (_url: any, init: any) => { if (++calls === 1) await delayed(90_000, init.signal); return new Response("{}"); });
+    const pending = f.call("connect"); await vi.advanceTimersByTimeAsync(31_000);
+    expect((await pending).status).toBe(200); expect(f.request).toHaveBeenCalledTimes(2);
+    expect(f.effects.filter(e => e === "verify")).toHaveLength(1); expect(f.connections).toHaveLength(1);
+    expect(JSON.stringify(f.env.console.warn.mock.calls)).toContain("property_request");
+  });
+  it("stops within the total budget and exposes a safe actionable timeout with no save", async () => {
+    connectionClock(); const f = fixture();
+    f.request.mockImplementation(async (_url: any, init: any) => { await delayed(90_000, init.signal); return new Response("{}"); });
+    const pending = f.call("connect"); await vi.advanceTimersByTimeAsync(60_000);
+    const response = await pending;
+    expect(response.status).toBe(504); expect(response.body.error).toBe("GA4_SERVICE_ACCOUNT_CONNECT_TIMEOUT");
+    expect(response.body.message).toContain("Please retry"); expect(f.request).toHaveBeenCalledTimes(2);
+    expect(f.connections).toEqual([]); expect(f.binding.verifiedAt).toBeNull();
+  });
+  it("identifies a queue timeout without sending a provider request or saving", async () => {
+    connectionClock(); const f = fixture();
+    f.storage.withGA4PropertyRequest = async (_id, signal) => { await delayed(90_000, signal); throw new Error("unreachable"); };
+    const pending = f.call("connect"); await vi.advanceTimersByTimeAsync(60_000);
+    expect((await pending).status).toBe(504); expect(f.request).not.toHaveBeenCalled(); expect(f.connections).toEqual([]);
+    expect(JSON.stringify(f.env.console.warn.mock.calls)).toContain("property_queue");
+  });
+  it("records credential-stage failure without logging credentials or provider error text", async () => {
+    const f = fixture();
+    f.env.getGA4ClientServiceAccountAccessToken.mockRejectedValueOnce(new DOMException("secret-provider-detail", "TimeoutError"));
+    const response = await f.call("connect"); expect(response.status).toBe(504); expect(f.request).not.toHaveBeenCalled();
+    const logs = JSON.stringify(f.env.console.warn.mock.calls);
+    expect(logs).toContain("credentials"); expect(logs).not.toContain("secret-provider-detail"); expect(logs).not.toContain("client-token");
+    expect(JSON.stringify(response)).not.toContain("secret-provider-detail"); expect(f.connections).toEqual([]);
+  });
+  it.each([401, 403, 429, 500])("does not retry or save a Google HTTP %s response", async googleStatus => {
+    const f = fixture({ googleStatus }); const response = await f.call("connect");
+    expect(response.status).toBe(googleStatus === 403 ? 403 : 502); expect(f.request).toHaveBeenCalledTimes(1); expect(f.connections).toEqual([]);
+    expect(JSON.stringify(f.env.console.info.mock.calls)).toContain(String(googleStatus));
+  });
+});
 
 describe("automatic GA4 connection request boundaries", () => {
   for (const route of ["status", "prepare", "connect"]) it.each([["", 401], ["owner-b", 404]])(`${route} rejects actor %s before provider access`, async (actor, status) => {
@@ -84,6 +157,7 @@ describe("automatic GA4 connection request boundaries", () => {
     expect(f.connections[0]).toMatchObject({ campaignId: "a", propertyId: "542352127", method: "service_account", serviceAccountBindingId: "binding-a", lookbackDays: 30 });
     expect(f.request.mock.calls[0][0]).toBe("https://analyticsdata.googleapis.com/v1beta/properties/542352127:runReport");
     expect(f.request.mock.calls[0][1].headers.Authorization).toBe("Bearer client-token");
+    expect(JSON.parse(f.request.mock.calls[0][1].body)).toEqual({ dateRanges: [{ startDate: "yesterday", endDate: "yesterday" }], metrics: [{ name: "sessions" }], limit: 1 });
     expect(f.storage.completeGA4ClientServiceAccount).toHaveBeenCalledWith("a", "542352127", "binding-a", "111", "owner-a", true);
     expect(f.storage.assertServiceAccountResourceAccess).not.toHaveBeenCalled();
   });

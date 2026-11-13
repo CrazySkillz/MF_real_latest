@@ -1,4 +1,5 @@
 import { getGoogleSheetsServiceAccountConfig, isGoogleSheetsClientServiceAccountSetupEnabled, provisionGoogleSheetsClientServiceAccount, getGoogleSheetsClientServiceAccountAccessToken } from "./utils/google-sheets-service-account";
+import { retryWithBackoff } from "./utils/retry";
 import type { Express } from "express";
 import { urlencoded } from "express";
 import { createServer, type Server } from "http";
@@ -16136,6 +16137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/campaigns/:id/ga4-service-account/connect", oauthRateLimiter, async (req, res) => {
+    const startedAt = Date.now();
+    let connectionStage = "access", attempt = 0, diagnosticPropertyId: string | undefined;
     try {
       const campaignId = String(req.params.id || "").trim();
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
@@ -16146,6 +16149,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const propertyId = normalizeGA4ServiceAccountPropertyId(req.body?.propertyId);
       if (!/^\d{1,20}$/.test(propertyId)) return res.status(400).json({ success: false, message: "Enter a valid numeric GA4 Property ID." });
+      diagnosticPropertyId = propertyId;
+      connectionStage = "binding";
       const existingConnections = await storage.getGA4Connections(campaignId, { resolveRuntimeCredentials: false });
       const legacy = existingConnections.some(c => c.method === GA4_SERVICE_ACCOUNT_METHOD && !c.serviceAccountBindingId);
       const selfService = !legacy && isGA4ClientServiceAccountSetupEnabled();
@@ -16163,8 +16168,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingConnections.some((connection: any) => connection.method !== GA4_SERVICE_ACCOUNT_METHOD)) {
         return res.status(409).json({ success: false, error: "GA4_OAUTH_CONNECTION_EXISTS", message: "This campaign already has a Google OAuth connection. Its access has not been changed." });
       }
+      connectionStage = "credentials";
       const credentials = binding ? await getGA4ClientServiceAccountAccessToken(binding) : await getGA4ServiceAccountAccessToken();
-      const validationResponse = await storage.withGA4PropertyRequest(propertyId, AbortSignal.timeout(15000), async signal => {
+      const validationDeadline = AbortSignal.timeout(60_000);
+      const validationResponse = await retryWithBackoff(async () => {
+      attempt++;
+      connectionStage = "property_queue";
+      return storage.withGA4PropertyRequest(propertyId, validationDeadline, async queuedSignal => {
+      connectionStage = "property_request";
+      const signal = AbortSignal.any([queuedSignal, AbortSignal.timeout(30_000)]);
+      signal.throwIfAborted();
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
         method: "POST",
         headers: { Authorization: `Bearer ${credentials.accessToken}`, "Content-Type": "application/json" },
@@ -16175,9 +16188,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
         signal,
       });
+      connectionStage = "response_cleanup";
       await response.body?.cancel();
+      signal.throwIfAborted();
       return response;
       });
+      }, {
+        maxAttempts: 2, initialDelayMs: 500, maxDelayMs: 500, signal: validationDeadline,
+        shouldRetry: error => {
+          const retry = !validationDeadline.aborted && error?.name === "TimeoutError";
+          if (retry) console.warn("[GA4 Service Account Connect]", JSON.stringify({ campaignId, propertyId, stage: connectionStage, attempt, outcome: "retry", elapsedMs: Date.now() - startedAt }));
+          return retry;
+        },
+      });
+      console.info("[GA4 Service Account Connect]", JSON.stringify({ campaignId, propertyId, stage: "property_response", attempt, status: validationResponse.status, elapsedMs: Date.now() - startedAt }));
       if (!validationResponse.ok) {
         const message = validationResponse.status === 403
           ? "The MimoSaaS service account does not have Viewer access to this GA4 property"
@@ -16185,6 +16209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(validationResponse.status === 403 ? 403 : 502).json({ success: false, error: "GA4_SERVICE_ACCOUNT_VALIDATION_FAILED", message });
       }
 
+      connectionStage = "connection_save";
       if (binding) await storage.completeGA4ClientServiceAccount(campaignId, propertyId, binding.id, binding.googleUniqueId!, getActorId(req), true);
 
       const propertyName = `Property ${propertyId}`;
@@ -16214,8 +16239,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } as any);
       if (!saved) throw new Error("Failed to save temporary GA4 connection");
       await storage.setPrimaryGA4Connection(campaignId, saved.id);
+      console.info("[GA4 Service Account Connect]", JSON.stringify({ campaignId, propertyId, stage: "complete", attempt, elapsedMs: Date.now() - startedAt }));
       res.json({ success: true, property: { id: propertyId, name: propertyName }, method: GA4_SERVICE_ACCOUNT_METHOD });
     } catch (error: any) {
+      const timedOut = error?.name === "TimeoutError";
+      console.warn("[GA4 Service Account Connect]", JSON.stringify({ campaignId: req.params.id, propertyId: diagnosticPropertyId, stage: connectionStage, attempt, outcome: timedOut ? "timeout" : "failed", elapsedMs: Date.now() - startedAt }));
+      if (timedOut) return res.status(504).json({ success: false, error: "GA4_SERVICE_ACCOUNT_CONNECT_TIMEOUT", message: "The Google Analytics connection check timed out. Please retry the connection." });
       const code = String(error?.code || "");
       const status = [400, 403, 409, 503].includes(error?.status) ? error.status : code === "GA4_PROPERTY_ID_INVALID" ? 400
         : code === "GA4_SERVICE_ACCOUNT_PROPERTY_NOT_ALLOWED" || code === "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" ? 403

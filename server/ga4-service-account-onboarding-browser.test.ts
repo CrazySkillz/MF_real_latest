@@ -24,7 +24,7 @@ describe("GA4 service-account onboarding choice", () => {
   }, 60_000);
   afterAll(async () => { await browser?.close(); });
 
-  async function fixture(options: { enabled?: boolean; statusCode?: number; delayed?: boolean; connectCode?: number; mode?: string; selfService?: boolean; delayedPrepare?: boolean } = {}) {
+  async function fixture(options: { enabled?: boolean; statusCode?: number; delayed?: boolean; connectCode?: number; mode?: string; selfService?: boolean; delayedPrepare?: boolean; recoverTimeout?: boolean } = {}) {
     const context = await browser.newContext({ serviceWorkers: "block" });
     const page = await context.newPage();
     page.setDefaultTimeout(5000);
@@ -49,8 +49,8 @@ describe("GA4 service-account onboarding choice", () => {
         data = { success: true, email: "acme-123456789@fixture-project.iam.gserviceaccount.com", propertyId: request.postDataJSON().propertyId };
       } else if (request.method() === "POST" && url.pathname === "/api/campaigns/a/ga4-service-account/connect") {
         posts.push({ path: url.pathname, body: request.postDataJSON() });
-        status = options.connectCode || 200;
-        data = status === 200 ? { success: true } : { success: false, message: status === 403 ? "This property is not approved for this client." : "Google Analytics could not validate this property." };
+        status = options.recoverTimeout ? (posts.filter(p => p.path.endsWith("/connect")).length === 1 ? 504 : 200) : options.connectCode || 200;
+        data = status === 200 ? { success: true } : { success: false, message: status === 504 ? "The Google Analytics connection check timed out. Please retry the connection." : status === 403 ? "This property is not approved for this client." : "Google Analytics could not validate this property." };
       } else if (request.method() === "POST" && url.pathname === "/api/auth/ga4/connect") {
         posts.push({ path: url.pathname, body: request.postDataJSON() });
         data = { authUrl: "http://ga4-onboarding-fixture.test/oauth" };
@@ -101,6 +101,25 @@ describe("GA4 service-account onboarding choice", () => {
       await browserExpect(f.page.getByText("acme-123456789@fixture-project.iam.gserviceaccount.com", { exact: true })).toHaveCount(0);
       await browserExpect(f.page.getByRole("button", { name: "Connect Google Analytics", exact: true })).toBeDisabled();
       await browserExpect(f.page.getByRole("button", { name: "Generate access email" })).toBeEnabled();
+    } finally { await f.close(); }
+  });
+
+  it("keeps the prepared email after a timeout and retries without provisioning another identity", async () => {
+    const f = await fixture({ selfService: true, recoverTimeout: true });
+    try {
+      await f.page.getByRole("button", { name: "Use service-account access" }).click();
+      await f.page.getByLabel("GA4 Property ID").fill("123456789");
+      await f.page.getByRole("button", { name: "Generate access email" }).click();
+      const email = f.page.getByText("acme-123456789@fixture-project.iam.gserviceaccount.com", { exact: true });
+      await browserExpect(email).toBeVisible();
+      const connect = f.page.getByRole("button", { name: "Connect Google Analytics", exact: true });
+      await connect.click();
+      await browserExpect(f.page.getByRole("status")).toContainText("Please retry the connection");
+      await browserExpect(email).toBeVisible(); await browserExpect(connect).toBeEnabled();
+      await browserExpect(f.page.getByText("Continue to property selection")).toHaveCount(0);
+      await connect.click(); await browserExpect(f.page.getByText("Continue to property selection")).toBeVisible();
+      expect(f.posts.filter(p => p.path.endsWith("/prepare"))).toHaveLength(1);
+      expect(f.posts.filter(p => p.path.endsWith("/connect"))).toEqual(Array(2).fill({ path: "/api/campaigns/a/ga4-service-account/connect", body: { propertyId: "123456789", lookbackDays: 30 } }));
     } finally { await f.close(); }
   });
 

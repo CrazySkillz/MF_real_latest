@@ -25,6 +25,9 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.usersDefinition !== undefined && application.usersDefinition !== "ga4_totalUsers_distinct_v1") throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   if (application.usersDefinition && application.comparisonRateDefinition === undefined) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   if (application.comparisonRateDefinition === undefined) return root;
+  const connectionTimeoutPath = join(root, "scripts/monitor-current-day-ga4-connection-timeout.json");
+  const connectionTimeout = application.reportingMode === "current_day" && existsSync(connectionTimeoutPath)
+    && revision(root, true, true, "-ga4-connection-timeout").expectedCommit === application.expectedCommit;
   const discoveryPath = join(root, "scripts/monitor-current-day-ga4-campaign-discovery.json");
   const discovery = application.reportingMode === "current_day" && existsSync(discoveryPath)
     && (() => { const value = revision(root, true, true, "-ga4-campaign-discovery"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
@@ -58,7 +61,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   const wordingPath = join(root, "scripts/monitor-current-day-revenue-wording.json");
   const wording = application.reportingMode === "current_day" && existsSync(wordingPath)
     && (() => { const value = revision(root, true, true, "-revenue-wording"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
-  const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", discovery ? "-ga4-campaign-discovery" : csvLayout ? "-csv-revenue-layout" : csvFilename ? "-csv-editor-filename" : csvRetainedNext ? "-csv-retained-next" : revenueGrouping ? "-revenue-grouping" : csvSavedInputs ? "-csv-saved-inputs" : revenueFollowup ? "-revenue-followup" : shopifyReview ? "-shopify-review" : editSafety ? "-revenue-edit-safety" : sourceEdit ? "-revenue-source-edit" : wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
+  const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", connectionTimeout ? "-ga4-connection-timeout" : discovery ? "-ga4-campaign-discovery" : csvLayout ? "-csv-revenue-layout" : csvFilename ? "-csv-editor-filename" : csvRetainedNext ? "-csv-retained-next" : revenueGrouping ? "-revenue-grouping" : csvSavedInputs ? "-csv-saved-inputs" : revenueFollowup ? "-revenue-followup" : shopifyReview ? "-shopify-review" : editSafety ? "-revenue-edit-safety" : sourceEdit ? "-revenue-source-edit" : wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
   if (application.comparisonRateDefinition !== "conversions_per_session" || ![pinned.expectedCommit, ...(pinned.equivalentCommits || [])].includes(application.expectedCommit)
     || pinned.files.some(file => digest(join(directory, file.path)) !== file.after)) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   return directory;
@@ -98,5 +101,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (existsSync("scripts/monitor-current-day-csv-editor-filename.json")) prepareMonitorApplication(process.cwd(), true, true, "-csv-editor-filename");
   if (existsSync("scripts/monitor-current-day-csv-revenue-layout.json")) prepareMonitorApplication(process.cwd(), true, true, "-csv-revenue-layout");
   if (existsSync("scripts/monitor-current-day-ga4-campaign-discovery.json")) prepareMonitorApplication(process.cwd(), true, true, "-ga4-campaign-discovery");
+  if (existsSync("scripts/monitor-current-day-ga4-connection-timeout.json")) prepareMonitorApplication(process.cwd(), true, true, "-ga4-connection-timeout");
   console.log("Pinned test application replay source verified");
 }

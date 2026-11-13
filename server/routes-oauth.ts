@@ -13314,11 +13314,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const result = await ga4Service.getCampaignValues(campaignId, storage, ga4DateRange, propertyId, limit);
+      const result = await ga4Service.getCampaignValues(campaignId, storage, ga4DateRange, propertyId, limit, !!propertyId && req.query.allowPartial === '1');
       console.log(`[GA4 Campaign Values] campaignId=${campaignId} propertyId=${propertyId || '(auto)'} returned ${result.campaigns?.length || 0} campaigns`);
       res.json({ success: true, dateRange, ...result, campaigns: applySavedCampaignScope(result.campaigns || []) });
     } catch (error: any) {
-      console.error('[GA4 Campaign Values] Error:', error);
+      console.error('[GA4 Campaign Values] Error:', { campaignId: req.params.id, propertyId: req.query.propertyId || '(auto)' }, error);
       if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
         return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
       }

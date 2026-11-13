@@ -122,10 +122,11 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory({ ...csvApp, expectedCommit: "0123456789abcdef".repeat(2) + "01234567" }, root)).toBe(csvPrepared);
   expect(readFileSync(join(csvPrepared, extra), "utf8").trim()).toBe("csv");
   const csvNextApp = { ...csvApp, expectedCommit: "ef".repeat(20) };
-  writeFileSync(join(root, "scripts/monitor-current-day-csv-retained-next.json"), JSON.stringify({ expectedCommit: csvNextApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("csv-next\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-csv-retained-next.json"), JSON.stringify({ expectedCommit: csvNextApp.expectedCommit, equivalentCommits: ["fa".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("csv-next\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-csv-retained-next.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+csv-next\n`).join(""));
   const csvNextPrepared = prepareMonitorApplication(root, true, true, "-csv-retained-next");
   expect(monitorApplicationDirectory(csvNextApp, root)).toBe(csvNextPrepared);
+  expect(monitorApplicationDirectory({ ...csvNextApp, expectedCommit: "fa".repeat(20) }, root)).toBe(csvNextPrepared);
   expect(monitorApplicationDirectory(groupingApp, root)).toBe(groupedPrepared);
   expect(monitorApplicationDirectory({ ...groupingApp, expectedCommit: "cd".repeat(20) }, root)).toBe(groupedPrepared);
   writeFileSync(join(groupedPrepared, extra), "tampered\n");

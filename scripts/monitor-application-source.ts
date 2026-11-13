@@ -27,7 +27,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.comparisonRateDefinition === undefined) return root;
   const discoveryPath = join(root, "scripts/monitor-current-day-ga4-campaign-discovery.json");
   const discovery = application.reportingMode === "current_day" && existsSync(discoveryPath)
-    && revision(root, true, true, "-ga4-campaign-discovery").expectedCommit === application.expectedCommit;
+    && (() => { const value = revision(root, true, true, "-ga4-campaign-discovery"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const csvLayoutPath = join(root, "scripts/monitor-current-day-csv-revenue-layout.json");
   const csvLayout = application.reportingMode === "current_day" && existsSync(csvLayoutPath)
     && (() => { const value = revision(root, true, true, "-csv-revenue-layout"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();

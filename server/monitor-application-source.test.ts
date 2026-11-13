@@ -168,6 +168,15 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory({ ...listApp, expectedCommit: "de".repeat(20) }, root)).toBe(listPrepared);
   expect(monitorApplicationDirectory(connectionApp, root)).toBe(connectionPrepared);
   expect(monitorApplicationDirectory({ ...connectionApp, expectedCommit: "bc".repeat(20) }, root)).toBe(connectionPrepared);
+  const samplingApp = { ...listApp, expectedCommit: "ef".repeat(20) };
+  writeFileSync(join(root, "scripts/monitor-current-day-ga4-presence-sampling.json"), JSON.stringify({ expectedCommit: samplingApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("sampling\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-ga4-presence-sampling.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+sampling\n`).join(""));
+  const samplingPrepared = prepareMonitorApplication(root, true, true, "-ga4-presence-sampling");
+  expect(monitorApplicationDirectory(samplingApp, root)).toBe(samplingPrepared);
+  expect(monitorApplicationDirectory(listApp, root)).toBe(listPrepared);
+  expect(monitorApplicationDirectory({ ...listApp, expectedCommit: "de".repeat(20) }, root)).toBe(listPrepared);
+  writeFileSync(join(samplingPrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory(samplingApp, root)).toThrow();
   writeFileSync(join(listPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(listApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...listApp, expectedCommit: "de".repeat(20) }, root)).toThrow();

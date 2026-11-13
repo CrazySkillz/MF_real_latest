@@ -863,7 +863,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete_without_alerts")).toBe(true);
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "release")).toBe(false);
     });
-    it.each(['getTimeSeriesData', 'getAcquisitionBreakdown', 'getLandingPagesReport', 'getConversionEventsReport'] as const)(
+    it.each(['getTimeSeriesData', 'getTrendsDailyPresenceWithToken', 'getAcquisitionBreakdown', 'getLandingPagesReport', 'getConversionEventsReport'] as const)(
       'retains saved figures and blocks all derived publication when %s reports a quality restriction', async method => {
         await runGA4DailyRefreshPipelineForTrigger('snapshot_bootstrap', options());
         const previous = structuredClone({ daily: [...daily], overviews: [...overviews], financial: [...saved] });

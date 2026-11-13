@@ -181,7 +181,7 @@ describe("compact daily financial snapshot contract", () => {
     expect(route).toContain("requireCampaignAccessParamId");
     expect(route).toContain("throughDate > latestCompletedDate");
     expect(route).toContain("storage.getLatestFinancialDailySnapshot(campaignId, throughDate)");
-    expect(overview).toContain("financial-daily-snapshot?throughDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}");
+    expect(overview).toContain("financial-daily-snapshot?throughDate=${encodeURIComponent(financialSnapshotThroughDate)}");
     expect(cards).toContain("overviewFinancialRevenueAvailable");
     expect(cards).toContain("overviewFinancialSpendAvailable");
     expect(cards).toContain("overviewFinancialConversionsAvailable");

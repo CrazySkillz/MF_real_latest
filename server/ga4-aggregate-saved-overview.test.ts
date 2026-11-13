@@ -73,6 +73,24 @@ describe("ordered GA4 campaign snapshot saved financial inputs", () => {
     expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
 
+  it("retains native Users and their actual dates when CSV financial coverage advances after midnight", async () => {
+    vi.setSystemTime(new Date("2026-10-18T08:00:00Z"));
+    const saved: any = overview();
+    saved.campaignBreakdown.meta.propertyId = propertyId;
+    saved.campaignBreakdown.meta.distinctUsers = { version: 1, metric: "totalUsers", propertyId,
+      startDate: saved.windowStart, endDate: date, total: 25, campaigns: [{ name: "sale_a", users: 20 }, { name: "sale_b", users: 10 }],
+      daily: dailyRows().map(row => ({ date: row.date, users: row.users })), windows: [] };
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    expect(await record()).toBe(true);
+    const snapshot = storageMock.createMetricSnapshot.mock.calls[0][0];
+    expect(snapshot.metrics.ga4.users).toBe(25);
+    expect(snapshot.metrics.performanceSummary.totals.revenue.value).toBe(130.01);
+    expect(snapshot.metrics.performanceSummaryVerification).toMatchObject({
+      trafficWindow: { endDate: date }, nativeFinancialWindow: { endDate: date }, importedFinancialWindow: { endDate: "2026-10-17" },
+    });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["missing", undefined], ["other campaign", { ...overview(), campaignId: "other" }],
     ["other property", { ...overview(), propertyId: "999" }], ["old end", { ...overview(), windowEnd: "2026-10-15" }],

@@ -605,7 +605,8 @@ async function buildGA4ReportPayload(report: any) {
   const overviewStartDate = reportCumulativeWindow.startDate;
   const useSavedOverview = importedCampaignNames.size > 0 && propertyId.toLowerCase() !== "yesop";
   const savedOverview: any = useSavedOverview ? await storage.getGA4OverviewSnapshot(campaignId, propertyId) : null;
-  const financialPublication = useSavedOverview ? await storage.getLatestFinancialDailySnapshot(campaignId, financialEndDate) : null;
+  const financialPublication = useSavedOverview && savedOverview?.windowEnd < financialEndDate
+    ? await storage.getLatestFinancialDailySnapshot(campaignId, financialEndDate) : null;
   const nativeEndDate = (financialPublication?.metrics as any)?.financialDaily?.currentValueWindow?.nativeDataThroughDate || financialEndDate;
   if (useSavedOverview && (!savedOverview || savedOverview.campaignId !== campaignId || savedOverview.propertyId !== propertyId ||
       savedOverview.windowStart !== overviewStartDate || savedOverview.windowEnd !== nativeEndDate || nativeEndDate < overviewStartDate || nativeEndDate > financialEndDate ||

@@ -214,7 +214,7 @@ async function getCampaignMetricTotalsForEndDate(
     }
     engagementRate = summarizeGA4TrafficRows(rows).engagementRate * 100;
     if (!isYesopMockProperty(propertyId)) {
-      const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null);
+      const usersSnapshot = useSavedOverview ? savedOverview : await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null);
       const distinctUsers = getGA4DistinctUsers(usersSnapshot, startDate, nativeEndDate);
       usersAvailable = distinctUsers !== null;
       users = distinctUsers ?? 0;
@@ -239,6 +239,9 @@ async function getCampaignMetricTotalsForEndDate(
       const currency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       if (!overview || overview.campaignId !== campaignId || overview.propertyId !== propertyId ||
           overview.windowStart !== startDate || overview.windowEnd !== nativeEndDate ||
+          ((overview.campaignBreakdown as any)?.meta?.distinctUsers &&
+            (((overview.campaignBreakdown as any).meta.distinctUsers.startDate && (overview.campaignBreakdown as any).meta.distinctUsers.startDate !== startDate) ||
+              ((overview.campaignBreakdown as any).meta.distinctUsers.endDate && (overview.campaignBreakdown as any).meta.distinctUsers.endDate !== nativeEndDate))) ||
           !/^[A-Z]{3}$/.test(currency) || String((overview.campaignBreakdown as any)?.meta?.currencyCode || "").trim().toUpperCase() !== currency ||
           savedRevenue === null || savedConversions === null || savedConversions < 0 ||
           savedSessions === null || savedSessions < 0 || !Number.isInteger(savedSessions)) return null;

@@ -72,6 +72,22 @@ describe("GA4 report saved publication", () => {
     for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
   });
 
+  it.each(["overview", "custom"])("renders %s with today's saved CSV and the actual older GA4 coverage", async type => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    const financial: any = snapshot(); financial.reportingDate = "2026-10-17";
+    Object.assign(financial.metrics.financialDaily.currentValueWindow, { mode: "initial_import_to_latest_available_day",
+      endDate: "2026-10-17", dataThroughDate: "2026-10-17", nativeDataThroughDate: "2026-10-16" });
+    financial.metrics.financialDaily.inputs.revenue.value = "180.01";
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+    const config = type === "custom" ? { sections: { overview: true }, subsections: { overview: { revenue: true, performance: true } } } : undefined;
+    await build(type, config);
+    expect(printed.join(" ")).toContain("180.01");
+    expect(printed.join(" ")).toContain("GA4 data through 2026-10-16");
+    expect(printed.join(" ")).toContain("saved source data through 2026-10-17");
+    expect(storageMock.getRevenueBreakdownBySource).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-17", "ga4");
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
+
   it("renders past-dated spend from a source connected today without changing the report boundary", async () => {
     const saved = snapshot(); saved.metrics.financialDaily.inputs.spend.value = "1100.00";
     storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);

@@ -85,7 +85,8 @@ describe("campaign current-value financial source contract", () => {
       campaignBreakdown: { totals: { sessions: 30, conversions: 5, revenue: 100.01 }, meta: { currencyCode: "EUR" } } });
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 30, currency: "EUR", sourceIds: ["r"] });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 20, currency: "EUR", sourceIds: ["s"] });
-    expect(await getCampaignMetricTotals(campaignId, true, true)).toBeNull();
+    expect(await getCampaignMetricTotals(campaignId, true, true)).toMatchObject({ revenue: 130.01, nativeDataThroughDate: "2026-10-16" });
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-17", "ga4");
     expect(await getCampaignMetricTotals(campaignId, true, true, "2026-10-16")).toMatchObject({ revenue: 130.01, spend: 20, sessions: 30, financialConversions: 5, ga4FinancialSource: "persisted_overview" });
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-16", "ga4");
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-16", "ga4");

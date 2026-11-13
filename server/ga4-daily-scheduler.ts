@@ -774,7 +774,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     let savedOverviewCompletedAt: string | undefined;
     if (revenueChangeWork && refreshWriteInput.refreshScope) {
       // A revenue edit changes normalized financial inputs, not the already imported GA4 facts.
-      // Reuse only a reconciled current-day import for the exact saved selection; otherwise refresh normally.
+      // Reuse a reconciled saved import for the exact selection, retaining its actual coverage date.
       const target = targets[0];
       const connections = (await storage.getGA4Connections(campaignId, { migrateLegacyTokens: false }))
         .filter(connection => connection.isActive !== false && String(connection.propertyId || "").trim());
@@ -788,11 +788,11 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
         ])).digest("hex");
         const updatedAt = new Date(overview?.updatedAt || "");
         if (overview?.campaignId === campaignId && overview.propertyId === connection.propertyId &&
-            overview.windowStart === window.startDate && overview.windowEnd === window.endDate &&
-            history?.version === 1 && history.scope === historyScope && history.reportingDate === window.endDate &&
+            overview.windowStart === window.startDate && overview.windowEnd >= window.startDate && overview.windowEnd <= window.endDate &&
+            history?.version === 1 && history.scope === historyScope && history.reportingDate === overview.windowEnd &&
             Number.isFinite(updatedAt.getTime()) && updatedAt <= startedAtDate &&
-            getLatestCompleteReportingDate(target.reportingTimeZone, updatedAt) === window.endDate) {
-          const rows = await storage.getGA4DailyMetrics(campaignId, String(connection.propertyId), window.startDate, window.endDate);
+            getLatestCompleteReportingDate(target.reportingTimeZone, updatedAt) === overview.windowEnd) {
+          const rows = await storage.getGA4DailyMetrics(campaignId, String(connection.propertyId), window.startDate, overview.windowEnd);
           const totals = await getCampaignMetricTotals(campaignId, true, true);
           if (rows.length > 0 && rows.every(row => row.isSimulated === false && normalizeGA4InsightsDailyMetricValues(row)) &&
               totals?.ga4FinancialSource === "persisted_overview" && totals.ga4Available === true &&

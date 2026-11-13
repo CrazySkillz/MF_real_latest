@@ -9,7 +9,7 @@ import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
 import { getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest } from "./internal-request-auth";
-import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
+import { evaluateExecutiveSummaryTrajectory, buildExecutiveSummaryDailySnapshotInput, buildExecutiveSummaryFinancialSourceIdentity, hasRefreshedGA4RowsForExecutiveSummarySnapshot } from "./utils/executive-summary-daily-snapshot";
 
 const source = readFileSync("server/routes-oauth.ts", "utf8");
 const file = ts.createSourceFile("routes-oauth.ts", source, ts.ScriptTarget.Latest, true);
@@ -131,6 +131,30 @@ describe("published GA4 readers", () => {
     expect(res.body.financials).toMatchObject({ totalRevenue: 130.01, spend: 20, conversions: 5 });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled(); expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
+  it.each([false, true])("reads and captures today's CSV with older native coverage (capture: %s)", async capture => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    const saved: any = published(); saved.reportingDate = "2026-10-17";
+    Object.assign(saved.metrics.financialDaily.currentValueWindow, { mode: "initial_import_to_latest_available_day", endDate: "2026-10-17", dataThroughDate: "2026-10-17", nativeDataThroughDate: "2026-10-16" });
+    saved.metrics.financialDaily.inputs.revenue.value = "142.35";
+    storage.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 42.34, currency: "EUR", sourceIds: ["r"] });
+    storage.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "r", revenue: 42.34, currency: "EUR" }]);
+    bindings.getCampaignMetricTotals.mockResolvedValue({ ga4FinancialSource: "persisted_overview", nativeDataThroughDate: "2026-10-16", revenueAvailable: true, spendAvailable: true,
+      revenue: 142.35, ga4Revenue: 100.01, spend: 20, financialConversions: 5, sessions: 30, users: 25, usersAvailable: true });
+    const daily = await storage.getGA4DailyMetrics();
+    storage.getGA4DailyMetrics.mockResolvedValue(daily.map((row: any) => ({ ...row, updatedAt: "2026-10-16T18:00:00Z" })));
+    storage.upsertExecutiveSummaryDailySnapshot = vi.fn().mockResolvedValue({ id: "snapshot" });
+    storage.getGA4PublicationVersion = vi.fn().mockResolvedValue(null);
+    Object.assign(bindings, { buildExecutiveSummaryDailySnapshotInput, buildExecutiveSummaryFinancialSourceIdentity, hasRefreshedGA4RowsForExecutiveSummarySnapshot,
+      isInternalAutoRefreshRequest: () => capture, getInternalGA4RefreshWriteInput: () => ({ publicationVersion: { campaignId: campaign.id, version: null } }) });
+    const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(capture ? { captureExecutiveSnapshot: "1", executiveFinancialScope: "campaign_to_date" } : {}), res);
+    expect(res.code, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.financials).toMatchObject({ totalRevenue: 142.35, spend: 20, conversions: 5 });
+    expect(res.body.performanceSummary.currentValueWindow).toMatchObject({ endDate: "2026-10-17", nativeDataThroughDate: "2026-10-16" });
+    if (capture) expect(storage.upsertExecutiveSummaryDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({ reportingDate: "2026-10-17", totals: expect.objectContaining({ revenue: expect.objectContaining({ value: 142.35 }), users: expect.objectContaining({ value: 25 }) }) }));
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
+
   it("keeps diagnostic totals and provenance on the published values", async () => {
     const res = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(), res);
     expect(res.code, JSON.stringify(res.body)).toBe(200);

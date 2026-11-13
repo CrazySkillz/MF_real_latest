@@ -24,11 +24,16 @@ export const executiveSummaryDailySnapshotInputSchema = z.object({
     startDate: dateSchema,
     endDate: dateSchema,
     dataThroughDate: dateSchema,
+    nativeDataThroughDate: dateSchema.optional(),
     reportingTimeZone: z.string().trim().min(1),
   }).strict(),
   sourceSignature: z.array(z.string()).min(1),
   totals: z.object(Object.fromEntries(trackedMetricNames.map((name) => [name, metricSchema])) as Record<(typeof trackedMetricNames)[number], typeof metricSchema>).strict(),
 }).strict().superRefine((snapshot, ctx) => {
+  const nativeDate = snapshot.currentValueWindow.nativeDataThroughDate;
+  if (nativeDate && (nativeDate < snapshot.currentValueWindow.startDate || nativeDate > snapshot.reportingDate)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentValueWindow", "nativeDataThroughDate"], message: "Native coverage must lie within the financial window" });
+  }
   if (snapshot.currentValueWindow.startDate > snapshot.currentValueWindow.endDate) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentValueWindow", "startDate"], message: "Window start must not follow window end" });
   }

@@ -33,6 +33,7 @@ export type CampaignMetricTotals = {
   ga4RevenueAvailable?: boolean;
   financialConversionsAvailable?: boolean;
   ga4FinancialSource?: "provider_to_date" | "persisted_overview" | "persisted_daily" | "rolling_breakdown" | "deterministic_simulation" | "pre_campaign_zero" | null;
+  nativeDataThroughDate?: string;
 };
 
 const round2 = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
@@ -179,6 +180,13 @@ async function getCampaignMetricTotalsForEndDate(
     || parsedExactEndDate.toISOString().slice(0, 10) !== exactEndDate
     || !ga4Window || exactEndDate < "1900-01-01" || exactEndDate > ga4Window.endDate)) return null;
   const endDate = exactEndDate || ga4Window?.endDate || todayUTC();
+  // Financial edits reuse the latest complete saved native window. The financial
+  // cutoff remains today so a newly uploaded, dated CSV row is eligible now.
+  const savedOverview = useSavedOverview && primary?.propertyId
+    ? await storage.getGA4OverviewSnapshot(campaignId, String(primary.propertyId)) : null;
+  const nativeEndDate = useFullFinancialCandidate && useSavedOverview && parseGA4CampaignFilter(campaign.ga4CampaignFilter).length > 0 && endDate === ga4Window?.endDate
+    && savedOverview?.windowStart === startDate && savedOverview.windowEnd >= startDate && savedOverview.windowEnd <= endDate
+    ? savedOverview.windowEnd : endDate;
   const financialStartDate = toISODateUTC(exactFinancialStartDate)
     || ga4Window?.startDate
     || "2000-01-01";
@@ -194,7 +202,7 @@ async function getCampaignMetricTotalsForEndDate(
     if (isBeforeGA4ImportStart && isYesopMockProperty(propertyId)) return null;
     const rows = isBeforeGA4ImportStart
       ? []
-      : await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => null as any);
+      : await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, nativeEndDate).catch(() => null as any);
     if (!rows) return null;
     ga4Available = !isBeforeGA4ImportStart;
     ga4RevenueAvailable = true;
@@ -206,8 +214,8 @@ async function getCampaignMetricTotalsForEndDate(
     }
     engagementRate = summarizeGA4TrafficRows(rows).engagementRate * 100;
     if (!isYesopMockProperty(propertyId)) {
-      const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null);
-      const distinctUsers = getGA4DistinctUsers(usersSnapshot, startDate, endDate);
+      const usersSnapshot = useSavedOverview ? savedOverview : await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null);
+      const distinctUsers = getGA4DistinctUsers(usersSnapshot, startDate, nativeEndDate);
       usersAvailable = distinctUsers !== null;
       users = distinctUsers ?? 0;
     } else usersAvailable = true;
@@ -230,14 +238,17 @@ async function getCampaignMetricTotalsForEndDate(
       const savedSessions = parseGA4FinancialNumber(savedTotals?.sessions);
       const currency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       if (!overview || overview.campaignId !== campaignId || overview.propertyId !== propertyId ||
-          overview.windowStart !== startDate || overview.windowEnd !== endDate ||
+          overview.windowStart !== startDate || overview.windowEnd !== nativeEndDate ||
+          ((overview.campaignBreakdown as any)?.meta?.distinctUsers &&
+            (((overview.campaignBreakdown as any).meta.distinctUsers.startDate && (overview.campaignBreakdown as any).meta.distinctUsers.startDate !== startDate) ||
+              ((overview.campaignBreakdown as any).meta.distinctUsers.endDate && (overview.campaignBreakdown as any).meta.distinctUsers.endDate !== nativeEndDate))) ||
           !/^[A-Z]{3}$/.test(currency) || String((overview.campaignBreakdown as any)?.meta?.currencyCode || "").trim().toUpperCase() !== currency ||
           savedRevenue === null || savedConversions === null || savedConversions < 0 ||
           savedSessions === null || savedSessions < 0 || !Number.isInteger(savedSessions)) return null;
-      const expectedDays = (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000 + 1;
+      const expectedDays = (Date.parse(`${nativeEndDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000 + 1;
       if (rows.length !== expectedDays || new Set(rows.map((row: any) => row.date)).size !== expectedDays ||
           rows.some((row: any) => row.campaignId !== campaignId || row.propertyId !== propertyId ||
-            !/^\d{4}-\d{2}-\d{2}$/.test(String(row.date)) || row.date < startDate || row.date > endDate ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(String(row.date)) || row.date < startDate || row.date > nativeEndDate ||
             !Number.isFinite(Date.parse(`${row.date}T00:00:00Z`)) || new Date(`${row.date}T00:00:00Z`).toISOString().slice(0, 10) !== row.date ||
             ["sessions", "conversions", "revenue"].some((field) => {
               const value = parseGA4FinancialNumber(row[field]);
@@ -352,6 +363,7 @@ async function getCampaignMetricTotalsForEndDate(
 
   return {
     revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),
+    ...(ga4FinancialSource === "persisted_overview" ? { nativeDataThroughDate: nativeEndDate } : {}),
     ga4Revenue: round2(ga4Revenue),
     spend: round2(parseNum((spendTotals as any)?.totalSpend)),
     conversions,

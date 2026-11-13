@@ -2091,9 +2091,10 @@ export default function GA4Metrics() {
     return null;
   }, [ga4DailyRows, ga4DailyDataThroughDate]);
   const ga4OverviewExpectedEndDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
+  const financialSnapshotThroughDate = ga4DailyDataThroughDate || ga4OverviewExpectedEndDate;
 
   const { data: financialDailySnapshotResp, isLoading: financialDailySnapshotLoading, isError: financialDailySnapshotError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", ga4OverviewExpectedEndDate, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", financialSnapshotThroughDate, campaignCurrency],
     enabled: !!campaignId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => previousQuery?.queryKey?.[1] === campaignId
       && previousData?.snapshot?.campaignId === campaignId
@@ -2105,7 +2106,7 @@ export default function GA4Metrics() {
     refetchInterval: false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/financial-daily-snapshot?throughDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/financial-daily-snapshot?throughDate=${encodeURIComponent(financialSnapshotThroughDate)}`);
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) throw new Error(json?.message || "Failed to fetch synchronized financial snapshot");
       return json;
@@ -3617,7 +3618,7 @@ export default function GA4Metrics() {
     const savedFinancialWindow = overviewFinancialSnapshot?.metrics?.financialDaily?.currentValueWindow;
     if (requiresFinancialPublication && selectedGA4PropertyId !== "yesop" &&
         (overviewFinancialSnapshot?.campaignId !== campaignId || !overviewFinancialRevenueAvailable || !overviewFinancialConversionsAvailable ||
-          overviewFinancialRefreshWarning || overviewFinancialReportingDate !== (ga4ToDateResp as any)?.endDate ||
+          overviewFinancialRefreshWarning || (savedFinancialWindow?.nativeDataThroughDate || overviewFinancialReportingDate) !== (ga4ToDateResp as any)?.endDate ||
           overviewFinancialSnapshot?.metrics?.financialDaily?.currency !== campaignCurrency ||
           savedFinancialWindow?.startDate !== (ga4ToDateResp as any)?.startDate || savedFinancialWindow?.reportingTimeZone !== normalizeClientReportingTimeZone((campaign as any)?.reportingTimeZone) ||
           Number(financialRevenue.toFixed(2)) !== overviewFinancialRevenue || financialConversions !== overviewFinancialConversions ||
@@ -3909,7 +3910,7 @@ export default function GA4Metrics() {
         `GA4 metrics (Summary and tables): ${overviewGA4ReportingDate ? `${overviewGA4ReportingStartDate ? `Data from ${formatReportingDateLabel(overviewGA4ReportingStartDate)} through` : "Data through"} ${formatReportingDateLabel(overviewGA4ReportingDate)} (${overviewGA4ReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: ${overviewGA4UpdatedAt}.`,
         ...(includeOverviewRevenue || includeOverviewSpend || includeOverviewPerformance ? [
           `Revenue, Spend, ROAS, ROI and CPA: ${overviewFinancialReportingDate ? `Data through ${formatReportingDateLabel(overviewFinancialReportingDate)} (${overviewFinancialReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: ${overviewFinancialUpdatedAt}. Applies to available figures.`,
-          ...(overviewFinancialReportingDate && overviewFinancialWindow?.startDate ? [`Financial GA4 inputs cover ${formatReportingDateLabel(overviewFinancialWindow.startDate)} through ${formatReportingDateLabel(overviewFinancialReportingDate)}. Imported Revenue and Spend include eligible source history through that date, which may start earlier.`] : []),
+          ...(overviewFinancialReportingDate && overviewFinancialWindow?.startDate ? [`Financial GA4 inputs cover ${formatReportingDateLabel(overviewFinancialWindow.startDate)} through ${formatReportingDateLabel(overviewFinancialWindow.nativeDataThroughDate || overviewFinancialReportingDate)}. Imported Revenue and Spend include eligible source history saved through ${formatReportingDateLabel(overviewFinancialReportingDate)}, which may start earlier.`] : []),
         ] : []),
         `Scheduled refreshes: ${overviewRefreshSchedule}. Each refresh checks data through the previous day; today's activity is excluded.`,
         "Recent figures are provisional: GA4 processing can take 24-48 hours, sometimes longer. Conversion attribution can change for up to 12 days after the event. Later refreshes can revise earlier figures and ratios that use GA4 data.",

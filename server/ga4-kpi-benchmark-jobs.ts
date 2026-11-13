@@ -356,8 +356,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       ]);
       const trafficInputsAvailable = (Array.isArray(reportingRows) && reportingRows.length > 0) || isYesopMockProperty(propertyId);
       let trafficTotals = summarizeGA4TrafficRows(Array.isArray(reportingRows) ? reportingRows : []);
+      const savedTotals = useSavedOverview ? await getCampaignMetricTotals(campaignId, true, true).catch(() => null) : null;
       const distinctUsers = isYesopMockProperty(propertyId) ? trafficTotals.users
-        : getGA4DistinctUsers(await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null), reportingWindow.startDate, reportingWindow.endDate);
+        : getGA4DistinctUsers(await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null), reportingWindow.startDate, savedTotals?.nativeDataThroughDate || reportingWindow.endDate);
       if (!isYesopMockProperty(propertyId)) trafficTotals.users = distinctUsers ?? 0;
       if (isYesopMockProperty(propertyId)) {
         const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue, 30);
@@ -405,8 +406,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         ga4RevenueToDate += baseline.revenue;
       } else if (useSavedOverview) {
         try {
-          const saved = await getCampaignMetricTotals(campaignId, true, true);
-          if (hasExactDailyRow && saved?.ga4FinancialSource === "persisted_overview" &&
+          const saved = savedTotals;
+          if (saved?.ga4FinancialSource === "persisted_overview" &&
               saved.sessions === trafficTotals.sessions && conversionCreditsMatch(saved.conversions, trafficTotals.conversions, Math.max(1, toDateRows.length))) {
             savedFinancialCandidate = { revenue: saved.ga4Revenue, conversions: saved.financialConversions };
           }

@@ -15170,11 +15170,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignToDateWindow = activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)
         ? resolveGA4ImportToDateWindow((persistedPrimaryGA4 as any)?.importStartDate, (campaign as any)?.reportingTimeZone)
         : null;
-      // Readers retain the last synchronized cutoff; refresh writers still require the new completed day.
+      // CSV publication can advance financial coverage without advancing native GA4 coverage.
       const publishedOverview = useSavedOverview && campaignToDateWindow && !isInternalAutoRefreshRequest(req)
         ? await getSynchronizedGA4OverviewSnapshot(campaignId, persistedPropertyId, campaignToDateWindow.startDate).catch(() => null)
         : null;
-      const publishedEndDate = publishedOverview?.campaignId === campaignId && publishedOverview?.propertyId === persistedPropertyId
+      const publishedFinancial = publishedOverview && campaignToDateWindow
+        ? await storage.getLatestFinancialDailySnapshot(campaignId, campaignToDateWindow.endDate) : null;
+      const publishedFinancialWindow = (publishedFinancial?.metrics as any)?.financialDaily?.currentValueWindow;
+      const publishedEndDate = publishedOverview && publishedFinancial?.campaignId === campaignId
+        && publishedFinancial.reportingDate
+        && (publishedFinancial.metrics as any)?.financialDaily?.currency === campaignCurrency
+        && publishedFinancialWindow?.startDate === campaignToDateWindow?.startDate
+        && publishedFinancialWindow?.nativeDataThroughDate === publishedOverview.windowEnd
+        && publishedFinancial.reportingDate >= publishedOverview.windowEnd && publishedFinancial.reportingDate <= campaignToDateWindow!.endDate
+        ? publishedFinancial.reportingDate
+        : publishedOverview?.campaignId === campaignId && publishedOverview?.propertyId === persistedPropertyId
         && publishedOverview.windowStart === campaignToDateWindow?.startDate
         && publishedOverview.windowEnd >= campaignToDateWindow.startDate && publishedOverview.windowEnd <= campaignToDateWindow.endDate
         ? publishedOverview.windowEnd : campaignToDateWindow?.endDate;
@@ -15183,6 +15193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate: campaignToDateWindow.startDate,
         endDate: publishedEndDate!,
         dataThroughDate: publishedEndDate!,
+        nativeDataThroughDate: undefined as string | undefined,
         reportingTimeZone: campaignToDateWindow.reportingTimeZone,
       } : null;
       let performanceSummarySpendTotals: any = currentValueWindow ? null : spendTotals;
@@ -15525,12 +15536,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               throw new Error("Saved GA4 financial inputs are unavailable or changed during the read");
             }
             overviewFinancialCandidate = { revenue: saved.ga4Revenue, conversions: saved.financialConversions, sessions: saved.sessions,
-              users: saved.users, currencyCode: campaignCurrency, source: "ga4_overview_snapshot" };
+              users: saved.usersAvailable === false ? null : saved.users, currencyCode: campaignCurrency, source: "ga4_overview_snapshot" };
+            if (saved.nativeDataThroughDate && saved.nativeDataThroughDate < endDateUsed) currentValueWindow.nativeDataThroughDate = saved.nativeDataThroughDate;
           }
           const propertyWindowRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed).catch(() => [] as any[]);
           if (useExecutiveCampaignToDateFinancials) {
             executiveGA4SnapshotRefreshReady = hasRefreshedGA4RowsForExecutiveSummarySnapshot({
-              reportingDate: endDateUsed,
+              reportingDate: currentValueWindow.nativeDataThroughDate || endDateUsed,
               reportingTimeZone: currentValueWindow.reportingTimeZone,
               rows: propertyWindowRows,
             });
@@ -15538,7 +15550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (propertyWindowRows.length > 0) {
             propertyWindowTrafficCandidate = {
               ...summarizeGA4TrafficRows(propertyWindowRows),
-              users: getGA4DistinctUsers(overviewSnapshot, currentValueWindow.startDate, endDateUsed),
+              users: currentValueWindow.nativeDataThroughDate ? overviewFinancialCandidate?.users ?? null : getGA4DistinctUsers(overviewSnapshot, currentValueWindow.startDate, endDateUsed),
               source: "ga4_property_window",
             };
             executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0
@@ -15727,7 +15739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 campaignId,
                 scopeMode: "campaign_to_date",
                 startDate: financialNativeRevenueStartDate,
-                endDate: currentValueWindow?.endDate || endDate,
+                endDate: currentValueWindow?.nativeDataThroughDate || currentValueWindow?.endDate || endDate,
                 currency: campaignCurrency,
                 currencyVerified: financialGa4Totals?.source === "ga4_to_date"
                   || (financialGa4Totals?.source === "ga4_overview_snapshot"

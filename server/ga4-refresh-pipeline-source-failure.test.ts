@@ -598,6 +598,26 @@ describe("GA4 ordered refresh source-discovery failures", () => {
         expect(fetch).not.toHaveBeenCalled();
         expect(mocks.storage.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
       };
+      it.each([false, true])("publishes a dated CSV after midnight without a provider refresh (current day: %s)", async currentDay => {
+        if (currentDay) { vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true"); vi.setSystemTime(new Date("2026-10-15T19:00:00Z")); }
+        await seedSavedInputs();
+        if (currentDay) overviews.get("campaign-a").updatedAt = new Date("2026-10-15T19:00:00Z");
+        const nativeBefore = structuredClone(overviews.get("campaign-a"));
+        vi.setSystemTime(new Date(currentDay ? "2026-10-15T22:01:00Z" : "2026-10-17T00:01:00Z"));
+        mocks.storage.getRevenueTotalForRange.mockImplementation(async (_id, _start, end) => ({
+          totalRevenue: end === "2026-10-16" ? 112.34 : 100, currency: "EUR", sourceIds: ["campaign-a-revenue"],
+        }));
+        mocks.storage.getGA4RevenuePublication.mockResolvedValue({ version: 1, reportingDate: "2026-10-16", sources: { "campaign-a-revenue": "hash" }, pendingSourceIds: [] });
+        mocks.storage.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "campaign-a-revenue", revenue: 112.34, currency: "EUR" }]);
+        await runGA4DailyRefreshPipelineForTrigger("recovery", revenueOptions());
+        expectNoProviderRefresh();
+        expect(saved.get("campaign-a")).toMatchObject({ reportingDate: "2026-10-16",
+          currentValueWindow: { dataThroughDate: "2026-10-16", nativeDataThroughDate: "2026-10-15" },
+          inputs: { revenue: { value: "612.34" }, spend: { available: false, value: null }, conversions: { value: 25 } },
+        });
+        expect(overviews.get("campaign-a")).toEqual(nativeBefore);
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(true);
+      });
       const timingEntries = () => vi.mocked(console.log).mock.calls
         .filter(([label]) => label === "[GA4 Daily] Revenue publication timing").map(([, entry]) => {
           expect(typeof entry).toBe("string"); expect(entry).not.toContain("\n"); return JSON.parse(entry);

@@ -74,6 +74,21 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
   });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
+  it("updates financial KPIs after midnight without inventing a new native history day or contacting providers", async () => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    vi.setSystemTime(new Date("2026-10-16T22:01:00Z"));
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 42.34, currency: "EUR", sourceIds: ["revenue-1"] });
+    const result = await run();
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "142.35", publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Revenue", { currentValue: "142.35", publicationVersion });
+    expect(storageMock.recordKPIProgress).not.toHaveBeenCalled();
+    expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalled();
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-10-17", "ga4");
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+  });
+
   it("saves financial values and progress from Overview rather than a newer provider response", async () => {
     const result = await run();
     expect(result.campaignIdsFailed).toEqual([]);

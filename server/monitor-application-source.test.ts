@@ -153,14 +153,16 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory({ ...discoveryApp, expectedCommit: "aa".repeat(20) }, root)).toBe(discoveryPrepared);
   expect(monitorApplicationDirectory({ ...layoutApp, expectedCommit: "fd".repeat(20) }, root)).toBe(layoutPrepared);
   const connectionApp = { ...discoveryApp, expectedCommit: "ab".repeat(20) };
-  writeFileSync(join(root, "scripts/monitor-current-day-ga4-connection-timeout.json"), JSON.stringify({ expectedCommit: connectionApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("connection\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-ga4-connection-timeout.json"), JSON.stringify({ expectedCommit: connectionApp.expectedCommit, equivalentCommits: ["bc".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("connection\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-ga4-connection-timeout.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+connection\n`).join(""));
   const connectionPrepared = prepareMonitorApplication(root, true, true, "-ga4-connection-timeout");
   expect(monitorApplicationDirectory(connectionApp, root)).toBe(connectionPrepared);
+  expect(monitorApplicationDirectory({ ...connectionApp, expectedCommit: "bc".repeat(20) }, root)).toBe(connectionPrepared);
   expect(monitorApplicationDirectory(discoveryApp, root)).toBe(discoveryPrepared);
   expect(monitorApplicationDirectory({ ...discoveryApp, expectedCommit: "aa".repeat(20) }, root)).toBe(discoveryPrepared);
   writeFileSync(join(connectionPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(connectionApp, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...connectionApp, expectedCommit: "bc".repeat(20) }, root)).toThrow();
   writeFileSync(join(discoveryPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(discoveryApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...discoveryApp, expectedCommit: "aa".repeat(20) }, root)).toThrow();

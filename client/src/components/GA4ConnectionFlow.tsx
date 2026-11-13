@@ -126,7 +126,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const loadGa4CampaignValues = async () => {
     setIsLoadingCampaigns(true);
     try {
-      const params = new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200' });
+      const params = new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200', allowPartial: '1' });
       if (selectedProperty) params.set('propertyId', selectedProperty);
       const resp = await fetch(`/api/campaigns/${campaignId}/ga4-campaign-values?${params}`);
       const json = await resp.json().catch(() => null);
@@ -135,7 +135,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       }
       const rows = Array.isArray(json.campaigns) ? json.campaigns : [];
       setAvailableCampaigns(rows);
-      setCampaignDiscoveryError('');
+      setCampaignDiscoveryError(json.discoveryComplete === false ? 'You can select the campaigns shown. Additional campaigns could not be checked; enter any missing campaign names below, or retry.' : '');
     } catch (err) {
       setCampaignDiscoveryError('Google Analytics could not load the campaign list. Retry or enter exact UTM campaign names.');
     } finally {

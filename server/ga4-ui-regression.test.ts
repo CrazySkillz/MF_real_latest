@@ -203,7 +203,7 @@ describe("GA4 UI regression guard", () => {
 
     expect(campaignsPage).toContain("const campaignDateRange = `${wizardLookbackDays}days`;");
     expect(campaignsPage).toContain("ga4-campaign-values?dateRange=${campaignDateRange}");
-    expect(ga4ConnectionFlow).toContain("new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200' })");
+    expect(ga4ConnectionFlow).toContain("new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200', allowPartial: '1' })");
   });
 
   it("uses the fixed initial-import window and saved cutoff across Overview tables", () => {

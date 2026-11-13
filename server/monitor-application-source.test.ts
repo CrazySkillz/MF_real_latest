@@ -161,14 +161,16 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory(discoveryApp, root)).toBe(discoveryPrepared);
   expect(monitorApplicationDirectory({ ...discoveryApp, expectedCommit: "aa".repeat(20) }, root)).toBe(discoveryPrepared);
   const listApp = { ...connectionApp, expectedCommit: "cd".repeat(20) };
-  writeFileSync(join(root, "scripts/monitor-current-day-ga4-campaign-list-retry.json"), JSON.stringify({ expectedCommit: listApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("list\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-ga4-campaign-list-retry.json"), JSON.stringify({ expectedCommit: listApp.expectedCommit, equivalentCommits: ["de".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("list\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-ga4-campaign-list-retry.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+list\n`).join(""));
   const listPrepared = prepareMonitorApplication(root, true, true, "-ga4-campaign-list-retry");
   expect(monitorApplicationDirectory(listApp, root)).toBe(listPrepared);
+  expect(monitorApplicationDirectory({ ...listApp, expectedCommit: "de".repeat(20) }, root)).toBe(listPrepared);
   expect(monitorApplicationDirectory(connectionApp, root)).toBe(connectionPrepared);
   expect(monitorApplicationDirectory({ ...connectionApp, expectedCommit: "bc".repeat(20) }, root)).toBe(connectionPrepared);
   writeFileSync(join(listPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(listApp, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...listApp, expectedCommit: "de".repeat(20) }, root)).toThrow();
   writeFileSync(join(connectionPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(connectionApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...connectionApp, expectedCommit: "bc".repeat(20) }, root)).toThrow();

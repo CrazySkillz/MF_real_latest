@@ -27,7 +27,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.comparisonRateDefinition === undefined) return root;
   const listRetryPath = join(root, "scripts/monitor-current-day-ga4-campaign-list-retry.json");
   const listRetry = application.reportingMode === "current_day" && existsSync(listRetryPath)
-    && revision(root, true, true, "-ga4-campaign-list-retry").expectedCommit === application.expectedCommit;
+    && (() => { const value = revision(root, true, true, "-ga4-campaign-list-retry"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const connectionTimeoutPath = join(root, "scripts/monitor-current-day-ga4-connection-timeout.json");
   const connectionTimeout = application.reportingMode === "current_day" && existsSync(connectionTimeoutPath)
     && (() => { const value = revision(root, true, true, "-ga4-connection-timeout"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();

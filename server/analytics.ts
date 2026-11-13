@@ -2757,8 +2757,9 @@ export class GoogleAnalytics4Service {
     storage: any,
     dateRange = '30daysAgo',
     propertyId?: string,
-    limit: number = 50
-  ): Promise<{ propertyId: string; campaigns: Array<{ name: string; users: number }> }> {
+    limit: number = 50,
+    allowPartialDiscovery = false
+  ): Promise<{ propertyId: string; campaigns: Array<{ name: string; users: number }>; discoveryComplete?: false }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection) throw new Error('NO_GA4_CONNECTION');
 
@@ -2794,7 +2795,8 @@ export class GoogleAnalytics4Service {
     const signal = this.requestAbortSignal();
     let requestCount = 0;
     let successfulReports = 0;
-    const runRows = async (accessToken: string, dimensionName: string) => {
+    let discoveryComplete = true;
+    const runRows = async (accessToken: string, dimensionName: string, reportSignal = signal) => {
       const rows: any[] = [];
       const pageSize = Number.isFinite(limit) ? Math.min(Math.max(Math.floor(limit), 1), 200) : 200;
       let expectedCount: number | undefined;
@@ -2803,7 +2805,7 @@ export class GoogleAnalytics4Service {
         if (++requestCount > 200) throw new Error('GA4_CAMPAIGN_DISCOVERY_LIMIT_REACHED');
         const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          signal,
+          signal: reportSignal,
           body: JSON.stringify({ dateRanges: [{ startDate: dateRange, endDate: 'today' }],
             dimensions: [{ name: dimensionName }], metrics: [{ name: 'totalUsers' }],
             orderBys: [{ dimension: { dimensionName, orderType: 'ALPHANUMERIC' } }],
@@ -2852,8 +2854,8 @@ export class GoogleAnalytics4Service {
       }
     };
 
-    const runPageLocationCampaigns = async (accessToken: string) => {
-      const rows = await runRows(accessToken, 'pageLocation');
+    const runPageLocationCampaigns = async (accessToken: string, reportSignal = signal) => {
+      const rows = await runRows(accessToken, 'pageLocation', reportSignal);
       const map = new Map<string, number>();
       for (const r of rows) {
         const name = extractUtmCampaign(String(r?.dimensionValues?.[0]?.value || ''));
@@ -2886,6 +2888,7 @@ export class GoogleAnalytics4Service {
       accessToken: string,
       errorHandler: (err: any) => Array<{ name: string; users: number }>
     ) => {
+      discoveryComplete = true;
       const reportsBefore = successfulReports;
       const lists: Array<Array<{ name: string; users: number }>> = [];
       for (const dimension of campaignDimensions) {
@@ -2893,7 +2896,19 @@ export class GoogleAnalytics4Service {
         lists.push(campaigns);
         if (!isMostlyEmpty(campaigns)) break;
       }
-      const pageLocationCampaigns = await runPageLocationCampaigns(accessToken).catch(errorHandler);
+      const canRetainCampaigns = allowPartialDiscovery && lists.some(list => list.length > 0);
+      const urlSignal = canRetainCampaigns ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : signal;
+      const pageLocationCampaigns = await runPageLocationCampaigns(accessToken, urlSignal).catch((error: any) => {
+        if (canRetainCampaigns && !this.requestSignal?.aborted
+          && (error?.name === 'TimeoutError' || error?.code === 'GA4_TRANSIENT_ERROR')) {
+          discoveryComplete = false;
+          console.warn('[GA4 Campaign Discovery] Supplemental scan unavailable', {
+            campaignId, propertyId: normalizedPropertyId, dimension: 'pageLocation', code: error.code || error.name,
+          });
+          return [];
+        }
+        return errorHandler(error);
+      });
       if (successfulReports === reportsBefore) throw new Error('GA4_CAMPAIGN_DISCOVERY_UNAVAILABLE');
       return merge([...lists, pageLocationCampaigns]);
     };
@@ -2913,7 +2928,7 @@ export class GoogleAnalytics4Service {
       // - firstUserCampaignName: sometimes available earlier for new users
       // - pageLocation fallback: parse utm_campaign from landing URLs if attribution dims are not populated yet
       const campaigns = await collectCampaignValues(connection.accessToken, catchUnsupportedDimension);
-      return { propertyId: normalizedPropertyId, campaigns };
+      return { propertyId: normalizedPropertyId, campaigns, ...(!discoveryComplete ? { discoveryComplete: false as const } : {}) };
     } catch (e: any) {
       const msg = String(e?.message || '');
       const isAuth = e?.status === 401 ||
@@ -2934,7 +2949,7 @@ export class GoogleAnalytics4Service {
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
         const campaigns = await collectCampaignValues(refresh.access_token, catchUnsupportedDimension);
-        return { propertyId: normalizedPropertyId, campaigns };
+        return { propertyId: normalizedPropertyId, campaigns, ...(!discoveryComplete ? { discoveryComplete: false as const } : {}) };
       }
       throw e;
     }

@@ -1164,12 +1164,12 @@ export default function Campaigns() {
           setIsGA4CampaignLoading(true);
           const campaignDateRange = `${wizardLookbackDays}days`;
           const valsResp = await fetch(
-            `/api/campaigns/${encodeURIComponent(draftCampaignId)}/ga4-campaign-values?dateRange=${campaignDateRange}&limit=200&propertyId=${encodeURIComponent(selectedGA4Property)}`,
+            `/api/campaigns/${encodeURIComponent(draftCampaignId)}/ga4-campaign-values?dateRange=${campaignDateRange}&limit=200&propertyId=${encodeURIComponent(selectedGA4Property)}&allowPartial=1`,
             { credentials: 'include' }
           );
           const valsJson = await valsResp.json().catch(() => null);
           if (!valsResp.ok || !valsJson?.success) throw new Error('Campaign discovery failed');
-          setGA4CampaignDiscoveryError('');
+          setGA4CampaignDiscoveryError(valsJson.discoveryComplete === false ? 'You can select the campaigns shown. Additional campaigns could not be checked; enter any missing campaign names below, or go Back to retry.' : '');
           const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
           setGA4CampaignValues(vals);
           setSelectedGA4CampaignValues([]);

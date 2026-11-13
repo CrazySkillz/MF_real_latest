@@ -2803,14 +2803,32 @@ export class GoogleAnalytics4Service {
       const seenValues = new Set<string>();
       do {
         if (++requestCount > 200) throw new Error('GA4_CAMPAIGN_DISCOVERY_LIMIT_REACHED');
-        const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
-          method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          signal: reportSignal,
-          body: JSON.stringify({ dateRanges: [{ startDate: dateRange, endDate: 'today' }],
-            dimensions: [{ name: dimensionName }], metrics: [{ name: 'totalUsers' }],
-            orderBys: [{ dimension: { dimensionName, orderType: 'ALPHANUMERIC' } }],
-            limit: pageSize, offset: rows.length }),
-        });
+        const retryPrimary = allowPartialDiscovery && dimensionName !== 'pageLocation';
+        let attempt = 0;
+        const readPage = async () => {
+          attempt++;
+          const startedAt = Date.now();
+          const pageSignal = retryPrimary && attempt === 1 ? AbortSignal.any([reportSignal, AbortSignal.timeout(30_000)]) : reportSignal;
+          try {
+            const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+              method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+              signal: pageSignal,
+              body: JSON.stringify({ dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+                dimensions: [{ name: dimensionName }], metrics: [{ name: 'totalUsers' }],
+                orderBys: [{ dimension: { dimensionName, orderType: 'ALPHANUMERIC' } }],
+                limit: pageSize, offset: rows.length }),
+            });
+            console.info('[GA4 Campaign Discovery]', JSON.stringify({ campaignId, propertyId: normalizedPropertyId, dimension: dimensionName, offset: rows.length, attempt, status: resp.status, elapsedMs: Date.now() - startedAt }));
+            return resp;
+          } catch (error: any) {
+            console.warn('[GA4 Campaign Discovery]', JSON.stringify({ campaignId, propertyId: normalizedPropertyId, dimension: dimensionName, offset: rows.length, attempt, outcome: error?.name === 'TimeoutError' ? 'timeout' : 'failed', elapsedMs: Date.now() - startedAt }));
+            throw error;
+          }
+        };
+        const resp = retryPrimary ? await retryWithBackoff(readPage, {
+          maxAttempts: 2, initialDelayMs: 500, maxDelayMs: 500, signal: reportSignal,
+          shouldRetry: error => !reportSignal.aborted && error?.name === 'TimeoutError',
+        }) : await readPage();
         if (!resp.ok) throw Object.assign(new Error(`GA4 API Error: ${await resp.text()}`), { status: resp.status });
         const json = await resp.json();
         const page = Array.isArray(json?.rows) ? json.rows : [];

@@ -138,6 +138,14 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory({ ...csvNextApp, expectedCommit: "fa".repeat(20) }, root)).toBe(csvNextPrepared);
   writeFileSync(join(filenamePrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(filenameApp, root)).toThrow();
+  const layoutApp = { ...csvNextApp, expectedCommit: "fc".repeat(20) };
+  writeFileSync(join(root, "scripts/monitor-current-day-csv-revenue-layout.json"), JSON.stringify({ expectedCommit: layoutApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("layout\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-csv-revenue-layout.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+layout\n`).join(""));
+  const layoutPrepared = prepareMonitorApplication(root, true, true, "-csv-revenue-layout");
+  expect(monitorApplicationDirectory(layoutApp, root)).toBe(layoutPrepared);
+  expect(monitorApplicationDirectory(csvNextApp, root)).toBe(csvNextPrepared);
+  writeFileSync(join(layoutPrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory(layoutApp, root)).toThrow();
   writeFileSync(join(groupedPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(groupingApp, root)).toThrow();
   writeFileSync(join(csvPrepared, extra), "tampered\n");

@@ -113,10 +113,11 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory(followupApp, root)).toBe(followupPrepared);
   expect(readFileSync(join(followupPrepared, extra), "utf8").trim()).toBe("followup");
   const groupingApp = { ...csvApp, expectedCommit: "ab".repeat(20) };
-  writeFileSync(join(root, "scripts/monitor-current-day-revenue-grouping.json"), JSON.stringify({ expectedCommit: groupingApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("grouped\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-revenue-grouping.json"), JSON.stringify({ expectedCommit: groupingApp.expectedCommit, equivalentCommits: ["cd".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("grouped\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-revenue-grouping.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+grouped\n`).join(""));
   const groupedPrepared = prepareMonitorApplication(root, true, true, "-revenue-grouping");
   expect(monitorApplicationDirectory(groupingApp, root)).toBe(groupedPrepared);
+  expect(monitorApplicationDirectory({ ...groupingApp, expectedCommit: "cd".repeat(20) }, root)).toBe(groupedPrepared);
   expect(monitorApplicationDirectory(csvApp, root)).toBe(csvPrepared);
   expect(monitorApplicationDirectory({ ...csvApp, expectedCommit: "0123456789abcdef".repeat(2) + "01234567" }, root)).toBe(csvPrepared);
   expect(readFileSync(join(csvPrepared, extra), "utf8").trim()).toBe("csv");

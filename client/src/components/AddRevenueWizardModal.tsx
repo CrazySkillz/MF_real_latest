@@ -2292,8 +2292,14 @@ export function AddRevenueWizardModal(props: {
 
                     <div className="space-y-2">
                       <div className="space-y-2">
+                        {isEditing && (
+                          <p className="text-sm break-all">
+                            <span className="font-medium">Current CSV:</span>{" "}
+                            {String(initialSource?.displayName || csvPrefill?.displayName || "Filename unavailable")}
+                          </p>
+                        )}
                         <div className="flex items-center justify-between gap-2">
-                          <Label htmlFor="revenue-csv-file">Upload file (CSV)</Label>
+                          <Label htmlFor="revenue-csv-file">{isEditing ? "Replace CSV (optional)" : "Upload file (CSV)"}</Label>
                           {csvFile && (
                             <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
                               Remove file

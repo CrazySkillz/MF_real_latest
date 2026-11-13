@@ -27,7 +27,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.comparisonRateDefinition === undefined) return root;
   const csvFilenamePath = join(root, "scripts/monitor-current-day-csv-editor-filename.json");
   const csvFilename = application.reportingMode === "current_day" && existsSync(csvFilenamePath)
-    && revision(root, true, true, "-csv-editor-filename").expectedCommit === application.expectedCommit;
+    && (() => { const value = revision(root, true, true, "-csv-editor-filename"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const csvNextPath = join(root, "scripts/monitor-current-day-csv-retained-next.json");
   const csvRetainedNext = application.reportingMode === "current_day" && existsSync(csvNextPath)
     && (() => { const value = revision(root, true, true, "-csv-retained-next"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();

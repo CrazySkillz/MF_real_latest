@@ -4664,10 +4664,14 @@ export class DatabaseStorage implements IStorage {
 
   async updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<HubspotConnection | undefined> {
     const guarded = "refreshScope" in options;
-    const credentialsOnly = Object.keys(connection).length > 0 && Object.keys(connection).every(key => ["accessToken", "refreshToken", "clientSecret", "expiresAt"].includes(key));
+    let credentialsOnly = false;
     const write = async (db: any) => {
     const existingQuery = db.select().from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
     const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    // Account-name hydration does not change imported facts or the source account.
+    credentialsOnly = Object.keys(connection).length > 0 && Object.keys(connection).every(key =>
+      ["accessToken", "refreshToken", "clientSecret", "expiresAt", "portalName"].includes(key)
+      || (key === "portalId" && connection.portalId === existing?.portalId));
     if (guarded) {
       const expected = options.expectedConnection;
       if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"

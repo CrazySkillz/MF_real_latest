@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "e8c5bee28f861ee8052a9d5ab4a54284f8446f5a",
+  "expectedCommit": "79b30e6d1a2af1f8e275e89232d812815c972dd2",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -49,7 +49,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "52d962f01a8d7e3b033bd0e6ab43bbaba5a0161ebd527652f914f8cf0e04bf27"
+      "after": "f1bafc8533620635457aa8cf71728a4e9ce72e838adfb3ebf291308e0b172bfc"
     },
     {
       "path": "client/src/pages/reports.tsx",
@@ -84,7 +84,7 @@
     {
       "path": "server/ga4-scheduled-report-pdf.ts",
       "before": "53c136ffec1baa6f92c3d5df66abbbfb2f62a6d4a79a78ca7277bd3a941324d9",
-      "after": "6488aafc2a55d35f060ed7df4d547a0d73463aa5836d6f57c8ddc679d36ea176"
+      "after": "5be73eba540bd8d047e02fa6c5f1f5ad0995373d8c3a64e65ae042d33a935920"
     },
     {
       "path": "server/ga4-source-verification.ts",
@@ -109,12 +109,12 @@
     {
       "path": "server/scheduler.ts",
       "before": "20dfb92f544d1ea4954ea3aef3f096204a52b29b6367c516b434bac4c41af256",
-      "after": "f46f68b6a181892d3138d10bf7dd81f91abaf9441cab60d42eb3455242a9c6c8"
+      "after": "878bb557595855a4c574800407d0b5201fe2f86f88538c171040da6ca1e1ffee"
     },
     {
       "path": "server/utils/campaign-current-values.ts",
       "before": "e06a97f5007fad59b9ebcc4776759549f8034bde5dfaf8850d467fdad225d685",
-      "after": "ff806f1d26f0a489af8deec5f873b7b994d0c87de4cad509ceeb008ac59cfd4b"
+      "after": "907bfb030114f2cbb01cf75398c239345e7372dc0653610f3138571d6688048c"
     },
     {
       "path": "server/utils/executive-summary-daily-snapshot.ts",

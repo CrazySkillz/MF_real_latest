@@ -145,6 +145,14 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory(layoutApp, root)).toBe(layoutPrepared);
   expect(monitorApplicationDirectory({ ...layoutApp, expectedCommit: "fd".repeat(20) }, root)).toBe(layoutPrepared);
   expect(monitorApplicationDirectory(csvNextApp, root)).toBe(csvNextPrepared);
+  const discoveryApp = { ...layoutApp, expectedCommit: "fe".repeat(20) };
+  writeFileSync(join(root, "scripts/monitor-current-day-ga4-campaign-discovery.json"), JSON.stringify({ expectedCommit: discoveryApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("discovery\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-ga4-campaign-discovery.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+discovery\n`).join(""));
+  const discoveryPrepared = prepareMonitorApplication(root, true, true, "-ga4-campaign-discovery");
+  expect(monitorApplicationDirectory(discoveryApp, root)).toBe(discoveryPrepared);
+  expect(monitorApplicationDirectory({ ...layoutApp, expectedCommit: "fd".repeat(20) }, root)).toBe(layoutPrepared);
+  writeFileSync(join(discoveryPrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory(discoveryApp, root)).toThrow();
   writeFileSync(join(layoutPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(layoutApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...layoutApp, expectedCommit: "fd".repeat(20) }, root)).toThrow();

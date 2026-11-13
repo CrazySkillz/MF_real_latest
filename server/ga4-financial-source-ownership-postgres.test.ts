@@ -530,6 +530,33 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
       expect((await pool.query("SELECT notes FROM metric_snapshots WHERE campaign_id='a'")).rows[0].notes).toBeNull();
     });
   }
+  it.each([
+    ["same unnamed account", { portalId: "147492723", portalName: null }, true],
+    ["name hydration", { portalId: "147492723", portalName: "Test account" }, true],
+    ["name only", { portalName: "Test account" }, true],
+    ["different account", { portalId: "other", portalName: "Other account" }, false],
+    ["removed account", { portalId: null, portalName: null }, false],
+    ["mapping edit", { portalName: "Test account", mappingConfig: "{}" }, false],
+    ["deactivation", { portalName: "Test account", isActive: false }, false],
+  ] as const)("HubSpot %s preserves readiness only for metadata-only changes", async (_name, update, preserves) => {
+    await storage.updateHubspotConnection("hubspot-a", { portalId: "147492723", portalName: null });
+    const scope = await claim();
+    await pool.query("UPDATE ga4_refresh_work SET status='completed',lease_token=NULL,lease_expires_at=NULL,completed_at=clock_timestamp() WHERE id=$1", [scope.work.id]);
+    await database.current.insert(schema.metricSnapshots).values({ campaignId: "a", snapshotType: "executive_summary_daily", reportingDate: date,
+      notes: `ga4_aligned_refresh_v1:${date}:2026-10-18T06:00:00Z`, metrics: { revenue: 123.45 } });
+    const before = { work: (await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows,
+      snapshots: (await pool.query("SELECT * FROM metric_snapshots ORDER BY id")).rows, financial: await saved() };
+    await storage.updateHubspotConnection("hubspot-a", update);
+    const work = (await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows;
+    const snapshots = (await pool.query("SELECT * FROM metric_snapshots ORDER BY id")).rows;
+    if (preserves) { expect(work).toEqual(before.work); expect(snapshots).toEqual(before.snapshots); }
+    else { expect(work.find(row => row.id === scope.work.id).scope_hash).toMatch(/^invalidated:/); expect(snapshots[0].notes).toBeNull(); }
+    const after = await saved();
+    for (const key of Object.keys(before.financial)) {
+      const retained = (row: any) => key !== "hubspot_connections" || row.id !== "hubspot-a";
+      expect(after[key].filter(retained)).toEqual(before.financial[key].filter(retained));
+    }
+  });
   it.each([false, true])("Salesforce credential renewal metadata preserves publication only for the same instance (changed: %s)", async changed => {
     await storage.updateSalesforceConnection("salesforce-a", { accessToken: "initial", refreshToken: "refresh", clientId: "fixture", clientSecret: "fixture",
       instanceUrl: "https://old.invalid", expiresAt: new Date(0) });

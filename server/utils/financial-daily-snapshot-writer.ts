@@ -99,7 +99,7 @@ export async function writeFinancialDailySnapshotIfReady(
     const overview = await dependencies.getGA4OverviewSnapshot(campaignId, String(primary.propertyId));
     const savedRevenue = parseGA4FinancialNumber(overview?.campaignBreakdown?.totals?.revenue);
     if (!overview || overview.campaignId !== campaignId || overview.propertyId !== String(primary.propertyId) ||
-        overview.windowStart !== window.startDate || overview.windowEnd !== reportingDate ||
+        overview.windowStart !== window.startDate || overview.windowEnd !== (totals.nativeDataThroughDate || reportingDate) ||
         String(overview.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase() !== currency || savedRevenue === null) {
       return { status: "blocked", reasons: ["saved_ga4_revenue_unavailable"] };
     }
@@ -134,6 +134,8 @@ export async function writeFinancialDailySnapshotIfReady(
       startDate: window.startDate,
       endDate: reportingDate,
       dataThroughDate: reportingDate,
+      ...(totals.nativeDataThroughDate && totals.nativeDataThroughDate !== reportingDate
+        ? { nativeDataThroughDate: totals.nativeDataThroughDate } : {}),
       reportingTimeZone: window.reportingTimeZone,
     },
     totals: {

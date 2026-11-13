@@ -1132,6 +1132,7 @@ export const financialDailySnapshotInputSchema = z.object({
     startDate: financialSnapshotDateSchema,
     endDate: financialSnapshotDateSchema,
     dataThroughDate: financialSnapshotDateSchema,
+    nativeDataThroughDate: financialSnapshotDateSchema.optional(),
     reportingTimeZone: z.string().trim().min(1),
   }).strict(),
   inputs: z.object({
@@ -1140,6 +1141,10 @@ export const financialDailySnapshotInputSchema = z.object({
     conversions: financialSnapshotConversionInputSchema,
   }).strict(),
 }).strict().superRefine((snapshot, ctx) => {
+  const nativeDate = snapshot.currentValueWindow.nativeDataThroughDate;
+  if (nativeDate && (nativeDate < snapshot.currentValueWindow.startDate || nativeDate > snapshot.reportingDate)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentValueWindow", "nativeDataThroughDate"], message: "Native coverage must lie within the financial window" });
+  }
   if (snapshot.currentValueWindow.startDate > snapshot.currentValueWindow.endDate) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentValueWindow", "startDate"], message: "Window start must not follow window end" });
   }

@@ -601,15 +601,19 @@ async function buildGA4ReportPayload(report: any) {
   const importedRevenueStartDate = "1900-01-01";
   const importedRevenueEndDate = financialEndDate;
   const dailyStart = reportingWindow.startDate;
-  const dailyEnd = reportingWindow.endDate;
+  let dailyEnd = reportingWindow.endDate;
   const overviewStartDate = reportCumulativeWindow.startDate;
   const useSavedOverview = importedCampaignNames.size > 0 && propertyId.toLowerCase() !== "yesop";
   const savedOverview: any = useSavedOverview ? await storage.getGA4OverviewSnapshot(campaignId, propertyId) : null;
+  const financialPublication = useSavedOverview && savedOverview?.windowEnd < financialEndDate
+    ? await storage.getLatestFinancialDailySnapshot(campaignId, financialEndDate) : null;
+  const nativeEndDate = (financialPublication?.metrics as any)?.financialDaily?.currentValueWindow?.nativeDataThroughDate || financialEndDate;
   if (useSavedOverview && (!savedOverview || savedOverview.campaignId !== campaignId || savedOverview.propertyId !== propertyId ||
-      savedOverview.windowStart !== overviewStartDate || savedOverview.windowEnd !== financialEndDate ||
+      savedOverview.windowStart !== overviewStartDate || savedOverview.windowEnd !== nativeEndDate || nativeEndDate < overviewStartDate || nativeEndDate > financialEndDate ||
       String((savedOverview.campaignBreakdown as any)?.meta?.currencyCode || "").toUpperCase() !== campaignCurrency)) {
     throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Saved publication");
   }
+  if (useSavedOverview) dailyEnd = nativeEndDate;
   const failedParts = new Set<string>();
   const logPartFailure = (label: string, error: any) => {
     failedParts.add(label);
@@ -834,9 +838,9 @@ async function buildGA4ReportPayload(report: any) {
   const latestOverview = useSavedOverview ? await storage.getGA4OverviewSnapshot(campaignId, propertyId) : null;
   if (useSavedOverview && (failedParts.has("persisted daily metrics") || failedParts.has("persisted Overview Summary metrics") ||
       !latestOverview || String(latestOverview.updatedAt) !== String(savedOverview!.updatedAt) ||
-      overviewDailyRows.length !== (Date.parse(financialEndDate) - Date.parse(overviewStartDate)) / 86400000 + 1 ||
+      overviewDailyRows.length !== (Date.parse(nativeEndDate) - Date.parse(overviewStartDate)) / 86400000 + 1 ||
       new Set(overviewDailyRows.map((row: any) => String(row.date))).size !== overviewDailyRows.length ||
-      overviewDailyRows.some((row: any) => String(row.date) < overviewStartDate || String(row.date) > financialEndDate) ||
+      overviewDailyRows.some((row: any) => String(row.date) < overviewStartDate || String(row.date) > nativeEndDate) ||
       overviewSummedTotals.sessions !== Number((savedOverview!.campaignBreakdown as any)?.totals?.sessions) ||
       !conversionCreditsMatch(overviewSummedTotals.conversions, Number((savedOverview!.campaignBreakdown as any)?.totals?.conversions), overviewDailyRows.length))) {
     throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Daily publication changed");
@@ -909,6 +913,7 @@ async function buildGA4ReportPayload(report: any) {
     const parsed = financialDailySnapshotInputSchema.safeParse({ campaignId: published?.campaignId, reportingDate: published?.reportingDate, ...(published?.metrics as any)?.financialDaily });
     if (!parsed.success || parsed.data.campaignId !== campaignId || parsed.data.reportingDate !== financialEndDate ||
         parsed.data.currency !== campaignCurrency || parsed.data.currentValueWindow.startDate !== financialStartDate ||
+        (parsed.data.currentValueWindow.nativeDataThroughDate || financialEndDate) !== nativeEndDate ||
         parsed.data.currentValueWindow.reportingTimeZone !== reportCumulativeWindow.reportingTimeZone ||
         overviewMaterializedRevenueUnavailable || failedParts.has("revenue sources") || failedParts.has("revenue breakdown") || failedParts.has("spend sources") || failedParts.has("spend breakdown") ||
         [...activeRevenueSources, ...spendSources.filter((source: any) => source?.isActive !== false)].some((source: any) => String(source?.currency || "").trim().toUpperCase() !== campaignCurrency) ||
@@ -1046,7 +1051,7 @@ async function buildGA4ReportPayload(report: any) {
       const conversions = Number(row.conversions || 0);
       return {
         ...row,
-        users: adComparisonWindow ? getGA4DistinctUsers(adComparisonBreakdown, adComparisonWindow.startDate, adComparisonWindow.endDate, row.name) : null,
+        users: adComparisonWindow ? getGA4DistinctUsers(adComparisonBreakdown, adComparisonWindow.startDate, nativeEndDate, row.name) : null,
         revenue,
         conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
@@ -1143,6 +1148,7 @@ async function buildGA4ReportPayload(report: any) {
   const formatNumber = (value: number | null) => value == null || !Number.isFinite(value) ? "Unavailable" : `${Math.round(value).toLocaleString()}`;
 
   const payload = {
+    nativeEndDate,
     campaign,
     connection,
     currency,
@@ -1196,8 +1202,8 @@ async function buildGA4ReportPayload(report: any) {
       distinctUsers: (breakdown as any)?.meta?.distinctUsers ?? null,
       comparisonRateDefinition: "conversions_per_session",
       scope: { campaignId, propertyId, campaignFilter, currency: campaignCurrency, reportingTimeZone: reportCumulativeWindow.reportingTimeZone },
-      trafficWindow: reportCumulativeWindow,
-      financialWindow: { startDate: financialStartDate, endDate: financialEndDate, importedStartDate: importedRevenueStartDate, spendStartDate: spendSourceStartDate },
+      trafficWindow: { ...reportCumulativeWindow, endDate: nativeEndDate, dataThroughDate: nativeEndDate },
+      financialWindow: { startDate: financialStartDate, endDate: financialEndDate, nativeDataThroughDate: nativeEndDate, importedStartDate: importedRevenueStartDate, spendStartDate: spendSourceStartDate },
       summary: breakdownTotals,
       financial: { revenue: financialRevenue, spend: financialSpend, spendAvailable: publishedFinancialInputs ? publishedFinancialInputs.spend.available : true, conversions: financialConversions,
         nativeRevenue: ga4RevenueForFinancials, importedRevenue: importedRevenueForFinancials },
@@ -1455,6 +1461,11 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const provisionalNotice = ga4ProvisionalNotice(payload.reportingMode);
   if (provisionalNotice) {
     const lines = doc.splitTextToSize(provisionalNotice, CW);
+    doc.text(lines, MX, y);
+    y += lines.length * 4 + 5;
+  }
+  if (payload.nativeEndDate !== payload.reportCumulativeWindow.endDate) {
+    const lines = doc.splitTextToSize(`GA4 data through ${payload.nativeEndDate}. Revenue and Spend use saved source data through ${payload.reportCumulativeWindow.endDate}.`, CW);
     doc.text(lines, MX, y);
     y += lines.length * 4 + 5;
   }

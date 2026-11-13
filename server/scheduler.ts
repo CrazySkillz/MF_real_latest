@@ -188,6 +188,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let ga4FinancialConversions = ga4Data.conversions;
   let ga4FinancialConversionsAvailable = false;
   let usedSavedGA4Overview = false;
+  let savedNativeEndDate: string | undefined;
   if (ga4Connected) {
     const useSavedOverview = options.useSavedOverview === true && String(ga4PropertyId).trim().toLowerCase() !== 'yesop'
       && parseGA4CampaignFilter(campaign?.ga4CampaignFilter).length > 0;
@@ -200,6 +201,10 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     }
     usedSavedGA4Overview = useSavedOverview;
     if (financialTotals) {
+      if (useSavedOverview && financialTotals.nativeDataThroughDate && ga4FinancialWindow && financialTotals.nativeDataThroughDate < ga4FinancialWindow.endDate) {
+        savedNativeEndDate = financialTotals.nativeDataThroughDate;
+        ga4Data.users = getGA4DistinctUsers(ga4UsersSnapshot, ga4FinancialWindow.startDate > startDate ? ga4FinancialWindow.startDate : startDate, savedNativeEndDate);
+      }
       ga4FinancialData = {
         ...ga4Data,
         revenue: financialTotals.ga4Revenue,
@@ -764,7 +769,8 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     ...(usedSavedGA4Overview && ga4FinancialWindow ? { performanceSummaryVerification: {
       version: 1, campaignId, propertyId: ga4PropertyId, currency: campaign.currency, campaignFilter: campaign.ga4CampaignFilter,
       usersDefinition: 'ga4_totalUsers_distinct_v1', distinctUsers: ga4UsersSnapshot?.campaignBreakdown?.meta?.distinctUsers ?? null,
-      trafficWindow: { startDate, endDate }, nativeFinancialWindow: ga4FinancialWindow,
+      trafficWindow: { startDate, endDate: savedNativeEndDate || endDate },
+      nativeFinancialWindow: savedNativeEndDate ? { ...ga4FinancialWindow, endDate: savedNativeEndDate, dataThroughDate: savedNativeEndDate } : ga4FinancialWindow,
       importedFinancialWindow: { startDate: financialSourceStartDate, endDate: financialSourceEndDate },
       trafficRows: ga4DailyRows.map(row => ({ date: row.date, sessions: row.sessions, users: row.users, conversions: row.conversions })),
       nativeRevenue: ga4FinancialData.revenue, revenueSources: revenueSources.map(source => ({ type: source.type, value: source.lastTotalRevenue })),

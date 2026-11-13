@@ -62,7 +62,7 @@ export function resolveGA4OverviewFinancialRefreshWarning(input: {
   daily?: { propertyId?: string; overviewStartDate?: string; latestStoredDailyDate?: string; reportingTimeZone?: string; lastUpdated?: string | null };
   snapshot?: {
     campaignId?: string; reportingDate?: string; recordedAt?: string;
-    metrics?: { financialDaily?: { currency?: string; currentValueWindow?: { startDate?: string; endDate?: string; reportingTimeZone?: string } } };
+    metrics?: { financialDaily?: { currency?: string; currentValueWindow?: { startDate?: string; endDate?: string; nativeDataThroughDate?: string; reportingTimeZone?: string } } };
   } | null;
 }): "earlier_update" | "unverified" | null {
   const { daily, snapshot } = input;
@@ -82,7 +82,7 @@ export function resolveGA4OverviewFinancialRefreshWarning(input: {
     || !validDate(snapshot.reportingDate) || window?.endDate !== snapshot.reportingDate
     || !validDate(daily.latestStoredDailyDate)) return "unverified";
   if (snapshot.reportingDate < daily.latestStoredDailyDate) return "earlier_update";
-  if (snapshot.reportingDate > daily.latestStoredDailyDate) return "unverified";
+  if (snapshot.reportingDate > daily.latestStoredDailyDate && window?.nativeDataThroughDate !== daily.latestStoredDailyDate) return "unverified";
   const financialUpdatedAt = Date.parse(snapshot.recordedAt || "");
   const ga4UpdatedAt = Date.parse(daily.lastUpdated || "");
   if (!Number.isFinite(financialUpdatedAt) || !Number.isFinite(ga4UpdatedAt)) return "unverified";

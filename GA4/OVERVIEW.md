@@ -374,6 +374,7 @@ Important meaning:
 - if the saved `sessionCampaignName` selection returns no usable native landing rows, the same native landing dimensions may be queried using the campaign's exact saved `utm_campaign` values as a `pageLocation` filter. The dimensions, property, dates and row limit stay unchanged. Visited-page dimensions never create landing rows, and no unfiltered property-wide fallback is allowed. GA4 quality restrictions still fail closed.
 - campaign-level conversions and campaign-matched imported revenue are not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
 - if GA4 cannot provide an exact row-level conversion match, `Conversions` and `Conv. rate` can correctly remain zero for that row
+- after a sampling-only rejection of the conversion supplement, an unsampled conversion total for the identical property, dates and saved UTM scope may prove that no supplement exists. Only a verified zero preserves the original native landing rows unchanged; positive, invalid or restricted totals remain blocked. See `docs/fixes/ga4-landing-sampled-zero-test-2026-11-13.md` for the bounded real-provider evidence.
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear on more than one landing-page row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 

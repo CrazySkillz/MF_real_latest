@@ -180,13 +180,15 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(() => monitorApplicationDirectory(samplingApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...samplingApp, expectedCommit: "12".repeat(20) }, root)).toThrow();
   const landingApp = { ...samplingApp, expectedCommit: "45".repeat(20) };
-  writeFileSync(join(root, "scripts/monitor-current-day-ga4-landing-sampled-zero.json"), JSON.stringify({ expectedCommit: landingApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("landing\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-ga4-landing-sampled-zero.json"), JSON.stringify({ expectedCommit: landingApp.expectedCommit, equivalentCommits: ["46".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("landing\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-ga4-landing-sampled-zero.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+landing\n`).join(""));
   const landingPrepared = prepareMonitorApplication(root, true, true, "-ga4-landing-sampled-zero");
   expect(monitorApplicationDirectory(landingApp, root)).toBe(landingPrepared);
+  expect(monitorApplicationDirectory({ ...landingApp, expectedCommit: "46".repeat(20) }, root)).toBe(landingPrepared);
   expect(monitorApplicationDirectory(listApp, root)).toBe(listPrepared);
   writeFileSync(join(landingPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(landingApp, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...landingApp, expectedCommit: "46".repeat(20) }, root)).toThrow();
   writeFileSync(join(listPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(listApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...listApp, expectedCommit: "de".repeat(20) }, root)).toThrow();

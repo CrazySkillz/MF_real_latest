@@ -27,7 +27,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.comparisonRateDefinition === undefined) return root;
   const landingZeroPath = join(root, "scripts/monitor-current-day-ga4-landing-sampled-zero.json");
   const landingZero = application.reportingMode === "current_day" && existsSync(landingZeroPath)
-    && revision(root, true, true, "-ga4-landing-sampled-zero").expectedCommit === application.expectedCommit;
+    && (() => { const value = revision(root, true, true, "-ga4-landing-sampled-zero"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const samplingPath = join(root, "scripts/monitor-current-day-ga4-presence-sampling.json");
   const sampling = application.reportingMode === "current_day" && existsSync(samplingPath)
     && (() => { const value = revision(root, true, true, "-ga4-presence-sampling"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();

@@ -3662,28 +3662,50 @@ export class GoogleAnalytics4Service {
     const presentDates = new Set(dailyRows.map((row: any) => String(row?.date || "")));
     const property = this.normalizeGA4PropertyId(propertyId);
     const currency = String(currencyCode || "").trim().toUpperCase();
-    const runPresence = async (filter: any, metrics: string[]) => {
-      const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${property}:runReport`, {
+    let presenceRequests = 0;
+    const runPresence = async (filter: any, metrics: string[], from = startDate, to = endDate, signal = this.requestAbortSignal()): Promise<void> => {
+      signal.throwIfAborted();
+      if (++presenceRequests > 64) throw Object.assign(new Error('GA4_DATA_QUALITY_UNAVAILABLE: presence_request_limit'), { code: 'GA4_DATA_QUALITY_UNAVAILABLE' });
+      let response: Response;
+      try {
+        response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${property}:runReport`, {
         method: "POST",
-        signal: this.requestAbortSignal(),
+        signal,
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          dateRanges: [{ startDate, endDate }],
+          dateRanges: [{ startDate: from, endDate: to }],
           dimensions: [{ name: "date" }],
           ...(currency ? { currencyCode: currency } : {}),
           ...filter,
           metrics: metrics.map((name) => ({ name })),
         }),
-      });
+        });
+      } catch (error: any) {
+        if (signal.aborted || error?.code !== 'GA4_DATA_QUALITY_UNAVAILABLE' || JSON.stringify(error.reasons) !== '["sampling"]' ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from >= to ||
+            !Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(to))) throw error;
+        // Presence uses dates only. Never merge sampled values or sum distinct users/rates.
+        const middle = new Date(Date.parse(from) + Math.floor((Date.parse(to) - Date.parse(from)) / 172800000) * 86400000).toISOString().slice(0, 10);
+        const next = new Date(Date.parse(middle) + 86400000).toISOString().slice(0, 10);
+        if (from === startDate && to === endDate) console.warn('[GA4 Daily Presence] Splitting sampled date range', { propertyId: property, startDate: from, endDate: to, metrics });
+        await runPresence(filter, metrics, from, middle, signal);
+        await runPresence(filter, metrics, next, to, signal);
+        return;
+      }
       if (!response.ok) throw new Error(`GA4 Trends presence check failed: ${await response.text()}`);
       const result = await response.json();
       if (currency && String(result?.metadata?.currencyCode || "").trim().toUpperCase() !== currency) {
         throw new Error("GA4 Trends presence check currency is unverified");
       }
-      for (const row of Array.isArray(result?.rows) ? result.rows : []) {
+      const rows = Array.isArray(result?.rows) ? result.rows : [];
+      if ((result?.rows !== undefined && !Array.isArray(result.rows)) ||
+          !Number.isSafeInteger(Number(result?.rowCount ?? rows.length)) || Number(result?.rowCount ?? rows.length) !== rows.length) {
+        throw Object.assign(new Error('GA4_DATA_QUALITY_UNAVAILABLE: incomplete_presence_rows'), { code: 'GA4_DATA_QUALITY_UNAVAILABLE' });
+      }
+      for (const row of rows) {
         const rawDate = String(row?.dimensionValues?.[0]?.value || "");
         const date = /^\d{8}$/.test(rawDate) ? `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6)}` : rawDate;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < startDate || date > endDate) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < from || date > to) {
           throw new Error("GA4 Trends presence check returned an out-of-window date");
         }
         presentDates.add(date);

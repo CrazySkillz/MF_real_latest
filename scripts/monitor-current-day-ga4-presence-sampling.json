@@ -197,5 +197,7 @@
       "after": "74963479d861de1f6e5fafa7b3ab98c4aaf5b16f9139c0dfb3fa2e0aba010539"
     }
   ],
-  "equivalentCommits": []
+  "equivalentCommits": [
+    "4fd5e2ca2b0ccb06cffe32f0607d3f27eb54e6fa"
+  ]
 }

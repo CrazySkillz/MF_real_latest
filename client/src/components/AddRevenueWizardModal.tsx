@@ -2333,13 +2333,17 @@ export function AddRevenueWizardModal(props: {
                       </Button>
                       <Button
                         onClick={async () => {
+                          if (!csvFile && isEditing && csvPreview && canRecalculateCsvRevenueEditWithoutReupload) {
+                            setStep("csv_map");
+                            return;
+                          }
                           if (!csvFile) {
                             toast({ title: "Choose a CSV file", variant: "destructive" });
                             return;
                           }
                           await handleCsvPreview(csvFile);
                         }}
-                        disabled={!csvFile || csvPreviewing}
+                        disabled={(!csvFile && !(isEditing && csvPreview && canRecalculateCsvRevenueEditWithoutReupload)) || csvPreviewing}
                       >
                         {csvPreviewing ? "Previewing…" : "Next"}
                       </Button>

@@ -1210,6 +1210,7 @@ export async function backfillMissingGA4OverviewSnapshots(
       const primaryConnection = activeConnections.find((connection: any) => connection?.isPrimary) || activeConnections[0];
       let needsBootstrap = false;
       let latestPrimaryDate = "";
+      let savedInputPublicationDate = "";
       for (const connection of activeConnections) {
         const propertyId = String(connection.propertyId);
         const expectedStartDate = /^\d{4}-\d{2}-\d{2}$/.test(String(connection?.importStartDate || ""))
@@ -1239,6 +1240,20 @@ export async function backfillMissingGA4OverviewSnapshots(
         const financialDaily = (financial.current?.metrics as any)?.financialDaily;
         const requiredInputs = [...(spendConfigured ? ["spend"] : []), "revenue", "conversions"];
         const inputsReady = requiredInputs.every((key) => financialDaily?.inputs?.[key]?.available === true);
+        // A revenue-only publication can cross midnight without fetching GA4 again.
+        // Restore its marker only while those saved GA4 facts still cover the latest due slot.
+        const nativeUpdatedAt = new Date(snapshot?.updatedAt || "").getTime();
+        if (activeConnections.length === 1 && latestDueAt && scheduleDate > latestPrimaryDate &&
+            nativeUpdatedAt >= latestDueAt.getTime() && nativeUpdatedAt <= now.getTime()) {
+          const current = await storage.getFinancialDailyComparisonData(campaignId, scheduleDate, scheduleDate);
+          const published = (current.current?.metrics as any)?.financialDaily;
+          const window = published?.currentValueWindow;
+          if (published?.currency === (expectedCurrency || "USD") &&
+              window?.mode === "initial_import_to_latest_available_day" && window.startDate === expectedStartDate &&
+              window.endDate === scheduleDate && window.dataThroughDate === scheduleDate &&
+              window.nativeDataThroughDate === latestPrimaryDate && window.reportingTimeZone === config.reportingTimeZone &&
+              requiredInputs.every(key => published.inputs?.[key]?.available === true)) savedInputPublicationDate = scheduleDate;
+        }
         if (!financialDaily || financialDaily.currency !== (expectedCurrency || "USD") ||
             financialDaily.currentValueWindow?.startDate !== expectedStartDate ||
             financialDaily.currentValueWindow?.reportingTimeZone !== normalizeReportingTimeZone((campaign as any)?.reportingTimeZone) || !inputsReady) {
@@ -1255,6 +1270,10 @@ export async function backfillMissingGA4OverviewSnapshots(
         if (!(completedAt >= latestDueAt.getTime() && completedAt <= now.getTime()) &&
             latestPrimaryDate > reportingDate && latestPrimaryDate <= getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, now)) {
           aligned = await getGA4AlignedRefreshState(campaignId, latestPrimaryDate);
+          completedAt = Date.parse(aligned?.completedAt || "");
+        }
+        if (!(completedAt >= latestDueAt.getTime() && completedAt <= now.getTime()) && savedInputPublicationDate > reportingDate) {
+          aligned = await getGA4AlignedRefreshState(campaignId, savedInputPublicationDate);
           completedAt = Date.parse(aligned?.completedAt || "");
         }
         if (!(completedAt >= latestDueAt.getTime() && completedAt <= now.getTime())) {

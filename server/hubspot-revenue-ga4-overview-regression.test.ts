@@ -311,7 +311,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const revenueSourcesDialog = sliceBetween(
       client,
-      "{totalRevenueDisplaySources.map((s: any) => {",
+      "{[...totalRevenueDisplaySources].sort(",
       "<AlertDialog open={!!deletingRevenueSourceId}"
     );
     const mappedCampaignLabelHelper = sliceBetween(
@@ -365,7 +365,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(client).toContain("const totalRevenueDisplaySources = [...(revenueSnapshotDisplay?.sources || [])");
     expect(client).not.toContain('String(source?.sourceType || "").trim().toLowerCase() !== "hubspot" || source?.revenue == null || Number(source.revenue) !== 0');
     expect(client).toContain("const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);");
-    expect(client).toContain("{totalRevenueDisplaySources.map((s: any) => {");
+    expect(client).toContain("{[...totalRevenueDisplaySources].sort(");
     expect(client).toContain('aria-label={sourceType === "salesforce" ? "Edit Salesforce revenue source" : "Edit revenue source"}');
     expect(mappedCampaignLabelHelper).toContain('const sourceType = String(source?.sourceType || "").trim().toLowerCase()');
     expect(mappedCampaignLabelHelper).toContain('sourceType !== "shopify"');
@@ -384,7 +384,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const revenueSourcesDialog = sliceBetween(
       client,
-      "{totalRevenueDisplaySources.map((s: any) => {",
+      "{[...totalRevenueDisplaySources].sort(",
       "<Dialog open={showSpendSourcesDialog}",
     );
 

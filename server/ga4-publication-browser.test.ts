@@ -273,7 +273,7 @@ describe("GA4 publication in the rendered page", () => {
       await page.getByRole("tab", { name: "Overview", exact: true }).click();
       provisional = true; financialRevenue = 100; confirmedCRM = 0;
       await page.evaluate(() => (window as any).testRefreshPublication());
-      await browserExpect(page.getByTestId("ga4-provisional-notice")).toContainText("provisional");
+      await browserExpect(page.getByTestId("ga4-provisional-notice")).toHaveCount(0);
       const pipelineCard = page.getByText("Expected Revenue", { exact: true }).locator("../..");
       await browserExpect(pipelineCard).toContainText("$200.00");
       await browserExpect(revenueCard).toContainText("$100.00");
@@ -281,6 +281,10 @@ describe("GA4 publication in the rendered page", () => {
       await page.evaluate(() => (window as any).testRefreshPublication());
       await browserExpect(pipelineCard).toContainText("$0.00");
       await browserExpect(revenueCard).toContainText("$300.00");
+      await page.getByRole("tab", { name: "KPIs", exact: true }).click();
+      await browserExpect(page.getByTestId("ga4-provisional-notice")).toContainText("provisional");
+      await page.getByRole("tab", { name: "Overview", exact: true }).click();
+      await browserExpect(page.getByTestId("ga4-provisional-notice")).toHaveCount(0);
       expect(errors).toEqual([]);
     } catch (error) {
       console.error({ browserErrors: errors, requests, pageText: (await page.locator("body").innerText()).slice(0, 4000) });

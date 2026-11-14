@@ -7031,7 +7031,7 @@ export default function GA4Metrics() {
                   </div>
                 )}
 
-                {ga4ProvisionalNotice(ga4DailyResp?.reportingMode) && <p className="text-sm text-muted-foreground" data-testid="ga4-provisional-notice">{ga4ProvisionalNotice(ga4DailyResp?.reportingMode)}</p>}
+                {activeTab !== "overview" && ga4ProvisionalNotice(ga4DailyResp?.reportingMode) && <p className="text-sm text-muted-foreground" data-testid="ga4-provisional-notice">{ga4ProvisionalNotice(ga4DailyResp?.reportingMode)}</p>}
                 <TabsContent value="overview" className="fade-in">
                   <div className="space-y-8">
                     <div className="text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">

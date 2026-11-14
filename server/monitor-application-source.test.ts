@@ -187,13 +187,15 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory({ ...landingApp, expectedCommit: "46".repeat(20) }, root)).toBe(landingPrepared);
   expect(monitorApplicationDirectory(listApp, root)).toBe(listPrepared);
   const overviewNoticeApp = { ...landingApp, expectedCommit: "ad".repeat(20) };
-  writeFileSync(join(root, "scripts/monitor-current-day-overview-notice.json"), JSON.stringify({ expectedCommit: overviewNoticeApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("notice\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-overview-notice.json"), JSON.stringify({ expectedCommit: overviewNoticeApp.expectedCommit, equivalentCommits: ["ae".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("notice\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-overview-notice.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+notice\n`).join(""));
   const overviewNoticePrepared = prepareMonitorApplication(root, true, true, "-overview-notice");
   expect(monitorApplicationDirectory(overviewNoticeApp, root)).toBe(overviewNoticePrepared);
+  expect(monitorApplicationDirectory({ ...overviewNoticeApp, expectedCommit: "ae".repeat(20) }, root)).toBe(overviewNoticePrepared);
   expect(monitorApplicationDirectory(landingApp, root)).toBe(landingPrepared);
   writeFileSync(join(overviewNoticePrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(overviewNoticeApp, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...overviewNoticeApp, expectedCommit: "ae".repeat(20) }, root)).toThrow();
   writeFileSync(join(landingPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(landingApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...landingApp, expectedCommit: "46".repeat(20) }, root)).toThrow();

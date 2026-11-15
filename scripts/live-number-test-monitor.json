@@ -4,8 +4,8 @@
   "credentialsEnvironmentPrefix": "TEST_NUMBER_",
   "application": {
     "baseUrl": "https://marketforensics-test.onrender.com",
-    "expectedCommit": "9d46756fb0b7cbe451615150cebef0b894190060",
-    "comparisonRateDefinition": "conversions_per_session",
+    "expectedCommit": "1789ace63d5a8d31bafb6aa57607e08cb07492fc",
+    "comparisonRateDefinition": "ga4_session_key_event_rate",
     "usersDefinition": "ga4_totalUsers_distinct_v1",
     "reportingMode": "current_day"
   },

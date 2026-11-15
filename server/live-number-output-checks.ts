@@ -165,7 +165,7 @@ export function expectedOutputNumbers(snapshot: LiveNumberSnapshot, now = new Da
     roas: revenue !== null && spend !== null && spend > 0 ? revenue / spend : null,
     roi: revenue !== null && spend !== null && spend > 0 ? (revenue - spend) / spend * 100 : null,
     cpa: spend !== null && conversions !== null && conversions > 0 ? spend / conversions : null,
-    cvr: totals.sessions !== null && totals.sessions > 0 && totals.conversions !== null ? totals.conversions / totals.sessions * 100 : null,
+    cvr: snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? period?.conversionRate ?? null : totals.sessions !== null && totals.sessions > 0 && totals.conversions !== null ? totals.conversions / totals.sessions * 100 : null,
     engagementRate: period ? period.engagementRate : totals.sessions !== null && totals.sessions > 0 && totals.engagedSessions !== null ? totals.engagedSessions / totals.sessions : null };
 }
 

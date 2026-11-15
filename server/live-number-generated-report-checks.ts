@@ -158,7 +158,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
     for (const event of (type === "overview" ? expected.scope.publication.conversionEvents?.rows || [] : []).slice(0, 25)) row("CONVERSION_EVENT", String(event.eventName),
       [[event.conversions, 8], [event.eventCount, 0], [event.users, 0]]);
     for (const page of (type === "overview" ? expected.scope.publication.landingPages?.rows || [] : []).slice(0, 20)) row("LANDING_PAGE", `${page.landingPage} ${page.source || "(not set)"}/${page.medium || "(not set)"}`,
-      [[page.sessions, 0], [page.users, 0], [page.conversions, 8], [page.sessions > 0 ? page.conversions / page.sessions * 100 : 0, 1, "%"]]);
+      [[page.sessions, 0], [page.users, 0], [page.conversions, 8], [snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? page.sessionKeyEventRate == null ? null : page.sessionKeyEventRate * 100 : page.sessions > 0 ? page.conversions / page.sessions * 100 : 0, 1, "%"]]);
     const campaigns = new Map<string, { sessions: number; users: number; conversions: number; revenue: number; weightedRate: number }>();
     for (const item of expected.scope.publication.campaignBreakdown?.rows || []) {
       const current = campaigns.get(item.campaign) || { sessions: 0, users: 0, conversions: 0, revenue: 0, weightedRate: 0 };
@@ -210,13 +210,13 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
     else if (type === "overview") for (const amount of amounts) {
       const item = campaigns.get(amount.name)!;
       row("CAMPAIGN_BREAKDOWN", amount.name, [[item.sessions, 0], [item.users, 0], [item.conversions, 8],
-        [item.sessions > 0 ? (snapshot.comparisonRateDefinition === "conversions_per_session" ? item.conversions : item.weightedRate) / item.sessions * 100 : 0, 1, "%"], [amount.cents / 100, 2, "money"]]);
+        [snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? monitoredPeriodTraffic(snapshot,expected.scope,amount.name)?.conversionRate ?? null : item.sessions > 0 ? (snapshot.comparisonRateDefinition === "conversions_per_session" ? item.conversions : item.weightedRate) / item.sessions * 100 : 0, 1, "%"], [amount.cents / 100, 2, "money"]]);
     }
     else {
       const rows = amounts.map(amount => ({ ...campaigns.get(amount.name)!, name: amount.name, revenue: amount.cents / 100 }))
         .sort((a, b) => b.sessions - a.sessions);
       const numerator = (item: typeof rows[number]) => snapshot.comparisonRateDefinition === "conversions_per_session" ? item.conversions : item.weightedRate;
-      const rate = (item: typeof rows[number]) => item.sessions > 0 ? numerator(item) / item.sessions * 100 : 0;
+      const rate = (item: typeof rows[number]) => snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? monitoredPeriodTraffic(snapshot,expected.scope,item.name)?.conversionRate ?? Number.NaN : item.sessions > 0 ? numerator(item) / item.sessions * 100 : 0;
       const integer = (value: number) => value.toLocaleString("en-US", { maximumFractionDigits: 0 });
       const checkText = (code: string, title: string, detail: string) => {
         const index = lines.indexOf(title);
@@ -231,7 +231,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
         : metric === "conversionRate" ? `${Math.round(value * 10) / 10}%` : metric === "conversions" ? value.toLocaleString("en-US", { maximumSignificantDigits: 21 }) : integer(value);
       const totalLabel = metric === "revenue" ? "CAMPAIGN BREAKDOWN REVENUE" : metric === "conversionRate" ? "OVERALL CONVERSION RATE" : `TOTAL ${labels[metric].toUpperCase()}`;
       const totalSessions = expected.scope.publication.campaignBreakdown.meta.distinctUsers?.sessionTotalsVersion ? expected.totals.sessions! : rows.reduce((sum, item) => sum + item.sessions, 0);
-      const metricTotal = metric === "sessions" ? totalSessions : metric === "conversionRate" ? totalSessions > 0 ? rows.reduce((sum, item) => sum + numerator(item), 0) / totalSessions * 100 : 0
+      const metricTotal = metric === "sessions" ? totalSessions : metric === "conversionRate" ? snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? expected.cvr ?? Number.NaN : totalSessions > 0 ? rows.reduce((sum, item) => sum + numerator(item), 0) / totalSessions * 100 : 0
         : rows.reduce((sum, item) => sum + metricValue(item), 0);
       checkText(metric === "sessions" ? "CAMPAIGN_SESSIONS" : "CAMPAIGN_SELECTED_TOTAL", totalLabel,
         metric === "conversionRate" && totalSessions <= 0 && snapshot.comparisonRateDefinition === "conversions_per_session" ? "Unavailable" : formatValue(metricTotal));
@@ -319,7 +319,7 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
     const subset = lines.slice(start + 1, end);
     for (const [label, wanted, decimals, unit] of [["SESSIONS", expected.totals.sessions, 0, ""], ["ENGAGED SESSIONS", expected.totals.engagedSessions, 0, ""],
       ["CONVERSIONS", expected.totals.conversions, 8, ""], ["ENGAGEMENT RATE", expected.engagementRate === null ? null : expected.engagementRate * 100, 1, "%"],
-      ["CONVERSIONS PER 100 SESSIONS", expected.cvr, 1, ""]] as const) {
+      ["CONVERSIONS PER 100 SESSIONS", expected.totals.sessions! > 0 ? expected.totals.conversions! / expected.totals.sessions! * 100 : null, 1, ""]] as const) {
       const index = subset.indexOf(label);
       row("WEBSITE_" + label.replaceAll(" ", "_"), label, [[wanted, decimals, unit]], index < 0 ? [] : [label + " " + subset[index + 1]]);
     }

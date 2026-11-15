@@ -25,6 +25,9 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.usersDefinition !== undefined && application.usersDefinition !== "ga4_totalUsers_distinct_v1") throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   if (application.usersDefinition && application.comparisonRateDefinition === undefined) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   if (application.comparisonRateDefinition === undefined) return root;
+  const nativeValuesPath = join(root, "scripts/monitor-current-day-native-values.json");
+  const nativeValues = application.reportingMode === "current_day" && existsSync(nativeValuesPath)
+    && revision(root, true, true, "-native-values").expectedCommit === application.expectedCommit;
   const periodSessionsPath = join(root, "scripts/monitor-current-day-period-sessions.json");
   const periodSessions = application.reportingMode === "current_day" && existsSync(periodSessionsPath)
     && (() => { const value = revision(root, true, true, "-period-sessions"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
@@ -76,8 +79,8 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   const wordingPath = join(root, "scripts/monitor-current-day-revenue-wording.json");
   const wording = application.reportingMode === "current_day" && existsSync(wordingPath)
     && (() => { const value = revision(root, true, true, "-revenue-wording"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
-  const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", periodSessions ? "-period-sessions" : overviewNotice ? "-overview-notice" : landingZero ? "-ga4-landing-sampled-zero" : sampling ? "-ga4-presence-sampling" : listRetry ? "-ga4-campaign-list-retry" : connectionTimeout ? "-ga4-connection-timeout" : discovery ? "-ga4-campaign-discovery" : csvLayout ? "-csv-revenue-layout" : csvFilename ? "-csv-editor-filename" : csvRetainedNext ? "-csv-retained-next" : revenueGrouping ? "-revenue-grouping" : csvSavedInputs ? "-csv-saved-inputs" : revenueFollowup ? "-revenue-followup" : shopifyReview ? "-shopify-review" : editSafety ? "-revenue-edit-safety" : sourceEdit ? "-revenue-source-edit" : wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
-  if (application.comparisonRateDefinition !== "conversions_per_session" || ![pinned.expectedCommit, ...(pinned.equivalentCommits || [])].includes(application.expectedCommit)
+  const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", nativeValues ? "-native-values" : periodSessions ? "-period-sessions" : overviewNotice ? "-overview-notice" : landingZero ? "-ga4-landing-sampled-zero" : sampling ? "-ga4-presence-sampling" : listRetry ? "-ga4-campaign-list-retry" : connectionTimeout ? "-ga4-connection-timeout" : discovery ? "-ga4-campaign-discovery" : csvLayout ? "-csv-revenue-layout" : csvFilename ? "-csv-editor-filename" : csvRetainedNext ? "-csv-retained-next" : revenueGrouping ? "-revenue-grouping" : csvSavedInputs ? "-csv-saved-inputs" : revenueFollowup ? "-revenue-followup" : shopifyReview ? "-shopify-review" : editSafety ? "-revenue-edit-safety" : sourceEdit ? "-revenue-source-edit" : wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
+  if (application.comparisonRateDefinition !== (nativeValues ? "ga4_session_key_event_rate" : "conversions_per_session") || ![pinned.expectedCommit, ...(pinned.equivalentCommits || [])].includes(application.expectedCommit)
     || pinned.files.some(file => digest(join(directory, file.path)) !== file.after)) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   return directory;
 }
@@ -99,7 +102,7 @@ export function prepareMonitorApplication(root = process.cwd(), distinctUsers = 
   execFileSync("git", ["apply", "--no-index", "--whitespace=nowarn", "-"],
     { cwd: directory, env: { ...process.env, GIT_CEILING_DIRECTORIES: dirname(directory) }, windowsHide: true, stdio: "pipe",
       input: readFileSync(join(root, currentDay ? `scripts/monitor-current-day${variant}.patch` : distinctUsers ? "scripts/monitor-distinct-users.patch" : "scripts/monitor-conversion-parity.patch"), "utf8").replaceAll("\r\n", "\n") });
-  return monitorApplicationDirectory({ expectedCommit: pinned.expectedCommit, comparisonRateDefinition: "conversions_per_session", ...(distinctUsers ? { usersDefinition: "ga4_totalUsers_distinct_v1" } : {}), ...(currentDay ? { reportingMode: "current_day" } : {}) }, root);
+  return monitorApplicationDirectory({ expectedCommit: pinned.expectedCommit, comparisonRateDefinition: variant === "-native-values" ? "ga4_session_key_event_rate" : "conversions_per_session", ...(distinctUsers ? { usersDefinition: "ga4_totalUsers_distinct_v1" } : {}), ...(currentDay ? { reportingMode: "current_day" } : {}) }, root);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   prepareMonitorApplication();
@@ -122,5 +125,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (existsSync("scripts/monitor-current-day-ga4-landing-sampled-zero.json")) prepareMonitorApplication(process.cwd(), true, true, "-ga4-landing-sampled-zero");
   if (existsSync("scripts/monitor-current-day-overview-notice.json")) prepareMonitorApplication(process.cwd(), true, true, "-overview-notice");
   if (existsSync("scripts/monitor-current-day-period-sessions.json")) prepareMonitorApplication(process.cwd(), true, true, "-period-sessions");
+  if (existsSync("scripts/monitor-current-day-native-values.json")) prepareMonitorApplication(process.cwd(), true, true, "-native-values");
   console.log("Pinned test application replay source verified");
 }

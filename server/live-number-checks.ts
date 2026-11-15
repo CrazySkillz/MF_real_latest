@@ -13,7 +13,7 @@ import { deriveTrendFinancialRatios } from "../client/src/lib/trend-analysis-cum
 import { resolveFinancialPacingCalendar } from "../client/src/lib/financial-executive-actions";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 
-export type LiveNumberSnapshot = { campaign: Record<string, any>; rows: Record<string, any[]>; comparisonRateDefinition?: "conversions_per_session"; usersDefinition?: "ga4_totalUsers_distinct_v1" };
+export type LiveNumberSnapshot = { campaign: Record<string, any>; rows: Record<string, any[]>; comparisonRateDefinition?: "conversions_per_session" | "ga4_session_key_event_rate"; usersDefinition?: "ga4_totalUsers_distinct_v1" };
 export type NumberCheck = { section: string; code: string; status: "passed" | "difference" | "unverified"; subject?: string };
 export const monitorHash = (value: string) => createHash("sha256").update(value).digest("hex").slice(0, 12);
 export const monitorWindowMode = () => process.env.GA4_INCLUDE_CURRENT_DAY === "true" ? "initial_import_to_latest_available_day" : "initial_import_to_latest_completed_day";
@@ -102,7 +102,8 @@ export function monitoredPeriodTraffic(snapshot: LiveNumberSnapshot, scope: Retu
     : full ? packet : packet.windows?.find((r: any) => r.startDate === scope.startDate && r.endDate === scope.endDate);
   if (!row || !Number.isSafeInteger(row.sessions) || row.sessions < 0 || !Number.isSafeInteger(row.engagedSessions) || row.engagedSessions < 0
       || typeof row.engagementRate !== "number" || !Number.isFinite(row.engagementRate) || row.engagementRate < 0 || row.engagementRate > 1) return null;
-  return { sessions: row.sessions as number, engagedSessions: row.engagedSessions as number, engagementRate: row.engagementRate as number };
+  return { sessions: row.sessions as number, engagedSessions: row.engagedSessions as number, engagementRate: row.engagementRate as number,
+    conversionRate: typeof row.sessionKeyEventRate === "number" && Number.isFinite(row.sessionKeyEventRate) && row.sessionKeyEventRate >= 0 && row.sessionKeyEventRate <= 1 ? row.sessionKeyEventRate * 100 : null };
 }
 
 export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date()): NumberCheck[] {
@@ -203,7 +204,7 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
       Math.max(0, (Math.min(Date.parse(endDate), periodEnd) - periodStart) / 86400000 + 1), calendar.elapsedDays);
   }
   const metricValues: Record<string, number | null> = { ...totals, revenue: totalRevenue,
-    conversion_rate: totals.sessions! > 0 && totals.conversions !== null ? totals.conversions / totals.sessions! * 100 : null,
+    conversion_rate: snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? period?.conversionRate ?? null : totals.sessions! > 0 && totals.conversions !== null ? totals.conversions / totals.sessions! * 100 : null,
     engagement_rate: period ? period.engagementRate * 100 : totals.sessions! > 0 && totals.engagedSessions !== null ? totals.engagedSessions / totals.sessions! * 100 : null,
     roas: spend! > 0 && totalRevenue !== null ? totalRevenue / spend! : null,
     roi: spend! > 0 && totalRevenue !== null ? (totalRevenue - spend!) / spend! * 100 : null,

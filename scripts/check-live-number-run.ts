@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 import type { NumberCheck } from "../server/live-number-checks";
 import { monitorApplicationDirectory } from "./monitor-application-source";
 
-type Application = { baseUrl: string; expectedCommit: string; comparisonRateDefinition?: "conversions_per_session"; usersDefinition?: "ga4_totalUsers_distinct_v1"; reportingMode?: "completed_days" | "current_day" };
+type Application = { baseUrl: string; expectedCommit: string; comparisonRateDefinition?: "conversions_per_session" | "ga4_session_key_event_rate"; usersDefinition?: "ga4_totalUsers_distinct_v1"; reportingMode?: "completed_days" | "current_day" };
 const activeChildren = new Set<ReturnType<typeof spawn>>();
 const unverified = (code: string): NumberCheck[] => [{ section: "Application outputs", code, status: "unverified" }];
 export function writeMonitorOutput(value: string, output: Pick<Writable, "write"> = process.stdout): Promise<void> {

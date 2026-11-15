@@ -185,7 +185,7 @@ export function expectedBrowserCampaignRows(snapshot: LiveNumberSnapshot, now = 
   const remaining = total-rows.reduce((n,r)=>n+r.cents,0);
   if (remaining<0 || remaining>rows.length) throw new Error("BROWSER_ALLOCATION_UNVERIFIED");
   for(let i=0;i<remaining;i++)ranked[i].cents++;
-  return rows.map(r=>({...r,revenue:r.cents/100,conversionRate:r.sessions>0?(snapshot.comparisonRateDefinition === "conversions_per_session" ? r.conversions : r.weighted)/r.sessions*100:0}));
+  return rows.map(r=>({...r,revenue:r.cents/100,conversionRate:snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? monitoredPeriodTraffic(snapshot,e.scope,r.name)?.conversionRate ?? Number.NaN : r.sessions>0?(snapshot.comparisonRateDefinition === "conversions_per_session" ? r.conversions : r.weighted)/r.sessions*100:0}));
 }
 
 export function checkNarrativeWindows(snapshot: LiveNumberSnapshot, text: string, now = new Date()): NumberCheck[] {
@@ -369,7 +369,7 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
             const conversions = rows.reduce((sum, row) => sum + row.conversions, 0);
             const numerator = rows.reduce((sum, row) => sum + (snapshot.comparisonRateDefinition === "conversions_per_session" ? row.conversions : row.weighted), 0);
             await cards("Screen GA4 Campaign Comparison", metric === "conversions" ? [["Total Conversions", conversions]]
-              : [["Overall Conversion Rate", sessions > 0 ? numerator / sessions * 100 : snapshot.comparisonRateDefinition === "conversions_per_session" ? null : 0, 1]]);
+              : [["Overall Conversion Rate", snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? e.cvr : sessions > 0 ? numerator / sessions * 100 : snapshot.comparisonRateDefinition === "conversions_per_session" ? null : 0, 1]]);
           }
         }
       }

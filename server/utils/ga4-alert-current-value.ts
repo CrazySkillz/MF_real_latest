@@ -358,7 +358,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
         (value) => Array.isArray(value) && value.length > 0).catch(() => null as any),
       !usesFinancialSource || useSavedOverview || isYesopMockProperty(propertyId) ? Promise.resolve(null)
         : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
-      usesFinancialSource || metric === "users"
+      usesFinancialSource || metric === "users" || metric === "sessions" || metric === "engagement_rate"
         ? readSource("overview-snapshot", [financialStartDate, endDate],
           () => storage.getGA4OverviewSnapshot(campaignId, propertyId),
           (value) => !!value).catch(() => null as any)

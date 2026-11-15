@@ -1,5 +1,5 @@
 import { PDFParse } from "pdf-parse";
-import { compareNumber, dateIsValid, monitorHash, monitoredUsers, numberOrNull, parseMonitorMapping, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
+import { compareNumber, dateIsValid, monitorHash, monitoredUsers, monitoredPeriodTraffic, numberOrNull, parseMonitorMapping, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 import { expectedOutputNumbers, expectedTargetNumbers } from "./live-number-output-checks";
 
 const diagnosticTypes = ["performance-summary", "financial-analysis", "trend-analysis", "executive-summary"];
@@ -171,7 +171,10 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
       campaigns.set(name, { sessions: 0, users: 0, conversions: 0, revenue: 0, weightedRate: 0 });
     }
     if (snapshot.usersDefinition || expected.scope.publication.campaignBreakdown?.meta?.distinctUsers)
-      for (const [name, item] of Array.from(campaigns)) item.users = monitoredUsers(snapshot, expected.scope, name) ?? Number.NaN;
+      for (const [name, item] of Array.from(campaigns)) {
+        item.users = monitoredUsers(snapshot, expected.scope, name) ?? Number.NaN;
+        if (expected.scope.publication.campaignBreakdown.meta.distinctUsers?.sessionTotalsVersion) item.sessions = monitoredPeriodTraffic(snapshot, expected.scope, name)?.sessions ?? Number.NaN;
+      }
     const nativeCampaigns = Array.from(campaigns.entries()).map(([name, item]) => ({ name, ...item }));
     let allocationVerified = true;
     const normalize = (value: unknown) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -227,8 +230,8 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
       const formatValue = (value: number) => metric === "revenue" ? `${expected.scope.currency} ${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         : metric === "conversionRate" ? `${Math.round(value * 10) / 10}%` : metric === "conversions" ? value.toLocaleString("en-US", { maximumSignificantDigits: 21 }) : integer(value);
       const totalLabel = metric === "revenue" ? "CAMPAIGN BREAKDOWN REVENUE" : metric === "conversionRate" ? "OVERALL CONVERSION RATE" : `TOTAL ${labels[metric].toUpperCase()}`;
-      const totalSessions = rows.reduce((sum, item) => sum + item.sessions, 0);
-      const metricTotal = metric === "conversionRate" ? totalSessions > 0 ? rows.reduce((sum, item) => sum + numerator(item), 0) / totalSessions * 100 : 0
+      const totalSessions = expected.scope.publication.campaignBreakdown.meta.distinctUsers?.sessionTotalsVersion ? expected.totals.sessions! : rows.reduce((sum, item) => sum + item.sessions, 0);
+      const metricTotal = metric === "sessions" ? totalSessions : metric === "conversionRate" ? totalSessions > 0 ? rows.reduce((sum, item) => sum + numerator(item), 0) / totalSessions * 100 : 0
         : rows.reduce((sum, item) => sum + metricValue(item), 0);
       checkText(metric === "sessions" ? "CAMPAIGN_SESSIONS" : "CAMPAIGN_SELECTED_TOTAL", totalLabel,
         metric === "conversionRate" && totalSessions <= 0 && snapshot.comparisonRateDefinition === "conversions_per_session" ? "Unavailable" : formatValue(metricTotal));

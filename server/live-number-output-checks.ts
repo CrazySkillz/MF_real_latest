@@ -1,4 +1,4 @@
-import { compareNumber, dateIsValid, monitorHash, monitoredUsers, monitorWindowMode, numberOrNull, parseMonitorMapping, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
+import { compareNumber, dateIsValid, monitorHash, monitoredUsers, monitoredPeriodTraffic, monitorWindowMode, numberOrNull, parseMonitorMapping, resolveMonitorScope, type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { buildExecutiveSummaryFinancialSourceIdentity } from "./utils/executive-summary-daily-snapshot";
 import { resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
@@ -122,6 +122,10 @@ export function expectedOutputNumbers(snapshot: LiveNumberSnapshot, now = new Da
     totals[metric] = values.length && values.every(value => value !== null) ? values.reduce<number>((sum, value) => sum + value!, 0) : null;
   }
   totals.users = monitoredUsers(snapshot, scope);
+  const period = monitoredPeriodTraffic(snapshot, scope);
+  if (scope.publication.campaignBreakdown.meta.distinctUsers?.sessionTotalsVersion) {
+    totals.sessions = period?.sessions ?? null; totals.engagedSessions = period?.engagedSessions ?? null;
+  }
   const sourceValues = (kind: "revenue" | "spend") => (rows[kind + "Sources"] || [])
     .filter(source => source.isActive && (!source.platformContext || source.platformContext === "ga4"))
     .map(source => {
@@ -162,7 +166,7 @@ export function expectedOutputNumbers(snapshot: LiveNumberSnapshot, now = new Da
     roi: revenue !== null && spend !== null && spend > 0 ? (revenue - spend) / spend * 100 : null,
     cpa: spend !== null && conversions !== null && conversions > 0 ? spend / conversions : null,
     cvr: totals.sessions !== null && totals.sessions > 0 && totals.conversions !== null ? totals.conversions / totals.sessions * 100 : null,
-    engagementRate: totals.sessions !== null && totals.sessions > 0 && totals.engagedSessions !== null ? totals.engagedSessions / totals.sessions : null };
+    engagementRate: period ? period.engagementRate : totals.sessions !== null && totals.sessions > 0 && totals.engagedSessions !== null ? totals.engagedSessions / totals.sessions : null };
 }
 
 // Check the response of the real route, not a fixture or a reimplemented route.

@@ -93,6 +93,18 @@ export function monitoredUsers(snapshot: LiveNumberSnapshot, scope: ReturnType<t
   return values.length && values.every((value: number | null) => value !== null && value >= 0) ? values.reduce((sum: number, value: number) => sum + value, 0) : null;
 }
 
+// Independent period-value validation; old deployments retain their existing daily checks.
+export function monitoredPeriodTraffic(snapshot: LiveNumberSnapshot, scope: ReturnType<typeof resolveMonitorScope>, campaignName?: string) {
+  const packet = scope.publication.campaignBreakdown?.meta?.distinctUsers;
+  if (packet?.sessionTotalsVersion !== 1 || monitoredUsers(snapshot, scope, campaignName) === null) return null;
+  const full = packet.startDate === scope.startDate && packet.endDate === scope.endDate;
+  const row = campaignName !== undefined ? full ? packet.campaigns?.find((r: any) => String(r.name).toLowerCase() === campaignName.toLowerCase()) : null
+    : full ? packet : packet.windows?.find((r: any) => r.startDate === scope.startDate && r.endDate === scope.endDate);
+  if (!row || !Number.isSafeInteger(row.sessions) || row.sessions < 0 || !Number.isSafeInteger(row.engagedSessions) || row.engagedSessions < 0
+      || typeof row.engagementRate !== "number" || !Number.isFinite(row.engagementRate) || row.engagementRate < 0 || row.engagementRate > 1) return null;
+  return { sessions: row.sessions as number, engagedSessions: row.engagedSessions as number, engagementRate: row.engagementRate as number };
+}
+
 export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date()): NumberCheck[] {
   const checks: NumberCheck[] = [];
   let scope: ReturnType<typeof resolveMonitorScope>;
@@ -116,6 +128,13 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
   }
   const saved = publication.campaignBreakdown.totals;
   totals.users = monitoredUsers(snapshot, scope);
+  const period = monitoredPeriodTraffic(snapshot, scope);
+  if (publication.campaignBreakdown.meta.distinctUsers?.sessionTotalsVersion) {
+    push("Overview", "DAILY_SESSIONS_RECONCILIATION", totals.sessions, publication.campaignBreakdown.meta.dailySessions);
+    totals.sessions = period?.sessions ?? null; totals.engagedSessions = period?.engagedSessions ?? null;
+    push("Overview", "PERIOD_ENGAGED_SESSIONS", totals.engagedSessions, saved?.engagedSessions);
+    push("Overview", "PERIOD_ENGAGEMENT_RATE", period?.engagementRate, saved?.engagementRate, 8);
+  }
   if (snapshot.usersDefinition || publication.campaignBreakdown.meta.distinctUsers) push("Overview / Campaign Comparison", "DISTINCT_USERS", totals.users, saved?.users);
   push("Overview / Campaign Comparison", "sessions", totals.sessions, saved?.sessions);
   push("Overview / Campaign Comparison", "conversions", totals.conversions, saved?.conversions);
@@ -185,7 +204,7 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
   }
   const metricValues: Record<string, number | null> = { ...totals, revenue: totalRevenue,
     conversion_rate: totals.sessions! > 0 && totals.conversions !== null ? totals.conversions / totals.sessions! * 100 : null,
-    engagement_rate: totals.sessions! > 0 && totals.engagedSessions !== null ? totals.engagedSessions / totals.sessions! * 100 : null,
+    engagement_rate: period ? period.engagementRate * 100 : totals.sessions! > 0 && totals.engagedSessions !== null ? totals.engagedSessions / totals.sessions! * 100 : null,
     roas: spend! > 0 && totalRevenue !== null ? totalRevenue / spend! : null,
     roi: spend! > 0 && totalRevenue !== null ? (totalRevenue - spend!) / spend! * 100 : null,
     cpa: totals.conversions! > 0 && spend !== null ? spend / totals.conversions! : null };

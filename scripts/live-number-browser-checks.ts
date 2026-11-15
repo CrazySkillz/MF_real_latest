@@ -10,7 +10,7 @@ import ts from "typescript";
 import postcss from "postcss";
 import tailwindcss from "tailwindcss";
 import { PDFParse } from "pdf-parse";
-import { compareNumber, monitorHash, monitoredUsers, type LiveNumberSnapshot, type NumberCheck } from "../server/live-number-checks";
+import { compareNumber, monitorHash, monitoredUsers, monitoredPeriodTraffic, type LiveNumberSnapshot, type NumberCheck } from "../server/live-number-checks";
 import { expectedOutputNumbers, expectedTargetNumbers } from "../server/live-number-output-checks";
 import { checkGeneratedReportText, checkReportDetailText, checkConfiguredReportText } from "../server/live-number-generated-report-checks";
 
@@ -163,7 +163,10 @@ export function expectedBrowserCampaignRows(snapshot: LiveNumberSnapshot, now = 
     for (const field of ["sessions","users","conversions","revenue"] as const) value[field] += Number(row[field]);
     value.weighted += Number(row.sessions) * Number(row.sessionKeyEventRate || 0); groups.set(row.campaign,value);
   }
-  for (const row of groups.values()) row.users = monitoredUsers(snapshot, e.scope, row.name) ?? Number.NaN;
+  for (const row of groups.values()) {
+    row.users = monitoredUsers(snapshot, e.scope, row.name) ?? Number.NaN;
+    if (e.scope.publication.campaignBreakdown.meta.distinctUsers?.sessionTotalsVersion) row.sessions = monitoredPeriodTraffic(snapshot, e.scope, row.name)?.sessions ?? Number.NaN;
+  }
   const normalize = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
   for (const source of e.revenueSources) {
     const record = snapshot.rows.revenueSources.find(r => r.id === source.id);
@@ -359,9 +362,10 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
         for (const [metric, title] of [["sessions", "Sessions"], ["users", "Users"], ["conversions", "Conversions"], ["revenue", "Revenue"], ["conversionRate", "Conversion Rate"]]) {
           if (metric !== "sessions") { await page.getByRole("tabpanel").getByRole("combobox").click(); await page.getByRole("option", { name: `${title} (High to Low)`, exact: true }).click(); }
           await charts("Screen GA4 Campaign Comparison", "campaign", metric);
+          if (metric === "sessions") await cards("Screen GA4 Campaign Comparison", [["Total Sessions", e.totals.sessions, 0]]);
           if (metric === "users") await cards("Screen GA4 Campaign Comparison", [["Total Users", e.totals.users, 0]]);
           if (["conversions", "conversionRate"].includes(metric)) {
-            const rows = expectedBrowserCampaignRows(snapshot, now), sessions = rows.reduce((sum, row) => sum + row.sessions, 0);
+            const rows = expectedBrowserCampaignRows(snapshot, now), sessions = e.scope.publication.campaignBreakdown.meta.distinctUsers?.sessionTotalsVersion ? e.totals.sessions! : rows.reduce((sum, row) => sum + row.sessions, 0);
             const conversions = rows.reduce((sum, row) => sum + row.conversions, 0);
             const numerator = rows.reduce((sum, row) => sum + (snapshot.comparisonRateDefinition === "conversions_per_session" ? row.conversions : row.weighted), 0);
             await cards("Screen GA4 Campaign Comparison", metric === "conversions" ? [["Total Conversions", conversions]]

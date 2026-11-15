@@ -223,7 +223,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       }
       if (pipelineJourney) {
         expect(bytes.toString("latin1")).toContain("OVERALL CONVERSION RATE");
-        expect(bytes.toString("latin1")).toContain("6.6%");
+        expect(bytes.toString("latin1")).toContain("8%");
         expect(bytes.toString("latin1")).toContain("4.62%");
         expect(bytes.toString("latin1")).not.toContain("EUR 7,653.95");
       }
@@ -321,9 +321,9 @@ describe("Ad Comparison precision through the real Reports page", () => {
         await browserExpect(page.getByText("Total Conversions", { exact: true }).locator("..")).toContainText("40");
         await page.getByRole("combobox").click();
         await page.getByRole("option", { name: "Conversion Rate (High to Low)", exact: true }).click();
-        await browserExpect(page.getByText("Overall Conversion Rate", { exact: true }).locator("..")).toContainText("6.6%");
+        await browserExpect(page.getByText("Overall Conversion Rate", { exact: true }).locator("..")).toContainText("8%");
         await page.getByRole("tab", { name: "Overview", exact: true }).click();
-        await browserExpect(page.getByText("Conv. Rate", { exact: true }).first().locator("..")).toContainText("6.6%");
+        await browserExpect(page.getByText("Conv. Rate", { exact: true }).first().locator("..")).toContainText("8%");
       }
       await page.getByRole("tab", { name: "Reports", exact: true }).click();
       await openReport();

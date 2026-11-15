@@ -31,7 +31,8 @@ export async function renewHubspotMonitorCredentials(snapshot: LiveNumberSnapsho
   for (const source of snapshot.rows.revenueSources || []) {
     if (!source.isActive || source.platformContext !== "ga4" || source.sourceType !== "hubspot") continue;
     const connection = uniqueConnection(snapshot, "hubspotConnections", source, parseMonitorMapping(source.mappingConfig));
-    try { monitorCredential(connection); } catch { connections.set(String(connection.id), connection); }
+    // Match the application's five-minute renewal margin before provider reads start.
+    try { monitorCredential(connection, Date.now() + 4 * 60_000); } catch { connections.set(String(connection.id), connection); }
   }
   if (!connections.size) return false;
   const secret = process.env.HUBSPOT_MONITOR_SECRET || "";

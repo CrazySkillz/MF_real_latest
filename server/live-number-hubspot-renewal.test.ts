@@ -28,6 +28,12 @@ describe('HubSpot monitor auth preflight', () => {
     snapshot.rows.revenueSources[0].isActive = true; snapshot.rows.revenueSources[0].sourceType = 'salesforce';
     expect(await renewHubspotMonitorCredentials(snapshot, baseUrl, fetcher)).toBe(false); expect(fetcher).not.toHaveBeenCalled();
   });
+  it('renews tokens close to expiry before starting the financial checks', async () => {
+    vi.stubEnv('HUBSPOT_MONITOR_SECRET', 'ab'.repeat(32));
+    const snapshot = fixture(); snapshot.rows.hubspotConnections[0].expiresAt = new Date(Date.now() + 3 * 60_000).toISOString();
+    const request = vi.fn(async () => new Response('{"status":"ready"}'));
+    expect(await renewHubspotMonitorCredentials(snapshot, baseUrl, request)).toBe(true); expect(request).toHaveBeenCalledTimes(1);
+  });
   it('fails closed on absent credentials, wrong campaign or ambiguous connection', async () => {
     vi.stubEnv('HUBSPOT_MONITOR_SECRET', ''); const fetcher = vi.fn();
     await expect(renewHubspotMonitorCredentials(fixture(), baseUrl, fetcher)).rejects.toThrow('RENEWAL_UNAVAILABLE');

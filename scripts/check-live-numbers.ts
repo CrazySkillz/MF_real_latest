@@ -127,19 +127,18 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
       try {
         let before = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         if (before.campaign.reportingTimeZone !== reportingTimeZone) throw new Error("MONITOR_TIMEZONE_CHANGED");
-        const preflight = checkStoredNumbers(before, now);
-        if (!preflight.some(check => check.section === "scope")
-          && await renewHubspotMonitorCredentials(before, config.application?.baseUrl)) {
-          const renewed = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
-          if (!hubspotCredentialRenewalPreservesInputs(before, renewed)) throw new Error("MONITOR_INPUT_CHANGED_DURING_RENEWAL");
-          before = renewed;
-        }
         const reportRead = { ...restoreLegacyReportInputOrder(before), usersDefinition: config.application?.usersDefinition };
         const checks = checkStoredNumbers(reportRead, now);
         checks.push(...await checkSavedReportNumbers(reportRead));
         if (!checks.some(check => check.section === "scope")) {
           try { checks.push(...await checkGA4ProviderNumbers(before, now)); }
           catch { checks.push({ section: "GA4 provider", code: "GA4_SOURCE_COMPARISON_UNVERIFIED", status: "unverified" }); }
+          // GA4/report checks may take time. Renew immediately before financial provider reads.
+          if (await renewHubspotMonitorCredentials(before, config.application?.baseUrl)) {
+            const renewed = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
+            if (!hubspotCredentialRenewalPreservesInputs(before, renewed)) throw new Error("MONITOR_INPUT_CHANGED_DURING_RENEWAL");
+            before = renewed;
+          }
           checks.push(...await checkFinancialProviderNumbers(before, now));
           checks.push(...await checkPipelineProviderNumbers(before));
         }

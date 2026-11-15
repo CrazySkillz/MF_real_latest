@@ -165,7 +165,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     const ranked = rows.map((item) => {
       const current = resolvePerformanceLiveMetricValue({
         item,
-        trafficTotals: { sessions: 1_183, users: 1_184, conversions: 152, pageviews: 1_500, engagedSessions: 809 },
+        trafficTotals: { conversionRate: 12.85, sessions: 1_183, users: 1_184, conversions: 152, pageviews: 1_500, engagedSessions: 809 },
         financialRevenue: 72_766.69,
         financialSpend: 2_699.75,
         financialConversions: 251,

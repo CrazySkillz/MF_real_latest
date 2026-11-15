@@ -761,6 +761,7 @@ export default function GA4Metrics() {
     sessions: number;
     users: number;
     engagementRate?: number;
+    conversionRate?: number | null;
     spend: number;
   }) => {
     try {
@@ -777,7 +778,7 @@ export default function GA4Metrics() {
         case "Total Conversions":
           return String(conversions);
         case "Conversion Rate":
-          return sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : "0.00";
+          return sources.conversionRate == null || !Number.isFinite(sources.conversionRate) ? "Unavailable" : sources.conversionRate.toFixed(2);
         case "Engagement Rate":
           return normalizeRateToPercent(engagementRate).toFixed(2);
         case "Total Users":
@@ -808,6 +809,7 @@ export default function GA4Metrics() {
     },
     mutationFn: async (data: KPIFormData) => {
       // Store an initial snapshot currentValue, matching the GA4 Overview source model.
+      if (selectedKPITemplate?.name === "Conversion Rate" && (breakdownTotals.conversionRate == null || !Number.isFinite(breakdownTotals.conversionRate))) throw new Error("GA4 Conversion Rate is unavailable. Wait for a successful refresh.");
       let calculatedValue = "0.00";
       if (selectedKPITemplate && !(selectedKPITemplate as any)?._isCustom) {
         try {
@@ -822,6 +824,7 @@ export default function GA4Metrics() {
             sessions: Number(breakdownTotals.sessions || 0),
             users: Number(breakdownTotals.users || 0),
             engagementRate: overviewEngagementRate,
+            conversionRate: breakdownTotals.conversionRate,
             spend: Number(financialSpend || 0),
           });
         } catch (error) {
@@ -2447,6 +2450,7 @@ export default function GA4Metrics() {
   // boundary as Summary; the initial historical window must never roll forward.
   const breakdownTotals = {
     date: ga4ReportDate,
+    conversionRate: overviewTotalsSource?.conversionRate ?? null,
     sessions: Number(overviewTotalsSource?.sessions || 0),
     conversions: Number(overviewTotalsSource?.conversions || 0),
     revenue: Number(overviewTotalsSource?.revenue || 0),
@@ -2454,6 +2458,7 @@ export default function GA4Metrics() {
     pageviews: Number(overviewTotalsSource?.pageviews || 0),
   };
   const overviewSummaryTotals = {
+    conversionRate: overviewSummarySource?.conversionRate ?? null,
     sessions: Number(overviewSummarySource?.sessions || 0),
     conversions: Number(overviewSummarySource?.conversions || 0),
     revenue: Number(overviewSummarySource?.revenue || 0),
@@ -3936,7 +3941,7 @@ export default function GA4Metrics() {
       const roas = spend > 0 ? (rev / spend) * 100 : 0;
       const roi = spend > 0 ? ((rev - spend) / spend) * 100 : 0;
       const cpa = convTot > 0 ? spend / convTot : 0;
-      const cr = sess > 0 ? (conv / sess) * 100 : 0;
+      const cr = overviewSummaryTotals.conversionRate ?? Number.NaN;
       const subheading = (title: string, keepWithNext = 28) => {
         checkPage(10 + keepWithNext);
         doc.setFontSize(10);
@@ -3991,7 +3996,7 @@ export default function GA4Metrics() {
           ["Users", fN(users)],
           ["Conversions", formatConversionCredit(conv)],
           ["Engagement Rate", sess > 0 ? fP(engRate) : "Unavailable"],
-          ["Conv. Rate", sess > 0 ? fP(cr) : "Unavailable"],
+          ["Conv. Rate", Number.isFinite(cr) ? fP(cr) : "Unavailable"],
         ], 3);
         y += 2;
       }
@@ -4059,7 +4064,7 @@ export default function GA4Metrics() {
             fN(Number(c?.sessions || 0)),
             fN(Number(c?.users || 0)),
             formatConversionCredit(Number(c?.conversions || 0)),
-            fP(Number(c?.conversionRate || 0)),
+            Number.isFinite(c?.conversionRate) ? fP(c.conversionRate) : "Unavailable",
             fC(Number(c?.revenue || 0)),
           ]),
           [52, 22, 20, 28, 26, 36],
@@ -4077,7 +4082,7 @@ export default function GA4Metrics() {
           formatNumber(Number(r?.sessions || 0)),
           formatNumber(Number(r?.users || 0)),
           formatConversionCredit(Number(r?.conversions || 0)),
-          formatPercentage(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0),
+          r?.sessionKeyEventRate == null ? "Unavailable" : formatPercentage(r.sessionKeyEventRate * 100),
         ]),
         [52, 44, 22, 20, 28, 26],
         ga4LandingPages?.meta?.historyLimited
@@ -4119,7 +4124,7 @@ export default function GA4Metrics() {
         conversionRate: "Conversion Rate",
       };
       const fmtMetricValue = (metric: string, value: number) => {
-        if (metric === "users" && !Number.isFinite(value)) return "Unavailable";
+        if ((metric === "users" || metric === "conversionRate") && !Number.isFinite(value)) return "Unavailable";
         if (metric === "revenue") return fC(value);
         if (metric === "conversionRate") return fP(value);
         if (metric === "conversions") return formatConversionCredit(Number(value || 0));
@@ -4136,7 +4141,7 @@ export default function GA4Metrics() {
       const chartSummaryByCampaign = new Map<string, any>();
       for (const row of adComparisonChartRows) {
         const key = String(row?.name || "").toLocaleLowerCase("en-US");
-        const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
+        const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0 };
         current.sessions += Number(row?.sessions || 0);
         current.users = row.users;
         current.conversions += Number(row?.conversions || 0);
@@ -4145,7 +4150,7 @@ export default function GA4Metrics() {
       }
       const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
         ...row,
-        conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversions || 0) / Number(row.sessions) * 100 : 0,
+        conversionRate: row.conversionRate ?? Number.NaN,
       }));
       const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
@@ -4154,9 +4159,7 @@ export default function GA4Metrics() {
       const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
       const totalMetric = selectedMetric === "sessions" ? overviewSummaryTotals.sessions : selectedMetric === "users" ? overviewSummaryTotals.users ?? Number.NaN : selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
         ? (() => {
-            const totalSessions = overviewSummaryTotals.sessions;
-            const totalConversions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversions || 0), 0);
-            return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+            return overviewSummaryTotals.conversionRate ?? Number.NaN;
           })()
         : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
       if (rows.length === 0 && chartSummaryRows.length === 0) {
@@ -4188,7 +4191,7 @@ export default function GA4Metrics() {
             {
               title: "NEEDS ATTENTION",
               name: String(needsAttention?.name || needsAttention?.campaign || ""),
-              detail: `${formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))} CR - ${fN(Number(needsAttention?.sessions || 0))} sessions`,
+              detail: `${formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)} CR - ${fN(Number(needsAttention?.sessions || 0))} sessions`,
               color: C.danger,
               x: MX + (colW + 4) * 2,
             },
@@ -4251,7 +4254,7 @@ export default function GA4Metrics() {
           }
 
           const adSummaryCards: [string, string][] = [
-            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, totalMetric)],
             ["Campaigns Compared", String(sortedByMetric.length)],
           ];
           const sumW = (CW - 4) / 2;
@@ -4612,7 +4615,7 @@ export default function GA4Metrics() {
         };
         const primaryDataCards: string[][] = [
           ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), "Current GA4 total"] as [string, string, string]] : []),
-          ...(breakdownTotals.conversions > 0 ? [["Conversions", formatConversionCredit(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""] as [string, string, string]] : []),
+          ...(breakdownTotals.conversions > 0 ? [["Conversions", formatConversionCredit(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${(breakdownTotals.conversionRate === null ? 'Unavailable' : formatPct(breakdownTotals.conversionRate))} conversion rate` : ""] as [string, string, string]] : []),
           ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), "Total across revenue sources"] as [string, string, string]] : []),
         ];
         const secondaryDataCards: string[][] = [
@@ -6302,7 +6305,7 @@ export default function GA4Metrics() {
           revenue,
           unroundedRevenue: c.revenue,
           users,
-          conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+          conversionRate: getGA4PeriodTraffic(ga4Breakdown, ga4Breakdown?.startDate, ga4Breakdown?.endDate, c.name)?.conversionRate ?? Number.NaN,
           revenuePerSession: sessions > 0 ? revenue / sessions : 0,
         };
       })
@@ -6329,7 +6332,7 @@ export default function GA4Metrics() {
         ...row,
         users: getGA4DistinctUsers(adComparisonBreakdown, adComparisonBreakdown?.startDate, adComparisonBreakdown?.endDate, row.name) ?? Number.NaN,
         revenue: Number(Number(row.revenue || 0).toFixed(2)),
-        conversionRate: row.sessions > 0 ? (row.conversions / row.sessions) * 100 : 0,
+        conversionRate: row.conversionRate ?? Number.NaN,
         revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
       }))
       .sort((a, b) => b.sessions - a.sessions);
@@ -7094,7 +7097,7 @@ export default function GA4Metrics() {
                             <p className="text-sm font-medium text-muted-foreground/70">Conv. Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderSummaryValue(overviewSummaryTotals.sessions > 0
-                                ? formatPct((overviewSummaryTotals.conversions / overviewSummaryTotals.sessions) * 100)
+                                ? (overviewSummaryTotals.conversionRate === null ? 'Unavailable' : formatPct(overviewSummaryTotals.conversionRate))
                                 : "Unavailable")}
                             </p>
                           </CardContent>
@@ -7332,7 +7335,7 @@ export default function GA4Metrics() {
                                           <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
                                           <td className="px-2 py-2 text-right tabular-nums">{Number.isFinite(c.users) ? formatNumber(c.users) : "Unavailable"}</td>
                                           <td className="px-2 py-2 text-right tabular-nums">{formatConversionCredit(c.conversions)}</td>
-                                          <td className="px-2 py-2 text-right tabular-nums">{formatPct(c.conversionRate)}</td>
+                                          <td className="px-2 py-2 text-right tabular-nums">{Number.isFinite(c.conversionRate) ? formatPct(c.conversionRate) : "Unavailable"}</td>
                                           <td className="px-2 py-2 text-right tabular-nums">{formatMoney(revenue)}</td>
                                         </tr>
                                       );
@@ -7463,7 +7466,7 @@ export default function GA4Metrics() {
                                   {overviewLandingPageRows.slice(0, 20).map((r: any, idx: number) => {
                                     const sessions = Number(r?.sessions || 0);
                                     const conversions = Number(r?.conversions || 0);
-                                    const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
+                                    const cr = r?.sessionKeyEventRate == null ? Number.NaN : r.sessionKeyEventRate * 100;
                                     return (
                                       <tr key={`${r?.landingPage || idx}:${idx}`} className="border-b">
                                         <td className="p-3">
@@ -7479,7 +7482,7 @@ export default function GA4Metrics() {
                                         <td className="p-3 text-right">{formatNumber(Number(r?.sessions || 0))}</td>
                                         <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
                                         <td className="p-3 text-right">{formatConversionCredit(Number(r?.conversions || 0))}</td>
-                                        <td className="p-3 text-right">{formatPercentage(cr)}</td>
+                                        <td className="p-3 text-right">{Number.isFinite(cr) ? formatPercentage(cr) : "Unavailable"}</td>
                                       </tr>
                                     );
                                   })}
@@ -8601,7 +8604,7 @@ export default function GA4Metrics() {
                                   { name: "CPA", metric: "cpa", unit: "$", description: "Spend ÷ Conversions" },
                                   { name: "Revenue", metric: "revenue", unit: "$", description: "Total revenue in GA4 for the selected period" },
                                   { name: "Total Conversions", metric: "conversions", unit: "count", description: "Total GA4 conversions for the selected period" },
-                                  { name: "Conversion Rate", metric: "conversionRate", unit: "%", description: "Conversions ÷ Sessions × 100" },
+                                  { name: "Conversion Rate", metric: "conversionRate", unit: "%", description: "GA4 session key-event rate" },
                                   { name: "Engagement Rate", metric: "engagementRate", unit: "%", description: "Engaged Sessions ÷ Sessions × 100" },
                                   { name: "Total Users", metric: "users", unit: "count", description: "Distinct GA4 users for the displayed dates and selected campaigns" },
                                   { name: "Total Sessions", metric: "sessions", unit: "count", description: "Total sessions for the selected period" },
@@ -9561,6 +9564,7 @@ export default function GA4Metrics() {
                     chartRevenue={adComparisonChartRevenue}
                               chartUsers={overviewSummaryTotals.users}
                     chartSessions={overviewSummaryTotals.sessions}
+                    chartConversionRate={overviewSummaryTotals.conversionRate}
                     breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}
                     breakdownUnavailable={adComparisonBreakdownUnavailable}
                     breakdownStale={Boolean(adComparisonBreakdownError && adComparisonBreakdown !== undefined)}
@@ -10468,7 +10472,7 @@ export default function GA4Metrics() {
                     },
                     {
                       name: "Conversion Rate",
-                      formula: "Conversions ÷ Sessions × 100",
+                      formula: "GA4 session key-event rate × 100",
                       unit: "%",
                       description: "Overall conversion rate for the selected period",
                     },
@@ -10497,7 +10501,8 @@ export default function GA4Metrics() {
                     const requiresRevenue = template.name === "ROAS" || template.name === "ROI" || template.name === "Revenue";
                     const disabled =
                       (requiresSpend && !spendMetricAvailable) ||
-                      (requiresRevenue && !revenueMetricAvailable);
+                      (requiresRevenue && !revenueMetricAvailable) ||
+                      (template.name === "Conversion Rate" && (breakdownTotals.conversionRate == null || !Number.isFinite(breakdownTotals.conversionRate)));
                     return (
                       <div
                         key={template.name}
@@ -10537,6 +10542,7 @@ export default function GA4Metrics() {
                             sessions: Number(breakdownTotals.sessions || 0),
                             users: Number(breakdownTotals.users || 0),
                             engagementRate: overviewEngagementRate,
+                            conversionRate: breakdownTotals.conversionRate,
                             spend: Number(financialSpend || 0),
                           });
                           kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit, true));

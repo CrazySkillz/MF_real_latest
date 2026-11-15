@@ -136,6 +136,11 @@ export async function checkGA4SourceNumbers(scope: { campaignId: string; connect
     checks.push(...compareProviderRows("Daily distinct Users", distinctUsers.daily, savedUsers.daily, ["date"], ["users"]));
     checks.push(...compareProviderRows("Campaign Users", distinctUsers.campaigns, savedUsers.campaigns, ["name"], ["users"]));
     checks.push(...compareProviderRows("Historical Users comparisons", distinctUsers.windows, savedUsers.windows, ["startDate", "endDate"], ["users"]));
+    if (Object.hasOwn(distinctUsers, "sessionKeyEventRate")) {
+      checks.push(compareNumber("Overview Conversion Rate", "SOURCE_SESSION_KEY_EVENT_RATE", distinctUsers.sessionKeyEventRate, savedUsers.sessionKeyEventRate));
+      checks.push(...compareProviderRows("Campaign Conversion Rate", distinctUsers.campaigns, savedUsers.campaigns, ["name"], ["sessionKeyEventRate"]));
+      checks.push(...compareProviderRows("Historical Conversion Rate", distinctUsers.windows, savedUsers.windows, ["startDate", "endDate"], ["sessionKeyEventRate"]));
+    }
   }
   checks.push(...compareProviderRows("GA4 daily inputs / Insights / Trend Analysis", expectedDaily, savedDaily, ["date"],
     ["sessions", "users", "pageviews", "conversions", "revenue", "engagedSessions", "engagementRate"]));
@@ -165,7 +170,7 @@ export async function checkGA4SourceNumbers(scope: { campaignId: string; connect
       }
       checks.push(...compareProviderRows(`Overview / ${part}`, result.rows, stored.rows,
         part === "landingPages" ? ["landingPage", "source", "medium"] : ["eventName"],
-        part === "landingPages" ? ["sessions", "users", "conversions"] : ["conversions"]));
+        part === "landingPages" ? ["sessions", "users", "conversions", ...(result.rows.some((row: any) => Object.hasOwn(row, "sessionKeyEventRate")) ? ["sessionKeyEventRate"] : [])] : ["conversions"]));
       if (part === "conversionEvents") {
         for (const metric of ["eventCount", "users"]) {
           if (result.rows.every((row: any) => row[metric] == null) && stored.rows.every((row: any) => row[metric] == null)) {

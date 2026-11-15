@@ -875,6 +875,7 @@ async function buildGA4ReportPayload(report: any) {
     || (overviewStartDate === dailyStart && !failedParts.has("time series"));
   const overviewTotalsSource = hasDailyOverviewResponse ? overviewSummedTotals : null;
   const breakdownTotals = {
+    conversionRate: overviewTotalsSource?.conversionRate ?? null,
     sessions: Number(overviewTotalsSource?.sessions || 0),
     conversions: Number(overviewTotalsSource?.conversions || 0),
     revenue: Number(overviewTotalsSource?.revenue || 0),
@@ -1008,7 +1009,7 @@ async function buildGA4ReportPayload(report: any) {
         users: getGA4DistinctUsers(breakdown, overviewStartDate, dailyEnd, row.name),
         sessions,
         revenue,
-        conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+        conversionRate: getGA4PeriodTraffic(breakdown, overviewStartDate, dailyEnd, row.name)?.conversionRate ?? Number.NaN,
         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
       };
     })
@@ -1056,7 +1057,7 @@ async function buildGA4ReportPayload(report: any) {
         ...row,
         users: adComparisonWindow ? getGA4DistinctUsers(adComparisonBreakdown, adComparisonWindow.startDate, nativeEndDate, row.name) : null,
         revenue,
-        conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+        conversionRate: row.conversionRate ?? Number.NaN,
         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
       };
     })
@@ -1203,7 +1204,7 @@ async function buildGA4ReportPayload(report: any) {
       reportingMode: getGA4ReportingWindowMode(),
       usersDefinition: "ga4_totalUsers_distinct_v1",
       distinctUsers: (breakdown as any)?.meta?.distinctUsers ?? null,
-      comparisonRateDefinition: "conversions_per_session",
+      comparisonRateDefinition: "ga4_session_key_event_rate",
       scope: { campaignId, propertyId, campaignFilter, currency: campaignCurrency, reportingTimeZone: reportCumulativeWindow.reportingTimeZone },
       trafficWindow: { ...reportCumulativeWindow, endDate: nativeEndDate, dataThroughDate: nativeEndDate },
       financialWindow: { startDate: financialStartDate, endDate: financialEndDate, nativeDataThroughDate: nativeEndDate, importedStartDate: importedRevenueStartDate, spendStartDate: spendSourceStartDate },
@@ -1490,7 +1491,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["Users", formatNumber(payload.breakdownTotals.users)],
         ["Conversions", formatConversionCredit(payload.breakdownTotals.conversions)],
         ["Engagement Rate", payload.breakdownTotals.sessions > 0 ? formatPct(normalizeRateToPercent(payload.breakdownTotals.engagementRate)) : "Unavailable"],
-        ["Conv. Rate", payload.breakdownTotals.sessions > 0 ? formatPct((payload.breakdownTotals.conversions / payload.breakdownTotals.sessions) * 100) : "Unavailable"],
+        ["Conv. Rate", payload.breakdownTotals.conversionRate == null ? "Unavailable" : formatPct(payload.breakdownTotals.conversionRate)],
       ], 3);
     }
     if (includeRevenue || includeSpend || includePerformance) subheading("Revenue & Financial", 10);
@@ -1535,7 +1536,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           formatNumber(row?.sessions || 0),
           formatNumber(row?.users ?? null),
           formatConversionCredit(row?.conversions || 0),
-          formatPct(Number(row?.conversionRate || 0)),
+          Number.isFinite(row?.conversionRate) ? formatPct(row.conversionRate) : "Unavailable",
           formatMoney(Number(row?.revenue || 0)),
         ]),
         [52, 22, 20, 28, 26, 36],
@@ -1553,7 +1554,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           Number(row?.sessions || 0).toLocaleString("en-US"),
           Number(row?.users || 0).toLocaleString("en-US"),
           formatConversionCredit(Number(row?.conversions || 0)),
-          formatPct(Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0),
+          row?.sessionKeyEventRate == null ? "Unavailable" : formatPct(row.sessionKeyEventRate * 100),
         ]),
         [52, 44, 22, 20, 28, 26],
         COLORS.overview,
@@ -1626,11 +1627,11 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       ? String(rawCfg.adComparisonMetric)
       : "sessions";
     const metricLabels: Record<string, string> = { sessions: "Sessions", users: "Users", conversions: "Conversions", revenue: "Revenue", conversionRate: "Conversion Rate" };
-    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? formatConversionCredit(Number(value || 0)) : formatNumber(value);
+    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? (Number.isFinite(value) ? formatMetricPct(value) : "Unavailable") : metric === "conversions" ? formatConversionCredit(Number(value || 0)) : formatNumber(value);
     const chartSummaryByCampaign = new Map<string, any>();
     for (const row of payload.adComparisonChartRows) {
       const key = String(row?.name || "").toLocaleLowerCase("en-US");
-      const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
+      const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0 };
       current.sessions += Number(row?.sessions || 0);
       current.users = row.users;
       current.conversions += Number(row?.conversions || 0);
@@ -1639,7 +1640,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
     const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
       ...row,
-      conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversions || 0) / Number(row.sessions) * 100 : 0,
+      conversionRate: row.conversionRate ?? Number.NaN,
     }));
     const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
@@ -1647,9 +1648,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
     const totalMetric = selectedMetric === "sessions" ? payload.breakdownTotals.sessions : selectedMetric === "users" ? payload.breakdownTotals.users ?? Number.NaN : selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
       ? (() => {
-          const totalSessions = payload.breakdownTotals.sessions;
-          const totalConversions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversions || 0), 0);
-          return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+          return payload.breakdownTotals.conversionRate ?? Number.NaN;
         })()
       : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
     const leaderMetric = selectedMetric;
@@ -1661,7 +1660,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       const rankCards = [
         { title: "MOST KEY EVENTS", name: String(bestPerforming?.name || "No key event leader"), detail: bestPerforming ? `${formatMetricValue("conversions", bestPerforming.conversions)} Key Events - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No key events recorded", color: COLORS.success, x: MX },
         { title: "HIGHEST CONVERSION RATE", name: String(mostEfficient?.name || "No rate leader"), detail: mostEfficient ? `${formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR - ${formatMoney(Number(mostEfficient.revenue || 0))} revenue` : "No conversions recorded", color: COLORS.info, x: MX + colW + 4 },
-        { title: "NEEDS ATTENTION", name: String(needsAttention?.name || ""), detail: `${formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))} CR - ${formatNumber(Number(needsAttention?.sessions || 0))} sessions`, color: COLORS.danger, x: MX + (colW + 4) * 2 },
+        { title: "NEEDS ATTENTION", name: String(needsAttention?.name || ""), detail: `${formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)} CR - ${formatNumber(Number(needsAttention?.sessions || 0))} sessions`, color: COLORS.danger, x: MX + (colW + 4) * 2 },
       ];
       rankCards.forEach((card) => {
         doc.setFillColor(...COLORS.white); doc.setDrawColor(...card.color);
@@ -1698,7 +1697,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       doc.setFontSize(6.5); doc.setTextColor(...COLORS.textTert); doc.text(formatMetricValue(selectedMetric, maxValue), chartX + chartW, chartY + 1, { align: "right" });
       y += 58;
       const summaryMetricLabel = selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric]}`;
-      metricCards([[summaryMetricLabel, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
+      metricCards([[summaryMetricLabel, formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
       if (selectedMetric === "users") {
         doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textTert);
         doc.text("Users are distinct within each campaign and period; campaign counts can overlap.", MX, y);
@@ -1718,7 +1717,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         checkPage(9);
         const sessions = Number(row?.sessions || 0), users = row?.users == null ? null : Number(row.users);
         const conversions = Number(row?.conversions || 0), revenue = Number(row?.revenue || 0);
-        const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+        const conversionRate = row.conversionRate ?? Number.NaN;
         doc.setDrawColor(...COLORS.divider); doc.setLineWidth(0.2); doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
         doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textSec);
         doc.text(String(index + 1), colXs[0], y + 4);

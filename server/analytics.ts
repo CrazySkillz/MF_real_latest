@@ -152,7 +152,7 @@ export class GoogleAnalytics4Service {
       const supplementalConversions = Number.parseFloat(String(supplement?.metricValues?.[supplementalConversionIndex]?.value || "0")) || 0;
       const supplementalRevenue = Number.parseFloat(String(supplement?.metricValues?.[supplementalRevenueIndex]?.value || "0")) || 0;
       result.conversions += primaryConversions !== 0 ? primaryConversions : supplementalConversions;
-      result.revenue += Number((primaryRevenue !== 0 ? primaryRevenue : supplementalRevenue).toFixed(2));
+      result.revenue += primaryRevenue !== 0 ? primaryRevenue : supplementalRevenue;
       return result;
     }, { conversions: 0, revenue: 0 });
     return { conversions: totals.conversions, revenue: Number(totals.revenue.toFixed(2)) };
@@ -284,7 +284,7 @@ export class GoogleAnalytics4Service {
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
-    rows: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number }>;
+    rows: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number; sessionKeyEventRate: number }>;
     totals: { sessions: number; users: number; conversions: number; revenue: number };
     meta: { usersAreNonAdditive: boolean; sessionScopedAttributionAvailable: boolean; historyLimited?: boolean; requestedStartDate?: string; startDate?: string; endDate?: string };
   }> {
@@ -318,7 +318,7 @@ export class GoogleAnalytics4Service {
         dateRanges: [{ startDate: reportStartDate, endDate }],
         dimensions,
         ...(scopeFilter ? scopeFilter : {}),
-        metrics: conversionTotalOnly ? [{ name: 'conversions' }] : [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
+        metrics: conversionTotalOnly ? [{ name: 'conversions' }] : [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }, { name: 'sessionKeyEventRate' }],
         orderBys: [
           { metric: { metricName: orderMetric }, desc: true },
           ...dimensions.map((dimension) => ({ dimension: { dimensionName: dimension.name } })),
@@ -345,7 +345,7 @@ export class GoogleAnalytics4Service {
 
     const parseRows = (json: any, revenueMetric: 'totalRevenue' | 'purchaseRevenue', parseUtmFromPageLocation = false) => {
       const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
-      const out: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number }> = [];
+      const out: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number; sessionKeyEventRate: number }> = [];
       let totalSessions = 0;
       let totalUsers = 0;
       let totalConversions = 0;
@@ -365,7 +365,12 @@ export class GoogleAnalytics4Service {
         totalUsers += users;
         totalConversions += conversions;
         totalRevenue += revenue;
-        out.push({ landingPage, source, medium, sessions, users, conversions, revenue: Number(revenue.toFixed(2)) });
+        const rawRate = r?.metricValues?.[4]?.value;
+        const sessionKeyEventRate = Number(rawRate);
+        if (rawRate == null || rawRate === '' || !Number.isFinite(sessionKeyEventRate) || sessionKeyEventRate < 0 || sessionKeyEventRate > 1) {
+          throw new Error('GA4_SESSION_KEY_EVENT_RATE_UNVERIFIED');
+        }
+        out.push({ landingPage, source, medium, sessions, users, conversions, revenue: Number(revenue.toFixed(2)), sessionKeyEventRate });
       }
 
       return {
@@ -1468,12 +1473,12 @@ export class GoogleAnalytics4Service {
     if (!names.length || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
       throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
     }
-    const run = async (filter: any, from: string, to: string, daily = false): Promise<Array<{ date: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number }>> => {
+    const run = async (filter: any, from: string, to: string, daily = false): Promise<Array<{ date: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number; sessionKeyEventRate?: number }>> => {
       const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ dateRanges: [{ startDate: from, endDate: to }],
           ...(daily ? { dimensions: [{ name: 'date' }], orderBys: [{ dimension: { dimensionName: 'date' } }] } : {}),
-          ...filter, metrics: [{ name: 'totalUsers' }, ...(includeSessions && !daily ? ['sessions', 'engagedSessions', 'engagementRate'].map(name => ({ name })) : [])], limit: 100000 }),
+          ...filter, metrics: [{ name: 'totalUsers' }, ...(includeSessions && !daily ? ['sessions', 'engagedSessions', 'engagementRate', 'sessionKeyEventRate'].map(name => ({ name })) : [])], limit: 100000 }),
       });
       if (!response.ok) throw new Error(`GA4 distinct users API error: ${await response.text()}`);
       const data = await response.json();
@@ -1483,12 +1488,12 @@ export class GoogleAnalytics4Service {
             !Number.isSafeInteger(Number(row.metricValues[0].value)) || Number(row.metricValues[0].value) < 0)) {
         throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
       }
-      if (includeSessions && !daily && rows.some((row: any) => [1, 2, 3].some(index => {
+      if (includeSessions && !daily && rows.some((row: any) => [1, 2, 3, 4].some(index => {
         const raw = row.metricValues?.[index]?.value, value = Number(raw);
         return raw == null || raw === '' || !Number.isFinite(value) || value < 0 || (index < 3 ? !Number.isSafeInteger(value) : value > 1);
       }))) throw new Error('GA4_PERIOD_SESSIONS_UNVERIFIED');
       const values = rows.map((row: any) => ({ date: daily ? String(row.dimensionValues?.[0]?.value || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3') : '', users: Number(row.metricValues[0].value),
-        ...(includeSessions && !daily ? { sessions: Number(row.metricValues[1].value), engagedSessions: Number(row.metricValues[2].value), engagementRate: Number(row.metricValues[3].value) } : {}) }));
+        ...(includeSessions && !daily ? { sessions: Number(row.metricValues[1].value), engagedSessions: Number(row.metricValues[2].value), engagementRate: Number(row.metricValues[3].value), sessionKeyEventRate: Number(row.metricValues[4].value) } : {}) }));
       if (daily && (new Set(values.map((row: any) => row.date)).size !== values.length ||
           values.some((row: any) => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < from || row.date > to))) throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
       return values;
@@ -1521,11 +1526,11 @@ export class GoogleAnalytics4Service {
       daily.push({ date, users: byDate.get(date) ?? 0 });
     }
     const total = aggregate[0]?.users ?? 0;
-    const zero = { users: 0, ...(includeSessions ? { sessions: 0, engagedSessions: 0, engagementRate: 0 } : {}) };
+    const zero = { users: 0, ...(includeSessions ? { sessions: 0, engagedSessions: 0, engagementRate: 0, sessionKeyEventRate: 0 } : {}) };
     const period = (values: Awaited<ReturnType<typeof run>>) => { const { date, ...value } = values[0] || { date: '', ...zero }; return value; };
-    const campaigns: Array<{ name: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number }> = [];
+    const campaigns: Array<{ name: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number; sessionKeyEventRate?: number }> = [];
     for (let i = 0; i < names.length; i += 4) campaigns.push(...await Promise.all(names.slice(i, i + 4).map(async name => ({ name, ...period(names.length === 1 ? aggregate : await run(scopeFor(name), startDate, endDate)) }))));
-    const windows: Array<{ startDate: string; endDate: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number }> = [];
+    const windows: Array<{ startDate: string; endDate: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number; sessionKeyEventRate?: number }> = [];
     for (const days of [7, 14, 30, 90]) {
       const previousEnd = new Date(Date.parse(endDate) - days * 86400000).toISOString().slice(0, 10);
       const recentStart = new Date(Date.parse(endDate) - (days - 1) * 86400000).toISOString().slice(0, 10);

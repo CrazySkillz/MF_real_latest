@@ -192,10 +192,19 @@ function setSavedPublication(breakdown: { rows: any[]; totals?: Record<string, n
     for (const key of Object.keys(totals) as Array<keyof typeof totals>) totals[key] += Number(row[key] || 0);
   }
   Object.assign(totals, breakdown.totals);
+  const providerRows = new Map<string, any>();
+  for (const row of breakdown.rows) {
+    const key = String(row.campaign || row.campaignName).toLowerCase();
+    const item = providerRows.get(key) || { name: row.campaign || row.campaignName, users: 0, sessions: 0, engagedSessions: 0, engagementRate: 0, sessionKeyEventRate: 0 };
+    item.users += row.users; item.sessions += row.sessions;
+    item.sessionKeyEventRate = Number(row.sessionKeyEventRate || 0);
+    providerRows.set(key, item);
+  }
+
   storageMock.getGA4OverviewSnapshot.mockResolvedValue({
     campaignId: campaign.id, propertyId: "properties/123", windowStart: "2026-07-02", windowEnd: "2026-07-04",
     updatedAt: dailyRow.updatedAt,
-    campaignBreakdown: { rows: breakdown.rows, totals, meta: { currencyCode: "USD", revenueMetric: "purchaseRevenue", propertyId: "properties/123", distinctUsers: { version: 1, metric: "totalUsers", propertyId: "properties/123", startDate: "2026-07-02", endDate: "2026-07-04", total: totals.users, campaigns: breakdown.rows.map(row => ({ name: row.campaign || row.campaignName, users: row.users })), windows: [] } } },
+    campaignBreakdown: { rows: breakdown.rows, totals, meta: { currencyCode: "USD", revenueMetric: "purchaseRevenue", propertyId: "properties/123", distinctUsers: { version: 1, sessionTotalsVersion: 1, sessions: totals.sessions, engagedSessions: totals.engagedSessions, engagementRate: totals.sessions > 0 ? totals.engagedSessions / totals.sessions : 0, sessionKeyEventRate: breakdown.rows.length > 2 ? 0.098 : 0.2, metric: "totalUsers", propertyId: "properties/123", startDate: "2026-07-02", endDate: "2026-07-04", total: totals.users, campaigns: Array.from(providerRows.values()), windows: [] } } },
     landingPages: { rows: [] }, conversionEvents: { rows: [] },
   });
   const rows = ["2026-07-02", "2026-07-03", "2026-07-04"].map((date) => ({

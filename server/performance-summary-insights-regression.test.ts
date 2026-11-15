@@ -27,7 +27,7 @@ const baseInput = (overrides: Partial<PerformanceRecommendedActionsInput> = {}):
   revenueState: "ready",
   spendState: "ready",
   financialConversionsState: "ready",
-  trafficTotals: { sessions: 1_183, users: 1_184, conversions: 152, pageviews: 1_500, engagedSessions: 809 },
+  trafficTotals: { conversionRate: 12.85, sessions: 1_183, users: 1_184, conversions: 152, pageviews: 1_500, engagedSessions: 809 },
   trafficMetricAvailability: { sessions: true, users: true, conversions: true, pageviews: true, conversion_rate: true, engagement_rate: true },
   financialRevenue: 72_766.69,
   financialSpend: 2_699.75,

@@ -32,6 +32,7 @@ interface GA4AdComparisonProps {
   chartRevenue?: number;
   chartUsers?: number | null;
   chartSessions?: number | null;
+  chartConversionRate?: number | null;
   breakdownLoading: boolean;
   breakdownUnavailable?: boolean;
   breakdownStale?: boolean;
@@ -71,6 +72,7 @@ function GA4AdComparison({
   chartRevenue,
   chartUsers,
   chartSessions,
+  chartConversionRate,
   breakdownLoading,
   breakdownUnavailable = false,
   breakdownStale = false,
@@ -111,7 +113,7 @@ function GA4AdComparison({
     const byName = new Map<string, CampaignAgg>();
     for (const row of chartCampaignRows) {
       const key = row.name.toLocaleLowerCase("en-US");
-      const current = byName.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0, revenuePerSession: 0 };
+      const current = byName.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, revenuePerSession: 0 };
       current.sessions += row.sessions;
       current.users = row.users;
       current.conversions += row.conversions;
@@ -120,7 +122,7 @@ function GA4AdComparison({
     }
     return Array.from(byName.values()).map((row) => ({
       ...row,
-      conversionRate: row.sessions > 0 ? row.conversions / row.sessions * 100 : 0,
+      conversionRate: row.conversionRate ?? Number.NaN,
       revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
     }));
   }, [chartCampaignRows]);
@@ -152,7 +154,7 @@ function GA4AdComparison({
   }, [chartSummaryRows, selectedMetric]);
 
   const fmtMetricValue = (metric: string, value: number) => {
-    if (metric === "users" && !Number.isFinite(value)) return "Unavailable";
+    if ((metric === "users" || metric === "conversionRate") && !Number.isFinite(value)) return "Unavailable";
     if (metric === "revenue") return formatMoney(value);
     if (metric === "conversionRate") return `${formatPct(value)}`;
     if (metric === "conversions") return formatConversionCredit(value);
@@ -169,12 +171,10 @@ function GA4AdComparison({
     if (selectedMetric === "sessions" && chartSessions != null) return chartSessions;
     if (selectedMetric === "revenue" && chartRevenue !== undefined) return chartRevenue;
     if (selectedMetric === "conversionRate") {
-      const totalSessions = chartSessions ?? sortedByMetric.reduce((s, c) => s + c.sessions, 0);
-      const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
-      return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
+      return chartConversionRate ?? Number.NaN;
     }
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
-  }, [sortedByMetric, selectedMetric, chartRevenue, chartUsers, chartSessions]);
+  }, [sortedByMetric, selectedMetric, chartRevenue, chartUsers, chartSessions, chartConversionRate]);
 
   const summaryMetricLabel = selectedMetric === "revenue"
     ? "Campaign Breakdown Revenue"
@@ -359,7 +359,7 @@ function GA4AdComparison({
               )}
             </div>
             <div className="text-2xl font-bold text-foreground mt-1">
-              {selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, totalMetric)}
+              {fmtMetricValue(selectedMetric, totalMetric)}
             </div>
             <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
           </CardContent>

@@ -9736,7 +9736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const usersSnapshot = await storage.getGA4OverviewSnapshot(campaignId, String(selectedConnection.propertyId));
       // Calendar rollover must not discard Users from the still-displayed publication.
       const overviewPublishedEndDate = getLatestStoredDailyDate(overviewRows);
-      const overviewTotals = { ...summarizeGA4TrafficRows(overviewRows),
+      const overviewTotals = { ...summarizeGA4TrafficRows(overviewRows, usersSnapshot, overviewStartDate, overviewPublishedEndDate || ''),
         users: overviewPublishedEndDate && usersSnapshot?.windowEnd === overviewPublishedEndDate
           ? getGA4DistinctUsers(usersSnapshot, overviewStartDate, overviewPublishedEndDate) : null };
       const usersComparisons = (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [];
@@ -15550,7 +15550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           if (propertyWindowRows.length > 0) {
             propertyWindowTrafficCandidate = {
-              ...summarizeGA4TrafficRows(propertyWindowRows),
+              ...summarizeGA4TrafficRows(propertyWindowRows, overviewSnapshot, currentValueWindow.startDate, currentValueWindow.nativeDataThroughDate || endDateUsed),
               users: currentValueWindow.nativeDataThroughDate ? overviewFinancialCandidate?.users ?? null : getGA4DistinctUsers(overviewSnapshot, currentValueWindow.startDate, endDateUsed),
               source: "ga4_property_window",
             };
@@ -32245,8 +32245,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const ga4Daily = await storage.getGA4DailyMetrics(id, primaryPropertyId, ga4Start, ga4End);
           const scopedRows = ga4Daily.filter((row: any) => String(row.date) >= ga4Start && String(row.date) <= ga4End);
           if (scopedRows.length > 0) {
-            const totals = summarizeGA4TrafficRows(scopedRows);
             const usersSnapshot = await storage.getGA4OverviewSnapshot(id, primaryPropertyId);
+            const totals = summarizeGA4TrafficRows(scopedRows, usersSnapshot, ga4Start, ga4End);
             ga4Metrics = { sessions: totals.sessions, conversions: totals.conversions, pageviews: totals.pageviews,
               users: getGA4DistinctUsers(usersSnapshot, ga4Start, ga4End), revenue: totals.revenue, bounceRate: totals.sessions > 0 ? (1 - totals.engagementRate) * 100 : null };
           }

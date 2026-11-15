@@ -7,7 +7,7 @@ import { db } from "./db";
 import { emailService } from "./services/email-service";
 import { storage } from "./storage";
 import { campaigns, emailAlertEvents, linkedinReports, reportSendEvents, reportSnapshots } from "../shared/schema";
-import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, getGA4PeriodTraffic, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { LinkedInReport } from "../shared/schema";
 import * as cron from "node-cron";
@@ -1422,9 +1422,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         storage.getGA4DailyMetrics(campaignId, String((cumulativeGA4Connection as any).propertyId), cumulativeGA4Window.startDate, cumulativeGA4Window.endDate).catch(() => null),
       ])
     : [null, null];
-  const performancePageTrafficTotals = Array.isArray(performancePageRows) ? summarizeGA4TrafficRows(performancePageRows) : null;
   const usersSnapshot = cumulativeGA4Connection && cumulativeGA4Window
     ? await storage.getGA4OverviewSnapshot(campaignId, String(cumulativeGA4Connection.propertyId)).catch(() => null) : null;
+  const performancePageTrafficTotals = Array.isArray(performancePageRows) ? summarizeGA4TrafficRows(performancePageRows, usersSnapshot, cumulativeGA4Window?.startDate, cumulativeGA4Window?.endDate) : null;
   if (performancePageTrafficTotals && cumulativeGA4Window) {
     performancePageTrafficTotals.users = getGA4DistinctUsers(usersSnapshot, cumulativeGA4Window.startDate, cumulativeGA4Window.endDate) ?? Number.NaN;
   }
@@ -1531,6 +1531,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         sessions: performancePageTrafficTotals.sessions - trendRecentTrafficTotals.sessions,
         conversions: performancePageTrafficTotals.conversions - trendRecentTrafficTotals.conversions,
         engagedSessions: performancePageTrafficTotals.engagedSessions - trendRecentTrafficTotals.engagedSessions,
+        ...getGA4PeriodTraffic(usersSnapshot, String(cumulativeGA4Window?.startDate || ''), trendComparisonDate),
       }
     : null;
   const trendFinancialComparison = trendAnalysisSelected && cumulativeGA4Connection && cumulativeGA4Window && campaignId && trendComparisonDate && trendWindowEnd

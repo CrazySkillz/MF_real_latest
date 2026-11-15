@@ -531,7 +531,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
               .replace(/[^a-z0-9_]/gi, "_");
             const reconciliationMismatches = [
               overviewRows.some(row => Number(row.users) !== distinctDaily.get(String(row.date))) ? "daily_users" : "",
-              Number(breakdownTotals.sessions || 0) !== expected.sessions ? "breakdown_sessions" : "",
+              Number(campaignBreakdown.meta.dailySessions ?? breakdownTotals.sessions ?? 0) !== expected.sessions ? "breakdown_sessions" : "",
               !conversionCreditsMatch(Number(breakdownTotals.conversions || 0), expected.conversions, Math.max(1, overviewRows.length + (campaignBreakdown?.rows?.length || 0))) ? "breakdown_conversions" : "",
               Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ? "breakdown_revenue" : "",
               !conversionCreditsMatch(eventConversionTotal, expected.conversions, Math.max(1, overviewRows.length + (conversionEvents?.rows?.length || 0)))

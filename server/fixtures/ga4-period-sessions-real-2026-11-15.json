@@ -1,0 +1,2572 @@
+{
+  "checkedAt": "2026-11-15T10:45:34.274Z",
+  "scope": {
+    "propertyId": "542352127",
+    "startDate": "2026-09-04",
+    "endDate": "2026-11-15",
+    "campaigns": [
+      "yesop_brand_search",
+      "yesop_retargeting"
+    ],
+    "throughDate": ""
+  },
+  "daily": [
+    {
+      "date": "2026-09-04",
+      "dateLabel": "09/04",
+      "sessions": 115,
+      "engagedSessions": 83,
+      "pageviews": 198,
+      "conversions": 8,
+      "users": 115,
+      "revenue": 1863.1,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7217391304347827
+    },
+    {
+      "date": "2026-09-05",
+      "dateLabel": "09/05",
+      "sessions": 119,
+      "engagedSessions": 86,
+      "pageviews": 205,
+      "conversions": 7,
+      "users": 119,
+      "revenue": 1898.74,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7226890756302521
+    },
+    {
+      "date": "2026-09-06",
+      "dateLabel": "09/06",
+      "sessions": 118,
+      "engagedSessions": 84,
+      "pageviews": 202,
+      "conversions": 9,
+      "users": 118,
+      "revenue": 2463.44,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.711864406779661
+    },
+    {
+      "date": "2026-09-07",
+      "dateLabel": "09/07",
+      "sessions": 106,
+      "engagedSessions": 77,
+      "pageviews": 183,
+      "conversions": 9,
+      "users": 106,
+      "revenue": 1607.8,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7264150943396226
+    },
+    {
+      "date": "2026-09-09",
+      "dateLabel": "09/09",
+      "sessions": 126,
+      "engagedSessions": 91,
+      "pageviews": 217,
+      "conversions": 6,
+      "users": 126,
+      "revenue": 2086.01,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7222222222222222
+    },
+    {
+      "date": "2026-09-10",
+      "dateLabel": "09/10",
+      "sessions": 105,
+      "engagedSessions": 75,
+      "pageviews": 180,
+      "conversions": 9,
+      "users": 105,
+      "revenue": 2107.21,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7142857142857143
+    },
+    {
+      "date": "2026-09-12",
+      "dateLabel": "09/12",
+      "sessions": 220,
+      "engagedSessions": 160,
+      "pageviews": 380,
+      "conversions": 17,
+      "users": 220,
+      "revenue": 4069.78,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7272727272727273
+    },
+    {
+      "date": "2026-09-13",
+      "dateLabel": "09/13",
+      "sessions": 123,
+      "engagedSessions": 89,
+      "pageviews": 212,
+      "conversions": 8,
+      "users": 123,
+      "revenue": 2090.45,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7235772357723578
+    },
+    {
+      "date": "2026-09-14",
+      "dateLabel": "09/14",
+      "sessions": 117,
+      "engagedSessions": 85,
+      "pageviews": 202,
+      "conversions": 9,
+      "users": 117,
+      "revenue": 2404.18,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7264957264957265
+    },
+    {
+      "date": "2026-09-15",
+      "dateLabel": "09/15",
+      "sessions": 117,
+      "engagedSessions": 85,
+      "pageviews": 202,
+      "conversions": 8,
+      "users": 117,
+      "revenue": 2363.03,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7264957264957265
+    },
+    {
+      "date": "2026-09-16",
+      "dateLabel": "09/16",
+      "sessions": 119,
+      "engagedSessions": 85,
+      "pageviews": 204,
+      "conversions": 8,
+      "users": 119,
+      "revenue": 2352.51,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7142857142857143
+    },
+    {
+      "date": "2026-09-17",
+      "dateLabel": "09/17",
+      "sessions": 112,
+      "engagedSessions": 80,
+      "pageviews": 192,
+      "conversions": 7,
+      "users": 112,
+      "revenue": 2374.66,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7142857142857143
+    },
+    {
+      "date": "2026-09-18",
+      "dateLabel": "09/18",
+      "sessions": 120,
+      "engagedSessions": 86,
+      "pageviews": 206,
+      "conversions": 9,
+      "users": 120,
+      "revenue": 1875.74,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7166666666666667
+    },
+    {
+      "date": "2026-09-19",
+      "dateLabel": "09/19",
+      "sessions": 107,
+      "engagedSessions": 78,
+      "pageviews": 185,
+      "conversions": 7,
+      "users": 107,
+      "revenue": 1605.57,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7289719626168224
+    },
+    {
+      "date": "2026-09-20",
+      "dateLabel": "09/20",
+      "sessions": 112,
+      "engagedSessions": 82,
+      "pageviews": 194,
+      "conversions": 7,
+      "users": 112,
+      "revenue": 1859.11,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7321428571428571
+    },
+    {
+      "date": "2026-09-21",
+      "dateLabel": "09/21",
+      "sessions": 115,
+      "engagedSessions": 83,
+      "pageviews": 198,
+      "conversions": 9,
+      "users": 115,
+      "revenue": 2512.48,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7217391304347827
+    },
+    {
+      "date": "2026-09-22",
+      "dateLabel": "09/22",
+      "sessions": 112,
+      "engagedSessions": 80,
+      "pageviews": 192,
+      "conversions": 8,
+      "users": 112,
+      "revenue": 1984.91,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7142857142857143
+    },
+    {
+      "date": "2026-09-30",
+      "dateLabel": "09/30",
+      "sessions": 240,
+      "engagedSessions": 175,
+      "pageviews": 602,
+      "conversions": 34,
+      "users": 240,
+      "revenue": 8569.66,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7291666666666666
+    },
+    {
+      "date": "2026-10-02",
+      "dateLabel": "10/02",
+      "sessions": 117,
+      "engagedSessions": 85,
+      "pageviews": 202,
+      "conversions": 15,
+      "users": 117,
+      "revenue": 3744.36,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7264957264957265
+    },
+    {
+      "date": "2026-10-03",
+      "dateLabel": "10/03",
+      "sessions": 112,
+      "engagedSessions": 81,
+      "pageviews": 195,
+      "conversions": 14,
+      "users": 113,
+      "revenue": 2871.21,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7232142857142857
+    },
+    {
+      "date": "2026-10-04",
+      "dateLabel": "10/04",
+      "sessions": 111,
+      "engagedSessions": 81,
+      "pageviews": 192,
+      "conversions": 15,
+      "users": 111,
+      "revenue": 3503.95,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7297297297297297
+    },
+    {
+      "date": "2026-10-05",
+      "dateLabel": "10/05",
+      "sessions": 100,
+      "engagedSessions": 73,
+      "pageviews": 173,
+      "conversions": 12,
+      "users": 100,
+      "revenue": 2826,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.73
+    },
+    {
+      "date": "2026-10-13",
+      "dateLabel": "10/13",
+      "sessions": 121,
+      "engagedSessions": 88,
+      "pageviews": 209,
+      "conversions": 13,
+      "users": 121,
+      "revenue": 3121.65,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7272727272727273
+    },
+    {
+      "date": "2026-10-16",
+      "dateLabel": "10/16",
+      "sessions": 113,
+      "engagedSessions": 82,
+      "pageviews": 195,
+      "conversions": 14,
+      "users": 113,
+      "revenue": 3503.95,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7256637168141593
+    },
+    {
+      "date": "2026-10-21",
+      "dateLabel": "10/21",
+      "sessions": 119,
+      "engagedSessions": 86,
+      "pageviews": 205,
+      "conversions": 14,
+      "users": 119,
+      "revenue": 3726.85,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7226890756302521
+    },
+    {
+      "date": "2026-10-22",
+      "dateLabel": "10/22",
+      "sessions": 118,
+      "engagedSessions": 84,
+      "pageviews": 202,
+      "conversions": 14,
+      "users": 118,
+      "revenue": 3493.15,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.711864406779661
+    },
+    {
+      "date": "2026-10-23",
+      "dateLabel": "10/23",
+      "sessions": 112,
+      "engagedSessions": 80,
+      "pageviews": 192,
+      "conversions": 13,
+      "users": 112,
+      "revenue": 3726.85,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7142857142857143
+    },
+    {
+      "date": "2026-10-24",
+      "dateLabel": "10/24",
+      "sessions": 107,
+      "engagedSessions": 78,
+      "pageviews": 185,
+      "conversions": 13,
+      "users": 107,
+      "revenue": 3827.5,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7289719626168224
+    },
+    {
+      "date": "2026-10-27",
+      "dateLabel": "10/27",
+      "sessions": 121,
+      "engagedSessions": 88,
+      "pageviews": 209,
+      "conversions": 13,
+      "users": 121,
+      "revenue": 3716.05,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7272727272727273
+    },
+    {
+      "date": "2026-10-30",
+      "dateLabel": "10/30",
+      "sessions": 115,
+      "engagedSessions": 83,
+      "pageviews": 198,
+      "conversions": 14,
+      "users": 115,
+      "revenue": 4135.5,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7217391304347827
+    },
+    {
+      "date": "2026-10-31",
+      "dateLabel": "10/31",
+      "sessions": 114,
+      "engagedSessions": 82,
+      "pageviews": 196,
+      "conversions": 12,
+      "users": 114,
+      "revenue": 3604.6,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7192982456140351
+    },
+    {
+      "date": "2026-11-02",
+      "dateLabel": "11/02",
+      "sessions": 117,
+      "engagedSessions": 84,
+      "pageviews": 201,
+      "conversions": 15,
+      "users": 117,
+      "revenue": 4024.05,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.717948717948718
+    },
+    {
+      "date": "2026-11-04",
+      "dateLabel": "11/04",
+      "sessions": 123,
+      "engagedSessions": 89,
+      "pageviews": 212,
+      "conversions": 13,
+      "users": 123,
+      "revenue": 3689.7,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7235772357723578
+    },
+    {
+      "date": "2026-11-07",
+      "dateLabel": "11/07",
+      "sessions": 125,
+      "engagedSessions": 90,
+      "pageviews": 215,
+      "conversions": 15,
+      "users": 125,
+      "revenue": 3541.1,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.72
+    },
+    {
+      "date": "2026-11-08",
+      "dateLabel": "11/08",
+      "sessions": 123,
+      "engagedSessions": 89,
+      "pageviews": 212,
+      "conversions": 14,
+      "users": 123,
+      "revenue": 3801.15,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7235772357723578
+    },
+    {
+      "date": "2026-11-09",
+      "dateLabel": "11/09",
+      "sessions": 104,
+      "engagedSessions": 75,
+      "pageviews": 179,
+      "conversions": 15,
+      "users": 104,
+      "revenue": 3418.85,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7211538461538461
+    },
+    {
+      "date": "2026-11-12",
+      "dateLabel": "11/12",
+      "sessions": 122,
+      "engagedSessions": 88,
+      "pageviews": 210,
+      "conversions": 13,
+      "users": 122,
+      "revenue": 3949.75,
+      "revenueMetric": "totalRevenue",
+      "engagementRate": 0.7213114754098361
+    }
+  ],
+  "breakdown": {
+    "rows": [
+      {
+        "date": "",
+        "channel": "",
+        "source": "",
+        "medium": "",
+        "campaign": "yesop_brand_search",
+        "device": "",
+        "country": "",
+        "sessions": 3142,
+        "sessionsRaw": 3142,
+        "users": 3143,
+        "conversions": 322,
+        "revenue": 89347.59634199999,
+        "engagedSessions": 2279,
+        "sessionKeyEventRate": 0.10025461489497135
+      },
+      {
+        "date": "",
+        "channel": "",
+        "source": "",
+        "medium": "",
+        "campaign": "yesop_retargeting",
+        "device": "",
+        "country": "",
+        "sessions": 1355,
+        "sessionsRaw": 1355,
+        "users": 1355,
+        "conversions": 118,
+        "revenue": 24967.008336,
+        "engagedSessions": 971,
+        "sessionKeyEventRate": 0.08339483394833948
+      }
+    ],
+    "totals": {
+      "sessions": 4472,
+      "sessionsRaw": 4472,
+      "users": 4496,
+      "conversions": 440,
+      "revenue": 114314.6,
+      "engagedSessions": 3246,
+      "engagementRate": 0.7258497316636852
+    },
+    "meta": {
+      "propertyId": "542352127",
+      "revenueMetric": "totalRevenue",
+      "dimensions": [
+        "campaignName"
+      ],
+      "rowCount": 2,
+      "sessionsDerivedFromUsers": false,
+      "currencyCode": "EUR",
+      "overviewCampaignAttribution": {
+        "attempted": true,
+        "selected": true,
+        "standardSessions": 543,
+        "rebuiltSessions": 4497,
+        "standardConversions": 557,
+        "rebuiltConversions": 440,
+        "standardRevenue": 134969.96,
+        "rebuiltRevenue": 114314.6
+      },
+      "distinctUsers": {
+        "version": 1,
+        "metric": "totalUsers",
+        "propertyId": "542352127",
+        "startDate": "2026-09-04",
+        "endDate": "2026-11-15",
+        "total": 4496,
+        "campaigns": [
+          {
+            "name": "yesop_brand_search",
+            "users": 3142,
+            "sessions": 3159,
+            "engagedSessions": 2292,
+            "engagementRate": 0.7255460588793922
+          },
+          {
+            "name": "yesop_retargeting",
+            "users": 1354,
+            "sessions": 1358,
+            "engagedSessions": 973,
+            "engagementRate": 0.7164948453608248
+          }
+        ],
+        "daily": [
+          {
+            "date": "2026-09-04",
+            "users": 115
+          },
+          {
+            "date": "2026-09-05",
+            "users": 119
+          },
+          {
+            "date": "2026-09-06",
+            "users": 118
+          },
+          {
+            "date": "2026-09-07",
+            "users": 106
+          },
+          {
+            "date": "2026-09-08",
+            "users": 0
+          },
+          {
+            "date": "2026-09-09",
+            "users": 126
+          },
+          {
+            "date": "2026-09-10",
+            "users": 105
+          },
+          {
+            "date": "2026-09-11",
+            "users": 0
+          },
+          {
+            "date": "2026-09-12",
+            "users": 220
+          },
+          {
+            "date": "2026-09-13",
+            "users": 123
+          },
+          {
+            "date": "2026-09-14",
+            "users": 117
+          },
+          {
+            "date": "2026-09-15",
+            "users": 117
+          },
+          {
+            "date": "2026-09-16",
+            "users": 119
+          },
+          {
+            "date": "2026-09-17",
+            "users": 112
+          },
+          {
+            "date": "2026-09-18",
+            "users": 120
+          },
+          {
+            "date": "2026-09-19",
+            "users": 107
+          },
+          {
+            "date": "2026-09-20",
+            "users": 112
+          },
+          {
+            "date": "2026-09-21",
+            "users": 115
+          },
+          {
+            "date": "2026-09-22",
+            "users": 112
+          },
+          {
+            "date": "2026-09-23",
+            "users": 0
+          },
+          {
+            "date": "2026-09-24",
+            "users": 0
+          },
+          {
+            "date": "2026-09-25",
+            "users": 0
+          },
+          {
+            "date": "2026-09-26",
+            "users": 0
+          },
+          {
+            "date": "2026-09-27",
+            "users": 0
+          },
+          {
+            "date": "2026-09-28",
+            "users": 0
+          },
+          {
+            "date": "2026-09-29",
+            "users": 0
+          },
+          {
+            "date": "2026-09-30",
+            "users": 240
+          },
+          {
+            "date": "2026-10-01",
+            "users": 0
+          },
+          {
+            "date": "2026-10-02",
+            "users": 117
+          },
+          {
+            "date": "2026-10-03",
+            "users": 113
+          },
+          {
+            "date": "2026-10-04",
+            "users": 111
+          },
+          {
+            "date": "2026-10-05",
+            "users": 100
+          },
+          {
+            "date": "2026-10-06",
+            "users": 0
+          },
+          {
+            "date": "2026-10-07",
+            "users": 0
+          },
+          {
+            "date": "2026-10-08",
+            "users": 0
+          },
+          {
+            "date": "2026-10-09",
+            "users": 0
+          },
+          {
+            "date": "2026-10-10",
+            "users": 0
+          },
+          {
+            "date": "2026-10-11",
+            "users": 0
+          },
+          {
+            "date": "2026-10-12",
+            "users": 0
+          },
+          {
+            "date": "2026-10-13",
+            "users": 121
+          },
+          {
+            "date": "2026-10-14",
+            "users": 0
+          },
+          {
+            "date": "2026-10-15",
+            "users": 0
+          },
+          {
+            "date": "2026-10-16",
+            "users": 113
+          },
+          {
+            "date": "2026-10-17",
+            "users": 0
+          },
+          {
+            "date": "2026-10-18",
+            "users": 0
+          },
+          {
+            "date": "2026-10-19",
+            "users": 0
+          },
+          {
+            "date": "2026-10-20",
+            "users": 0
+          },
+          {
+            "date": "2026-10-21",
+            "users": 119
+          },
+          {
+            "date": "2026-10-22",
+            "users": 118
+          },
+          {
+            "date": "2026-10-23",
+            "users": 112
+          },
+          {
+            "date": "2026-10-24",
+            "users": 107
+          },
+          {
+            "date": "2026-10-25",
+            "users": 0
+          },
+          {
+            "date": "2026-10-26",
+            "users": 0
+          },
+          {
+            "date": "2026-10-27",
+            "users": 121
+          },
+          {
+            "date": "2026-10-28",
+            "users": 0
+          },
+          {
+            "date": "2026-10-29",
+            "users": 0
+          },
+          {
+            "date": "2026-10-30",
+            "users": 115
+          },
+          {
+            "date": "2026-10-31",
+            "users": 114
+          },
+          {
+            "date": "2026-11-01",
+            "users": 0
+          },
+          {
+            "date": "2026-11-02",
+            "users": 117
+          },
+          {
+            "date": "2026-11-03",
+            "users": 0
+          },
+          {
+            "date": "2026-11-04",
+            "users": 123
+          },
+          {
+            "date": "2026-11-05",
+            "users": 0
+          },
+          {
+            "date": "2026-11-06",
+            "users": 0
+          },
+          {
+            "date": "2026-11-07",
+            "users": 125
+          },
+          {
+            "date": "2026-11-08",
+            "users": 123
+          },
+          {
+            "date": "2026-11-09",
+            "users": 104
+          },
+          {
+            "date": "2026-11-10",
+            "users": 0
+          },
+          {
+            "date": "2026-11-11",
+            "users": 0
+          },
+          {
+            "date": "2026-11-12",
+            "users": 122
+          },
+          {
+            "date": "2026-11-13",
+            "users": 0
+          },
+          {
+            "date": "2026-11-14",
+            "users": 0
+          },
+          {
+            "date": "2026-11-15",
+            "users": 0
+          }
+        ],
+        "windows": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-08",
+            "users": 4270,
+            "sessions": 4224,
+            "engagedSessions": 3097,
+            "engagementRate": 0.7331912878787878
+          },
+          {
+            "startDate": "2026-11-09",
+            "endDate": "2026-11-15",
+            "users": 226,
+            "sessions": 226,
+            "engagedSessions": 163,
+            "engagementRate": 0.7212389380530974
+          },
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-01",
+            "users": 3782,
+            "sessions": 3761,
+            "engagedSessions": 2739,
+            "engagementRate": 0.7282637596383941
+          },
+          {
+            "startDate": "2026-11-02",
+            "endDate": "2026-11-15",
+            "users": 714,
+            "sessions": 714,
+            "engagedSessions": 514,
+            "engagementRate": 0.7198879551820728
+          },
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-10-16",
+            "users": 2976,
+            "sessions": 2986,
+            "engagedSessions": 2161,
+            "engagementRate": 0.7237106496985934
+          },
+          {
+            "startDate": "2026-10-17",
+            "endDate": "2026-11-15",
+            "users": 1520,
+            "sessions": 1523,
+            "engagedSessions": 1098,
+            "engagementRate": 0.7209455022980958
+          }
+        ],
+        "sessionTotalsVersion": 1,
+        "users": 4496,
+        "sessions": 4472,
+        "engagedSessions": 3246,
+        "engagementRate": 0.7258497316636852
+      },
+      "dailySessions": 4497
+    }
+  },
+  "requests": [
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "4496"
+              },
+              {
+                "value": "4472"
+              },
+              {
+                "value": "3246"
+              },
+              {
+                "value": "0.72584973166368516"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 2,
+            "remaining": 198360
+          },
+          "tokensPerHour": {
+            "consumed": 2,
+            "remaining": 39580
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 2,
+            "remaining": 13842
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "date"
+          }
+        ],
+        "orderBys": [
+          {
+            "dimension": {
+              "dimensionName": "date"
+            }
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "dimensionHeaders": [
+          {
+            "name": "date"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "20260904"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "115"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260905"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "119"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260906"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "118"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260907"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "106"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260909"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "126"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260910"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "105"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260912"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "220"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260913"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "123"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260914"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "117"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260915"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "117"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260916"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "119"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260917"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "112"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260918"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "120"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260919"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "107"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260920"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "112"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260921"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "115"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260922"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "112"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20260930"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "240"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261002"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "117"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261003"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "113"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261004"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "111"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261005"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "100"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261013"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "121"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261016"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "113"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261021"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "119"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261022"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "118"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261023"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "112"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261024"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "107"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261027"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "121"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261030"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "115"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261031"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "114"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261102"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "117"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261104"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "123"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261107"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "125"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261108"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "123"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261109"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "104"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261112"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "122"
+              }
+            ]
+          }
+        ],
+        "rowCount": 37,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198639
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39592
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13852
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "filter": {
+            "fieldName": "pageLocation",
+            "stringFilter": {
+              "matchType": "FULL_REGEXP",
+              "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+              "caseSensitive": false
+            }
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "3142"
+              },
+              {
+                "value": "3159"
+              },
+              {
+                "value": "2292"
+              },
+              {
+                "value": "0.72554605887939216"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198359
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39579
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13841
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "filter": {
+            "fieldName": "pageLocation",
+            "stringFilter": {
+              "matchType": "FULL_REGEXP",
+              "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+              "caseSensitive": false
+            }
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "1354"
+              },
+              {
+                "value": "1358"
+              },
+              {
+                "value": "973"
+              },
+              {
+                "value": "0.71649484536082475"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198638
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39591
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13851
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-02",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "714"
+              },
+              {
+                "value": "714"
+              },
+              {
+                "value": "514"
+              },
+              {
+                "value": "0.71988795518207283"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198357
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39577
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13839
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-08"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "4270"
+              },
+              {
+                "value": "4224"
+              },
+              {
+                "value": "3097"
+              },
+              {
+                "value": "0.73319128787878785"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198357
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39577
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13839
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-09",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "226"
+              },
+              {
+                "value": "226"
+              },
+              {
+                "value": "163"
+              },
+              {
+                "value": "0.72123893805309736"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198637
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39590
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13850
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-01"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "3782"
+              },
+              {
+                "value": "3761"
+              },
+              {
+                "value": "2739"
+              },
+              {
+                "value": "0.72826375963839407"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198356
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39576
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13838
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-10-16"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "2976"
+              },
+              {
+                "value": "2986"
+              },
+              {
+                "value": "2161"
+              },
+              {
+                "value": "0.72371064969859344"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198355
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39575
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13837
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-17",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "1520"
+              },
+              {
+                "value": "1523"
+              },
+              {
+                "value": "1098"
+              },
+              {
+                "value": "0.72094550229809584"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "propertyQuota": {
+          "tokensPerDay": {
+            "consumed": 1,
+            "remaining": 198636
+          },
+          "tokensPerHour": {
+            "consumed": 1,
+            "remaining": 39589
+          },
+          "concurrentRequests": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "serverErrorsPerProjectPerHour": {
+            "consumed": 0,
+            "remaining": 10
+          },
+          "potentiallyThresholdedRequestsPerHour": {
+            "consumed": 0,
+            "remaining": 120
+          },
+          "tokensPerProjectPerHour": {
+            "consumed": 1,
+            "remaining": 13849
+          }
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-09-04",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "metrics": [
+          {
+            "name": "sessions"
+          }
+        ],
+        "dimensionFilter": {
+          "filter": {
+            "fieldName": "pageLocation",
+            "stringFilter": {
+              "matchType": "FULL_REGEXP",
+              "value": ".*[?&]utm_campaign=(yesop_brand_search|yesop_retargeting)(?:[&#].*)?$",
+              "caseSensitive": false
+            }
+          }
+        },
+        "limit": 10000
+      },
+      "response": {
+        "metricHeaders": [
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "4472"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Amsterdam"
+        },
+        "kind": "analyticsData#runReport"
+      },
+      "status": 200
+    }
+  ]
+}

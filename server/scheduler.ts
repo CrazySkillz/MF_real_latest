@@ -8,7 +8,7 @@ import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state
 import { getCampaignMetricTotals, parseGA4CampaignFilter } from './utils/campaign-current-values';
 import { getGA4ReportingDateWindow as getReportingDateWindow, resolveGA4ImportToDateWindow } from './utils/reporting-timezone';
 import { filterActiveSchedulerCampaigns } from './utils/campaign-scheduler-eligibility';
-import { getGA4DistinctUsers } from '../shared/ga4-traffic-window';
+import { getGA4DistinctUsers, getGA4PeriodTraffic } from '../shared/ga4-traffic-window';
 
 interface SnapshotMetrics {
   totalImpressions: number;
@@ -174,6 +174,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         pageviews: ga4DailyRows.reduce((s: number, m: any) => s + (m.pageviews || 0), 0),
         conversions: ga4DailyRows.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
         revenue: ga4DailyRows.reduce((s: number, m: any) => s + parseNum(m.revenue), 0),
+        ...getGA4PeriodTraffic(ga4UsersSnapshot, ga4FinancialWindow && ga4FinancialWindow.startDate > startDate ? ga4FinancialWindow.startDate : startDate, ga4FinancialWindow?.endDate || endDate),
       };
     }
   } catch (err) {
@@ -204,6 +205,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       if (useSavedOverview && financialTotals.nativeDataThroughDate && ga4FinancialWindow && financialTotals.nativeDataThroughDate < ga4FinancialWindow.endDate) {
         savedNativeEndDate = financialTotals.nativeDataThroughDate;
         ga4Data.users = getGA4DistinctUsers(ga4UsersSnapshot, ga4FinancialWindow.startDate > startDate ? ga4FinancialWindow.startDate : startDate, savedNativeEndDate);
+        Object.assign(ga4Data, getGA4PeriodTraffic(ga4UsersSnapshot, ga4FinancialWindow.startDate > startDate ? ga4FinancialWindow.startDate : startDate, savedNativeEndDate));
       }
       ga4FinancialData = {
         ...ga4Data,

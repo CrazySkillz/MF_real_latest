@@ -211,14 +211,16 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory({ ...nativeApp, expectedCommit: "48".repeat(20) }, root)).toBe(nativePrepared);
   expect(() => monitorApplicationDirectory({ ...nativeApp, comparisonRateDefinition: "conversions_per_session" }, root)).toThrow();
   const downstreamApp = { ...nativeApp, expectedCommit: "b1".repeat(20) };
-  writeFileSync(join(root, "scripts/monitor-current-day-downstream-native-values.json"), JSON.stringify({ expectedCommit: downstreamApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("downstream\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-downstream-native-values.json"), JSON.stringify({ expectedCommit: downstreamApp.expectedCommit, equivalentCommits: ["49".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("downstream\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-downstream-native-values.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+downstream\n`).join(""));
   const downstreamPrepared = prepareMonitorApplication(root, true, true, "-downstream-native-values");
   expect(monitorApplicationDirectory(downstreamApp, root)).toBe(downstreamPrepared);
+  expect(monitorApplicationDirectory({ ...downstreamApp, expectedCommit: "49".repeat(20) }, root)).toBe(downstreamPrepared);
   expect(monitorApplicationDirectory(nativeApp, root)).toBe(nativePrepared);
   expect(() => monitorApplicationDirectory({ ...downstreamApp, comparisonRateDefinition: "conversions_per_session" }, root)).toThrow();
   writeFileSync(join(downstreamPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(downstreamApp, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...downstreamApp, expectedCommit: "49".repeat(20) }, root)).toThrow();
   writeFileSync(join(nativePrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(nativeApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...nativeApp, expectedCommit: "48".repeat(20) }, root)).toThrow();

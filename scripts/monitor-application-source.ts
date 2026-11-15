@@ -27,7 +27,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.comparisonRateDefinition === undefined) return root;
   const downstreamValuesPath = join(root, "scripts/monitor-current-day-downstream-native-values.json");
   const downstreamValues = application.reportingMode === "current_day" && existsSync(downstreamValuesPath)
-    && revision(root, true, true, "-downstream-native-values").expectedCommit === application.expectedCommit;
+    && (() => { const value = revision(root, true, true, "-downstream-native-values"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const nativeValuesPath = join(root, "scripts/monitor-current-day-native-values.json");
   const nativeValues = application.reportingMode === "current_day" && existsSync(nativeValuesPath)
     && (() => { const value = revision(root, true, true, "-native-values"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();

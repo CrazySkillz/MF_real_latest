@@ -1,6 +1,6 @@
 {
   "baseUrl": "https://marketforensics-test.onrender.com",
-  "expectedCommit": "59d5240c8142dae3d8e72e96becf9b3c5bb8cce4",
+  "expectedCommit": "bf68616b25fc8f07ca4fe245eaa64e96c85a7c8a",
   "graceMinutes": 20,
   "campaigns": [
     {

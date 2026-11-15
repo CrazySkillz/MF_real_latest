@@ -306,7 +306,9 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
         for (const metric of ["sessions", "users", "conversions"]) {
           const numbers = inputs.map((r: any) => numberOrNull(r[metric]));
           const packet = verification.distinctUsers;
-          const expected = metric === "users" && verification.usersDefinition === "ga4_totalUsers_distinct_v1"
+          const expected = metric === "sessions" && packet?.sessionTotalsVersion === 1
+            ? monitoredPeriodTraffic(snapshot, { ...scope, publication: { campaignBreakdown: { meta: { distinctUsers: packet } } }, startDate: trafficWindow.startDate > financialWindow.startDate ? trafficWindow.startDate : financialWindow.startDate, endDate: financialWindow.endDate })?.sessions ?? null
+            : metric === "users" && verification.usersDefinition === "ga4_totalUsers_distinct_v1"
             ? monitoredUsers({ ...snapshot, usersDefinition: "ga4_totalUsers_distinct_v1" }, { ...scope, publication: { campaignBreakdown: { meta: { distinctUsers: packet } } }, startDate: trafficWindow.startDate > financialWindow.startDate ? trafficWindow.startDate : financialWindow.startDate, endDate: financialWindow.endDate })
             : numbers.every((n: any) => n !== null && n >= 0) ? numbers.reduce<number>((a, b) => a + b!, 0) : null;
           if (expected === null && available(metric) === null) continue;

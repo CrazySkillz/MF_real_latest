@@ -18,3 +18,18 @@ it("rejects damaged period metadata instead of accepting daily sums",()=>{const 
  expect(expectedOutputNumbers(s,now).totals.sessions).toBeNull();expect(checkStoredNumbers(s,now)).toContainEqual(expect.objectContaining({code:"sessions",status:"unverified"}));});
 it("detects a saved total that still contains the daily sum",()=>{const s=setup();s.rows.ga4OverviewSnapshots[0].campaignBreakdown.totals.sessions=4497;
  expect(checkStoredNumbers(s,now)).toContainEqual(expect.objectContaining({code:"sessions",status:"difference"}));});
+it.each([
+ ["period",4472,"passed"], ["period",4497,"difference"], ["legacy",4497,"passed"], ["invalid",4472,"unverified"],
+])("checks saved Performance Summary inputs using %s metadata",(mode,value,status)=>{
+ const s:any=setup(),{scope,breakdown}=evidence,packet:any=structuredClone(breakdown.meta.distinctUsers);
+ if(mode==="legacy")delete packet.sessionTotalsVersion;
+ if(mode==="invalid")packet.propertyId="wrong-property";
+ s.rows.metricSnapshots=[{snapshotType:"platform_sync",recordedAt:now.toISOString(),metrics:{
+  performanceSummary:{totals:{sessions:{available:true,value}}},
+  performanceSummaryVerification:{version:1,campaignId:s.campaign.id,propertyId:scope.propertyId,currency:"EUR",campaignFilter:s.campaign.ga4CampaignFilter,
+   usersDefinition:"ga4_totalUsers_distinct_v1",distinctUsers:packet,trafficWindow:{startDate:scope.startDate,endDate:scope.endDate},
+   nativeFinancialWindow:{startDate:scope.startDate,endDate:scope.endDate,reportingTimeZone:"Europe/Amsterdam"},
+   importedFinancialWindow:{startDate:"1900-01-01",endDate:scope.endDate},trafficRows:s.rows.ga4DailyMetrics}}}];
+ expect(checkStoredNumbers(s,now)).toContainEqual(expect.objectContaining({code:"SAVED_INPUT_SCOPE",status:"passed"}));
+ expect(checkStoredNumbers(s,now)).toContainEqual(expect.objectContaining({code:"SAVED_INPUT_sessions",status}));
+});

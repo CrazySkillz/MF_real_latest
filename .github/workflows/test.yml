@@ -1,5 +1,11 @@
 name: Tests
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches-ignore:
+      # Promotion preserves the SHA already checked on its preparation branch.
+      # This branch requires successful unit-tests, including for administrators.
+      - codex/live-number-checks
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}

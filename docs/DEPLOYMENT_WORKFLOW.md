@@ -2,7 +2,7 @@
 
 ## Required release checks
 
-GitHub runs `Tests / unit-tests` on each pushed commit and on manual workflow dispatch. Opening or updating a pull request does not launch another copy of the same job. The check from the pushed head commit is used by the pull request.
+GitHub runs `Tests / unit-tests` on each pushed commit and on manual workflow dispatch, except for the already-tested monitor promotion described below. Opening or updating a pull request does not launch another copy of the same job. The check from the pushed head commit is used by the pull request.
 
 Keep the existing main-branch protection: an up-to-date pull request, successful `unit-tests` from GitHub Actions app 15368, administrator enforcement, and no force pushes or branch deletion. A missing, failed or cancelled head check must not be used for release. Fork contributions must be brought onto a maintainer-controlled branch for this workflow; do not bypass missing checks.
 
@@ -21,6 +21,14 @@ Dependency downloads are cached by `package-lock.json`; `npm ci` still runs. A n
 
 For workflow-, test- or documentation-only commits that require no app deployment, include `[skip render]` in the final merge commit message. Do not use `[skip ci]`. Confirm live/test deployment IDs and health commits remain unchanged. These changes do not require rebuilding or updating the monitoring service when its runtime and expected application commits are unchanged.
 
-The CI production build and Render production build remain intentional checks in different environments. This change removes duplicate event-triggered jobs; it does not skip the required build or reuse an unverified runtime artifact. Monitor-branch promotion may still start a same-commit CI run; only promote/deploy a monitor revision with already-passed checks for that exact SHA.
+The CI production build and Render production build remain intentional checks in different environments. This change removes duplicate event-triggered jobs; it does not skip the required build or reuse an unverified runtime artifact.
+
+## Monitor promotion
+
+1. Prepare a descendant of the current `codex/live-number-checks` commit on a separate `codex/` branch. Preserve the workflow's exact promotion-branch exclusion.
+2. Wait for the full `Tests / unit-tests` job from GitHub Actions app 15368 to succeed for that exact SHA. Missing, pending, failed, cancelled or skipped jobs do not qualify. Do not substitute a passing result from a parent commit or a matching tree.
+3. Confirm `codex/live-number-checks` still has required `unit-tests` protection from app 15368, strict status checks, administrator enforcement, no force pushes and no deletion. Stop if protection is missing or changed. Confirm the monitor's Render auto-deploy remains off.
+4. Fast-forward the monitor branch to the passed SHA without creating another commit. GitHub enforces the required check before accepting the promotion. This branch's push event is excluded, so promotion does not start a second test run. Manual workflow dispatch remains available when a deliberate rerun is needed.
+5. For an authorized monitor runtime release, deploy that same passed SHA and verify it. Workflow/documentation-only changes do not require a monitor deployment. Main and ordinary feature-branch checks are unaffected by this exclusion.
 
 References: [GitHub required checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging), [setup-node caching](https://github.com/actions/setup-node/blob/v4/README.md#caching-global-packages-data), [Render deployment controls](https://render.com/docs/deploys#skipping-an-auto-deploy).

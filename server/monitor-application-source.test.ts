@@ -194,13 +194,15 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(monitorApplicationDirectory({ ...overviewNoticeApp, expectedCommit: "ae".repeat(20) }, root)).toBe(overviewNoticePrepared);
   expect(monitorApplicationDirectory(landingApp, root)).toBe(landingPrepared);
   const periodApp = { ...overviewNoticeApp, expectedCommit: "ae".repeat(20) };
-  writeFileSync(join(root, "scripts/monitor-current-day-period-sessions.json"), JSON.stringify({ expectedCommit: periodApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("period\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-period-sessions.json"), JSON.stringify({ expectedCommit: periodApp.expectedCommit, equivalentCommits: ["47".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("period\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-period-sessions.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+period\n`).join(""));
   const periodPrepared = prepareMonitorApplication(root, true, true, "-period-sessions");
   expect(monitorApplicationDirectory(periodApp, root)).toBe(periodPrepared);
+  expect(monitorApplicationDirectory({ ...periodApp, expectedCommit: "47".repeat(20) }, root)).toBe(periodPrepared);
   expect(monitorApplicationDirectory(overviewNoticeApp, root)).toBe(overviewNoticePrepared);
   writeFileSync(join(periodPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(periodApp, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...periodApp, expectedCommit: "47".repeat(20) }, root)).toThrow();
   writeFileSync(join(overviewNoticePrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(overviewNoticeApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...overviewNoticeApp, expectedCommit: "ae".repeat(20) }, root)).toThrow();

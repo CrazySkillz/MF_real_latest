@@ -20973,6 +20973,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return tokens.access_token;
   }
 
+  // Operator-only credential maintenance. Never imports deals or advances campaign refresh state.
+  app.post('/api/hubspot/:campaignId/monitor/renew-token', async (req, res) => {
+    const secret = process.env.HUBSPOT_MONITOR_SECRET || '';
+    const supplied = String(req.headers['x-hubspot-monitor-key'] || '');
+    if (!/^[a-f0-9]{64}$/.test(secret) || !/^[a-f0-9]{64}$/.test(supplied)
+      || !timingSafeEqual(Buffer.from(secret, 'hex'), Buffer.from(supplied, 'hex'))) {
+      return res.status(401).json({ error: 'Monitor authentication required' });
+    }
+    const input = z.object({ connectionId: z.string().uuid() }).strict().safeParse(req.body);
+    if (!z.string().uuid().safeParse(req.params.campaignId).success || !input.success) {
+      return res.status(400).json({ error: 'Invalid connection identity' });
+    }
+    try {
+      const campaign = await storage.getCampaign(req.params.campaignId);
+      const connection = campaign && campaign.status !== 'deleted'
+        ? await storage.getHubspotConnection(req.params.campaignId) : undefined;
+      if (!connection || connection.isActive === false || connection.id !== input.data.connectionId
+        || connection.campaignId !== req.params.campaignId) {
+        return res.status(409).json({ error: 'HubSpot connection unavailable' });
+      }
+      await refreshHubspotToken(connection);
+      res.setHeader('Cache-Control', 'no-store');
+      return res.json({ status: 'ready' });
+    } catch {
+      return res.status(503).json({ error: 'HubSpot credential renewal unavailable' });
+    }
+  });
+
   const hubspotTokenRefreshes = new Map<string, Promise<string>>();
   async function refreshHubspotToken(connection: any, refreshWriteInput: GA4RefreshWriteInput = {}) {
     const connectionId = String(connection?.id || '');

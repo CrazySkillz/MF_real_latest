@@ -58,6 +58,11 @@ export const summarizeGA4TrafficRows = (rows: any[], snapshot?: any, startDate?:
 
   const period = snapshot && startDate && endDate ? getGA4PeriodTraffic(snapshot, startDate, endDate) : null;
   if (snapshot && (snapshot.campaignBreakdown ?? snapshot)?.meta?.distinctUsers?.sessionTotalsVersion && !period) throw new Error('GA4_PERIOD_SESSIONS_UNVERIFIED');
+  const report = snapshot?.campaignBreakdown ?? snapshot;
+  if (period && report.meta.distinctUsers.startDate === startDate && report.meta.distinctUsers.endDate === endDate) {
+    if (typeof report.totals?.revenue !== 'number' || !Number.isFinite(report.totals.revenue)) throw new Error('GA4_PERIOD_REVENUE_UNVERIFIED');
+    totals.revenue = report.totals.revenue;
+  }
   return {
     ...totals,
     conversionRate: null as number | null,

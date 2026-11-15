@@ -153,7 +153,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   }
 
   // Fetch GA4 metrics (website analytics)
-  let ga4Data = { sessions: 0, users: 0 as number | null, pageviews: 0, conversions: 0, revenue: 0 };
+  let ga4Data = { sessions: 0, users: 0 as number | null, pageviews: 0, conversions: 0, revenue: 0, conversionRate: null as number | null };
   let ga4UsersSnapshot: any = null;
   let ga4Connected = false;
   let ga4DailyRows: any[] = [];
@@ -174,6 +174,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         pageviews: ga4DailyRows.reduce((s: number, m: any) => s + (m.pageviews || 0), 0),
         conversions: ga4DailyRows.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
         revenue: ga4DailyRows.reduce((s: number, m: any) => s + parseNum(m.revenue), 0),
+        conversionRate: null,
         ...getGA4PeriodTraffic(ga4UsersSnapshot, ga4FinancialWindow && ga4FinancialWindow.startDate > startDate ? ga4FinancialWindow.startDate : startDate, ga4FinancialWindow?.endDate || endDate),
       };
     }
@@ -478,6 +479,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       conversions: ga4Connected ? ga4Data.conversions : parseNum(customIntegrationData.conversions),
       sessions: ga4Connected ? ga4Data.sessions : parseNum(customIntegrationData.sessions),
       users: ga4Connected ? ga4Data.users : parseNum(customIntegrationData.users),
+      ...(ga4Connected ? { conversionRate: ga4Data.conversionRate } : {}),
     },
     spend: {
       persistedSpend,

@@ -34,7 +34,7 @@ describe('actual PDFs using real GA4 period totals',()=>{
   expect(inputs.summary.engagementRate).toBe(breakdown.totals.engagementRate);
   expect(inputs.campaignRows.map((row:any)=>row.sessions)).toEqual([3159,1358]);
   expect(inputs.summary.conversionRate).toBe(breakdown.meta.distinctUsers.sessionKeyEventRate * 100);
-  expect(inputs.summary.revenue).toBeCloseTo(114314.60, 8); // Daily facts retain their existing precision.
+  expect(inputs.summary.revenue).toBe(114314.62); // The exact saved period total preserves GA4 precision.
   expect(inputs.financial.revenue).toBe(114314.62);
   expect(inputs.campaignRows[0].conversionRate).toBe(breakdown.meta.distinctUsers.campaigns[0].sessionKeyEventRate * 100);
   expect(pdf!.toString('latin1')).toContain('4,472');

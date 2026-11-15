@@ -392,12 +392,16 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
   const ctr = totalImpressions > 0 && clicksSources.length > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
   const webConversionsAvailable = Boolean(webSource && hasSourceMetric(input.webAnalytics, "conversions"));
-  const cvr = webSource && totalSessions > 0 && webConversionsAvailable
+  const ga4Rate = input.webAnalytics?.conversionRate;
+  const cvr = webSource === "ga4"
+      ? typeof ga4Rate === "number" && Number.isFinite(ga4Rate) && ga4Rate >= 0 && ga4Rate <= 100 ? ga4Rate : null
+    : webSource && totalSessions > 0 && webConversionsAvailable
       ? (totalConversions / totalSessions) * 100
     : !webSource && !webProviderConfigured && totalClicks > 0 && paidConversionSources.length > 0
       ? (totalConversions / totalClicks) * 100
       : null;
-  const cvrSources = webSource && totalSessions > 0 && webConversionsAvailable
+  const cvrSources = webSource === "ga4" ? cvr !== null ? ["ga4.sessionKeyEventRate"] : []
+    : webSource && totalSessions > 0 && webConversionsAvailable
       ? ["conversions", "sessions"]
     : !webSource && !webProviderConfigured && totalClicks > 0 && paidConversionSources.length > 0
       ? ["conversions", "clicks"]

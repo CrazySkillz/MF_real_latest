@@ -1645,9 +1645,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
-    const totalMetric = selectedMetric === "users" ? payload.breakdownTotals.users ?? Number.NaN : selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
+    const totalMetric = selectedMetric === "sessions" ? payload.breakdownTotals.sessions : selectedMetric === "users" ? payload.breakdownTotals.users ?? Number.NaN : selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
       ? (() => {
-          const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
+          const totalSessions = payload.breakdownTotals.sessions;
           const totalConversions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversions || 0), 0);
           return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
         })()

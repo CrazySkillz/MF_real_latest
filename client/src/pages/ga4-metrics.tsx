@@ -4152,9 +4152,9 @@ export default function GA4Metrics() {
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
       const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
-      const totalMetric = selectedMetric === "users" ? overviewSummaryTotals.users ?? Number.NaN : selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
+      const totalMetric = selectedMetric === "sessions" ? overviewSummaryTotals.sessions : selectedMetric === "users" ? overviewSummaryTotals.users ?? Number.NaN : selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
         ? (() => {
-            const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
+            const totalSessions = overviewSummaryTotals.sessions;
             const totalConversions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversions || 0), 0);
             return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
           })()
@@ -9560,6 +9560,7 @@ export default function GA4Metrics() {
                     chartCampaignRows={adComparisonChartRows}
                     chartRevenue={adComparisonChartRevenue}
                               chartUsers={overviewSummaryTotals.users}
+                    chartSessions={overviewSummaryTotals.sessions}
                     breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}
                     breakdownUnavailable={adComparisonBreakdownUnavailable}
                     breakdownStale={Boolean(adComparisonBreakdownError && adComparisonBreakdown !== undefined)}

@@ -34,7 +34,7 @@ describe('actual PDFs using real GA4 period totals',()=>{
   expect(inputs.summary.engagementRate).toBe(breakdown.totals.engagementRate);
   expect(inputs.campaignRows.map((row:any)=>row.sessions)).toEqual([3159,1358]);
   expect(inputs.campaignRows[0].conversionRate).toBe(322/3159*100);
-  if(reportType!=='ads')expect(pdf!.toString('latin1')).toContain('4,472');
+  expect(pdf!.toString('latin1')).toContain('4,472');
   expect(pdf!.toString('latin1')).not.toContain('(4,497)');
   expect(globalThis.fetch).not.toHaveBeenCalled();
  });

@@ -36,7 +36,7 @@ export async function renewHubspotMonitorCredentials(snapshot: LiveNumberSnapsho
   if (!connections.size) return false;
   const secret = process.env.HUBSPOT_MONITOR_SECRET || "";
   if (!baseUrl || !/^[a-f0-9]{64}$/.test(secret)) throw new Error("HUBSPOT_MONITOR_RENEWAL_UNAVAILABLE");
-  for (const connection of connections.values()) {
+  for (const connection of Array.from(connections.values())) {
     if (!connection.id || connection.isActive === false || connection.campaignId !== snapshot.campaign.id) throw new Error("HUBSPOT_MONITOR_RENEWAL_UNAVAILABLE");
     const response = await request(new URL(`/api/hubspot/${encodeURIComponent(snapshot.campaign.id)}/monitor/renew-token`, baseUrl), {
       method: "POST", redirect: "error", signal: AbortSignal.timeout(45_000),

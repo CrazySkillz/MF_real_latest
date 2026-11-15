@@ -27,7 +27,7 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.comparisonRateDefinition === undefined) return root;
   const nativeValuesPath = join(root, "scripts/monitor-current-day-native-values.json");
   const nativeValues = application.reportingMode === "current_day" && existsSync(nativeValuesPath)
-    && revision(root, true, true, "-native-values").expectedCommit === application.expectedCommit;
+    && (() => { const value = revision(root, true, true, "-native-values"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const periodSessionsPath = join(root, "scripts/monitor-current-day-period-sessions.json");
   const periodSessions = application.reportingMode === "current_day" && existsSync(periodSessionsPath)
     && (() => { const value = revision(root, true, true, "-period-sessions"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();

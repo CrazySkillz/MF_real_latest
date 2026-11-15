@@ -204,11 +204,15 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   expect(() => monitorApplicationDirectory(periodApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...periodApp, expectedCommit: "47".repeat(20) }, root)).toThrow();
   const nativeApp = { ...periodApp, expectedCommit: "af".repeat(20), comparisonRateDefinition: "ga4_session_key_event_rate" };
-  writeFileSync(join(root, "scripts/monitor-current-day-native-values.json"), JSON.stringify({ expectedCommit: nativeApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("native\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-native-values.json"), JSON.stringify({ expectedCommit: nativeApp.expectedCommit, equivalentCommits: ["48".repeat(20)], files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("native\n") })) }));
   writeFileSync(join(root, "scripts/monitor-current-day-native-values.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+native\n`).join(""));
   const nativePrepared = prepareMonitorApplication(root, true, true, "-native-values");
   expect(monitorApplicationDirectory(nativeApp, root)).toBe(nativePrepared);
+  expect(monitorApplicationDirectory({ ...nativeApp, expectedCommit: "48".repeat(20) }, root)).toBe(nativePrepared);
   expect(() => monitorApplicationDirectory({ ...nativeApp, comparisonRateDefinition: "conversions_per_session" }, root)).toThrow();
+  writeFileSync(join(nativePrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory(nativeApp, root)).toThrow();
+  expect(() => monitorApplicationDirectory({ ...nativeApp, expectedCommit: "48".repeat(20) }, root)).toThrow();
   writeFileSync(join(overviewNoticePrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(overviewNoticeApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...overviewNoticeApp, expectedCommit: "ae".repeat(20) }, root)).toThrow();

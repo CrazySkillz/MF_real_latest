@@ -46,7 +46,7 @@ describe('whole-period Sessions from recorded real GA4 responses', () => {
     expect(result.conversions).toBe(440);
     expect(result.conversionRate?.toFixed(1)).toBe('9.6');
     expect((result.engagementRate * 100).toFixed(1)).toBe('72.6');
-    expect(result.revenue).toBe(summarizeGA4TrafficRows(daily).revenue);
+    expect(result.revenue).toBe(Number(Number(evidence.reference.rows[0].metricValues[2].value).toFixed(2)));
     expect(JSON.stringify(daily)).toBe(before);
   });
   it('keeps exact campaign and historical-window totals without subtracting daily Sessions', () => {
@@ -79,6 +79,6 @@ describe('whole-period Sessions from recorded real GA4 responses', () => {
     expect(ga4.sessions).toBe(available ? 4472 : null);
     expect(web.sessions).toBe(available ? 4472 : null);
     expect(ga4.conversions).toBe(440);
-    expect(ga4.revenue).toBe(summarizeGA4TrafficRows(daily).revenue);
+    expect(ga4.revenue).toBe(available ? breakdown.totals.revenue : null);
   });
 });

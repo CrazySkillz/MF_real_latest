@@ -359,7 +359,7 @@ function GA4AdComparison({
               )}
             </div>
             <div className="text-2xl font-bold text-foreground mt-1">
-              {selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, totalMetric)}
+              {fmtMetricValue(selectedMetric, totalMetric)}
             </div>
             <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
           </CardContent>

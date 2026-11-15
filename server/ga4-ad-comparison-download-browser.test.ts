@@ -98,13 +98,15 @@ describe("Ad Comparison precision through the real Reports page", () => {
     const totals = promo
       ? { sessions: 3433, users: 3434, conversions: 316, revenue: 80433.85, pageviews: 5000, engagedSessions: 2482, engagementRate: 2482 / 3433 }
       : { sessions: 604, users: 602, conversions: 40, revenue: 7653.96, pageviews: 1000, engagedSessions: 300, engagementRate: 300 / 604 };
+    const period = { version: 1, sessionTotalsVersion: 1, metric: "totalUsers", propertyId: "123", startDate: start, endDate: day, total: totals.users, ...totals, sessionKeyEventRate: 0.08,
+      campaigns: rows.map(row => ({ name: row.campaign, ...row, engagedSessions: 0, engagementRate: 0 })) };
     const financialTotal = promo ? 80683.85 : 8003.96;
     const totalLabel = promo ? "80,683.85" : "8,003.96", nativeLabel = promo ? "80,433.85" : "7,653.96";
     let providerRequests = 0;
     const storage = {
       getGA4Connection: async () => ({ propertyId: "123", importStartDate: start, accessToken: "expired" }),
       getGA4OverviewSnapshot: async () => ({ campaignId: "a", propertyId: "123", windowStart: start, windowEnd: day, updatedAt,
-        campaignBreakdown: { rows, totals, meta: { currencyCode: "EUR", revenueMetric: "totalRevenue" } } }),
+        campaignBreakdown: { rows, totals, meta: { currencyCode: "EUR", revenueMetric: "totalRevenue", propertyId: "123", distinctUsers: period } } }),
       getLatestGA4DailyMetric: async () => ({ date: day }),
     };
     const breakdownHandler = compileRoute("route", { storage,
@@ -154,10 +156,10 @@ describe("Ad Comparison precision through the real Reports page", () => {
           nextCheckAt: new Date(Date.now() + (publicationGap ? 60_000 : 6 * 60 * 60_000)).toISOString() };
         if (failed === "status") { status = 503; data = { success: false, error: "fixture status failure" }; }
       } else if (url.pathname.endsWith("/ga4-daily")) {
-        data = { success: true, propertyId: "123", startDate: start, overviewStartDate: start, endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
+        data = { success: true, propertyId: "123", startDate: start, overviewStartDate: start, endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: { ...totals, conversionRate: 8 }, data: [{ date: day, ...totals }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
         if (failed === "daily") { status = 503; data = { success: false, error: "fixture daily failure" }; }
       } else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: { financialDaily: { currency: "EUR", currentValueWindow: { startDate: start, endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: financialTotal + (financialMismatch ? 1 : 0) }, spend: { available: false }, conversions: { available: true, value: totals.conversions } } } } } };
-      else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, totals, rows, revenueWindow: { source: "ga4", startDate: start, endDate: day }, meta: { currencyCode: "EUR" } };
+      else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, totals, rows, revenueWindow: { source: "ga4", startDate: start, endDate: day }, meta: { currencyCode: "EUR", propertyId: "123", distinctUsers: period } };
       else if (url.pathname.endsWith("/ga4-to-date")) data = { success: true, propertyId: "123", startDate: start, endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals };
       else if (url.pathname.endsWith("/ga4-landing-pages") || url.pathname.endsWith("/ga4-conversion-events")) data = { success: true, propertyId: "123", startDate: start, endDate: day, lastUpdated: updatedAt, rows: [] };
       else if (url.pathname.includes("/platforms/google_analytics/")) data = contextKind === "background-read" && url.pathname.endsWith("/reports")
@@ -222,7 +224,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
       if (pipelineJourney) {
         expect(bytes.toString("latin1")).toContain("OVERALL CONVERSION RATE");
         expect(bytes.toString("latin1")).toContain("6.6%");
-        expect(bytes.toString("latin1")).toContain("5.49%");
+        expect(bytes.toString("latin1")).toContain("4.62%");
         expect(bytes.toString("latin1")).not.toContain("EUR 7,653.95");
       }
       const artifact = "docs/fixes/v1-batch-7/validation-2026-10-26/precision2-ui-download.pdf";
@@ -307,7 +309,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
         for (const [label, campaign, detail] of [
           ["Most Key Events", "yesop_paid_social", "21 Key Events"],
           ["Highest Conversion Rate", "yesop_paid_social", "8.14%"],
-          ["Needs Attention", "yesop_prospecting", "5.49%"],
+          ["Needs Attention", "yesop_prospecting", "4.62%"],
         ]) {
           const card = page.getByText(label, { exact: true }).locator("../..");
           await browserExpect(card).toContainText(campaign);

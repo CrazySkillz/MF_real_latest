@@ -1697,7 +1697,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       doc.setFontSize(6.5); doc.setTextColor(...COLORS.textTert); doc.text(formatMetricValue(selectedMetric, maxValue), chartX + chartW, chartY + 1, { align: "right" });
       y += 58;
       const summaryMetricLabel = selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric]}`;
-      metricCards([[summaryMetricLabel, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
+      metricCards([[summaryMetricLabel, formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
       if (selectedMetric === "users") {
         doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textTert);
         doc.text("Users are distinct within each campaign and period; campaign counts can overlap.", MX, y);

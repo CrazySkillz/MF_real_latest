@@ -458,10 +458,10 @@ describe("Browser Overview reports without a Spend source", () => {
   });
   it("prints the available Landing Pages dates with the exact provider row", async () => {
     const report = await render({ ga4LandingPages: { meta: { historyLimited: true, startDate: '2026-09-09', endDate: '2026-11-09' },
-      rows: [{ landingPage: '/landing', source: '(not set)', medium: '(not set)', sessions: 3884, users: 3916, conversions: 394 }] },
+      rows: [{ landingPage: '/landing', source: '(not set)', medium: '(not set)', sessions: 3884, users: 3916, conversions: 394, sessionKeyEventRate: 0.09 }] },
       formatNumber: (value: number) => value.toLocaleString('en-US'), formatPercentage: (value: number) => `${value.toFixed(1)}%` });
     expect(report.content).toContain('Data from 2026-09-09 through 2026-11-09. Earlier landing page data is unavailable in GA4.');
-    for (const value of ['/landing', '3,884', '3,916', '394', '10.1%']) expect(report.words).toContain(value);
+    for (const value of ['/landing', '3,884', '3,916', '394', '9.0%']) expect(report.words).toContain(value);
   });
   it.each([0, 450])("shows a separate configured Pipeline Proxy of %s without adding it to Revenue", async totalToDate => {
     const report = await render({ pipelineProxyConfigured: true, hasPipelineProxy: true, pipelineProxyData: { success: true, totalToDate } });

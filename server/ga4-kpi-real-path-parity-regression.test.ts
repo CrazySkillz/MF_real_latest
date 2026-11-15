@@ -311,7 +311,7 @@ function setSavedReportPublication(startDate = connection.importStartDate, nativ
   storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignId: campaign.id, propertyId: connection.propertyId,
     windowStart: startDate, windowEnd: dailyRow.date, campaignBreakdown: {
       rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: nativeRevenue }], totals: { ...dailyRow, revenue: nativeRevenue },
-      meta: { propertyId: connection.propertyId, revenueMetric: "purchaseRevenue", currencyCode: "USD", distinctUsers: distinctUsersFixture(startDate) },
+      meta: { propertyId: connection.propertyId, revenueMetric: "purchaseRevenue", currencyCode: "USD", distinctUsers: { ...distinctUsersFixture(startDate), sessionTotalsVersion: 1, sessions: 100, engagedSessions: 60, engagementRate: 0.6, sessionKeyEventRate: 0.05 } },
     }, landingPages: { rows: [] }, conversionEvents: { rows: [], totals: { conversions: 5 } } });
   const dates: string[] = [];
   for (let date = startDate; date <= dailyRow.date; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) dates.push(date);
@@ -346,7 +346,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
   it("feeds the authoritative fixture through the actual live-card and browser-PDF value resolver", () => {
     const common = {
-      breakdownTotals: { sessions: 100, users: 80, pageviews: 200, conversions: 5 },
+      breakdownTotals: { sessions: 100, users: 80, pageviews: 200, conversions: 5, conversionRate: 5 },
       overviewEngagementRate: 0.6,
       financialRevenue: 200,
       financialSpend: 100,
@@ -359,6 +359,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   });
 
   it("persists the same fixture through the actual GA4 daily job and exposes it through the KPI API", async () => {
+    Object.assign((await storageMock.getGA4OverviewSnapshot()).campaignBreakdown.meta.distinctUsers, { sessionTotalsVersion: 1, sessions: 100, engagedSessions: 60, engagementRate: 0.6, sessionKeyEventRate: 0.05 });
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
     expect(result.campaignsProcessed).toBe(1);
     expect(result.campaignIdsProcessed).toEqual([campaign.id]);
@@ -1339,6 +1340,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   });
 
   it("persists every supported Benchmark alias through the actual daily job and preserves custom values", async () => {
+    Object.assign((await storageMock.getGA4OverviewSnapshot()).campaignBreakdown.meta.distinctUsers, { sessionTotalsVersion: 1, sessions: 100, engagedSessions: 60, engagementRate: 0.6, sessionKeyEventRate: 0.05 });
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
     const computedRows = benchmarkRows.slice(0, -1);
 

@@ -4251,7 +4251,7 @@ export default function GA4Metrics() {
           }
 
           const adSummaryCards: [string, string][] = [
-            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, selectedMetric === "conversionRate" && !chartSummaryRows.some(row => row.sessions > 0) ? "Unavailable" : fmtMetricValue(selectedMetric, totalMetric)],
+            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, totalMetric)],
             ["Campaigns Compared", String(sortedByMetric.length)],
           ];
           const sumW = (CW - 4) / 2;

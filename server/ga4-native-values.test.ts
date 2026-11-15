@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import evidence from './fixtures/ga4-native-values-real-2026-11-15.json';
-import { ga4Service } from './analytics';
+import { ga4Service, GoogleAnalytics4Service } from './analytics';
+import { checkGA4SourceNumbers } from './ga4-source-verification';
 import { getGA4PeriodTraffic, summarizeGA4TrafficRows } from '../shared/ga4-traffic-window';
 import { resolveGA4KpiLiveValue } from '../shared/ga4-kpi-live-value';
 import { formatGA4AdComparisonCardPct } from '../shared/ga4-ad-comparison-cards';
@@ -10,6 +11,21 @@ const sourceNumbers = reference.rows[0].metricValues.map(row => Number(row.value
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('native GA4 revenue precision and session key-event rate — recorded real API data', () => {
+  it('source verification detects a saved native rate that differs from the real provider response', async () => {
+    vi.spyOn(GoogleAnalytics4Service.prototype, 'getTimeSeriesWithToken').mockResolvedValue(evidence.daily as any);
+    vi.spyOn(GoogleAnalytics4Service.prototype, 'getAcquisitionBreakdown').mockResolvedValue(breakdown as any);
+    vi.spyOn(GoogleAnalytics4Service.prototype, 'getLandingPagesReport').mockResolvedValue(evidence.landing as any);
+    vi.spyOn(GoogleAnalytics4Service.prototype, 'getConversionEventsReport').mockResolvedValue({ rows: [] } as any);
+    const saved = structuredClone(breakdown);
+    const input = { campaignId: 'recorded', connection: { propertyId: scope.propertyId, accessToken: 'no-network' },
+      publication: { campaignBreakdown: saved, landingPages: evidence.landing, conversionEvents: { rows: [] } },
+      filter: scope.campaigns, startDate: scope.startDate, endDate: scope.endDate, currency: 'EUR' };
+    let checks = await checkGA4SourceNumbers(input, evidence.daily);
+    expect(checks).toContainEqual(expect.objectContaining({ code: 'SOURCE_SESSION_KEY_EVENT_RATE', status: 'passed' }));
+    saved.meta.distinctUsers.sessionKeyEventRate = 440 / 4472;
+    checks = await checkGA4SourceNumbers(input, evidence.daily);
+    expect(checks).toContainEqual(expect.objectContaining({ code: 'SOURCE_SESSION_KEY_EVENT_RATE', status: 'difference' }));
+  });
   it('rounds the provider revenue once, instead of rounding every daily contribution', () => {
     const report = evidence.requests.find(row => row.request.dimensions?.[0]?.name === 'date'
       && row.request.metrics.map(m => m.name).join(',') === 'sessions,totalUsers,conversions,totalRevenue,engagedSessions,sessionKeyEventRate'

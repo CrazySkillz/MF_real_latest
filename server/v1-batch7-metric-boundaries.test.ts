@@ -67,7 +67,7 @@ describe("Batch 7 metric display and data-state boundaries", () => {
     expect(normalizeRateToPercent(0.005)).toBe(0.5);
   });
   it.each([0, 100])("V1-098 zero sessions withhold ratios; measured zero conversions remain zero (sessions %s)", sessions => {
-    const response = { success: true, propertyId: "p", startDate: "2026-10-17", endDate: "2026-10-18", dataThroughDate: "2026-10-18", overviewStartDate: "2026-10-01", overviewTotals: { users: sessions, sessions, conversions: 0, engagedSessions: 0 }, data: [daily("2026-10-17", 0), daily("2026-10-18", 0)].map(row => ({ ...row, conversions: 0 })) };
+    const response = { success: true, propertyId: "p", startDate: "2026-10-17", endDate: "2026-10-18", dataThroughDate: "2026-10-18", overviewStartDate: "2026-10-01", overviewTotals: { users: sessions, sessions, conversions: 0, engagedSessions: 0, conversionRate: sessions ? 0 : null }, data: [daily("2026-10-17", 0), daily("2026-10-18", 0)].map(row => ({ ...row, conversions: 0 })) };
     const result = deriveExactCumulativeGA4Traffic(response, "2026-10-16");
     expect(result?.current.cvr).toBe(sessions ? 0 : null);
     expect(result?.previous.engagementRate).toBe(sessions ? 0 : null);
@@ -119,7 +119,7 @@ describe("Batch 7 metric display and data-state boundaries", () => {
     expect(result).toEqual({ sessions: mode === "recorded-zero" ? 0 : null, conversions: mode === "recorded-zero" ? 0 : null, pageviews: mode === "recorded-zero" ? 0 : null, users: null, revenue: mode === "recorded-zero" ? 0 : null, bounceRate: null });
   });
   it.each([0, 100])("V1-098 report headline ratios preserve unavailable versus zero (%s sessions)", sessions => {
-    const values = { users: 0, sessions, conversions: 0, engagedSessions: 0 };
+    const values = { users: 0, sessions, conversions: 0, engagedSessions: 0, conversionRate: sessions ? 0 : null };
     for (const [name, variable] of [["trendCurrentMetric", "performancePageTrafficTotals"], ["trendPreviousMetric", "trendPreviousTrafficTotals"]]) {
       const metric = binding(report, name, { [variable]: values });
       expect(metric("cvr")).toBe(sessions ? 0 : null);

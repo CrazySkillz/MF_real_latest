@@ -230,7 +230,7 @@ describe("GA4 Overview Campaign Breakdown", () => {
   it("keeps the exact UI columns, Overview conversion-rate definition, and current row ordering", () => {
     const table = between(client, "{/* Campaign Breakdown */}", "{/* Landing Pages */}");
     expect(table).toMatch(/Campaign[\s\S]*Sessions[\s\S]*Users[\s\S]*Conversions[\s\S]*Conv\. Rate[\s\S]*Revenue/);
-    expect(client).toContain("conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0");
+    expect(client).toContain("conversionRate: getGA4PeriodTraffic(ga4Breakdown, ga4Breakdown?.startDate, ga4Breakdown?.endDate, c.name)?.conversionRate ?? Number.NaN");
     expect(client).toContain(".sort((a, b) => b.sessions - a.sessions)");
     expect(table).toContain("adComparisonChartRows.map");
   });

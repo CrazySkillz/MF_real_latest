@@ -45,7 +45,7 @@ export function readOnlyMonitorDatabaseUrl(raw: string, expectedFingerprint: str
   return url.toString();
 }
 
-export function readOnlyMonitorFetch(request: typeof fetch): typeof fetch {
+export function readOnlyMonitorFetch(request: typeof fetch, credentialRenewalOrigin?: string): typeof fetch {
   let requests = 0;
   return async (input, options = {}) => {
     if (++requests > 300) throw new Error("MONITOR_PROVIDER_REQUEST_LIMIT");
@@ -60,6 +60,11 @@ export function readOnlyMonitorFetch(request: typeof fetch): typeof fetch {
       allowed = (host === "analyticsdata.googleapis.com" && /^\/v1beta\/properties\/\d+:runReport$/.test(path))
         || (host === "api.hubapi.com" && path === "/crm/v3/objects/deals/search")
         || (host === "oauth2.googleapis.com" && path === "/token" && new URLSearchParams(String(options.body)).get("grant_type") === "refresh_token");
+      if (credentialRenewalOrigin && url.origin === new URL(credentialRenewalOrigin).origin
+        && /^\/api\/hubspot\/[a-f0-9-]{36}\/monitor\/renew-token$/.test(path) && !url.search && !url.hash) {
+        try { allowed = z.object({ connectionId: z.string().uuid() }).strict().safeParse(JSON.parse(String(options.body))).success; }
+        catch { allowed = false; }
+      }
       if (host === "iamcredentials.googleapis.com" && /^\/v1\/projects\/-\/serviceAccounts\/\d+:generateAccessToken$/.test(path)) {
         try {
           allowed = z.object({ scope: z.tuple([z.enum(["https://www.googleapis.com/auth/analytics.readonly", "https://www.googleapis.com/auth/adwords", "https://www.googleapis.com/auth/spreadsheets.readonly"])]),
@@ -99,7 +104,7 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
     for (const key of ["TOKEN_ENCRYPTION_KEY", "ENCRYPTION_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GA4_SERVICE_ACCOUNT_JSON", "GA4_CLIENT_SERVICE_ACCOUNT_JSON",
       "GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS", "GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON", "SERVICE_ACCOUNT_RESOURCE_GRANTS", "SHOPIFY_API_VERSION", "SALESFORCE_API_VERSION",
       "GOOGLE_ADS_SERVICE_ACCOUNT_JSON", "GOOGLE_ADS_SERVICE_ACCOUNT_ALLOWED_CUSTOMER_IDS", "GOOGLE_ADS_SERVICE_ACCOUNT_LOGIN_CUSTOMER_ID",
-      "GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_DEVELOPER_TOKEN"]) {
+      "GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_DEVELOPER_TOKEN", "HUBSPOT_MONITOR_SECRET"]) {
       const value = process.env[config.credentialsEnvironmentPrefix + key];
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
@@ -115,13 +120,20 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
     const guard = await pool.query("SELECT current_setting('default_transaction_read_only') AS read_only");
     if (guard.rows[0]?.read_only !== "on") throw new Error("MONITOR_READ_ONLY_GUARD_FAILED");
     const { storage } = await import("../server/storage");
-    const { checkGA4ProviderNumbers, checkFinancialProviderNumbers, checkPipelineProviderNumbers } = await import("../server/live-number-provider-checks");
+    const { checkGA4ProviderNumbers, checkFinancialProviderNumbers, checkPipelineProviderNumbers, renewHubspotMonitorCredentials, hubspotCredentialRenewalPreservesInputs } = await import("../server/live-number-provider-checks");
     const { checkSavedReportNumbers, separateReviewedReportHistory, restoreLegacyReportInputOrder } = await import("../server/live-number-report-checks");
     for (const { campaignIdHash, reportingTimeZone, historicalReports } of dueCampaigns) {
       const now = new Date();
       try {
-        const before = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
+        let before = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         if (before.campaign.reportingTimeZone !== reportingTimeZone) throw new Error("MONITOR_TIMEZONE_CHANGED");
+        const preflight = checkStoredNumbers(before, now);
+        if (!preflight.some(check => check.section === "scope")
+          && await renewHubspotMonitorCredentials(before, config.application?.baseUrl)) {
+          const renewed = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
+          if (!hubspotCredentialRenewalPreservesInputs(before, renewed)) throw new Error("MONITOR_INPUT_CHANGED_DURING_RENEWAL");
+          before = renewed;
+        }
         const reportRead = { ...restoreLegacyReportInputOrder(before), usersDefinition: config.application?.usersDefinition };
         const checks = checkStoredNumbers(reportRead, now);
         checks.push(...await checkSavedReportNumbers(reportRead));
@@ -157,11 +169,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   // Existing provider helpers log raw report samples. Suppress those in this isolated process, never in the app.
   const original = { log: console.log, warn: console.warn, error: console.error };
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = readOnlyMonitorFetch(originalFetch);
   console.log = console.warn = console.error = () => {};
   try {
     if (process.argv.length !== 3 && !(process.argv.length === 4 && process.argv[3] === "--scheduled")) throw new Error("MONITOR_CONFIGURATION_INVALID");
-    const results = await runLiveNumberMonitor(JSON.parse(readFileSync(process.argv[2], "utf8")), process.argv[3] === "--scheduled");
+    const config = liveNumberConfigSchema.parse(JSON.parse(readFileSync(process.argv[2], "utf8")));
+    globalThis.fetch = readOnlyMonitorFetch(originalFetch, config.application?.baseUrl);
+    const results = await runLiveNumberMonitor(config, process.argv[3] === "--scheduled");
     // Bounded, redacted receipts: no tokens, customer names, URLs, source rows or raw provider errors.
     for (const result of results) {
       const groups = new Map<string, NumberCheck & { count: number }>();

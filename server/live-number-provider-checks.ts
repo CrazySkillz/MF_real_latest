@@ -11,7 +11,7 @@ import { escapeSalesforceSoqlStringLiteral, isSafeSalesforceFieldPath } from "./
 import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain,
   requireShopifyOrderWindowScopes, shopifyAdminFetch } from "./utils/shopify-provider";
 import { getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderUtm } from "./utils/shopify-revenue";
-import { compareNumber, dateIsValid, monitorHash, numberOrNull, parseMonitorMapping, resolveMonitorScope,
+import { compareNumber, dateIsValid, monitorHash, numberOrNull, parseMonitorMapping, resolveMonitorScope, snapshotFingerprint,
   type LiveNumberSnapshot, type NumberCheck } from "./live-number-checks";
 
 // Generic providers never renew rotating tokens. Google has a separate in-memory access-token exchange below.
@@ -22,6 +22,35 @@ export function monitorCredential(connection: any, now = Date.now()): string {
   const token = connection.encryptedTokens ? decryptTokens(connection.encryptedTokens).accessToken : connection.accessToken;
   if (!token) throw new Error("PROVIDER_CREDENTIAL_UNAVAILABLE");
   return token;
+}
+
+// Renew through the application's existing credential-only path before comparison snapshots.
+// The monitor itself retains its database read-only guard and never receives tokens over HTTP.
+export async function renewHubspotMonitorCredentials(snapshot: LiveNumberSnapshot, baseUrl?: string, request: typeof fetch = fetch): Promise<boolean> {
+  const connections = new Map<string, any>();
+  for (const source of snapshot.rows.revenueSources || []) {
+    if (!source.isActive || source.platformContext !== "ga4" || source.sourceType !== "hubspot") continue;
+    const connection = uniqueConnection(snapshot, "hubspotConnections", source, parseMonitorMapping(source.mappingConfig));
+    try { monitorCredential(connection); } catch { connections.set(String(connection.id), connection); }
+  }
+  if (!connections.size) return false;
+  const secret = process.env.HUBSPOT_MONITOR_SECRET || "";
+  if (!baseUrl || !/^[a-f0-9]{64}$/.test(secret)) throw new Error("HUBSPOT_MONITOR_RENEWAL_UNAVAILABLE");
+  for (const connection of connections.values()) {
+    if (!connection.id || connection.isActive === false || connection.campaignId !== snapshot.campaign.id) throw new Error("HUBSPOT_MONITOR_RENEWAL_UNAVAILABLE");
+    const response = await request(new URL(`/api/hubspot/${encodeURIComponent(snapshot.campaign.id)}/monitor/renew-token`, baseUrl), {
+      method: "POST", redirect: "error", signal: AbortSignal.timeout(45_000),
+      headers: { "Content-Type": "application/json", "x-hubspot-monitor-key": secret }, body: JSON.stringify({ connectionId: connection.id }),
+    });
+    if (!response.ok || (await response.json())?.status !== "ready") throw new Error("HUBSPOT_MONITOR_RENEWAL_UNAVAILABLE");
+  }
+  return true;
+}
+
+export function hubspotCredentialRenewalPreservesInputs(before: LiveNumberSnapshot, after: LiveNumberSnapshot): boolean {
+  const withoutCredentials = (value: LiveNumberSnapshot) => ({ ...value, rows: { ...value.rows,
+    hubspotConnections: (value.rows.hubspotConnections || []).map(({ accessToken, refreshToken, clientSecret, encryptedTokens, expiresAt, ...rest }: any) => rest) } });
+  return snapshotFingerprint(withoutCredentials(before)) === snapshotFingerprint(withoutCredentials(after));
 }
 
 export async function googleMonitorCredential(connection: any, request: typeof fetch = fetch): Promise<string> {

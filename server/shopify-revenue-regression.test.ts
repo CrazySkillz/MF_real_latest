@@ -495,7 +495,7 @@ describe("Shopify revenue regression guard", () => {
     );
     const connectionResolver = routeSection(
       routes,
-      "const getShopifyConnectionForCampaign = async (campaignId: string, refreshWriteInput: GA4RefreshWriteInput = {}) => {",
+      "const getShopifyConnectionForCampaign = async (",
       "/**\n   * Auto-recalculate Shopify conversion value",
     );
     const adminConnect = routeSection(

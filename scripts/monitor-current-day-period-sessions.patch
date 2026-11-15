@@ -2395,7 +2395,7 @@ index 5aa87de3..e9e98027 100644
        !usesFinancialSource || useSavedOverview || isYesopMockProperty(propertyId) ? Promise.resolve(null)
          : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
 -      usesFinancialSource
-+      usesFinancialSource || metric === "users"
++      usesFinancialSource || metric === "users" || metric === "sessions" || metric === "engagement_rate"
          ? readSource("overview-snapshot", [financialStartDate, endDate],
            () => storage.getGA4OverviewSnapshot(campaignId, propertyId),
            (value) => !!value).catch(() => null as any)

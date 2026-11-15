@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "236c4b963063c2381f47f8573d14810311530e06",
+  "expectedCommit": "9d46756fb0b7cbe451615150cebef0b894190060",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -139,7 +139,7 @@
     {
       "path": "server/utils/ga4-alert-current-value.ts",
       "before": "31293eb166296d3b7855736307422b1bdd8af1cab77c882e9577a189e77af65d",
-      "after": "9afcf03b81f74cedf37d6d7db64b687107c20885f12ed3459f3f676ae1064b57"
+      "after": "890d04e328aa854d78999ff64dde6c2dae2fa3db5bdd961c636a6f5ced4b1893"
     },
     {
       "path": "server/utils/performance-summary-aggregate.ts",
@@ -198,6 +198,6 @@
     }
   ],
   "equivalentCommits": [
-    "210c6ccb25ef4b3894383a3413795ccee55b407f"
+    "19cb6e603c507a055e805a400e2eaf455bb88260"
   ]
 }

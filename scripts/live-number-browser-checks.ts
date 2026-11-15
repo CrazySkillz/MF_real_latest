@@ -319,7 +319,7 @@ export async function checkBrowserNumbers(snapshot: LiveNumberSnapshot, outputs:
         const original = snapshot.rows[kind + "Sources"].find(r => r.id === source.id);
         const name = kind === "revenue" && ["shopify", "google_sheets", "csv", "ga4"].includes(original?.sourceType)
           ? ({ shopify: "Shopify", google_sheets: "Google Sheets", csv: "CSV", ga4: "Imported GA4 Revenue" } as Record<string, string>)[original.sourceType]
-          : original?.displayName || original?.sourceType;
+          : kind === "revenue" && original?.sourceType === "hubspot" ? "HubSpot" : original?.displayName || original?.sourceType;
         const amount = await dialog.evaluate((root, name) => {
           const leaves=[...root.querySelectorAll('p,span,div')].filter(el=>el.children.length===0);
           const headings=[...root.querySelectorAll('p[title]')].filter(el=>el.textContent?.trim()===name);

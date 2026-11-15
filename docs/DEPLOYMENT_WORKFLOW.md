@@ -6,7 +6,9 @@ GitHub runs `Tests / unit-tests` on each pushed commit and on manual workflow di
 
 Keep the existing main-branch protection: an up-to-date pull request, successful `unit-tests` from GitHub Actions app 15368, administrator enforcement, and no force pushes or branch deletion. A missing, failed or cancelled head check must not be used for release. Fork contributions must be brought onto a maintainer-controlled branch for this workflow; do not bypass missing checks.
 
-The required job still performs the clean dependency installation, TypeScript check, production build, certification gate, and complete current-version test suite with isolated PostgreSQL and browser tests. The existing deferred-source evidence remains non-blocking. No calculation tests or assertions have been removed.
+The required `unit-tests` check waits for the TypeScript/build/certification job and all three test groups. Each test group uses a separate Ubuntu runner, checkout, temporary files and PostgreSQL service with its own GA4 and notification fixture databases. The complete current-version suite uses Vitest's file sharding, with the existing two workers and assertion policy retained inside each group. The production build runs once. Existing deferred-source evidence remains non-blocking; no calculation tests or assertions are removed.
+
+The final check runs even when a dependency fails or is skipped, and requires every build/test group to succeed. It then verifies receipts from all three groups belong to this exact commit, workflow run and attempt; their combined files must match the freshly discovered full test-file inventory exactly once. Missing, duplicate, stale or incomplete results block release. The full deferred identity inventory remains enforced across the groups. `npm run test:current-version` without the CI shard variable still runs the full suite locally.
 
 Dependency downloads are cached by `package-lock.json`; `npm ci` still runs. A newer run on the same feature branch cancels obsolete work. Main-branch runs are not cancelled. The post-merge main check remains required before Render auto-deploys.
 

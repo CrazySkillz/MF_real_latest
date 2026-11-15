@@ -5507,3 +5507,121 @@ index f3757e14..ddf228a9 100644
    async function refreshHubspotToken(connection: any, refreshWriteInput: GA4RefreshWriteInput = {}) {
      const connectionId = String(connection?.id || '');
 
+
+diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
+index ddf228a9..3e79081c 100644
+--- a/server/routes-oauth.ts
++++ b/server/routes-oauth.ts
+@@ -21067,7 +21067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+   }
+ 
+   const salesforceTokenRefreshes = new Map<string, Promise<string>>();
+-  async function refreshSalesforceToken(connection: any, force = false, refreshWriteInput: GA4RefreshWriteInput = {}) {
++  async function refreshSalesforceToken(connection: any, force = false, refreshWriteInput: GA4RefreshWriteInput = {}, monitorOnly = false) {
+     const connectionId = String(connection?.id || '');
+     const campaignId = String(connection?.campaignId || '');
+     if (!connectionId || !campaignId) throw new Error('Salesforce connection identity is missing');
+@@ -21115,13 +21115,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       const updateData: any = {
+         accessToken: json.access_token,
+         expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+-        instanceUrl: json.instance_url || latest.instanceUrl || null,
++        ...(monitorOnly ? {} : { instanceUrl: json.instance_url || latest.instanceUrl || null }),
+       };
+       if (json.refresh_token) updateData.refreshToken = String(json.refresh_token);
+       const updated: any = await storage.updateSalesforceConnection(connectionId, updateData, { ...refreshWriteInput, expectedConnection: latest });
+       if (!updated?.accessToken || (json.refresh_token && updated.refreshToken !== String(json.refresh_token))) {
+         throw new Error('Failed to persist renewed Salesforce OAuth credentials');
+       }
++      if (monitorOnly && json.instance_url && json.instance_url !== latest.instanceUrl) {
++        throw new Error('Salesforce instance changed. Reconnect to confirm the new host.');
++      }
+       return String(updated.accessToken);
+     })();
+     salesforceTokenRefreshes.set(refreshKey, refreshPromise);
+@@ -34710,9 +34713,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       .filter(Boolean);
+   };
+ 
+-  const getShopifyConnectionForCampaign = async (campaignId: string, refreshWriteInput: GA4RefreshWriteInput = {}) => {
++  const getShopifyConnectionForCampaign = async (campaignId: string, refreshWriteInput: GA4RefreshWriteInput = {}, monitorConnectionId?: string) => {
+     const conn: any = await storage.getShopifyConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
+-    if (!conn || !conn.isActive || !conn.accessToken || !conn.shopDomain) {
++    if (!conn || !conn.isActive || !conn.accessToken || !conn.shopDomain || (monitorConnectionId && conn.id !== monitorConnectionId)) {
+       throw new Error("No active Shopify connection found for this campaign.");
+     }
+     let config: any = {};
+@@ -34765,9 +34768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       requireShopifyOrderScope(grantedScopesList);
+       const nextConfig = {
+         ...latestConfig,
+-        authType: 'oauth',
+-        grantedScopes: grantedScopesRaw,
+-        grantedScopesList,
++        ...(monitorConnectionId ? {} : { authType: 'oauth', grantedScopes: grantedScopesRaw, grantedScopesList }),
+         accessTokenExpiresAt: token.accessTokenExpiresAt,
+         refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+         tokenUpdatedAt: new Date().toISOString(),
+@@ -34782,6 +34783,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
+     });
+   };
+ 
++  // Credential-only monitor endpoints. Reuse the existing dedicated monitor secret.
++  app.post('/api/salesforce/:campaignId/monitor/renew-token', async (req, res) => {
++    const secret = process.env.HUBSPOT_MONITOR_SECRET || '';
++    const supplied = String(req.headers['x-hubspot-monitor-key'] || '');
++    if (!/^[a-f0-9]{64}$/.test(secret) || !/^[a-f0-9]{64}$/.test(supplied)
++      || !timingSafeEqual(Buffer.from(secret, 'hex'), Buffer.from(supplied, 'hex'))) {
++      return res.status(401).json({ error: 'Monitor authentication required' });
++    }
++    const input = z.object({ connectionId: z.string().uuid() }).strict().safeParse(req.body);
++    if (!z.string().uuid().safeParse(req.params.campaignId).success || !input.success) {
++      return res.status(400).json({ error: 'Invalid connection identity' });
++    }
++    try {
++      const campaign = await storage.getCampaign(req.params.campaignId);
++      const connection = campaign && campaign.status !== 'deleted'
++        ? await storage.getSalesforceConnection(req.params.campaignId) : undefined;
++      if (!connection || connection.isActive === false || connection.id !== input.data.connectionId
++        || connection.campaignId !== req.params.campaignId) {
++        return res.status(409).json({ error: 'Salesforce connection unavailable' });
++      }
++      await refreshSalesforceToken(connection, false, {}, true);
++      res.setHeader('Cache-Control', 'no-store');
++      return res.json({ status: 'ready' });
++    } catch {
++      return res.status(503).json({ error: 'Salesforce credential renewal unavailable' });
++    }
++  });
++
++  app.post('/api/shopify/:campaignId/monitor/renew-token', async (req, res) => {
++    const secret = process.env.HUBSPOT_MONITOR_SECRET || '';
++    const supplied = String(req.headers['x-hubspot-monitor-key'] || '');
++    if (!/^[a-f0-9]{64}$/.test(secret) || !/^[a-f0-9]{64}$/.test(supplied)
++      || !timingSafeEqual(Buffer.from(secret, 'hex'), Buffer.from(supplied, 'hex'))) {
++      return res.status(401).json({ error: 'Monitor authentication required' });
++    }
++    const input = z.object({ connectionId: z.string().uuid() }).strict().safeParse(req.body);
++    if (!z.string().uuid().safeParse(req.params.campaignId).success || !input.success) {
++      return res.status(400).json({ error: 'Invalid connection identity' });
++    }
++    try {
++      const campaign = await storage.getCampaign(req.params.campaignId);
++      const connection = campaign && campaign.status !== 'deleted'
++        ? await storage.getShopifyConnection(req.params.campaignId) : undefined;
++      if (!connection || connection.isActive === false || connection.id !== input.data.connectionId
++        || connection.campaignId !== req.params.campaignId) {
++        return res.status(409).json({ error: 'Shopify connection unavailable' });
++      }
++      await getShopifyConnectionForCampaign(req.params.campaignId, {}, input.data.connectionId);
++      res.setHeader('Cache-Control', 'no-store');
++      return res.json({ status: 'ready' });
++    } catch {
++      return res.status(503).json({ error: 'Shopify credential renewal unavailable' });
++    }
++  });
++
+   const getShopifyConnectionOrderAccess = (connection: any) => {
+     let config: any = {};
+     try { config = connection?.mappingConfig ? JSON.parse(String(connection.mappingConfig)) : {}; } catch { config = {}; }
+

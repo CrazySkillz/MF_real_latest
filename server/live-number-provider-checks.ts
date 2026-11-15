@@ -54,6 +54,46 @@ export function hubspotCredentialRenewalPreservesInputs(before: LiveNumberSnapsh
   return snapshotFingerprint(withoutCredentials(before)) === snapshotFingerprint(withoutCredentials(after));
 }
 
+// Extend credential-only maintenance to renewable Salesforce and Shopify connections.
+export async function renewFinancialMonitorCredentials(snapshot: LiveNumberSnapshot, baseUrl?: string, request: typeof fetch = fetch): Promise<boolean> {
+  let renewed = await renewHubspotMonitorCredentials(snapshot, baseUrl, request);
+  const connections = new Map<string, { provider: string; connection: any }>();
+  for (const source of snapshot.rows.revenueSources || []) {
+    if (!source.isActive || source.platformContext !== "ga4" || !["salesforce", "shopify"].includes(source.sourceType)) continue;
+    const provider = source.sourceType;
+    const connection = uniqueConnection(snapshot, provider === "salesforce" ? "salesforceConnections" : "shopifyConnections", source, parseMonitorMapping(source.mappingConfig));
+    const config = parseMonitorMapping(connection.mappingConfig);
+    if (provider === "shopify" && String(config.authType || "").toLowerCase() !== "oauth") continue;
+    const credential = provider === "shopify" ? { ...connection, expiresAt: config.accessTokenExpiresAt || new Date(0).toISOString() } : connection;
+    try { monitorCredential(credential, Date.now() + 4 * 60_000); }
+    catch { connections.set(provider + ":" + connection.id, { provider, connection }); }
+  }
+  if (!connections.size) return renewed;
+  const secret = process.env.HUBSPOT_MONITOR_SECRET || "";
+  if (!baseUrl || !/^[a-f0-9]{64}$/.test(secret)) throw new Error("PROVIDER_MONITOR_RENEWAL_UNAVAILABLE");
+  for (const { provider, connection } of Array.from(connections.values())) {
+    if (!connection.id || connection.isActive === false || connection.campaignId !== snapshot.campaign.id) throw new Error("PROVIDER_MONITOR_RENEWAL_UNAVAILABLE");
+    const response = await request(new URL(`/api/${provider}/${encodeURIComponent(snapshot.campaign.id)}/monitor/renew-token`, baseUrl), {
+      method: "POST", redirect: "error", signal: AbortSignal.timeout(45_000),
+      headers: { "Content-Type": "application/json", "x-hubspot-monitor-key": secret }, body: JSON.stringify({ connectionId: connection.id }),
+    });
+    if (!response.ok || (await response.json())?.status !== "ready") throw new Error("PROVIDER_MONITOR_RENEWAL_UNAVAILABLE");
+    renewed = true;
+  }
+  return renewed;
+}
+
+export function financialCredentialRenewalPreservesInputs(before: LiveNumberSnapshot, after: LiveNumberSnapshot): boolean {
+  const withoutCredentials = (value: LiveNumberSnapshot): LiveNumberSnapshot => ({ ...value, rows: { ...value.rows,
+    salesforceConnections: (value.rows.salesforceConnections || []).map(({ accessToken, refreshToken, clientSecret, encryptedTokens, expiresAt, ...rest }: any) => rest),
+    shopifyConnections: (value.rows.shopifyConnections || []).map(({ accessToken, refreshToken, encryptedTokens, ...rest }: any) => {
+      const config = { ...parseMonitorMapping(rest.mappingConfig) };
+      for (const key of ["accessTokenExpiresAt", "refreshTokenExpiresAt", "tokenUpdatedAt"]) delete config[key];
+      return { ...rest, mappingConfig: config };
+    }) } });
+  return hubspotCredentialRenewalPreservesInputs(withoutCredentials(before), withoutCredentials(after));
+}
+
 export async function googleMonitorCredential(connection: any, request: typeof fetch = fetch): Promise<string> {
   if (!connection || connection.isActive === false) throw new Error("PROVIDER_CREDENTIAL_UNAVAILABLE");
   try { return monitorCredential(connection); } catch { /* Google refresh tokens are reusable; never save the new access token. */ }

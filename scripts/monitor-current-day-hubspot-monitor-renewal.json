@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "3d8a6897ffed44cbd6860ac45adc04bdc0f55a64",
+  "expectedCommit": "4123b791b75a69d3c4fa15d3ca1410a7f1d93b41",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -104,7 +104,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "66a0c28999dcb7ec9431f2606569aaa80ad1266afd4a7520050e3c8e30963670"
+      "after": "10c4f764e42cde2388a3e22c9f66c1020351f24ede767678b53ad5ac30a9e29f"
     },
     {
       "path": "server/scheduler.ts",
@@ -203,6 +203,6 @@
     }
   ],
   "equivalentCommits": [
-    "4fd491f5113bfcba3a6654873cd2009139a00ed2"
+    "a4eb5a8a177d562820db5a7016bb9bcec8e9e252"
   ]
 }

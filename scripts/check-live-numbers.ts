@@ -61,7 +61,7 @@ export function readOnlyMonitorFetch(request: typeof fetch, credentialRenewalOri
         || (host === "api.hubapi.com" && path === "/crm/v3/objects/deals/search")
         || (host === "oauth2.googleapis.com" && path === "/token" && new URLSearchParams(String(options.body)).get("grant_type") === "refresh_token");
       if (credentialRenewalOrigin && url.origin === new URL(credentialRenewalOrigin).origin
-        && /^\/api\/hubspot\/[a-f0-9-]{36}\/monitor\/renew-token$/.test(path) && !url.search && !url.hash) {
+        && /^\/api\/(?:hubspot|salesforce|shopify)\/[a-f0-9-]{36}\/monitor\/renew-token$/.test(path) && !url.search && !url.hash) {
         try { allowed = z.object({ connectionId: z.string().uuid() }).strict().safeParse(JSON.parse(String(options.body))).success; }
         catch { allowed = false; }
       }
@@ -120,7 +120,7 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
     const guard = await pool.query("SELECT current_setting('default_transaction_read_only') AS read_only");
     if (guard.rows[0]?.read_only !== "on") throw new Error("MONITOR_READ_ONLY_GUARD_FAILED");
     const { storage } = await import("../server/storage");
-    const { checkGA4ProviderNumbers, checkFinancialProviderNumbers, checkPipelineProviderNumbers, renewHubspotMonitorCredentials, hubspotCredentialRenewalPreservesInputs } = await import("../server/live-number-provider-checks");
+    const { checkGA4ProviderNumbers, checkFinancialProviderNumbers, checkPipelineProviderNumbers, renewFinancialMonitorCredentials, financialCredentialRenewalPreservesInputs } = await import("../server/live-number-provider-checks");
     const { checkSavedReportNumbers, separateReviewedReportHistory, restoreLegacyReportInputOrder } = await import("../server/live-number-report-checks");
     for (const { campaignIdHash, reportingTimeZone, historicalReports } of dueCampaigns) {
       const now = new Date();
@@ -134,9 +134,9 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
           try { checks.push(...await checkGA4ProviderNumbers(before, now)); }
           catch { checks.push({ section: "GA4 provider", code: "GA4_SOURCE_COMPARISON_UNVERIFIED", status: "unverified" }); }
           // GA4/report checks may take time. Renew immediately before financial provider reads.
-          if (await renewHubspotMonitorCredentials(before, config.application?.baseUrl)) {
+          if (await renewFinancialMonitorCredentials(before, config.application?.baseUrl)) {
             const renewed = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
-            if (!hubspotCredentialRenewalPreservesInputs(before, renewed)) throw new Error("MONITOR_INPUT_CHANGED_DURING_RENEWAL");
+            if (!financialCredentialRenewalPreservesInputs(before, renewed)) throw new Error("MONITOR_INPUT_CHANGED_DURING_RENEWAL");
             before = renewed;
           }
           checks.push(...await checkFinancialProviderNumbers(before, now));

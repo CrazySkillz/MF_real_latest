@@ -66,17 +66,21 @@ it.each(["ads", "custom"].flatMap(reportType => [0, 10].map(sessions => ({ repor
   snapshot.campaignBreakdown.rows[0].sessionKeyEventRate = 0.5;
   snapshot.campaignBreakdown.rows[0].sessions = sessions;
   snapshot.campaignBreakdown.totals.sessions = sessions;
+  snapshot.campaignBreakdown.meta.propertyId = "123";
+  snapshot.campaignBreakdown.meta.distinctUsers = { version: 1, sessionTotalsVersion: 1, metric: "totalUsers", propertyId: "123", startDate: "2026-09-01", endDate: "2026-09-15", total: 10,
+    sessions, engagedSessions: 0, engagementRate: 0, sessionKeyEventRate: sessions ? 0.5 : 0,
+    campaigns: [{ name: "campaign-a", users: 10, sessions, engagedSessions: 0, engagementRate: 0, sessionKeyEventRate: sessions ? 0.5 : 0 }] };
   const daily = await storageMock.getGA4DailyMetrics();
   daily[daily.length - 1].sessions = sessions;
   const pdf = await buildGA4ScheduledPdfAttachment({ report: { id: "rate-parity", campaignId: "campaign-1", reportType,
     configuration: JSON.stringify({ adComparisonMetric: "conversionRate", sections: { overview: true, ads: true },
       subsections: { overview: { summary: true, campaignBreakdown: true }, ads: { topCampaigns: true, summary: true } } }) },
     reportName: "Conversion parity", windowStart: "2026-09-01", windowEnd: "2026-09-15", campaignName: "Campaign" });
-  expect(createReportPdfArtifact(pdf)?.verification?.inputs.comparisonRateDefinition).toBe("conversions_per_session");
+  expect(createReportPdfArtifact(pdf)?.verification?.inputs.comparisonRateDefinition).toBe("ga4_session_key_event_rate");
   const summary = pdfText.findIndex(text => text.toUpperCase() === "OVERALL CONVERSION RATE");
   expect(summary).toBeGreaterThan(-1);
-  expect(pdfText[summary + 1]).toBe(sessions ? "10%" : "Unavailable");
-  expect(pdfText).not.toContain("50%");
+  expect(pdfText[summary + 1]).toBe(sessions ? "50%" : "0%");
+  expect(pdfText).not.toContain("10%");
   expect(snapshot.campaignBreakdown.rows[0].conversions).toBe(1);
 });
 

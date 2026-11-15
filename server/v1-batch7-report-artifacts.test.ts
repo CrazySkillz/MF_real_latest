@@ -184,6 +184,11 @@ describe("V1-015 saved source amounts in the scheduled artifact", () => {
       { campaign: "yesop_paid_social", sessions: 258, users: 258, conversions: 21, revenue: 4253.52214, sessionKeyEventRate: 0.08139534883720931 },
     ];
     Object.assign(fixture.overview.campaignBreakdown.totals, { sessions: 604, users: 602, conversions: 40, revenue: 7653.96 });
+    Object.assign(fixture.overview.campaignBreakdown.meta, { propertyId: fixture.connection.propertyId, distinctUsers: {
+      version: 1, sessionTotalsVersion: 1, metric: "totalUsers", propertyId: fixture.connection.propertyId, startDate: fixture.overview.windowStart, endDate: fixture.overview.windowEnd,
+      total: 602, sessions: 604, engagedSessions: 0, engagementRate: 0, sessionKeyEventRate: 0.06,
+      campaigns: fixture.overview.campaignBreakdown.rows.map(row => ({ ...row, name: row.campaign, engagedSessions: 0, engagementRate: 0 })),
+    } });
     fixture.revenueSources = ["hubspot", "salesforce"].map(id => ({ id, sourceType: id, displayName: id, currency: "EUR", isActive: true, mappingConfig: null }));
     fixture.revenueBreakdown = fixture.revenueSources.map((source: any, i: number) => ({ sourceId: source.id, sourceType: source.sourceType, displayName: source.displayName, revenue: i === 0 ? 250 : 100 }));
     fixture.financial.metrics.financialDaily.inputs.revenue.value = "8003.96";

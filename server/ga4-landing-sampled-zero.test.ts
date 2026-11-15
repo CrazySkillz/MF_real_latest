@@ -5,7 +5,7 @@ import { GoogleAnalytics4Service } from './analytics';
 const samplingMetadatas = [{ samplesReadCount: '11188', samplingSpaceSize: '11348' }];
 const base = { rowCount: 1, rows: [{
   dimensionValues: [{ value: '/target' }, { value: 'google' }, { value: 'cpc' }],
-  metricValues: [{ value: '10' }, { value: '9' }, { value: '0' }, { value: '0' }],
+  metricValues: [{ value: '10' }, { value: '9' }, { value: '0' }, { value: '0' }, { value: '0' }],
 }] };
 // Empty response shape observed from the real GA4 request; GA4 omitted metricHeaders and rows.
 const emptyTotal = { kind: 'analyticsData#runReport', metadata: { currencyCode: 'EUR', timeZone: 'Europe/Dublin' } };
@@ -31,7 +31,7 @@ describe('Landing Pages sampled conversion supplement', () => {
   it.each([emptyTotal, zeroRowTotal])(
     'retains the native row only after an unsampled exact-scope zero is verified', async total => {
       const { promise, requests, save } = execute(total);
-      expect((await promise).rows).toEqual([{ landingPage: '/target', source: 'google', medium: 'cpc', sessions: 10, users: 9, conversions: 0, revenue: 0 }]);
+      expect((await promise).rows).toEqual([{ landingPage: '/target', source: 'google', medium: 'cpc', sessions: 10, users: 9, conversions: 0, revenue: 0, sessionKeyEventRate: 0 }]);
       expect(requests).toHaveLength(3);
       expect(requests[2].dimensionFilter).toEqual(requests[1].dimensionFilter);
       expect(requests[2].dateRanges).toEqual(requests[1].dateRanges);

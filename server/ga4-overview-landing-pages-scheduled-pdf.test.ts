@@ -77,7 +77,7 @@ const landingRows = [{
   medium: "cpc",
   sessions: 8,
   users: 6,
-  conversions: 2.5,
+  conversions: 2.5, sessionKeyEventRate: 0.25,
   revenue: 99999,
 }];
 const report = {
@@ -157,7 +157,7 @@ describe("GA4 Overview Landing Pages scheduled PDF value parity", () => {
     expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaign.id, connection.propertyId);
     for (const value of [
       "Landing Pages", "LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE",
-      landingRows[0].landingPage, "google/cpc", "8", "6", "2.5", "31.3%",
+      landingRows[0].landingPage, "google/cpc", "8", "6", "2.5", "25.0%",
     ]) expect(text).toContain(value);
     expect(text).not.toMatch(/Revenue|99,999/i);
     if (limited) expect(text).toContain('Data from 2026-08-09 through 2026-09-14. Earlier landing page data is unavailable in GA4.');

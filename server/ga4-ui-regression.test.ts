@@ -618,9 +618,9 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).not.toContain("{mostEfficient && (");
     expect(adComparison).not.toContain("{needsAttention && (");
     expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
-    expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))");
+    expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)");
     expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
-    expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))");
+    expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)");
     expect(adComparison).not.toContain("needsAttention.name !== mostEfficient?.name");
     expect(ga4Metrics).not.toContain(".find((r: any) => String(r?.name || \"\") !== String(bestPerforming?.name || \"\"))");
     expect(scheduledPdf).not.toContain("const lowest = [...rows].sort((a: any, b: any) => Number(a?.sessions || 0) - Number(b?.sessions || 0))[0];");

@@ -1,4 +1,4 @@
-import { computeConversionRatePercent, normalizeRateToPercent } from "./metric-math";
+import { normalizeRateToPercent } from "./metric-math";
 import { resolveGA4KpiMetricIdentity } from "./ga4-kpi-metric-identity";
 
 export const resolveGA4KpiLiveValue = (args: {
@@ -14,7 +14,7 @@ export const resolveGA4KpiLiveValue = (args: {
   const metric = resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name);
   if (metric === "revenue") return Number(financialRevenue || 0).toFixed(2);
   if (metric === "conversions") return String(Number(breakdownTotals.conversions || 0));
-  if (metric === "conversion_rate") return computeConversionRatePercent(Number(breakdownTotals.conversions || 0), Number(breakdownTotals.sessions || 0)).toFixed(2);
+  if (metric === "conversion_rate") return breakdownTotals.conversionRate == null || !Number.isFinite(breakdownTotals.conversionRate) ? "Unavailable" : breakdownTotals.conversionRate.toFixed(2);
   if (metric === "engagement_rate") return normalizeRateToPercent(overviewEngagementRate).toFixed(2);
   if (metric === "users") return breakdownTotals.users == null ? "Unavailable" : String(Math.round(Number(breakdownTotals.users)));
   if (metric === "sessions") return String(Math.round(Number(breakdownTotals.sessions || 0)));

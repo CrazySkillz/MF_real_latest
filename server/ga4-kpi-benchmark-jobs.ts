@@ -162,6 +162,7 @@ export function computeKpiValue(metricOrName: string, inputs: {
   importedRevenue: number;
   spend: number;
   engagementRate: number; // 0..1
+  conversionRate?: number | null; // GA4 sessionKeyEventRate, percent
 }) {
   const m = getGA4KpiMetricIdentity(metricOrName);
   const revenue = inputs.ga4Revenue + inputs.importedRevenue;
@@ -171,7 +172,7 @@ export function computeKpiValue(metricOrName: string, inputs: {
   if (m === "sessions") return Math.round(inputs.sessions || 0);
   if (m === "users") return Math.round(inputs.users || 0);
   if (m === "pageviews") return Math.round(inputs.pageviews || 0);
-  if (m === "conversion_rate") return round2(computeConversionRatePercent(inputs.conversions, inputs.sessions));
+  if (m === "conversion_rate") return inputs.conversionRate == null || !Number.isFinite(inputs.conversionRate) ? Number.NaN : round2(inputs.conversionRate);
   if (m === "engagement_rate") return round2(normalizeRateToPercent(inputs.engagementRate));
   if (m === "roas") return round2(computeRoasRatio(revenue, inputs.spend));
   if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));
@@ -492,6 +493,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         importedRevenue: round2(importedRevenueValue ?? 0),
         spend: round2(spendValue ?? 0),
         engagementRate: Number(trafficTotals.engagementRate || 0) || 0,
+        conversionRate: trafficTotals.conversionRate,
       };
       const kpis = campaignKpis;
       const benchmarkStorage = storage as typeof storage & {
@@ -525,6 +527,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       } : null;
       const inputsForMetric = (metric: string) => {
         if (metric === "users" && distinctUsers === null) return null;
+        if (metric === "conversion_rate" && inputs.conversionRate == null) return null;
         if (!isGA4FinancialKpiMetric(metric)) return inputs;
         const dependencies = getGA4KpiMetricDependencies(metric);
         if (!financialInputs) return null;

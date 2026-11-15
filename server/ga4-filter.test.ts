@@ -1110,9 +1110,9 @@ describe("GA4 campaign value picker", () => {
       const filterText = JSON.stringify(body?.dimensionFilter || {});
       const isPageLocation = filterText.includes('pageLocation');
       const isCampaignName = filterText.includes('"fieldName":"campaignName"');
-      const periodTraffic = !dimensions.length && body.metrics?.length === 4 && body.metrics[0].name === 'totalUsers';
+      const periodTraffic = !dimensions.length && body.metrics?.length === 5 && body.metrics[0].name === 'totalUsers';
       const rows = periodTraffic
-        ? [{ metricValues: ['200', '200', '160', '0.8'].map(value => ({ value })) }]
+        ? [{ metricValues: ['200', '200', '160', '0.8', '0.03'].map(value => ({ value })) }]
         : dimensions.length > 1
         ? [{
             dimensionValues: ['20260616', 'Paid Search', 'google', 'cpc', 'summer_sale', 'desktop', 'NL'].map((value) => ({ value })),
@@ -1232,7 +1232,7 @@ describe("GA4 campaign value picker", () => {
                     { value: "facebook" },
                     { value: "paid_social" },
                   ],
-                  metricValues: [{ value: "318" }, { value: "318" }, { value: "39" }, { value: "7068.9" }],
+                  metricValues: [{ value: "318" }, { value: "318" }, { value: "39" }, { value: "7068.9" }, { value: "0.1" }],
                 },
                 {
                   dimensionValues: [
@@ -1240,7 +1240,7 @@ describe("GA4 campaign value picker", () => {
                     { value: "google" },
                     { value: "display" },
                   ],
-                  metricValues: [{ value: "151" }, { value: "151" }, { value: "6" }, { value: "100" }],
+                  metricValues: [{ value: "151" }, { value: "151" }, { value: "6" }, { value: "100" }, { value: "0.1" }],
                 },
                 {
                   dimensionValues: [
@@ -1248,17 +1248,17 @@ describe("GA4 campaign value picker", () => {
                     { value: "google" },
                     { value: "display" },
                   ],
-                  metricValues: [{ value: "10" }, { value: "10" }, { value: "99" }, { value: "990" }],
+                  metricValues: [{ value: "10" }, { value: "10" }, { value: "99" }, { value: "990" }, { value: "0.1" }],
                 },
               ]
             : [
                 {
                   dimensionValues: [{ value: "/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" }, { value: "facebook" }, { value: "paid_social" }],
-                  metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }],
+                  metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }, { value: "0.1" }],
                 },
                 {
                   dimensionValues: [{ value: "/pricing?utm_source=google&utm_medium=display&utm_campaign=summer_sale" }, { value: "google" }, { value: "display" }],
-                  metricValues: [{ value: "151" }, { value: "151" }, { value: "0" }, { value: "0" }],
+                  metricValues: [{ value: "151" }, { value: "151" }, { value: "0" }, { value: "0" }, { value: "0.1" }],
                 },
               ],
         }),
@@ -1310,7 +1310,7 @@ describe("GA4 campaign value picker", () => {
                       { value: "facebook" },
                       { value: "paid_social" },
                     ],
-                    metricValues: [{ value: "0" }, { value: "0" }, { value: "39" }, { value: "7068.9" }],
+                    metricValues: [{ value: "0" }, { value: "0" }, { value: "39" }, { value: "7068.9" }, { value: "0.1" }],
                   },
                   {
                     dimensionValues: [
@@ -1318,7 +1318,7 @@ describe("GA4 campaign value picker", () => {
                       { value: "facebook" },
                       { value: "paid_social" },
                     ],
-                    metricValues: [{ value: "0" }, { value: "0" }, { value: "99" }, { value: "990" }],
+                    metricValues: [{ value: "0" }, { value: "0" }, { value: "99" }, { value: "990" }, { value: "0.1" }],
                   },
                 ]
               : [
@@ -1326,17 +1326,17 @@ describe("GA4 campaign value picker", () => {
                     dimensionValues: [
                       { value: "https://example.com/pricing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
                     ],
-                    metricValues: [{ value: "161" }, { value: "161" }, { value: "0" }, { value: "0" }],
+                    metricValues: [{ value: "161" }, { value: "161" }, { value: "0" }, { value: "0" }, { value: "0.1" }],
                   },
                 ]
             : [
                 {
                   dimensionValues: [{ value: "/Landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" }, { value: "Facebook" }, { value: "paid_social" }],
-                  metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }],
+                  metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }, { value: "0.1" }],
                 },
                 {
                   dimensionValues: [{ value: "/pricing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" }, { value: "facebook" }, { value: "paid_social" }],
-                  metricValues: [{ value: "161" }, { value: "161" }, { value: "0" }, { value: "0" }],
+                  metricValues: [{ value: "161" }, { value: "161" }, { value: "0" }, { value: "0" }, { value: "0.1" }],
                 },
               ],
         }),

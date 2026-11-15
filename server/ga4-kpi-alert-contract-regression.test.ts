@@ -50,6 +50,11 @@ const sourceRow = {
   engagedSessions: 0,
   engagementRate: 0,
 };
+const nativeRateSnapshot = (sessions: number, rate: number, users = 12) => ({ campaignBreakdown: { meta: {
+  propertyId: connection.propertyId, distinctUsers: { version: 1, sessionTotalsVersion: 1, metric: "totalUsers",
+    propertyId: connection.propertyId, startDate: "2026-07-01", endDate: "2026-07-31", total: users,
+    sessions, engagedSessions: sessions / 2, engagementRate: 0.5, sessionKeyEventRate: rate, windows: [] },
+} } });
 const row = (metric: string) => ({
   id: `kpi-${metric}`,
   campaignId: campaign.id,
@@ -133,9 +138,10 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
   it.each([
     ["sessions", "20"], ["Total Sessions", "20"], ["users", "12"], ["totalUsers", "12"],
     ["pageviews", "40"], ["conversions", "5"], ["totalConversions", "5"],
-    ["conversionRate", "25"], ["engagement_rate", "50"],
+    ["conversionRate", "10"], ["engagement_rate", "50"],
   ])("does not wait for unused financial reads for %s", async (metric, expected) => {
     storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignBreakdown: { meta: { propertyId: connection.propertyId, distinctUsers: { version: 1, metric: "totalUsers", propertyId: connection.propertyId, startDate: "2026-07-01", endDate: "2026-07-31", total: 12, windows: [] } } } });
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(nativeRateSnapshot(20, 0.1));
     storageMock.getGA4DailyMetrics.mockResolvedValue([{ ...sourceRow, sessions: 20, users: 12,
       pageviews: 40, conversions: 5, engagedSessions: 10, engagementRate: 0.5 }]);
     storageMock.getRevenueTotalForRange.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ totalRevenue: 1000, sourceIds: [] }), 1000)));
@@ -147,7 +153,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     await pending;
     expect(storageMock.getRevenueTotalForRange).not.toHaveBeenCalled();
     expect(storageMock.getGA4Connection).not.toHaveBeenCalled();
-    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(["users", "totalUsers", "sessions", "Total Sessions", "engagement_rate"].includes(metric) ? 1 : 0);
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(["users", "totalUsers", "sessions", "Total Sessions", "engagement_rate", "conversionRate"].includes(metric) ? 1 : 0);
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
@@ -409,6 +415,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
   });
 
   it("blocks insufficient rate and CPA inputs before threshold evaluation", async () => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(nativeRateSnapshot(0, 0, 0));
     const conversionRate = await resolveAlertCurrentValueForDecision(row("conversionRate"));
     const cpa = await resolveAlertCurrentValueForDecision(row("cpa"));
 
@@ -466,7 +473,8 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     });
   });
 
-  it("keeps traffic alerts on the same completed-day rows as the live KPI cards", async () => {
+  it("keeps traffic alerts on the same saved GA4 period as the live KPI cards", async () => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(nativeRateSnapshot(100, 0.15));
     const oauthConnection = {
       ...connection,
       method: "access_token",
@@ -488,7 +496,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     const conversionRate = await resolveAlertCurrentValueForDecision(row("conversionRate"));
 
     expect(sessions).toMatchObject({ currentValue: "100", __alertDecisionEligible: true });
-    expect(conversionRate).toMatchObject({ currentValue: "20", __alertDecisionEligible: true });
+    expect(conversionRate).toMatchObject({ currentValue: "15", __alertDecisionEligible: true });
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 

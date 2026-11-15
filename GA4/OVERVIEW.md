@@ -134,7 +134,7 @@ Important clarification:
 
 These cards are derived from fetched or recomputed inputs:
 
-- `Conv. Rate = Conversions / Sessions`
+- `Conv. Rate` is GA4’s `sessionKeyEventRate × 100` for the exact saved period and campaign scope; it is not computed from conversion counts.
 - `Profit = Revenue - Spend`
 - `ROAS = Revenue / Spend`
 - `ROI = (Revenue - Spend) / Spend`
@@ -154,7 +154,7 @@ Daily records and endpoints may still exist for source validation, refresh, and 
 - `Engagement Rate`
   Computed from engaged sessions and sessions in the same fixed-boundary cumulative source selected for the other Summary cards; valid zero remains zero.
 - `Conv. Rate`
-  Computed from campaign-scoped `Conversions / Sessions`.
+  Imported as GA4 `sessionKeyEventRate` for the exact saved period and campaign scope, then displayed as a percentage. Missing or unverified provider rates remain unavailable.
 
 Important meaning:
 

@@ -40,7 +40,7 @@ function renderRevenueBreakdown(
   chartCampaignRows = nativeRows,
   campaignBreakdownAgg = nativeRows,
   nativeRevenue?: number,
-  chartOptions: { selectedMetric?: string; chartRevenue?: number } = {},
+  chartOptions: { selectedMetric?: string; chartRevenue?: number; chartConversionRate?: number } = {},
 ) {
   return renderToStaticMarkup(React.createElement(GA4AdComparison, {
     campaignBreakdownAgg,
@@ -78,16 +78,16 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
       { campaign: "unselected", sessions: 1000, conversions: 1000, revenue: 1000, sessionKeyEventRate: 1 },
     ];
     const before = JSON.stringify(rows);
-    const bindings = { getGA4PeriodTraffic, getGA4DistinctUsers: () => 344, useMemo: (fn: () => unknown) => fn(), ga4Breakdown: { rows }, breakdownPlaceholder: false,
+    const bindings = { getGA4PeriodTraffic: (_report: unknown, _start: unknown, _end: unknown, name: string) => ({ conversionRate: name === "sale" ? 10 : 0 }), getGA4DistinctUsers: () => 344, useMemo: (fn: () => unknown) => fn(), ga4Breakdown: { rows }, breakdownPlaceholder: false,
       adComparisonBreakdown: { rows }, adComparisonBreakdownPlaceholder: false,
       importedGA4CampaignNames: new Set(["sale", "empty"]), normalizeCampaignKey: (name: string) => name.trim().toLowerCase(),
       campaignCurrency: "EUR", revenueDisplaySources: [], resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay };
     const aggregate = new Function(...Object.keys(bindings), ts.transpileModule(page.slice(start, end) +
       "return adComparisonChartRows;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
-    expect(aggregate.map((row: any) => row.conversionRate)).toEqual([60 * factor, 0]);
+    expect(aggregate.map((row: any) => row.conversionRate)).toEqual([10, 0]);
     expect(aggregate.reduce((sum: number, row: any) => sum + row.conversions, 0)).toBe(60 * factor);
-    const html = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversionRate" });
-    expect(html).toMatch(new RegExp(`Overall Conversion Rate</div><div[^>]*>${60 * factor}%</div>`));
+    const html = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversionRate", chartConversionRate: 10 });
+    expect(html).toMatch(new RegExp(`Overall Conversion Rate</div><div[^>]*>10%</div>`));
     const countHtml = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversions" });
     expect(countHtml).toMatch(new RegExp(`Total Conversions</div><div[^>]*>${60 * factor}</div>`));
     expect(html).not.toContain("unselected");

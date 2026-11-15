@@ -234,7 +234,7 @@ describe("Trend Analysis Overview regression guard", () => {
       startDate: "2026-05-24",
       endDate: "2026-08-22",
       dataThroughDate: "2026-08-22",
-      overviewTotals: { users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809 },
+      overviewTotals: { users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809, conversionRate: 12.1 },
       usersComparisons: [{ startDate: "2026-07-02", endDate: "2026-07-23", users: 867 }, { startDate: "2026-07-02", endDate: "2026-08-08", users: 975 }, { startDate: "2026-07-02", endDate: "2026-08-15", users: 1184 }],
       data: [
         { date: "2026-08-08", users: 108, sessions: 108, conversions: 14, engagedSessions: 74 },
@@ -251,10 +251,10 @@ describe("Trend Analysis Overview regression guard", () => {
     const exact = deriveExactCumulativeGA4Traffic(response, "2026-07-23");
     expect(exact?.current).toMatchObject({ users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809 });
     expect(exact?.current.engagementRate).toBeCloseTo((809 / 1183) * 100, 10);
-    expect(exact?.current.cvr).toBeCloseTo((152 / 1183) * 100, 10);
+    expect(exact?.current.cvr).toBe(12.1);
     expect(exact?.previous).toMatchObject({ users: 867, sessions: 866, conversions: 110, engagedSessions: 592 });
     expect(exact?.previous.engagementRate).toBeCloseTo((592 / 866) * 100, 10);
-    expect(exact?.previous.cvr).toBeCloseTo((110 / 866) * 100, 10);
+    expect(exact?.previous.cvr).toBeNull();
     expect(deriveExactCumulativeGA4Traffic(response, "2026-08-08")?.previous)
       .toMatchObject({ users: 975, sessions: 974, conversions: 124, engagedSessions: 666 });
     expect(deriveExactCumulativeGA4Traffic(response, "2026-08-15")?.previous)

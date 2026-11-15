@@ -79,6 +79,6 @@ describe('whole-period Sessions from recorded real GA4 responses', () => {
     expect(ga4.sessions).toBe(available ? 4472 : null);
     expect(web.sessions).toBe(available ? 4472 : null);
     expect(ga4.conversions).toBe(440);
-    expect(ga4.revenue).toBe(summarizeGA4TrafficRows(daily).revenue);
+    expect(ga4.revenue).toBe(available ? breakdown.totals.revenue : null);
   });
 });

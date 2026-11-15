@@ -1,0 +1,1087 @@
+{
+  "provenance": {
+    "capturedAt": "2026-11-15T18:03:35.880Z",
+    "source": "Read-only Promo records and independent GA4 responses; identities redacted"
+  },
+  "campaign": {
+    "id": "recorded-promo",
+    "name": "Promo",
+    "ownerId": "recorded-owner",
+    "currency": "EUR",
+    "ga4CampaignFilter": "[\"yesop_brand_search\",\"yesop_retargeting\"]",
+    "reportingTimeZone": "Europe/Amsterdam"
+  },
+  "snapshot": {
+    "windowStart": "2026-09-04",
+    "windowEnd": "2026-11-15",
+    "updatedAt": "2026-11-15T17:02:38.043Z",
+    "campaignBreakdown": {
+      "meta": {
+        "rowCount": 2,
+        "dimensions": [
+          "campaignName"
+        ],
+        "propertyId": "542352127",
+        "currencyCode": "EUR",
+        "dailySessions": 4497,
+        "distinctUsers": {
+          "daily": [
+            {
+              "date": "2026-09-04",
+              "users": 115
+            },
+            {
+              "date": "2026-09-05",
+              "users": 119
+            },
+            {
+              "date": "2026-09-06",
+              "users": 118
+            },
+            {
+              "date": "2026-09-07",
+              "users": 106
+            },
+            {
+              "date": "2026-09-08",
+              "users": 0
+            },
+            {
+              "date": "2026-09-09",
+              "users": 126
+            },
+            {
+              "date": "2026-09-10",
+              "users": 105
+            },
+            {
+              "date": "2026-09-11",
+              "users": 0
+            },
+            {
+              "date": "2026-09-12",
+              "users": 220
+            },
+            {
+              "date": "2026-09-13",
+              "users": 123
+            },
+            {
+              "date": "2026-09-14",
+              "users": 117
+            },
+            {
+              "date": "2026-09-15",
+              "users": 117
+            },
+            {
+              "date": "2026-09-16",
+              "users": 119
+            },
+            {
+              "date": "2026-09-17",
+              "users": 112
+            },
+            {
+              "date": "2026-09-18",
+              "users": 120
+            },
+            {
+              "date": "2026-09-19",
+              "users": 107
+            },
+            {
+              "date": "2026-09-20",
+              "users": 112
+            },
+            {
+              "date": "2026-09-21",
+              "users": 115
+            },
+            {
+              "date": "2026-09-22",
+              "users": 112
+            },
+            {
+              "date": "2026-09-23",
+              "users": 0
+            },
+            {
+              "date": "2026-09-24",
+              "users": 0
+            },
+            {
+              "date": "2026-09-25",
+              "users": 0
+            },
+            {
+              "date": "2026-09-26",
+              "users": 0
+            },
+            {
+              "date": "2026-09-27",
+              "users": 0
+            },
+            {
+              "date": "2026-09-28",
+              "users": 0
+            },
+            {
+              "date": "2026-09-29",
+              "users": 0
+            },
+            {
+              "date": "2026-09-30",
+              "users": 240
+            },
+            {
+              "date": "2026-10-01",
+              "users": 0
+            },
+            {
+              "date": "2026-10-02",
+              "users": 117
+            },
+            {
+              "date": "2026-10-03",
+              "users": 113
+            },
+            {
+              "date": "2026-10-04",
+              "users": 111
+            },
+            {
+              "date": "2026-10-05",
+              "users": 100
+            },
+            {
+              "date": "2026-10-06",
+              "users": 0
+            },
+            {
+              "date": "2026-10-07",
+              "users": 0
+            },
+            {
+              "date": "2026-10-08",
+              "users": 0
+            },
+            {
+              "date": "2026-10-09",
+              "users": 0
+            },
+            {
+              "date": "2026-10-10",
+              "users": 0
+            },
+            {
+              "date": "2026-10-11",
+              "users": 0
+            },
+            {
+              "date": "2026-10-12",
+              "users": 0
+            },
+            {
+              "date": "2026-10-13",
+              "users": 121
+            },
+            {
+              "date": "2026-10-14",
+              "users": 0
+            },
+            {
+              "date": "2026-10-15",
+              "users": 0
+            },
+            {
+              "date": "2026-10-16",
+              "users": 113
+            },
+            {
+              "date": "2026-10-17",
+              "users": 0
+            },
+            {
+              "date": "2026-10-18",
+              "users": 0
+            },
+            {
+              "date": "2026-10-19",
+              "users": 0
+            },
+            {
+              "date": "2026-10-20",
+              "users": 0
+            },
+            {
+              "date": "2026-10-21",
+              "users": 119
+            },
+            {
+              "date": "2026-10-22",
+              "users": 118
+            },
+            {
+              "date": "2026-10-23",
+              "users": 112
+            },
+            {
+              "date": "2026-10-24",
+              "users": 107
+            },
+            {
+              "date": "2026-10-25",
+              "users": 0
+            },
+            {
+              "date": "2026-10-26",
+              "users": 0
+            },
+            {
+              "date": "2026-10-27",
+              "users": 121
+            },
+            {
+              "date": "2026-10-28",
+              "users": 0
+            },
+            {
+              "date": "2026-10-29",
+              "users": 0
+            },
+            {
+              "date": "2026-10-30",
+              "users": 115
+            },
+            {
+              "date": "2026-10-31",
+              "users": 114
+            },
+            {
+              "date": "2026-11-01",
+              "users": 0
+            },
+            {
+              "date": "2026-11-02",
+              "users": 117
+            },
+            {
+              "date": "2026-11-03",
+              "users": 0
+            },
+            {
+              "date": "2026-11-04",
+              "users": 123
+            },
+            {
+              "date": "2026-11-05",
+              "users": 0
+            },
+            {
+              "date": "2026-11-06",
+              "users": 0
+            },
+            {
+              "date": "2026-11-07",
+              "users": 125
+            },
+            {
+              "date": "2026-11-08",
+              "users": 123
+            },
+            {
+              "date": "2026-11-09",
+              "users": 104
+            },
+            {
+              "date": "2026-11-10",
+              "users": 0
+            },
+            {
+              "date": "2026-11-11",
+              "users": 0
+            },
+            {
+              "date": "2026-11-12",
+              "users": 122
+            },
+            {
+              "date": "2026-11-13",
+              "users": 0
+            },
+            {
+              "date": "2026-11-14",
+              "users": 0
+            },
+            {
+              "date": "2026-11-15",
+              "users": 0
+            }
+          ],
+          "total": 4496,
+          "users": 4496,
+          "metric": "totalUsers",
+          "endDate": "2026-11-15",
+          "version": 1,
+          "windows": [
+            {
+              "users": 4270,
+              "endDate": "2026-11-08",
+              "sessions": 4224,
+              "startDate": "2026-09-04",
+              "engagementRate": 0.7331912878787878,
+              "engagedSessions": 3097,
+              "sessionKeyEventRate": 0.09493371212121213
+            },
+            {
+              "users": 226,
+              "endDate": "2026-11-15",
+              "sessions": 226,
+              "startDate": "2026-11-09",
+              "engagementRate": 0.7212389380530974,
+              "engagedSessions": 163,
+              "sessionKeyEventRate": 0.12389380530973451
+            },
+            {
+              "users": 3782,
+              "endDate": "2026-11-01",
+              "sessions": 3761,
+              "startDate": "2026-09-04",
+              "engagementRate": 0.7282637596383941,
+              "engagedSessions": 2739,
+              "sessionKeyEventRate": 0.09119914916245679
+            },
+            {
+              "users": 714,
+              "endDate": "2026-11-15",
+              "sessions": 714,
+              "startDate": "2026-11-02",
+              "engagementRate": 0.7198879551820728,
+              "engagedSessions": 514,
+              "sessionKeyEventRate": 0.11904761904761904
+            },
+            {
+              "users": 2976,
+              "endDate": "2026-10-16",
+              "sessions": 2986,
+              "startDate": "2026-09-04",
+              "engagementRate": 0.7237106496985934,
+              "engagedSessions": 2161,
+              "sessionKeyEventRate": 0.08372404554588078
+            },
+            {
+              "users": 1520,
+              "endDate": "2026-11-15",
+              "sessions": 1523,
+              "startDate": "2026-10-17",
+              "engagementRate": 0.7209455022980958,
+              "engagedSessions": 1098,
+              "sessionKeyEventRate": 0.11687458962573867
+            }
+          ],
+          "sessions": 4472,
+          "campaigns": [
+            {
+              "name": "yesop_brand_search",
+              "users": 3142,
+              "sessions": 3159,
+              "engagementRate": 0.7255460588793922,
+              "engagedSessions": 2292,
+              "sessionKeyEventRate": 0.09971509971509972
+            },
+            {
+              "name": "yesop_retargeting",
+              "users": 1354,
+              "sessions": 1358,
+              "engagementRate": 0.7164948453608248,
+              "engagedSessions": 973,
+              "sessionKeyEventRate": 0.08321060382916053
+            }
+          ],
+          "startDate": "2026-09-04",
+          "propertyId": "542352127",
+          "engagementRate": 0.7258497316636852,
+          "engagedSessions": 3246,
+          "sessionKeyEventRate": 0.09593023255813954,
+          "sessionTotalsVersion": 1
+        },
+        "revenueMetric": "totalRevenue",
+        "dailyHistoryRefresh": {
+          "scope": "abf60f86d91ff4555683110a81134d7b446935969525e20cd054ac41299a0762",
+          "version": 1,
+          "reportingDate": "2026-11-15"
+        },
+        "sessionsDerivedFromUsers": false,
+        "overviewCampaignAttribution": {
+          "selected": true,
+          "attempted": true,
+          "rebuiltRevenue": 114314.62,
+          "rebuiltSessions": 4497,
+          "standardRevenue": 134969.96,
+          "standardSessions": 543,
+          "rebuiltConversions": 440,
+          "standardConversions": 557
+        }
+      },
+      "rows": [
+        {
+          "date": "",
+          "users": 3143,
+          "device": "",
+          "medium": "",
+          "source": "",
+          "channel": "",
+          "country": "",
+          "revenue": 89347.616342,
+          "campaign": "yesop_brand_search",
+          "sessions": 3142,
+          "conversions": 322,
+          "sessionsRaw": 3142,
+          "engagedSessions": 2279,
+          "sessionKeyEventRate": 0.10025461489497135
+        },
+        {
+          "date": "",
+          "users": 1355,
+          "device": "",
+          "medium": "",
+          "source": "",
+          "channel": "",
+          "country": "",
+          "revenue": 24967.008336,
+          "campaign": "yesop_retargeting",
+          "sessions": 1355,
+          "conversions": 118,
+          "sessionsRaw": 1355,
+          "engagedSessions": 971,
+          "sessionKeyEventRate": 0.08339483394833948
+        }
+      ],
+      "totals": {
+        "users": 4496,
+        "revenue": 114314.62,
+        "sessions": 4472,
+        "conversions": 440,
+        "sessionsRaw": 4472,
+        "engagementRate": 0.7258497316636852,
+        "engagedSessions": 3246
+      }
+    },
+    "conversionEvents": {
+      "rows": [
+        {
+          "users": 428,
+          "revenue": 114314.62,
+          "eventName": "purchase",
+          "eventCount": 440,
+          "conversions": 440
+        }
+      ],
+      "totals": {
+        "users": 428,
+        "revenue": 114314.62,
+        "eventCount": 440,
+        "conversions": 440
+      },
+      "version": "ga4_conversion_events_validation_v3",
+      "propertyId": "542352127",
+      "validation": {
+        "status": "passed",
+        "endDate": "2026-11-15",
+        "request": {
+          "metrics": [
+            {
+              "name": "conversions"
+            },
+            {
+              "name": "eventCount"
+            },
+            {
+              "name": "totalUsers"
+            },
+            {
+              "name": "totalRevenue"
+            }
+          ],
+          "dateRanges": [
+            {
+              "endDate": "2026-11-15",
+              "startDate": "2026-09-04"
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "eventName"
+            }
+          ],
+          "dimensionFilter": {
+            "orGroup": {
+              "expressions": [
+                {
+                  "filter": {
+                    "fieldName": "pageLocation",
+                    "stringFilter": {
+                      "value": ".*[?&]utm_campaign=yesop_brand_search(?:[&#].*)?$",
+                      "matchType": "FULL_REGEXP",
+                      "caseSensitive": false
+                    }
+                  }
+                },
+                {
+                  "filter": {
+                    "fieldName": "pageLocation",
+                    "stringFilter": {
+                      "value": ".*[?&]utm_campaign=yesop_retargeting(?:[&#].*)?$",
+                      "matchType": "FULL_REGEXP",
+                      "caseSensitive": false
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "provider": "Google Analytics Data API",
+        "startDate": "2026-09-04",
+        "propertyId": "542352127",
+        "campaignScope": [
+          "yesop_brand_search",
+          "yesop_retargeting"
+        ],
+        "returnedTotals": {
+          "users": 428,
+          "eventCount": 440,
+          "conversions": 440
+        },
+        "expectedConversions": 440,
+        "reconciliationSource": "scheduler_page_location_conversions_with_event_count"
+      },
+      "revenueMetric": "totalRevenue"
+    },
+    "landingPages": {
+      "meta": {
+        "endDate": "2026-11-15",
+        "startDate": "2026-09-15",
+        "historyLimited": true,
+        "requestedStartDate": "2026-09-04",
+        "usersAreNonAdditive": true,
+        "sessionScopedAttributionAvailable": true
+      },
+      "rows": [
+        {
+          "users": 3347,
+          "medium": "(not set)",
+          "source": "(not set)",
+          "revenue": 93723.9,
+          "sessions": 3345,
+          "conversions": 358,
+          "landingPage": "/landing",
+          "sessionKeyEventRate": 0.10343796711509716
+        }
+      ],
+      "totals": {
+        "users": 3347,
+        "revenue": 93723.9,
+        "sessions": 3345,
+        "conversions": 358
+      },
+      "propertyId": "542352127",
+      "revenueMetric": "totalRevenue"
+    },
+    "campaignId": "recorded-promo",
+    "propertyId": "542352127"
+  },
+  "financial": {
+    "id": "19623bce-dfa6-4d3c-8de0-f9e9ff343bef",
+    "reportingDate": "2026-11-15",
+    "recordedAt": "2026-11-15T17:02:38.899Z",
+    "metrics": {
+      "financialDaily": {
+        "inputs": {
+          "spend": {
+            "value": "1100.00",
+            "sources": [
+              "canonical_spend_sources"
+            ],
+            "available": true
+          },
+          "revenue": {
+            "value": "118014.62",
+            "sources": [
+              "ga4",
+              "revenue-source:d0ee256b-578e-4aa9-9a29-4931e66973b4",
+              "revenue-source:f744b4ae-2ee0-44b9-be35-4df59566e496"
+            ],
+            "available": true
+          },
+          "conversions": {
+            "value": 440,
+            "sources": [
+              "ga4"
+            ],
+            "available": true
+          }
+        },
+        "version": "financial_daily_snapshot_v1",
+        "currency": "EUR",
+        "currentValueWindow": {
+          "mode": "initial_import_to_latest_available_day",
+          "endDate": "2026-11-15",
+          "startDate": "2026-09-04",
+          "dataThroughDate": "2026-11-15",
+          "reportingTimeZone": "Europe/Amsterdam"
+        }
+      },
+      "revenuePublication": {
+        "workId": "fed4bbe5-c0cd-4435-9fff-a85a2d6b8397",
+        "display": {
+          "sources": [
+            {
+              "revenue": 3450,
+              "sourceId": "d0ee256b-578e-4aa9-9a29-4931e66973b4",
+              "sourceType": "hubspot",
+              "displayName": "HubSpot (Deals)",
+              "mappingConfig": {
+                "dateField": "closedate",
+                "selectedValues": [
+                  "yesop_prospecting",
+                  "euro_deal"
+                ],
+                "pipelineEnabled": true,
+                "pipelineStageId": "contractsent",
+                "pipelineWarning": null,
+                "platformContext": "ga4",
+                "campaignMappings": [
+                  {
+                    "crmValue": "yesop_prospecting",
+                    "linkedinCampaignUrn": "yesop_brand_search",
+                    "linkedinCampaignName": "yesop_brand_search"
+                  },
+                  {
+                    "crmValue": "euro_deal",
+                    "linkedinCampaignUrn": "yesop_retargeting",
+                    "linkedinCampaignName": "yesop_retargeting"
+                  }
+                ],
+                "pipelineCurrency": null,
+                "pipelineProxyMode": "current_stage",
+                "pipelineStageLabel": "Contract Sent",
+                "pipelineTotalToDate": 0,
+                "pipelineLastUpdatedAt": "2026-11-15T18:02:04.774Z",
+                "campaignValueRevenueTotals": [
+                  {
+                    "revenue": 3200,
+                    "campaignValue": "yesop_prospecting"
+                  },
+                  {
+                    "revenue": 250,
+                    "campaignValue": "euro_deal"
+                  }
+                ],
+                "pipelineValueRevenueTotals": []
+              }
+            },
+            {
+              "revenue": 250,
+              "sourceId": "f744b4ae-2ee0-44b9-be35-4df59566e496",
+              "sourceType": "csv",
+              "displayName": "test_csv.csv.csv",
+              "mappingConfig": {
+                "campaignValueRevenueTotals": [
+                  {
+                    "revenue": 250,
+                    "campaignValue": "Alpha"
+                  }
+                ]
+              }
+            }
+          ],
+          "spendSources": [
+            {
+              "spend": 1100,
+              "sourceId": "451385b7-4c29-4e78-825b-561fd3d09f47",
+              "sourceType": "csv",
+              "displayName": "Test_spend.csv",
+              "mappingConfig": {
+                "displayName": "Test_spend.csv",
+                "campaignValues": [
+                  "LI_B2B_SaaS_US_Q1"
+                ]
+              }
+            }
+          ],
+          "nativeRevenue": 114314.62
+        },
+        "sources": {
+          "d0ee256b-578e-4aa9-9a29-4931e66973b4": "ebbcd7ec3542bc43e0a8b7abcafe7060ac58ee7e685d9e3ecbc6b3a798cb59d4",
+          "f744b4ae-2ee0-44b9-be35-4df59566e496": "cbe97fa687842c71937d8a6472df6592048a4ccedfb88b706faebbb0d970d62b"
+        },
+        "version": 1,
+        "reportingDate": "2026-11-15",
+        "pipelineSources": {
+          "d0ee256b-578e-4aa9-9a29-4931e66973b4": "b4279899c159b8088a3d7e41879c2cc6c48fb82e47f3ce8ceaf44f61cced086b"
+        },
+        "pendingSourceIds": []
+      }
+    },
+    "campaignId": "recorded-promo"
+  },
+  "revenueSources": [
+    {
+      "id": "d0ee256b-578e-4aa9-9a29-4931e66973b4",
+      "sourceType": "hubspot",
+      "displayName": "HubSpot (Deals)",
+      "currency": "EUR",
+      "isActive": true,
+      "platformContext": "ga4",
+      "createdAt": "2026-10-28T08:53:44.572Z",
+      "config": {
+        "csvRows": null,
+        "csvHeaders": null,
+        "dateColumn": null,
+        "spendColumn": null,
+        "campaignValue": null,
+        "csvSampleRows": null,
+        "revenueColumn": null,
+        "campaignColumn": null,
+        "campaignValues": null,
+        "selectedValues": [
+          "yesop_prospecting",
+          "euro_deal"
+        ],
+        "pipelineEnabled": true,
+        "pipelineStageId": "contractsent",
+        "campaignMappings": [
+          {
+            "crmValue": "yesop_prospecting",
+            "linkedinCampaignUrn": "yesop_brand_search",
+            "linkedinCampaignName": "yesop_brand_search"
+          },
+          {
+            "crmValue": "euro_deal",
+            "linkedinCampaignUrn": "yesop_retargeting",
+            "linkedinCampaignName": "yesop_retargeting"
+          }
+        ],
+        "pipelineCurrency": null,
+        "storedDateColumn": null,
+        "storedSpendColumn": null,
+        "csvStoredSpendRows": null,
+        "pipelineStageLabel": "Contract Sent",
+        "pipelineTotalToDate": 0,
+        "storedRevenueColumn": null,
+        "csvStoredRevenueRows": null,
+        "storedCampaignColumn": null,
+        "pipelineLastUpdatedAt": "2026-11-15T18:02:04.774Z",
+        "campaignValueSpendTotals": null,
+        "campaignValueRevenueTotals": [
+          {
+            "revenue": 3200,
+            "campaignValue": "yesop_prospecting"
+          },
+          {
+            "revenue": 250,
+            "campaignValue": "euro_deal"
+          }
+        ],
+        "pipelineValueRevenueTotals": []
+      },
+      "campaignId": "recorded-promo",
+      "mappingConfig": "{\"csvRows\":null,\"csvHeaders\":null,\"dateColumn\":null,\"spendColumn\":null,\"campaignValue\":null,\"csvSampleRows\":null,\"revenueColumn\":null,\"campaignColumn\":null,\"campaignValues\":null,\"selectedValues\":[\"yesop_prospecting\",\"euro_deal\"],\"pipelineEnabled\":true,\"pipelineStageId\":\"contractsent\",\"campaignMappings\":[{\"crmValue\":\"yesop_prospecting\",\"linkedinCampaignUrn\":\"yesop_brand_search\",\"linkedinCampaignName\":\"yesop_brand_search\"},{\"crmValue\":\"euro_deal\",\"linkedinCampaignUrn\":\"yesop_retargeting\",\"linkedinCampaignName\":\"yesop_retargeting\"}],\"pipelineCurrency\":null,\"storedDateColumn\":null,\"storedSpendColumn\":null,\"csvStoredSpendRows\":null,\"pipelineStageLabel\":\"Contract Sent\",\"pipelineTotalToDate\":0,\"storedRevenueColumn\":null,\"csvStoredRevenueRows\":null,\"storedCampaignColumn\":null,\"pipelineLastUpdatedAt\":\"2026-11-15T18:02:04.774Z\",\"campaignValueSpendTotals\":null,\"campaignValueRevenueTotals\":[{\"revenue\":3200,\"campaignValue\":\"yesop_prospecting\"},{\"revenue\":250,\"campaignValue\":\"euro_deal\"}],\"pipelineValueRevenueTotals\":[]}"
+    },
+    {
+      "id": "f744b4ae-2ee0-44b9-be35-4df59566e496",
+      "sourceType": "csv",
+      "displayName": "test_csv.csv.csv",
+      "currency": "EUR",
+      "isActive": true,
+      "platformContext": "ga4",
+      "createdAt": "2026-10-23T05:09:50.455Z",
+      "config": {
+        "csvRows": null,
+        "csvHeaders": [
+          "Revenue",
+          "Campaign",
+          "Date"
+        ],
+        "dateColumn": "Date",
+        "spendColumn": null,
+        "campaignValue": "Alpha",
+        "csvSampleRows": [
+          {
+            "Date": "2026-07-01",
+            "Revenue": "200",
+            "Campaign": "Alpha"
+          },
+          {
+            "Date": "2026-07-02",
+            "Revenue": "50",
+            "Campaign": "Alpha"
+          },
+          {
+            "Date": "2026-07-03",
+            "Revenue": "1100",
+            "Campaign": "Beta"
+          }
+        ],
+        "revenueColumn": "Revenue",
+        "campaignColumn": "Campaign",
+        "campaignValues": [
+          "Alpha"
+        ],
+        "selectedValues": null,
+        "pipelineEnabled": null,
+        "pipelineStageId": null,
+        "campaignMappings": null,
+        "pipelineCurrency": null,
+        "storedDateColumn": "Date",
+        "storedSpendColumn": null,
+        "csvStoredSpendRows": null,
+        "pipelineStageLabel": null,
+        "pipelineTotalToDate": null,
+        "storedRevenueColumn": "Revenue",
+        "csvStoredRevenueRows": [
+          {
+            "dateRaw": "2026-07-01",
+            "revenueRaw": "200",
+            "campaignKey": "Alpha",
+            "conversionValueRaw": ""
+          },
+          {
+            "dateRaw": "2026-07-02",
+            "revenueRaw": "50",
+            "campaignKey": "Alpha",
+            "conversionValueRaw": ""
+          },
+          {
+            "dateRaw": "2026-07-03",
+            "revenueRaw": "1100",
+            "campaignKey": "Beta",
+            "conversionValueRaw": ""
+          }
+        ],
+        "storedCampaignColumn": "Campaign",
+        "pipelineLastUpdatedAt": null,
+        "campaignValueSpendTotals": null,
+        "campaignValueRevenueTotals": [
+          {
+            "revenue": 250,
+            "campaignValue": "Alpha"
+          }
+        ],
+        "pipelineValueRevenueTotals": null
+      },
+      "campaignId": "recorded-promo",
+      "mappingConfig": "{\"csvRows\":null,\"csvHeaders\":[\"Revenue\",\"Campaign\",\"Date\"],\"dateColumn\":\"Date\",\"spendColumn\":null,\"campaignValue\":\"Alpha\",\"csvSampleRows\":[{\"Date\":\"2026-07-01\",\"Revenue\":\"200\",\"Campaign\":\"Alpha\"},{\"Date\":\"2026-07-02\",\"Revenue\":\"50\",\"Campaign\":\"Alpha\"},{\"Date\":\"2026-07-03\",\"Revenue\":\"1100\",\"Campaign\":\"Beta\"}],\"revenueColumn\":\"Revenue\",\"campaignColumn\":\"Campaign\",\"campaignValues\":[\"Alpha\"],\"selectedValues\":null,\"pipelineEnabled\":null,\"pipelineStageId\":null,\"campaignMappings\":null,\"pipelineCurrency\":null,\"storedDateColumn\":\"Date\",\"storedSpendColumn\":null,\"csvStoredSpendRows\":null,\"pipelineStageLabel\":null,\"pipelineTotalToDate\":null,\"storedRevenueColumn\":\"Revenue\",\"csvStoredRevenueRows\":[{\"dateRaw\":\"2026-07-01\",\"revenueRaw\":\"200\",\"campaignKey\":\"Alpha\",\"conversionValueRaw\":\"\"},{\"dateRaw\":\"2026-07-02\",\"revenueRaw\":\"50\",\"campaignKey\":\"Alpha\",\"conversionValueRaw\":\"\"},{\"dateRaw\":\"2026-07-03\",\"revenueRaw\":\"1100\",\"campaignKey\":\"Beta\",\"conversionValueRaw\":\"\"}],\"storedCampaignColumn\":\"Campaign\",\"pipelineLastUpdatedAt\":null,\"campaignValueSpendTotals\":null,\"campaignValueRevenueTotals\":[{\"revenue\":250,\"campaignValue\":\"Alpha\"}],\"pipelineValueRevenueTotals\":null}"
+    }
+  ],
+  "spendSources": [
+    {
+      "id": "451385b7-4c29-4e78-825b-561fd3d09f47",
+      "sourceType": "csv",
+      "displayName": "Test_spend.csv",
+      "currency": "EUR",
+      "isActive": true,
+      "platformContext": "ga4",
+      "createdAt": "2026-10-28T07:55:03.756Z",
+      "config": {
+        "csvRows": null,
+        "csvHeaders": [
+          "date",
+          "Campaign",
+          "spend",
+          "revenue",
+          "conversion_value"
+        ],
+        "dateColumn": "date",
+        "spendColumn": "spend",
+        "campaignValue": "LI_B2B_SaaS_US_Q1",
+        "csvSampleRows": [
+          {
+            "date": "2026-01-01",
+            "spend": "250",
+            "revenue": "300",
+            "Campaign": "yesop_brand_search",
+            "conversion_value": "0.98"
+          },
+          {
+            "date": "2026-01-01",
+            "spend": "170",
+            "revenue": "786",
+            "Campaign": "yesop_brand_search",
+            "conversion_value": "0.76"
+          },
+          {
+            "date": "2026-01-01",
+            "spend": "20",
+            "revenue": "300",
+            "Campaign": "yesop_prospecting",
+            "conversion_value": "0.98"
+          },
+          {
+            "date": "2026-01-01",
+            "spend": "2000",
+            "revenue": "300",
+            "Campaign": "yesop_prospecting",
+            "conversion_value": "0.98"
+          },
+          {
+            "date": "2026-01-01",
+            "spend": "800",
+            "revenue": "300",
+            "Campaign": "LI_B2B_SaaS_US_Q1",
+            "conversion_value": "0.98"
+          },
+          {
+            "date": "2026-01-01",
+            "spend": "300",
+            "revenue": "300",
+            "Campaign": "LI_B2B_SaaS_US_Q1",
+            "conversion_value": "0.98"
+          },
+          {
+            "date": "2026-05-05",
+            "spend": "100",
+            "revenue": "100",
+            "Campaign": "Test",
+            "conversion_value": "0.98"
+          }
+        ],
+        "revenueColumn": null,
+        "campaignColumn": "Campaign",
+        "campaignValues": [
+          "LI_B2B_SaaS_US_Q1"
+        ],
+        "selectedValues": null,
+        "pipelineEnabled": null,
+        "pipelineStageId": null,
+        "campaignMappings": null,
+        "pipelineCurrency": null,
+        "storedDateColumn": "date",
+        "storedSpendColumn": "spend",
+        "csvStoredSpendRows": [
+          {
+            "dateRaw": "2026-01-01",
+            "spendRaw": "250",
+            "campaignKey": "yesop_brand_search"
+          },
+          {
+            "dateRaw": "2026-01-01",
+            "spendRaw": "170",
+            "campaignKey": "yesop_brand_search"
+          },
+          {
+            "dateRaw": "2026-01-01",
+            "spendRaw": "20",
+            "campaignKey": "yesop_prospecting"
+          },
+          {
+            "dateRaw": "2026-01-01",
+            "spendRaw": "2000",
+            "campaignKey": "yesop_prospecting"
+          },
+          {
+            "dateRaw": "2026-01-01",
+            "spendRaw": "800",
+            "campaignKey": "LI_B2B_SaaS_US_Q1"
+          },
+          {
+            "dateRaw": "2026-01-01",
+            "spendRaw": "300",
+            "campaignKey": "LI_B2B_SaaS_US_Q1"
+          },
+          {
+            "dateRaw": "2026-05-05",
+            "spendRaw": "100",
+            "campaignKey": "Test"
+          }
+        ],
+        "pipelineStageLabel": null,
+        "pipelineTotalToDate": null,
+        "storedRevenueColumn": null,
+        "csvStoredRevenueRows": null,
+        "storedCampaignColumn": "Campaign",
+        "pipelineLastUpdatedAt": null,
+        "campaignValueSpendTotals": null,
+        "campaignValueRevenueTotals": null,
+        "pipelineValueRevenueTotals": null
+      },
+      "campaignId": "recorded-promo",
+      "mappingConfig": "{\"csvRows\":null,\"csvHeaders\":[\"date\",\"Campaign\",\"spend\",\"revenue\",\"conversion_value\"],\"dateColumn\":\"date\",\"spendColumn\":\"spend\",\"campaignValue\":\"LI_B2B_SaaS_US_Q1\",\"csvSampleRows\":[{\"date\":\"2026-01-01\",\"spend\":\"250\",\"revenue\":\"300\",\"Campaign\":\"yesop_brand_search\",\"conversion_value\":\"0.98\"},{\"date\":\"2026-01-01\",\"spend\":\"170\",\"revenue\":\"786\",\"Campaign\":\"yesop_brand_search\",\"conversion_value\":\"0.76\"},{\"date\":\"2026-01-01\",\"spend\":\"20\",\"revenue\":\"300\",\"Campaign\":\"yesop_prospecting\",\"conversion_value\":\"0.98\"},{\"date\":\"2026-01-01\",\"spend\":\"2000\",\"revenue\":\"300\",\"Campaign\":\"yesop_prospecting\",\"conversion_value\":\"0.98\"},{\"date\":\"2026-01-01\",\"spend\":\"800\",\"revenue\":\"300\",\"Campaign\":\"LI_B2B_SaaS_US_Q1\",\"conversion_value\":\"0.98\"},{\"date\":\"2026-01-01\",\"spend\":\"300\",\"revenue\":\"300\",\"Campaign\":\"LI_B2B_SaaS_US_Q1\",\"conversion_value\":\"0.98\"},{\"date\":\"2026-05-05\",\"spend\":\"100\",\"revenue\":\"100\",\"Campaign\":\"Test\",\"conversion_value\":\"0.98\"}],\"revenueColumn\":null,\"campaignColumn\":\"Campaign\",\"campaignValues\":[\"LI_B2B_SaaS_US_Q1\"],\"selectedValues\":null,\"pipelineEnabled\":null,\"pipelineStageId\":null,\"campaignMappings\":null,\"pipelineCurrency\":null,\"storedDateColumn\":\"date\",\"storedSpendColumn\":\"spend\",\"csvStoredSpendRows\":[{\"dateRaw\":\"2026-01-01\",\"spendRaw\":\"250\",\"campaignKey\":\"yesop_brand_search\"},{\"dateRaw\":\"2026-01-01\",\"spendRaw\":\"170\",\"campaignKey\":\"yesop_brand_search\"},{\"dateRaw\":\"2026-01-01\",\"spendRaw\":\"20\",\"campaignKey\":\"yesop_prospecting\"},{\"dateRaw\":\"2026-01-01\",\"spendRaw\":\"2000\",\"campaignKey\":\"yesop_prospecting\"},{\"dateRaw\":\"2026-01-01\",\"spendRaw\":\"800\",\"campaignKey\":\"LI_B2B_SaaS_US_Q1\"},{\"dateRaw\":\"2026-01-01\",\"spendRaw\":\"300\",\"campaignKey\":\"LI_B2B_SaaS_US_Q1\"},{\"dateRaw\":\"2026-05-05\",\"spendRaw\":\"100\",\"campaignKey\":\"Test\"}],\"pipelineStageLabel\":null,\"pipelineTotalToDate\":null,\"storedRevenueColumn\":null,\"csvStoredRevenueRows\":null,\"storedCampaignColumn\":\"Campaign\",\"pipelineLastUpdatedAt\":null,\"campaignValueSpendTotals\":null,\"campaignValueRevenueTotals\":null,\"pipelineValueRevenueTotals\":null}"
+    }
+  ],
+  "revenueRecords": [
+    {
+      "id": "128bcbe1-d849-4e8f-bd50-cef3aa61b573",
+      "revenueSourceId": "d0ee256b-578e-4aa9-9a29-4931e66973b4",
+      "date": "2026-09-29",
+      "revenue": "250.00",
+      "currency": "EUR",
+      "externalId": null,
+      "sourceType": "hubspot",
+      "subCampaignUrn": null
+    },
+    {
+      "id": "65a08c53-3564-4af8-8607-2739d5fe5f85",
+      "revenueSourceId": "d0ee256b-578e-4aa9-9a29-4931e66973b4",
+      "date": "2026-09-29",
+      "revenue": "250.00",
+      "currency": "EUR",
+      "externalId": null,
+      "sourceType": "hubspot",
+      "subCampaignUrn": "yesop_retargeting"
+    },
+    {
+      "id": "a6c0b0b6-6835-477a-8c80-6a5170c1fd4c",
+      "revenueSourceId": "d0ee256b-578e-4aa9-9a29-4931e66973b4",
+      "date": "2026-11-12",
+      "revenue": "3200.00",
+      "currency": "EUR",
+      "externalId": null,
+      "sourceType": "hubspot",
+      "subCampaignUrn": null
+    },
+    {
+      "id": "e87839ed-bf99-4b57-a0ca-a6b09ab31f5f",
+      "revenueSourceId": "d0ee256b-578e-4aa9-9a29-4931e66973b4",
+      "date": "2026-11-12",
+      "revenue": "3200.00",
+      "currency": "EUR",
+      "externalId": null,
+      "sourceType": "hubspot",
+      "subCampaignUrn": "yesop_brand_search"
+    },
+    {
+      "id": "8dd24dbd-69fc-4c9d-b127-f3407735b2fd",
+      "revenueSourceId": "f744b4ae-2ee0-44b9-be35-4df59566e496",
+      "date": "2026-07-01",
+      "revenue": "200.00",
+      "currency": "EUR",
+      "externalId": null,
+      "sourceType": "csv",
+      "subCampaignUrn": null
+    },
+    {
+      "id": "d40f2505-5c43-4dd3-ad8b-f6ea68258551",
+      "revenueSourceId": "f744b4ae-2ee0-44b9-be35-4df59566e496",
+      "date": "2026-07-02",
+      "revenue": "50.00",
+      "currency": "EUR",
+      "externalId": null,
+      "sourceType": "csv",
+      "subCampaignUrn": null
+    }
+  ],
+  "spendRecords": [
+    {
+      "id": "c6bea7ab-e872-4614-834b-06259de12934",
+      "spendSourceId": "451385b7-4c29-4e78-825b-561fd3d09f47",
+      "date": "2026-01-01",
+      "spend": "1100.00",
+      "currency": "EUR",
+      "sourceType": "csv",
+      "subCampaignUrn": null
+    }
+  ]
+}

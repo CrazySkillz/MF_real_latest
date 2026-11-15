@@ -23,7 +23,7 @@ describe("Performance Summary aggregate contract", () => {
       campaignId: "campaign-1",
       dateRange: "30days",
       ga4: { connected: true, revenue: 1200, conversions: 12, sessions: 300, users: 180 },
-      webAnalytics: { connected: true, provider: "ga4", revenue: 1200, conversions: 12, sessions: 300, users: 180 },
+      webAnalytics: { connected: true, provider: "ga4", revenue: 1200, conversions: 12, sessions: 300, users: 180, conversionRate: 3.5 },
       spend: { unifiedSpend: 0, spendSource: "platform_spend_fallback" },
       platforms: {},
       revenue: { onsiteRevenue: 1200, offsiteRevenue: 0, totalRevenue: 1200 },
@@ -36,7 +36,7 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.users).toMatchObject({ available: true, value: 180, sources: ["ga4"] });
     expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 12, sources: ["ga4"] });
     expect(aggregate.totals.revenue).toMatchObject({ available: true, value: 1200, sources: ["ga4"] });
-    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 4, sources: ["conversions", "sessions"] });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 3.5, sources: ["ga4.sessionKeyEventRate"] });
     expect(aggregate.totals.impressions.available).toBe(false);
     expect(aggregate.totals.clicks.available).toBe(false);
     expect(aggregate.totals.spend.available).toBe(false);
@@ -56,7 +56,7 @@ describe("Performance Summary aggregate contract", () => {
       dateRange: "90days",
       currentValueWindow,
       ga4: { connected: true, available: true, revenue: 1000, conversions: 20, sessions: 500, users: 300 },
-      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 1000, conversions: 20, sessions: 500, users: 300 },
+      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 1000, conversions: 20, sessions: 500, users: 300, conversionRate: 3 },
       spend: { available: true, unifiedSpend: 400, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
       platforms: {
         linkedin: { connected: true, available: true, impressions: 10000, clicks: 1000, spend: 250, conversions: 30, leads: 5 },
@@ -75,7 +75,7 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.cpc).toMatchObject({ available: true, value: 0.25 });
     expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 25 });
     expect(aggregate.totals.ctr).toMatchObject({ available: true, value: 10 });
-    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 4 });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 3 });
   });
 
   it("preserves valid zero efficiency values when their inputs and denominators are available", () => {
@@ -91,7 +91,7 @@ describe("Performance Summary aggregate contract", () => {
       dateRange: "90days",
       currentValueWindow,
       ga4: { connected: true, available: true, revenue: 0, conversions: 0, sessions: 100, users: 50 },
-      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 0, conversions: 0, sessions: 100, users: 50 },
+      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 0, conversions: 0, sessions: 100, users: 50, conversionRate: 0 },
       spend: { available: true, unifiedSpend: 0, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
       platforms: {
         linkedin: { connected: true, available: true, impressions: 1000, clicks: 10, spend: 0, conversions: 0, leads: 0 },
@@ -143,7 +143,7 @@ describe("Performance Summary aggregate contract", () => {
         reportingTimeZone: "Europe/Amsterdam",
       },
       ga4: { connected: true, available: true, revenue: 55966.70, conversions: 152, sessions: 1183, users: 1184 },
-      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 55966.70, conversions: 152, sessions: 1183, users: 1184 },
+      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 55966.70, conversions: 152, sessions: 1183, users: 1184, conversionRate: 12.5 },
       financialConversions: { value: 251, available: true, sources: ["ga4"] },
       spend: { available: true, unifiedSpend: 2699.75, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
       platforms: {},
@@ -153,8 +153,8 @@ describe("Performance Summary aggregate contract", () => {
 
     expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 152 });
     expect(aggregate.totals.cvr.available).toBe(true);
-    expect(aggregate.totals.cvr.value).toBeCloseTo((152 / 1183) * 100, 10);
-    expect(formatPct(Number(aggregate.totals.cvr.value))).toBe("12.8%");
+    expect(aggregate.totals.cvr.value).toBe(12.5);
+    expect(formatPct(Number(aggregate.totals.cvr.value))).toBe("12.5%");
     expect(aggregate.totals.spend).toMatchObject({ available: true, value: 2699.75 });
     expect(aggregate.totals.revenue).toMatchObject({ available: true, value: 72766.69 });
     expect(aggregate.totals.roas).toMatchObject({ available: true, value: 26.95 });

@@ -15479,7 +15479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         && String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date";
       let executiveSummarySnapshotCaptured = false;
       let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };
-      const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? financialGa4Totals.available : !webAnalyticsProvider || !custom?.error };
+      const financialWebAnalytics = { ...webAnalytics, conversionRate: null as number | null, available: webAnalyticsProvider === "ga4" ? financialGa4Totals.available : !webAnalyticsProvider || !custom?.error };
       let campaignFinancialConversions: number | null = null;
       let executivePropertyEngagementRate: number | null = null;
       let executiveGA4SnapshotRefreshReady = false;
@@ -15599,6 +15599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   conversions: parseNum(exactTrafficCandidate?.conversions),
                   sessions: parseNum(exactTrafficCandidate?.sessions),
                   users: exactTrafficCandidate?.users ?? null,
+                  conversionRate: exactTrafficCandidate?.conversionRate ?? null,
                   connected: true,
                   available: true,
                 }
@@ -15608,6 +15609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
             financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
             financialWebAnalytics.users = financialGa4Totals.users;
+            financialWebAnalytics.conversionRate = financialGa4Totals.conversionRate;
           }
           } catch {
             financialGa4Totals = { ...financialGa4Totals, available: false };
@@ -15944,6 +15946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (useSavedOverview) {
         ga4Totals.users = financialGa4Totals.users ?? null;
         ga4Totals.sessions = financialGa4Totals.available ? financialGa4Totals.sessions : null;
+        ga4Totals.revenue = financialGa4Totals.available ? financialGa4Totals.revenue : null;
         if (webAnalytics.provider === "ga4") webAnalytics.users = financialWebAnalytics.users ?? null;
         if (webAnalytics.provider === "ga4") webAnalytics.sessions = ga4Totals.sessions;
       }
@@ -32249,8 +32252,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (scopedRows.length > 0) {
             const usersSnapshot = await storage.getGA4OverviewSnapshot(id, primaryPropertyId);
             const totals = summarizeGA4TrafficRows(scopedRows, usersSnapshot, ga4Start, ga4End);
+            const report = (usersSnapshot as any)?.campaignBreakdown;
+            if (report?.meta?.distinctUsers?.sessionTotalsVersion && report.meta.distinctUsers.startDate === ga4Start && report.meta.distinctUsers.endDate === ga4End) {
+              if (typeof report.totals?.revenue !== 'number' || !Number.isFinite(report.totals.revenue)) throw new Error('GA4_PERIOD_REVENUE_UNVERIFIED');
+              totals.revenue = report.totals.revenue;
+            }
             ga4Metrics = { sessions: totals.sessions, conversions: totals.conversions, pageviews: totals.pageviews,
-              users: getGA4DistinctUsers(usersSnapshot, ga4Start, ga4End), revenue: totals.revenue, bounceRate: totals.sessions > 0 ? (1 - totals.engagementRate) * 100 : null };
+              users: getGA4DistinctUsers(usersSnapshot, ga4Start, ga4End), revenue: totals.revenue, conversionRate: totals.conversionRate, bounceRate: totals.sessions > 0 ? (1 - totals.engagementRate) * 100 : null };
           }
           ga4LastUpdate = scopedRows.map((row: any) => String(row.date)).sort().at(-1) || null;
         }
@@ -32368,6 +32376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversions: webAnalyticsProvider === "ga4" ? ga4Metrics.conversions : customMetrics.conversions,
           sessions: webAnalyticsProvider === "ga4" ? ga4Metrics.sessions : customExecutiveMetricValue(customIntegrationRawData, "sessions"),
           users: webAnalyticsProvider === "ga4" ? ga4Metrics.users : customExecutiveMetricValue(customIntegrationRawData, "users"),
+          ...(webAnalyticsProvider === "ga4" ? { conversionRate: ga4Metrics.conversionRate } : {}),
         },
         spend: {
           persistedSpend: performanceSummarySpend,
@@ -32384,6 +32393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         mainPlatformSources: { googleAds, instagram, tiktok, googleSheets },
         revenue: {
+          ...(hasGA4Connection ? { available: typeof ga4Metrics.revenue === "number" && Number.isFinite(ga4Metrics.revenue) } : {}),
           onsiteRevenue: onsiteExecutiveRevenue,
           offsiteRevenue: aggregateRevenue > onsiteExecutiveRevenue ? aggregateRevenue - onsiteExecutiveRevenue : 0,
           totalRevenue: aggregateRevenue,

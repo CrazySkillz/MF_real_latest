@@ -267,7 +267,7 @@ describe("campaign Executive Summary regression guard", () => {
       dateRange: "90days",
       currentValueWindow,
       ga4,
-      webAnalytics: { ...ga4, provider: "ga4" },
+      webAnalytics: { ...ga4, provider: "ga4", conversionRate: 12.5 },
       spend: { unifiedSpend: 2699.75, spendSource: "persisted_spend_sources", sourceIds: ["spend"] },
       revenue: { available: true, totalRevenue: 72766.69 },
       revenueSources: [{ connected: true, type: "imported", lastTotalRevenue: 16799.99 }],
@@ -282,7 +282,7 @@ describe("campaign Executive Summary regression guard", () => {
       spend: 2699.75,
       roas: 26.95,
       roi: 2595.31,
-      cvr: (152 / 1183) * 100,
+      cvr: 12.5,
       cpa: 17.76,
     });
     const ga4Traffic = summarizeGA4TrafficRows([

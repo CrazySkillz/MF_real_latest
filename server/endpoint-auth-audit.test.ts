@@ -45,6 +45,16 @@ describe("Endpoint auth guard audit", () => {
 
       // Check next 10 lines for ensureCampaignAccess
       const block = lines.slice(i, i + 12).join("\n");
+      if (line.includes("app.post('/api/salesforce/:campaignId/monitor/renew-token',")) {
+        // This operator-only endpoint has executable rejection/scope tests in provider-monitor-renewal.test.ts.
+        expect(block).toContain("process.env.HUBSPOT_MONITOR_SECRET");
+        expect(block).toContain("!/^[a-f0-9]{64}$/.test(secret)");
+        expect(block).toContain("!/^[a-f0-9]{64}$/.test(supplied)");
+        expect(block).toContain("!timingSafeEqual(Buffer.from(secret, 'hex'), Buffer.from(supplied, 'hex'))");
+        expect(block).toContain("return res.status(401)");
+        expect(block).not.toContain("await storage.");
+        continue;
+      }
       if (!block.includes("ensureCampaignAccess")) {
         const route = line.trim().slice(0, 100);
         missing.push(`routes-oauth.ts:${i + 1} — ${route}`);
@@ -103,6 +113,16 @@ describe("Endpoint auth guard audit", () => {
         continue;
 
       const block = lines.slice(i, i + 12).join("\n");
+      if (line.includes("app.post('/api/shopify/:campaignId/monitor/renew-token',")) {
+        // This operator-only endpoint has executable rejection/scope tests in provider-monitor-renewal.test.ts.
+        expect(block).toContain("process.env.HUBSPOT_MONITOR_SECRET");
+        expect(block).toContain("!/^[a-f0-9]{64}$/.test(secret)");
+        expect(block).toContain("!/^[a-f0-9]{64}$/.test(supplied)");
+        expect(block).toContain("!timingSafeEqual(Buffer.from(secret, 'hex'), Buffer.from(supplied, 'hex'))");
+        expect(block).toContain("return res.status(401)");
+        expect(block).not.toContain("await storage.");
+        continue;
+      }
       if (!block.includes("ensureCampaignAccess")) {
         const route = line.trim().slice(0, 100);
         missing.push(`routes-oauth.ts:${i + 1} — ${route}`);

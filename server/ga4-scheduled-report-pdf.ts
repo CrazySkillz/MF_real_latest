@@ -6,7 +6,7 @@ import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4ReportingWindowMode, getGA
 import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct, formatConversionCredit } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { ga4ProvisionalNotice, normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
-import { getGA4DistinctUsers, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, getGA4PeriodTraffic, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
 import { computeAttainmentPct, computeEffectiveDeltaPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiDataSufficiency, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -833,7 +833,7 @@ async function buildGA4ReportPayload(report: any) {
   }, { sessions: 0, users: 0, conversions: 0, revenue: 0, engagedSessions: 0, pageviews: 0 });
   dailySummedTotals.revenue = Number(dailySummedTotals.revenue.toFixed(2));
   dailySummedTotals.engagementRate = dailySummedTotals.sessions > 0 ? dailySummedTotals.engagedSessions / dailySummedTotals.sessions : 0;
-  const overviewSummedTotals = summarizeGA4TrafficRows(overviewDailyRows);
+  const overviewSummedTotals = summarizeGA4TrafficRows(overviewDailyRows, breakdown, overviewStartDate, dailyEnd);
   const overviewUsers = getGA4DistinctUsers(breakdown, overviewStartDate, dailyEnd);
   const latestOverview = useSavedOverview ? await storage.getGA4OverviewSnapshot(campaignId, propertyId) : null;
   if (useSavedOverview && (failedParts.has("persisted daily metrics") || failedParts.has("persisted Overview Summary metrics") ||
@@ -841,6 +841,7 @@ async function buildGA4ReportPayload(report: any) {
       overviewDailyRows.length !== (Date.parse(nativeEndDate) - Date.parse(overviewStartDate)) / 86400000 + 1 ||
       new Set(overviewDailyRows.map((row: any) => String(row.date))).size !== overviewDailyRows.length ||
       overviewDailyRows.some((row: any) => String(row.date) < overviewStartDate || String(row.date) > nativeEndDate) ||
+      summarizeGA4TrafficRows(overviewDailyRows).sessions !== Number((savedOverview!.campaignBreakdown as any)?.meta?.dailySessions ?? (savedOverview!.campaignBreakdown as any)?.totals?.sessions) ||
       overviewSummedTotals.sessions !== Number((savedOverview!.campaignBreakdown as any)?.totals?.sessions) ||
       !conversionCreditsMatch(overviewSummedTotals.conversions, Number((savedOverview!.campaignBreakdown as any)?.totals?.conversions), overviewDailyRows.length))) {
     throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Daily publication changed");
@@ -1000,11 +1001,12 @@ async function buildGA4ReportPayload(report: any) {
   const campaignBreakdownAgg = filteredCampaignRows
     .map((row) => {
       const revenue = Number(Number(row.revenue || 0).toFixed(2));
-      const sessions = Number(row.sessions || 0);
+      const sessions = getGA4PeriodTraffic(breakdown, overviewStartDate, dailyEnd, row.name)?.sessions ?? Number(row.sessions || 0);
       const conversions = Number(row.conversions || 0);
       return {
         ...row,
         users: getGA4DistinctUsers(breakdown, overviewStartDate, dailyEnd, row.name),
+        sessions,
         revenue,
         conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
@@ -1045,6 +1047,7 @@ async function buildGA4ReportPayload(report: any) {
   }
   const adComparisonBreakdownAgg = roundGA4CampaignRevenueForDisplay(Array.from(adComparisonByCampaign.values())
     .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name))))
+    .map(row => ({ ...row, ...(adComparisonWindow ? getGA4PeriodTraffic(adComparisonBreakdown, adComparisonWindow.startDate, nativeEndDate, row.name) : null) }))
     .map((row) => {
       const revenue = Number(Number(row.revenue || 0).toFixed(2));
       const sessions = Number(row.sessions || 0);
@@ -1642,9 +1645,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
-    const totalMetric = selectedMetric === "users" ? payload.breakdownTotals.users ?? Number.NaN : selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
+    const totalMetric = selectedMetric === "sessions" ? payload.breakdownTotals.sessions : selectedMetric === "users" ? payload.breakdownTotals.users ?? Number.NaN : selectedMetric === "revenue" ? payload.adComparisonChartRevenue : selectedMetric === "conversionRate"
       ? (() => {
-          const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
+          const totalSessions = payload.breakdownTotals.sessions;
           const totalConversions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversions || 0), 0);
           return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
         })()

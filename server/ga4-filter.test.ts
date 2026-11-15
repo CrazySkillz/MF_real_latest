@@ -1110,7 +1110,10 @@ describe("GA4 campaign value picker", () => {
       const filterText = JSON.stringify(body?.dimensionFilter || {});
       const isPageLocation = filterText.includes('pageLocation');
       const isCampaignName = filterText.includes('"fieldName":"campaignName"');
-      const rows = dimensions.length > 1
+      const periodTraffic = !dimensions.length && body.metrics?.length === 4 && body.metrics[0].name === 'totalUsers';
+      const rows = periodTraffic
+        ? [{ metricValues: ['200', '200', '160', '0.8'].map(value => ({ value })) }]
+        : dimensions.length > 1
         ? [{
             dimensionValues: ['20260616', 'Paid Search', 'google', 'cpc', 'summer_sale', 'desktop', 'NL'].map((value) => ({ value })),
             metricValues: ['1', '1', '7', '70', '1', '1'].map((value) => ({ value })),

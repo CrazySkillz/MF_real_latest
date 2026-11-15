@@ -211,11 +211,12 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
     }
   }
 
+  const previousPeriod = response?.usersComparisons?.find((window: any) => window.startDate === overviewStartDate && window.endDate === comparisonDate);
   const previous = {
-    users: response?.usersComparisons?.find((window: any) => window.startDate === overviewStartDate && window.endDate === comparisonDate)?.users ?? Number.NaN,
-    sessions: current.sessions - recent.sessions,
+    users: previousPeriod?.users ?? Number.NaN,
+    sessions: previousPeriod?.sessions ?? current.sessions - recent.sessions,
     conversions: current.conversions - recent.conversions,
-    engagedSessions: current.engagedSessions - recent.engagedSessions,
+    engagedSessions: previousPeriod?.engagedSessions ?? current.engagedSessions - recent.engagedSessions,
   };
   if ([previous.sessions, previous.conversions, previous.engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
   return {

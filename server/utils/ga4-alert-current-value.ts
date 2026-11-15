@@ -374,13 +374,13 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       const date = String(sourceRow?.date || "");
       return date >= startDate && date <= endDate;
     });
-    let trafficTotals = summarizeGA4TrafficRows(trafficRows);
+    let trafficTotals = summarizeGA4TrafficRows(trafficRows, overviewSnapshot, startDate, endDate);
     if (metric === "users" && !isYesopMockProperty(propertyId)) {
       const users = getGA4DistinctUsers(overviewSnapshot, startDate, endDate);
       if (users === null) return blockAlertDecision(resolved, "unavailable");
       trafficTotals.users = users;
     }
-    const financialTotals = summarizeGA4TrafficRows(sourceRows);
+    const financialTotals = summarizeGA4TrafficRows(sourceRows, overviewSnapshot, financialStartDate, endDate);
     const savedFinancialCandidate = savedOverviewTotals?.ga4FinancialSource === "persisted_overview"
       && savedOverviewTotals.sessions === financialTotals.sessions
       && savedOverviewTotals.financialConversions === financialTotals.conversions

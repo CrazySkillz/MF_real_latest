@@ -10,8 +10,36 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
-  unit-tests:
+  build-checks:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Check TypeScript
+        run: npm run check
+      - name: Build application
+        run: npm run build
+      - run: npm run check:ga4-kpi-certification
+      - name: Retained deferred-source evidence (non-blocking)
+        continue-on-error: true
+        run: npm run test:deferred
+  test-groups:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     permissions:
       contents: read
     services:
@@ -41,10 +69,6 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci --ignore-scripts
-      - name: Check TypeScript
-        run: npm run check
-      - name: Build application
-        run: npm run build
       - run: npx --no-install playwright install --with-deps chromium
       - name: Create isolated notification fixture database
         run: |
@@ -54,8 +78,43 @@ jobs:
           try { await client.connect(); await client.query('CREATE DATABASE notifications_test'); }
           finally { await client.end(); }
           NODE
-      - run: npm run check:ga4-kpi-certification
       - run: npm run test:current-version
-      - name: Retained deferred-source evidence (non-blocking)
-        continue-on-error: true
-        run: npm run test:deferred
+        env:
+          CURRENT_VERSION_TEST_SHARD: ${{ matrix.shard }}/3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: current-version-shard-${{ matrix.shard }}
+          overwrite: true
+          path: .ci-test-results/*.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+  unit-tests:
+    if: ${{ always() }}
+    needs: [build-checks, test-groups]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Require every build and test group to succeed
+        env:
+          BUILD_RESULT: ${{ needs.build-checks.result }}
+          TEST_RESULT: ${{ needs.test-groups.result }}
+        run: test "$BUILD_RESULT" = success && test "$TEST_RESULT" = success
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: current-version-shard-*
+          path: .ci-test-results
+          merge-multiple: true
+      - name: Verify complete test-file coverage for this commit and run
+        run: node --import tsx scripts/ga4-kpi-current-version-test-boundary.ts verify-shards
+        env:
+          DATABASE_URL: ''
+          CURRENT_VERSION_TEST_SHARD_COUNT: '3'

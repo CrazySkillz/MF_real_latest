@@ -1,8 +1,11 @@
 import { spawnSync } from "node:child_process";
 import {
   mkdtempSync,
+  mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -45,7 +48,45 @@ export type VitestJsonResult = {
   numFailedTests: number;
   testResults: TestFileResult[];
   unhandledErrors?: string[];
+  shardFiles?: string[];
 };
+
+type ShardReceipt = {
+  shard: string;
+  commit: string;
+  run: string;
+  attempt: string;
+  files: string[];
+  tests: number;
+};
+
+export function validateShardReceipts(
+  receipts: ShardReceipt[], expectedFiles: string[],
+  context: { count: number; commit: string; run: string; attempt: string; deferredFiles: string[] },
+): void {
+  if (!Number.isInteger(context.count) || context.count < 2 || !context.commit || !context.run || !context.attempt
+    || !/^[1-9]\d*$/.test(context.attempt) || !Number.isSafeInteger(Number(context.attempt))
+    || receipts.length !== context.count || expectedFiles.length === 0) throw new Error("Missing shard results or run identity.");
+  const shards = new Set<string>(), files = new Set<string>();
+  for (const receipt of receipts) {
+    const [index, count] = String(receipt.shard).split("/").map(Number);
+    const attempt = Number(receipt.attempt);
+    if (receipt.shard !== `${index}/${count}` || !Number.isInteger(index) || index < 1 || index > context.count
+      || count !== context.count || shards.has(receipt.shard) || receipt.commit !== context.commit
+      || receipt.run !== context.run || !Number.isInteger(attempt) || attempt < 1 || String(attempt) !== receipt.attempt
+      || attempt > Number(context.attempt) || !Array.isArray(receipt.files)
+      || !receipt.files.length || !Number.isInteger(receipt.tests) || receipt.tests < 1) throw new Error("Invalid or duplicate shard result.");
+    shards.add(receipt.shard);
+    for (const file of receipt.files) {
+      if (typeof file !== "string" || files.has(file)) throw new Error("Test file executed by multiple shards.");
+      files.add(file);
+    }
+  }
+  if (files.size !== expectedFiles.length || expectedFiles.some(file => !files.has(file))) {
+    throw new Error("Shard coverage differs from the full test-file inventory.");
+  }
+  if (context.deferredFiles.some(file => !files.has(file))) throw new Error("Stale deferred test-file inventory.");
+}
 
 type LocatedAssertion = AssertionResult & { file: string };
 
@@ -168,6 +209,23 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function listTestFiles(root: string): string[] {
+  const directory = mkdtempSync(join(tmpdir(), "ga4-test-inventory-"));
+  try {
+    const output = join(directory, "files.json");
+    const result = spawnSync(process.execPath, [resolve(root, "node_modules/vitest/vitest.mjs"), "list", "--filesOnly",
+      `--json=${output}`], { cwd: root, stdio: "inherit", shell: false });
+    if (result.error || result.status !== 0) throw result.error || new Error("Test-file discovery failed.");
+    const entries = JSON.parse(readFileSync(output, "utf8"));
+    if (!Array.isArray(entries) || !entries.length || entries.some(entry => typeof entry.file !== "string")) throw new Error("Invalid test-file inventory.");
+    const files = entries.map(entry => repositoryRelativeFile(root, entry.file));
+    if (new Set(files).size !== files.length) throw new Error("Duplicate test-file inventory.");
+    return files;
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 function runVitest(
   root: string,
   selectedTests: DeferredTest[] | null,
@@ -176,6 +234,10 @@ function runVitest(
   const outputFile = join(tempDirectory, "vitest.json");
   const errorFile = join(tempDirectory, "run-errors.json");
   const vitestCli = resolve(root, "node_modules/vitest/vitest.mjs");
+  const shard = process.env.CURRENT_VERSION_TEST_SHARD;
+  if (shard && (!/^[1-9]\d*\/[1-9]\d*$/.test(shard) || Number(shard.split("/")[0]) > Number(shard.split("/")[1]) || selectedTests)) {
+    throw new Error("Invalid current-version shard.");
+  }
   const args = [
     vitestCli,
     "run",
@@ -187,6 +249,7 @@ function runVitest(
     `--reporter=${resolve(root, "scripts/ga4-test-run-errors.cjs")}`,
     `--outputFile=${outputFile}`,
   ];
+  if (shard) args.push(`--shard=${shard}`);
 
   if (selectedTests) {
     const files = [...new Set(selectedTests.map((test) => test.file))];
@@ -208,6 +271,11 @@ function runVitest(
     const runErrors = JSON.parse(readFileSync(errorFile, "utf8"));
     if (!Array.isArray(runErrors.errors) || !["passed", "failed", "interrupted"].includes(runErrors.reason)) throw new Error("Incomplete test-run error receipt.");
     report.unhandledErrors = [...runErrors.errors, ...(runErrors.reason === "interrupted" ? ["Test run interrupted"] : [])];
+    if (shard) {
+      const actualFiles = report.testResults.map(file => repositoryRelativeFile(root, file.name));
+      if (!actualFiles.length || new Set(actualFiles).size !== actualFiles.length) throw new Error("Invalid shard test-file execution.");
+      report.shardFiles = actualFiles;
+    }
     return { report, status: result.status };
   } finally {
     rmSync(tempDirectory, { recursive: true, force: true });
@@ -223,6 +291,7 @@ function printFailures(label: string, failures: LocatedAssertion[]): void {
 
 function runCurrentVersion(root: string, manifest: CurrentVersionTestManifest): number {
   const { report, status } = runVitest(root, null);
+  if (report.shardFiles) manifest = { ...manifest, tests: manifest.tests.filter(test => report.shardFiles!.includes(test.file)) };
   const classification = classifyCurrentVersionResults(report, manifest, root);
   const deferredFailures = classification.deferredResults.filter(
     (result) => result.status === "failed",
@@ -244,10 +313,18 @@ function runCurrentVersion(root: string, manifest: CurrentVersionTestManifest): 
     || Boolean(report.unhandledErrors?.length) || report.numTotalTests === 0
     || report.testResults.some(file => Boolean(file.message) || (file.status === "failed" && !file.assertionResults.some(test => test.status === "failed")));
   if (incompleteRun) console.error("[current-version] Test run failed to complete cleanly; release gate blocked.");
-  return !incompleteRun && classification.currentFailures.length === 0 &&
-    classification.missingDeferred.length === 0
-    ? 0
-    : 1;
+  const passed = !incompleteRun && classification.currentFailures.length === 0 &&
+    classification.missingDeferred.length === 0;
+  if (passed && report.shardFiles) {
+    const directory = resolve(root, ".ci-test-results");
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(join(directory, `shard-${process.env.CURRENT_VERSION_TEST_SHARD!.replace("/", "-")}.json`), JSON.stringify({
+      shard: process.env.CURRENT_VERSION_TEST_SHARD, commit: process.env.GITHUB_SHA,
+      run: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT,
+      files: report.shardFiles, tests: report.numTotalTests,
+    }), { flag: "wx" });
+  }
+  return passed ? 0 : 1;
 }
 
 function runDeferred(
@@ -289,6 +366,16 @@ function main(): void {
   const root = process.cwd();
   const manifest = readCurrentVersionManifest(root);
   const mode = process.argv[2] ?? "current";
+  if (mode === "verify-shards") {
+    const directory = resolve(root, ".ci-test-results");
+    const receipts = readdirSync(directory).filter(file => file.endsWith(".json")).map(file => JSON.parse(readFileSync(join(directory, file), "utf8")));
+    const files = listTestFiles(root);
+    validateShardReceipts(receipts, files, { count: Number(process.env.CURRENT_VERSION_TEST_SHARD_COUNT),
+      commit: process.env.GITHUB_SHA || "", run: process.env.GITHUB_RUN_ID || "", attempt: process.env.GITHUB_RUN_ATTEMPT || "",
+      deferredFiles: manifest.tests.map(test => test.file) });
+    console.log(`[current-version] Verified ${receipts.length} isolated shards, ${files.length} files, ${receipts.reduce((sum, receipt) => sum + receipt.tests, 0)} tests; no missing or duplicate files.`);
+    return;
+  }
   if (mode === "current") {
     process.exitCode = runCurrentVersion(root, manifest);
     return;

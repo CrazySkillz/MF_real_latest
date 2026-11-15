@@ -65,13 +65,16 @@ export function validateShardReceipts(
   context: { count: number; commit: string; run: string; attempt: string; deferredFiles: string[] },
 ): void {
   if (!Number.isInteger(context.count) || context.count < 2 || !context.commit || !context.run || !context.attempt
+    || !/^[1-9]\d*$/.test(context.attempt) || !Number.isSafeInteger(Number(context.attempt))
     || receipts.length !== context.count || expectedFiles.length === 0) throw new Error("Missing shard results or run identity.");
   const shards = new Set<string>(), files = new Set<string>();
   for (const receipt of receipts) {
     const [index, count] = String(receipt.shard).split("/").map(Number);
+    const attempt = Number(receipt.attempt);
     if (receipt.shard !== `${index}/${count}` || !Number.isInteger(index) || index < 1 || index > context.count
       || count !== context.count || shards.has(receipt.shard) || receipt.commit !== context.commit
-      || receipt.run !== context.run || receipt.attempt !== context.attempt || !Array.isArray(receipt.files)
+      || receipt.run !== context.run || !Number.isInteger(attempt) || attempt < 1 || String(attempt) !== receipt.attempt
+      || attempt > Number(context.attempt) || !Array.isArray(receipt.files)
       || !receipt.files.length || !Number.isInteger(receipt.tests) || receipt.tests < 1) throw new Error("Invalid or duplicate shard result.");
     shards.add(receipt.shard);
     for (const file of receipt.files) {

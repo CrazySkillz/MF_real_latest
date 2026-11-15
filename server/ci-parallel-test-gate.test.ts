@@ -22,6 +22,13 @@ describe("parallel CI release gate", () => {
     const stale = receipts(); stale[0][key] = "other";
     expect(() => validateShardReceipts(stale, files, context)).toThrow();
   });
+  it("reuses an already-passed group when only failed jobs are rerun for the same commit/run", () => {
+    expect(() => validateShardReceipts(receipts(), files, { ...context, attempt: "2" })).not.toThrow();
+  });
+  it("rejects a receipt from a future attempt", () => {
+    const future = receipts(); future[0].attempt = "2";
+    expect(() => validateShardReceipts(future, files, context)).toThrow();
+  });
   it.each(["0/3", "4/3", "1/2", "1/3/extra", "1.5/3"])("rejects invalid group %s", shard => {
     const invalid = receipts(); invalid[0].shard = shard;
     expect(() => validateShardReceipts(invalid, files, context)).toThrow();
@@ -55,5 +62,6 @@ describe("parallel CI release gate", () => {
     expect(workflow.match(/continue-on-error:/g)).toHaveLength(1);
     expect(workflow).toContain("fail-fast: false");
     expect(workflow).toContain("shard: [1, 2, 3]");
+    expect(workflow).toContain("overwrite: true");
   });
 });

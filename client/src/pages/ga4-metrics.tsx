@@ -42,7 +42,7 @@ import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisp
 import { resolveGA4InsightsExecutiveFinancials } from "@/lib/ga4-insights-executive-financials";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
-import { getGA4DistinctUsers } from "@shared/ga4-traffic-window";
+import { getGA4DistinctUsers, getGA4PeriodTraffic } from "@shared/ga4-traffic-window";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { getGA4KpiReportingWindowLabel, resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
 import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
@@ -4152,9 +4152,9 @@ export default function GA4Metrics() {
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
       const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
-      const totalMetric = selectedMetric === "users" ? overviewSummaryTotals.users ?? Number.NaN : selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
+      const totalMetric = selectedMetric === "sessions" ? overviewSummaryTotals.sessions : selectedMetric === "users" ? overviewSummaryTotals.users ?? Number.NaN : selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
         ? (() => {
-            const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
+            const totalSessions = overviewSummaryTotals.sessions;
             const totalConversions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversions || 0), 0);
             return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
           })()
@@ -6291,7 +6291,7 @@ export default function GA4Metrics() {
       .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(c.name)));
     return filteredRows
       .map((c) => {
-        const sessions = Number(c.sessions || 0);
+        const sessions = getGA4PeriodTraffic(ga4Breakdown, ga4Breakdown?.startDate, ga4Breakdown?.endDate, c.name)?.sessions ?? Number(c.sessions || 0);
         const users = getGA4DistinctUsers(ga4Breakdown, ga4Breakdown?.startDate, ga4Breakdown?.endDate, c.name) ?? Number.NaN;
         const conversions = Number(c.conversions || 0);
         const revenue = Number(Number(c.revenue || 0).toFixed(2));
@@ -6324,6 +6324,7 @@ export default function GA4Metrics() {
 
     return roundGA4CampaignRevenueForDisplay(Array.from(byName.values())
       .filter((row) => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(row.name))))
+      .map(row => ({ ...row, ...getGA4PeriodTraffic(adComparisonBreakdown, adComparisonBreakdown?.startDate, adComparisonBreakdown?.endDate, row.name) }))
       .map((row) => ({
         ...row,
         users: getGA4DistinctUsers(adComparisonBreakdown, adComparisonBreakdown?.startDate, adComparisonBreakdown?.endDate, row.name) ?? Number.NaN,
@@ -9559,6 +9560,7 @@ export default function GA4Metrics() {
                     chartCampaignRows={adComparisonChartRows}
                     chartRevenue={adComparisonChartRevenue}
                               chartUsers={overviewSummaryTotals.users}
+                    chartSessions={overviewSummaryTotals.sessions}
                     breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}
                     breakdownUnavailable={adComparisonBreakdownUnavailable}
                     breakdownStale={Boolean(adComparisonBreakdownError && adComparisonBreakdown !== undefined)}

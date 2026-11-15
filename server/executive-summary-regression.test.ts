@@ -129,7 +129,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(routes).toContain("roas: hasRevenueTracking && linkedInSpend > 0");
     expect(routes).toContain("roi: hasRevenueTracking && linkedInSpend > 0");
     expect(route).toContain("dateRange: executiveDateRange");
-    expect(route).toContain("const totals = summarizeGA4TrafficRows(scopedRows);");
+    expect(route).toContain("const totals = summarizeGA4TrafficRows(scopedRows, usersSnapshot, ga4Start, ga4End);");
     expect(route).toContain("getGA4KPIReportingWindow(campaign.reportingTimeZone, undefined, now, activeGA4Connection.importStartDate)");
     expect(route).toContain("if (scopedRows.length > 0) {");
     expect(route).not.toContain("let usedGA4SourceTruth = false;");
@@ -246,7 +246,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("conversions: parseNum(exactTrafficCandidate?.conversions)");
     expect(route).toContain("sessions: parseNum(exactTrafficCandidate?.sessions)");
     expect(route).toContain("users: exactTrafficCandidate?.users");
-    expect(route).toContain("...summarizeGA4TrafficRows(propertyWindowRows)");
+    expect(route).toContain("...summarizeGA4TrafficRows(propertyWindowRows, overviewSnapshot, currentValueWindow.startDate, currentValueWindow.nativeDataThroughDate || endDateUsed)");
     expect(route).toContain("executivePropertyEngagementRate = propertyWindowTrafficCandidate.sessions > 0");
     expect(route).toContain("(performanceSummary as any).totals.engagementRate");
     expect(route).toContain('sources: ["ga4"]');

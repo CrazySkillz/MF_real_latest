@@ -1461,18 +1461,19 @@ export class GoogleAnalytics4Service {
   async getDistinctUsersWithToken(
     propertyId: string, accessToken: string, startDate: string, endDate: string,
     campaignFilter: CampaignFilter, primaryScope?: GA4DailyTrafficCapture['primaryScope'],
+    includeSessions = false,
   ) {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const names = this.normalizeCampaignFilter(campaignFilter);
     if (!names.length || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
       throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
     }
-    const run = async (filter: any, from: string, to: string, daily = false): Promise<Array<{ date: string; users: number }>> => {
+    const run = async (filter: any, from: string, to: string, daily = false): Promise<Array<{ date: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number }>> => {
       const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ dateRanges: [{ startDate: from, endDate: to }],
           ...(daily ? { dimensions: [{ name: 'date' }], orderBys: [{ dimension: { dimensionName: 'date' } }] } : {}),
-          ...filter, metrics: [{ name: 'totalUsers' }], limit: 100000 }),
+          ...filter, metrics: [{ name: 'totalUsers' }, ...(includeSessions && !daily ? ['sessions', 'engagedSessions', 'engagementRate'].map(name => ({ name })) : [])], limit: 100000 }),
       });
       if (!response.ok) throw new Error(`GA4 distinct users API error: ${await response.text()}`);
       const data = await response.json();
@@ -1482,7 +1483,12 @@ export class GoogleAnalytics4Service {
             !Number.isSafeInteger(Number(row.metricValues[0].value)) || Number(row.metricValues[0].value) < 0)) {
         throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
       }
-      const values = rows.map((row: any) => ({ date: daily ? String(row.dimensionValues?.[0]?.value || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3') : '', users: Number(row.metricValues[0].value) }));
+      if (includeSessions && !daily && rows.some((row: any) => [1, 2, 3].some(index => {
+        const raw = row.metricValues?.[index]?.value, value = Number(raw);
+        return raw == null || raw === '' || !Number.isFinite(value) || value < 0 || (index < 3 ? !Number.isSafeInteger(value) : value > 1);
+      }))) throw new Error('GA4_PERIOD_SESSIONS_UNVERIFIED');
+      const values = rows.map((row: any) => ({ date: daily ? String(row.dimensionValues?.[0]?.value || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3') : '', users: Number(row.metricValues[0].value),
+        ...(includeSessions && !daily ? { sessions: Number(row.metricValues[1].value), engagedSessions: Number(row.metricValues[2].value), engagementRate: Number(row.metricValues[3].value) } : {}) }));
       if (daily && (new Set(values.map((row: any) => row.date)).size !== values.length ||
           values.some((row: any) => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < from || row.date > to))) throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
       return values;
@@ -1515,9 +1521,11 @@ export class GoogleAnalytics4Service {
       daily.push({ date, users: byDate.get(date) ?? 0 });
     }
     const total = aggregate[0]?.users ?? 0;
-    const campaigns: Array<{ name: string; users: number }> = [];
-    for (let i = 0; i < names.length; i += 4) campaigns.push(...await Promise.all(names.slice(i, i + 4).map(async name => ({ name, users: names.length === 1 ? total : (await run(scopeFor(name), startDate, endDate))[0]?.users ?? 0 }))));
-    const windows: Array<{ startDate: string; endDate: string; users: number }> = [];
+    const zero = { users: 0, ...(includeSessions ? { sessions: 0, engagedSessions: 0, engagementRate: 0 } : {}) };
+    const period = (values: Awaited<ReturnType<typeof run>>) => { const { date, ...value } = values[0] || { date: '', ...zero }; return value; };
+    const campaigns: Array<{ name: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number }> = [];
+    for (let i = 0; i < names.length; i += 4) campaigns.push(...await Promise.all(names.slice(i, i + 4).map(async name => ({ name, ...period(names.length === 1 ? aggregate : await run(scopeFor(name), startDate, endDate)) }))));
+    const windows: Array<{ startDate: string; endDate: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number }> = [];
     for (const days of [7, 14, 30, 90]) {
       const previousEnd = new Date(Date.parse(endDate) - days * 86400000).toISOString().slice(0, 10);
       const recentStart = new Date(Date.parse(endDate) - (days - 1) * 86400000).toISOString().slice(0, 10);
@@ -1526,8 +1534,9 @@ export class GoogleAnalytics4Service {
         windows.push({ startDate: from, endDate: to, users: 0 });
       }
     }
-    for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { window.users = (await run(fullScope, window.startDate, window.endDate))[0]?.users ?? 0; }));
-    return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows };
+    for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { Object.assign(window, period(await run(fullScope, window.startDate, window.endDate))); }));
+    return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows,
+      ...(includeSessions ? { sessionTotalsVersion: 1, ...period(aggregate) } : {}) };
   }
 
   async getMetricsWithToken(
@@ -1924,6 +1933,7 @@ export class GoogleAnalytics4Service {
       overviewCampaignAttribution?: Record<string, string | number | boolean>;
       insightsLandingCoverage?: Record<string, string | number | boolean>;
       distinctUsers?: Awaited<ReturnType<GoogleAnalytics4Service['getDistinctUsersWithToken']>>;
+      dailySessions?: number;
     };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
@@ -2737,18 +2747,18 @@ export class GoogleAnalytics4Service {
     const resolvedEngagedSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[4]?.value || '0', 10) || 0 : totalEngagedSessions;
 
     const distinctUsers = preferOverviewCampaignTotals && this.normalizeCampaignFilter(campaignFilter).length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && endDate
-      ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope)
+      ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope, true)
       : undefined;
     return {
       rows,
       totals: {
-        sessions: totalSessions,
-        sessionsRaw: totalSessions,
+        sessions: distinctUsers?.sessions ?? totalSessions,
+        sessionsRaw: distinctUsers?.sessions ?? totalSessions,
         users: distinctUsers?.total ?? resolvedUsers,
         conversions: resolvedConversions,
         revenue: Number(resolvedRevenue.toFixed(2)),
-        engagedSessions: resolvedEngagedSessions,
-        engagementRate: totalSessions > 0 ? resolvedEngagedSessions / totalSessions : 0,
+        engagedSessions: distinctUsers?.engagedSessions ?? resolvedEngagedSessions,
+        engagementRate: distinctUsers?.engagementRate ?? (totalSessions > 0 ? resolvedEngagedSessions / totalSessions : 0),
       },
       meta: {
         propertyId: normalizedPropertyId,
@@ -2759,7 +2769,7 @@ export class GoogleAnalytics4Service {
         ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
         ...(overviewCampaignAttribution ? { overviewCampaignAttribution } : {}),
         ...(insightsLandingCoverage ? { insightsLandingCoverage } : {}),
-        ...(distinctUsers ? { distinctUsers } : {}),
+        ...(distinctUsers ? { distinctUsers, dailySessions: totalSessions } : {}),
       },
     };
   }

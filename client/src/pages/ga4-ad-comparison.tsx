@@ -31,6 +31,7 @@ interface GA4AdComparisonProps {
   chartCampaignRows: CampaignAgg[];
   chartRevenue?: number;
   chartUsers?: number | null;
+  chartSessions?: number | null;
   breakdownLoading: boolean;
   breakdownUnavailable?: boolean;
   breakdownStale?: boolean;
@@ -69,6 +70,7 @@ function GA4AdComparison({
   chartCampaignRows,
   chartRevenue,
   chartUsers,
+  chartSessions,
   breakdownLoading,
   breakdownUnavailable = false,
   breakdownStale = false,
@@ -164,14 +166,15 @@ function GA4AdComparison({
 
   const totalMetric = useMemo(() => {
     if (selectedMetric === "users") return chartUsers ?? Number.NaN;
+    if (selectedMetric === "sessions" && chartSessions != null) return chartSessions;
     if (selectedMetric === "revenue" && chartRevenue !== undefined) return chartRevenue;
     if (selectedMetric === "conversionRate") {
-      const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
+      const totalSessions = chartSessions ?? sortedByMetric.reduce((s, c) => s + c.sessions, 0);
       const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
       return totalSessions > 0 ? totalConversions / totalSessions * 100 : 0;
     }
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
-  }, [sortedByMetric, selectedMetric, chartRevenue, chartUsers]);
+  }, [sortedByMetric, selectedMetric, chartRevenue, chartUsers, chartSessions]);
 
   const summaryMetricLabel = selectedMetric === "revenue"
     ? "Campaign Breakdown Revenue"

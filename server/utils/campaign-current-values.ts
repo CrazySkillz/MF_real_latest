@@ -1,5 +1,5 @@
 import { conversionCreditsMatch, formatRoasRatio } from "../../shared/metric-math";
-import { getGA4DistinctUsers, summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
+import { getGA4DistinctUsers, getGA4PeriodTraffic, summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { storage, type GA4RefreshWriteInput } from "../storage";
 import { ga4Service } from "../analytics";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
@@ -216,6 +216,8 @@ async function getCampaignMetricTotalsForEndDate(
     if (!isYesopMockProperty(propertyId)) {
       const usersSnapshot = useSavedOverview ? savedOverview : await storage.getGA4OverviewSnapshot(campaignId, propertyId).catch(() => null);
       const distinctUsers = getGA4DistinctUsers(usersSnapshot, startDate, nativeEndDate);
+      const period = getGA4PeriodTraffic(usersSnapshot, startDate, nativeEndDate);
+      if (period) { sessions = period.sessions; engagementRate = period.engagementRate * 100; }
       usersAvailable = distinctUsers !== null;
       users = distinctUsers ?? 0;
     } else usersAvailable = true;
@@ -254,6 +256,7 @@ async function getCampaignMetricTotalsForEndDate(
               const value = parseGA4FinancialNumber(row[field]);
               return value === null || (field !== "revenue" && value < 0) || (field === "sessions" && !Number.isInteger(value));
             })) || !conversionCreditsMatch(savedConversions, conversions, rows.length) || savedSessions !== sessions ||
+          ((overview.campaignBreakdown as any)?.meta?.dailySessions != null && (overview.campaignBreakdown as any).meta.dailySessions !== summarizeGA4TrafficRows(rows).sessions) ||
           Math.abs(savedRevenue - ga4Revenue) > rows.length * 0.005 + 1e-9) return null;
       ga4Revenue = savedRevenue;
       financialConversions = savedConversions;

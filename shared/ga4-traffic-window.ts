@@ -28,7 +28,20 @@ export const getGA4DistinctUsers = (snapshot: any, startDate: string, endDate: s
   return value !== null && value !== undefined && Number.isSafeInteger(value) && value >= 0 ? value : null;
 };
 
-export const summarizeGA4TrafficRows = (rows: any[]) => {
+// Sessions, like Users, must come from GA4 for the exact complete period.
+export const getGA4PeriodTraffic = (snapshot: any, startDate: string, endDate: string, campaignName?: string) => {
+  const report = snapshot?.campaignBreakdown ?? snapshot;
+  const period = report?.meta?.distinctUsers;
+  if (period?.sessionTotalsVersion !== 1 || getGA4DistinctUsers(snapshot, startDate, endDate, campaignName) === null) return null;
+  const current = period.startDate === startDate && period.endDate === endDate;
+  const value = campaignName !== undefined ? current && period.campaigns?.find((row: any) => String(row.name).toLowerCase() === campaignName.toLowerCase())
+    : current ? period : period.windows?.find((row: any) => row.startDate === startDate && row.endDate === endDate);
+  if (![value?.sessions, value?.engagedSessions].every(n => Number.isSafeInteger(n) && n >= 0) ||
+      typeof value?.engagementRate !== 'number' || !Number.isFinite(value.engagementRate) || value.engagementRate < 0 || value.engagementRate > 1) return null;
+  return { sessions: value.sessions as number, engagedSessions: value.engagedSessions as number, engagementRate: value.engagementRate as number };
+};
+
+export const summarizeGA4TrafficRows = (rows: any[], snapshot?: any, startDate?: string, endDate?: string) => {
   const totals = (Array.isArray(rows) ? rows : []).reduce((acc, rawRow) => {
     const row = addDerivedGA4EngagedSessions(rawRow || {});
     return {
@@ -41,9 +54,12 @@ export const summarizeGA4TrafficRows = (rows: any[]) => {
     };
   }, { users: 0, sessions: 0, pageviews: 0, conversions: 0, revenue: 0, engagedSessions: 0 });
 
+  const period = snapshot && startDate && endDate ? getGA4PeriodTraffic(snapshot, startDate, endDate) : null;
+  if (snapshot && (snapshot.campaignBreakdown ?? snapshot)?.meta?.distinctUsers?.sessionTotalsVersion && !period) throw new Error('GA4_PERIOD_SESSIONS_UNVERIFIED');
   return {
     ...totals,
     engagementRate: totals.sessions > 0 ? totals.engagedSessions / totals.sessions : 0,
+    ...period,
   };
 };
 

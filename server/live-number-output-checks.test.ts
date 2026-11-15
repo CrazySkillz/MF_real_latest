@@ -24,6 +24,41 @@ const summary = () => ({ campaignId: "a", sources: [{ id: "ga4", connected: true
 const sectionChecks = (section: string, outputs: any, snapshot = fixture()) => checkApplicationOutputs(snapshot, outputs, now).filter(check => check.section === section);
 
 describe("remaining live monitor selections", () => {
+  it("matches landing pages by path and attribution, including repeated paths", () => {
+    const snapshot = fixture(), saved = snapshot.rows.ga4OverviewSnapshots[0];
+    saved.landingPages = { rows: [
+      { landingPage: "/coffee", source: "qr", medium: "packaging", sessions: 4, users: 3, conversions: 0, revenue: 0, sessionKeyEventRate: 0 },
+      { landingPage: "/coffee", source: "chatgpt.com", medium: "packaging", sessions: 1, users: 1, conversions: 0, revenue: 0, sessionKeyEventRate: 0 },
+    ] };
+    const output = { ...structuredClone(saved.landingPages), propertyId: "123", startDate: "2026-11-04", endDate: "2026-11-04" };
+    output.rows.reverse();
+    const checks = () => sectionChecks("landing response", { landing: output }, snapshot);
+    expect(checks().length).toBeGreaterThan(4); expect(checks().every(c => c.status === "passed")).toBe(true);
+    output.rows[0].sessions = 4; output.rows[0].users = 3;
+    expect(checks()).toEqual(expect.arrayContaining([expect.objectContaining({ code: "sessions", status: "difference" }), expect.objectContaining({ code: "users", status: "difference" })]));
+    output.rows[0] = structuredClone(saved.landingPages.rows[1]); output.rows[0].medium = "cpc";
+    expect(checks()).toContainEqual(expect.objectContaining({ code: "ROW_IDENTITIES", status: "difference" }));
+    output.rows = [output.rows[1], output.rows[1]];
+    expect(checks()).toContainEqual(expect.objectContaining({ code: "ROW_IDENTITIES", status: "difference" }));
+    output.rows.pop(); expect(checks()).toContainEqual(expect.objectContaining({ code: "ROW_IDENTITIES", status: "difference" }));
+  });
+  it("verifies clipped landing-page PDF names without accepting ambiguous or incorrect rows", () => {
+    const snapshot = fixture(), name = "/product-page/coffee-beans-250g", saved = snapshot.rows.ga4OverviewSnapshots[0];
+    snapshot.comparisonRateDefinition = "ga4_session_key_event_rate";
+    saved.landingPages = { rows: [{ landingPage: name, source: "qr", medium: "packaging", sessions: 4, users: 3, conversions: 1, sessionKeyEventRate: 0.25 }] };
+    const full = `${name} qr/packaging 4 3 1 25.0%`, clipped = `${name.slice(0, 27)}… qr/packaging 4 3 1 25.0%`;
+    const checks = (text: string) => checkReportDetailText(snapshot, text, "overview", now).filter(c => c.code.startsWith("LANDING_PAGE"));
+    expect(checks(full)).toHaveLength(4); expect(checks(clipped)).toHaveLength(4);
+    expect(checks(clipped).every(c => c.status === "passed")).toBe(true);
+    expect(checks(clipped.replace("4 3", "5 3"))).toContainEqual(expect.objectContaining({ code: "LANDING_PAGE_0", status: "difference" }));
+    expect(checks(clipped.replace("25.0%", "20.0%"))).toContainEqual(expect.objectContaining({ code: "LANDING_PAGE_3", status: "difference" }));
+    for (const invalid of [clipped.replace("qr/packaging", "qr/cpc"), clipped + "\n" + clipped, full + "\n" + clipped])
+      expect(checks(invalid)).toContainEqual(expect.objectContaining({ code: "LANDING_PAGE_ROW_UNVERIFIED", status: "unverified" }));
+    saved.landingPages.rows.push({ ...saved.landingPages.rows[0], landingPage: name + "-other" });
+    expect(checks(clipped).every(c => c.status === "unverified")).toBe(true);
+    saved.landingPages.rows[1].source = "google";
+    expect(checks(clipped + "\n" + clipped.replace("qr/packaging", "google/packaging")).every(c => c.status === "passed")).toBe(true);
+  });
   it("verifies all numbers in a uniquely shortened browser PDF campaign row and rejects ambiguous names", () => {
     const snapshot = fixture(), name = "mimosaas_landing_browser_demo_20261110";
     snapshot.campaign.ga4CampaignFilter = JSON.stringify([name]); snapshot.comparisonRateDefinition = "conversions_per_session";

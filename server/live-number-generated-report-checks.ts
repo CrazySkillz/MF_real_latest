@@ -123,6 +123,19 @@ export function checkReportDetailText(snapshot: LiveNumberSnapshot, text: string
   const row = (code: string, name: string, values: Array<[unknown, number | undefined, string?]>, subset = lines) => {
     const pattern = new RegExp(`^${escape(name)} ${values.map(([, , unit]) => `${unit === "money" ? escape(expected.scope.currency) + " " : ""}${unit === "%" ? numeric.replace("|Unavailable)", "%|Unavailable)") : numeric}`).join(" ")}$`);
     const found = subset.map(line => line.match(pattern)).filter(Boolean), subject = monitorHash(name);
+    if (code === "LANDING_PAGE") {
+      // The browser PDF clips only the first column to 28 characters. Retain
+      // Source/Medium and reject ambiguous aliases or duplicate rendered rows.
+      const names = (expected.scope.publication.landingPages?.rows || []).slice(0, 20).map((page: any) => {
+        const path = String(page.landingPage), attribution = `${page.source || "(not set)"}/${page.medium || "(not set)"}`;
+        return { name: `${path} ${attribution}`, display: `${path.length > 28 ? path.slice(0, 27) + "…" : path} ${attribution}` };
+      });
+      const alias = names.find((item: any) => item.name === name)?.display;
+      if (alias && alias !== name && names.filter((item: any) => item.display === alias).length === 1) for (const line of subset) {
+        const match = line.startsWith(alias + " ") ? `${name}${line.slice(alias.length)}`.match(pattern) : null;
+        if (match) found.push(match);
+      }
+    }
     if (code === "CAMPAIGN_BREAKDOWN") {
       const names = Array.from(new Set<string>([...(expected.scope.publication.campaignBreakdown?.rows || []).map((item: any) => String(item.campaign)), ...expected.scope.filter]));
       for (const line of subset) {

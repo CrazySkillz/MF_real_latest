@@ -210,7 +210,7 @@ export function checkApplicationOutputs(snapshot: LiveNumberSnapshot, outputs: M
     if (key === "native" || key === "breakdown") for (const metric of ["users", "sessions", "conversions", "revenue", "engagedSessions", "engagementRate"]) {
       value(key + " response", metric, saved?.totals?.[metric], actual.totals?.[metric], ["revenue", "engagementRate"].includes(metric) ? 8 : undefined);
     }
-    if (key !== "native") table(key + " response", saved?.rows || [], actual.rows, key === "breakdown" ? ["date", "campaign", "source", "medium", "channel", "device", "country"] : key === "landing" ? "landingPage" : "eventName",
+    if (key !== "native") table(key + " response", saved?.rows || [], actual.rows, key === "breakdown" ? ["date", "campaign", "source", "medium", "channel", "device", "country"] : key === "landing" ? ["landingPage", "source", "medium"] : "eventName",
       [...numericMetrics, "eventCount", "sessionKeyEventRate", "engagementRate"]);
   }
   for (const kind of ["revenue", "spend"] as const) {

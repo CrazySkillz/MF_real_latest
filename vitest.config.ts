@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
+import DurationSequencer from "./scripts/ci-test-sequencer";
 
 export default defineConfig({
   esbuild: { jsx: "automatic" },
@@ -15,6 +16,7 @@ export default defineConfig({
     globals: true,
     reporters: ["default"],
     pool: "forks",
+    sequence: process.env.CURRENT_VERSION_TEST_SHARD ? { sequencer: DurationSequencer } : undefined,
   },
 });
 

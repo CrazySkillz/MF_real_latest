@@ -55,7 +55,9 @@ describe("duration-balanced CI groups", () => {
   });
   it("keeps timing-based placement scoped to sharded CI and preserves two workers", () => {
     const runner = readFileSync("scripts/ga4-kpi-current-version-test-boundary.ts", "utf8");
-    expect(runner).toContain('if (shard) args.push(`--shard=${shard}`, `--sequence.sequencer=${resolve(root, "scripts/ci-test-sequencer.ts")}`);');
+    const config = readFileSync("vitest.config.ts", "utf8");
+    expect(config).toContain('sequence: process.env.CURRENT_VERSION_TEST_SHARD ? { sequencer: DurationSequencer } : undefined');
+    expect(runner).toContain('if (shard) args.push(`--shard=${shard}`);');
     expect(runner).toContain('"--maxWorkers=2"');
     expect(timings.workersPerGroup).toBe(2);
   });

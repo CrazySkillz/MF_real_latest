@@ -249,7 +249,7 @@ function runVitest(
     `--reporter=${resolve(root, "scripts/ga4-test-run-errors.cjs")}`,
     `--outputFile=${outputFile}`,
   ];
-  if (shard) args.push(`--shard=${shard}`, `--sequence.sequencer=${resolve(root, "scripts/ci-test-sequencer.ts")}`);
+  if (shard) args.push(`--shard=${shard}`);
 
   if (selectedTests) {
     const files = [...new Set(selectedTests.map((test) => test.file))];

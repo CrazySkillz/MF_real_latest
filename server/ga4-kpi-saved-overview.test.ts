@@ -19,6 +19,7 @@ import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { preflightGA4ReportKPIConsumers } from "./report-scheduler";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
+import periodEvidence from "./fixtures/ga4-period-sessions-real-2026-11-15.json";
 
 const campaignId = "campaign-1";
 const publicationVersion = { campaignId, version: null };
@@ -72,7 +73,7 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     for (const name of ["updateKPI", "updateBenchmark", "recordKPIProgress", "updateKPIProgress", "recordBenchmarkHistory"]) storageMock[name].mockResolvedValue({ id: "saved" });
     provider.getTotalsWithRevenue.mockResolvedValue({ currencyCode: "EUR", totals: { sessions: 31, users: 31, conversions: 6, revenue: 110 } });
   });
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
   it("updates financial KPIs after midnight without inventing a new native history day or contacting providers", async () => {
     vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
@@ -133,6 +134,21 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     const blocked = await resolveAlertCurrentValueForDecision({ id: "kpi-Users", campaignId, platformType: "google_analytics", metric: "users", currentValue: "999" } as any, new Map(), { useSavedOverview: true });
     expect(blocked).toMatchObject({ __alertDecisionEligible: false, __alertDecisionReason: "unavailable" });
     expect(isAlertDecisionBreached({ ...blocked, alertsEnabled: true, alertThreshold: "1", alertCondition: "above" })).toBe(false);
+  });
+
+  it.each([['Sessions', 4472], ['Engagement Rate', 72.58]])("uses real GA4 whole-period %s in Executive Summary and alert decisions", async (metric, expected) => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
+    const { scope, daily, breakdown } = periodEvidence;
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: JSON.stringify(scope.campaigns) });
+    storageMock.getGA4Connections.mockResolvedValue([{ campaignId, propertyId, isPrimary: true, importStartDate: scope.startDate }]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue(daily.map(row => ({ ...row, updatedAt: new Date() })));
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ windowStart: scope.startDate, windowEnd: scope.endDate, campaignBreakdown: breakdown });
+    const decision = await resolveAlertCurrentValueForDecision({ campaignId, platformType: "google_analytics", metric, currentValue: "999" } as any, new Map(), { useSavedOverview: true, allowCredentialRefresh: false, requireCurrentTrafficFreshness: true });
+    expect(Number(decision.currentValue)).toBe(expected);
+    expect(decision.__alertDecisionEligible).not.toBe(false);
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
   });
 
   it.each([0.75, 0.000075, 2])("V1-079 preserves conversion credit %s through goals, history, CPA and alert decisions", async credit => {

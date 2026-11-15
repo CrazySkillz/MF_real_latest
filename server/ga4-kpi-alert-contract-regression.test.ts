@@ -147,7 +147,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     await pending;
     expect(storageMock.getRevenueTotalForRange).not.toHaveBeenCalled();
     expect(storageMock.getGA4Connection).not.toHaveBeenCalled();
-    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(["users", "totalUsers"].includes(metric) ? 1 : 0);
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(["users", "totalUsers", "sessions", "Total Sessions", "engagement_rate"].includes(metric) ? 1 : 0);
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 

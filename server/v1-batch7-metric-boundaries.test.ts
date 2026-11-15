@@ -74,9 +74,9 @@ describe("Batch 7 metric display and data-state boundaries", () => {
     expect(result?.current.sessions).toBe(sessions);
   });
   it.each([true, false])("V1-099 CVR label follows its actual denominator (web %s)", web => {
-    const summary = buildPerformanceSummaryAggregate({ campaignId: "c", dateRange: "all", webAnalytics: web ? { connected: true, provider: "ga4", sessions: 100, conversions: 10, users: 80 } : undefined, platforms: { linkedin: { connected: true, clicks: 20, conversions: 5, impressions: 100 } } } as any);
+    const summary = buildPerformanceSummaryAggregate({ campaignId: "c", dateRange: "all", webAnalytics: web ? { connected: true, provider: "ga4", sessions: 100, conversions: 10, users: 80, conversionRate: 9 } : undefined, platforms: { linkedin: { connected: true, clicks: 20, conversions: 5, impressions: 100 } } } as any);
     expect(binding(executive, "conversionRateLabel", { performanceSummary: summary, aggregateMetricAvailable: (key: string) => summary.totals[key]?.available })).toBe(web ? "Conversion Rate" : "Click-Through CVR");
-    expect(summary.totals.cvr.value).toBe(web ? 10 : 25);
+    expect(summary.totals.cvr.value).toBe(web ? 9 : 25);
   });
   it.each([0, 0.75, 12.25])("V1-101 current Executive formatter preserves %s conversion credits", value => {
     const format = binding(executive, "formatAggregateInteger", { aggregateMetricAvailable: () => true, aggregateMetricValue: () => value, formatConversionCredit });
@@ -109,14 +109,14 @@ describe("Batch 7 metric display and data-state boundaries", () => {
     const result = await evaluate(`return (async () => { let ga4Metrics: any = {}; let ga4LastUpdate = null; let hasGA4Connection = false; ${block.getText(source)} return {ga4Metrics, ga4LastUpdate}; })();`, { id: "c", periodParam: period, startDate: start, endDate: "2026-10-24", campaign: { reportingTimeZone: "Europe/Amsterdam" }, now: new Date("2026-10-24T14:00:00Z"), getGA4KPIReportingWindow, getGA4DistinctUsers, summarizeGA4TrafficRows, parseNum: Number, storage: { getGA4OverviewSnapshot: async () => null, getGA4Connections: async () => [{ propertyId: "old" }, { propertyId: "primary", isPrimary: true, importStartDate: "2026-09-01" }], getGA4DailyMetrics: async (...args: any[]) => { calls.push(args); return [daily("2026-09-02"), daily("2026-10-23")]; } }, ga4Service: { getMetricsWithAutoRefresh: () => { throw Error("Provider must not run during this read"); } } });
     expect(calls).toEqual([["c", "primary", expectedStart, "2026-10-23"]]);
     expect(result.ga4Metrics).toMatchObject({ sessions, pageviews: sessions, revenue: Number(sessions) * 2 });
-    expect(Object.keys(result.ga4Metrics).sort()).toEqual(["bounceRate", "conversions", "pageviews", "revenue", "sessions", "users"]);
+    expect(Object.keys(result.ga4Metrics).sort()).toEqual(["bounceRate", "conversionRate", "conversions", "pageviews", "revenue", "sessions", "users"]);
   });
   it.each(["empty", "read-failure", "missing-source", "recorded-zero"])("V1-100 Executive %s preserves unavailable versus zero", async mode => {
     const source = ast("server/routes-oauth.ts");
     const block = find(source, n => ts.isTryStatement(n) && /^\{\s*const ga4Connections =/.test(n.tryBlock.getText(source)) && n.tryBlock.getText(source).includes("activeGA4Connection"))[0] as ts.TryStatement;
     const initial = find(block.parent as ts.SourceFile, n => ts.isVariableDeclaration(n) && n.name.getText(source) === "ga4Metrics")[0] as ts.VariableDeclaration;
     const result = await evaluate(`return (async () => { let ga4Metrics = ${initial.initializer!.getText(source)}; let ga4LastUpdate = null; let hasGA4Connection = false; ${block.getText(source)} return ga4Metrics; })();`, { id: "c", periodParam: "all", startDate: "2000-01-01", endDate: "2026-10-24", campaign: { reportingTimeZone: "Europe/Amsterdam" }, now: new Date("2026-10-24T14:00:00Z"), getGA4KPIReportingWindow, getGA4DistinctUsers, summarizeGA4TrafficRows, console: { log: () => undefined }, storage: { getGA4OverviewSnapshot: async () => null, getGA4Connections: async () => mode === "missing-source" ? [] : [{ propertyId: "primary", isPrimary: true, importStartDate: "2026-09-01" }], getGA4DailyMetrics: async () => { if (mode === "read-failure") throw new Error("fixture read failure"); return mode === "recorded-zero" ? [{ ...daily("2026-10-23", 0), conversions: 0, revenue: 0 }] : []; } } });
-    expect(result).toEqual({ sessions: mode === "recorded-zero" ? 0 : null, conversions: mode === "recorded-zero" ? 0 : null, pageviews: mode === "recorded-zero" ? 0 : null, users: null, revenue: mode === "recorded-zero" ? 0 : null, bounceRate: null });
+    expect(result).toEqual({ sessions: mode === "recorded-zero" ? 0 : null, conversions: mode === "recorded-zero" ? 0 : null, pageviews: mode === "recorded-zero" ? 0 : null, users: null, revenue: mode === "recorded-zero" ? 0 : null, bounceRate: null, ...(mode === "recorded-zero" ? { conversionRate: null } : {}) });
   });
   it.each([0, 100])("V1-098 report headline ratios preserve unavailable versus zero (%s sessions)", sessions => {
     const values = { users: 0, sessions, conversions: 0, engagedSessions: 0, conversionRate: sessions ? 0 : null };

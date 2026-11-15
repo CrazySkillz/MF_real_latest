@@ -15945,7 +15945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ga4Totals.users = financialGa4Totals.users ?? null;
         ga4Totals.sessions = financialGa4Totals.available ? financialGa4Totals.sessions : null;
         if (webAnalytics.provider === "ga4") webAnalytics.users = financialWebAnalytics.users ?? null;
-        if (webAnalytics.provider === "ga4") webAnalytics.sessions = financialWebAnalytics.available ? financialWebAnalytics.sessions : null;
+        if (webAnalytics.provider === "ga4") webAnalytics.sessions = ga4Totals.sessions;
       }
       res.json({
         success: true,

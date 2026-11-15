@@ -34,9 +34,9 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
       expect(section).toMatch(/Conv\. rate|CONV\. RATE/);
       expect(section).not.toMatch(/Revenue|REVENUE/);
     }
-    expect(ui).toContain("const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;");
-    expect(browserPdf).toContain("formatPercentage(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0)");
-    expect(scheduledPdf).toContain("Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0");
+    expect(ui).toContain("const cr = r?.sessionKeyEventRate == null ? Number.NaN : r.sessionKeyEventRate * 100;");
+    expect(browserPdf).toContain("formatPercentage(r.sessionKeyEventRate * 100)");
+    expect(scheduledPdf).toContain("formatPct(row.sessionKeyEventRate * 100)");
     expect(ui).toContain("Distinct GA4 users for each landing page and Source/Medium during the displayed dates. Users can appear on multiple pages");
   });
 
@@ -114,7 +114,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
         rowCount: 1,
         rows: [{
           dimensionValues: [{ value: "/saved" }, { value: "google" }, { value: "cpc" }],
-          metricValues: [{ value: "7" }, { value: "5" }, { value: "2.5" }, { value: "19" }],
+          metricValues: [{ value: "7" }, { value: "5" }, { value: "2.5" }, { value: "19" }, { value: "0.1" }],
         }],
       }),
     }) as any);
@@ -142,14 +142,14 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
       const taggedScope = JSON.stringify(body.dimensionFilter).includes('pageLocation');
       return { ok: true, json: async () => ({ rowCount: taggedScope ? 1 : 0, rows: taggedScope ? [{
         dimensionValues: [{ value: '/landing' }, { value: '(not set)' }, { value: '(not set)' }],
-        metricValues: [{ value: '1152' }, { value: '1149' }, { value: '112' }, { value: '33877.249999' }],
+        metricValues: [{ value: '1152' }, { value: '1149' }, { value: '112' }, { value: '33877.249999' }, { value: "0.1" }],
       }] : [] }) } as any;
     });
     vi.stubGlobal('fetch', fetchMock);
     const storage = { getGA4Connection: vi.fn(async () => ({ propertyId: '123', accessToken: 'token' })) };
     const result = await ga4Service.getLandingPagesReport('campaign', storage, '2026-10-10', '123', 50,
       ['brand search', 'paid.social'], '2026-11-09', true);
-    expect(result.rows).toEqual([{ landingPage: '/landing', source: '(not set)', medium: '(not set)', sessions: 1152, users: 1149, conversions: 112, revenue: 33877.25 }]);
+    expect(result.rows).toEqual([{ landingPage: '/landing', source: '(not set)', medium: '(not set)', sessions: 1152, users: 1149, conversions: 112, revenue: 33877.25, sessionKeyEventRate: 0.1 }]);
     expect(result.meta.sessionScopedAttributionAvailable).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body));
@@ -189,7 +189,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
       const fallback = JSON.stringify(JSON.parse(init.body).dimensionFilter).includes('pageLocation');
       return { ok: true, json: async () => fallback ? { metadata, rowCount: 1, rows: [{
         dimensionValues: [{ value: '/partial' }, { value: 'google' }, { value: 'cpc' }],
-        metricValues: [{ value: '10' }, { value: '8' }, { value: '2' }, { value: '100' }],
+        metricValues: [{ value: '10' }, { value: '8' }, { value: '2' }, { value: '100' }, { value: "0.1" }],
       }] } : { rowCount: 0, rows: [] } } as any;
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -207,7 +207,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
       return { ok: true, json: async () => !fallback ? { rowCount: 0, rows: [] } : {
         ...(originalWindow || stillPartial ? { metadata: { dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-09' }] } } : {}),
         rowCount: 1, rows: [{ dimensionValues: [{ value: '/landing' }, { value: '(not set)' }, { value: '(not set)' }],
-          metricValues: [{ value: originalWindow ? '99999' : '3884' }, { value: '3916' }, { value: '394' }, { value: '0' }] }],
+          metricValues: [{ value: originalWindow ? '99999' : '3884' }, { value: '3916' }, { value: '394' }, { value: '0' }, { value: "0.1" }] }],
       } } as any;
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -242,7 +242,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
                 { value: "google" },
                 { value: "cpc" },
               ],
-              metricValues: [{ value: "10" }, { value: "9" }, { value: "0" }, { value: "0" }],
+              metricValues: [{ value: "10" }, { value: "9" }, { value: "0" }, { value: "0" }, { value: "0.1" }],
             }],
           }),
         } as any;
@@ -258,14 +258,14 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
               { value: "google" },
               { value: "cpc" },
             ],
-            metricValues: [{ value: "1" }, { value: "1" }, { value: "8" }, { value: "800" }],
+            metricValues: [{ value: "1" }, { value: "1" }, { value: "8" }, { value: "800" }, { value: "0.1" }],
           }] : [{
             dimensionValues: [
               { value: "https://example.test/target?utm_campaign=spring&utm_source=google&utm_medium=cpc" },
               { value: "google" },
               { value: "cpc" },
             ],
-            metricValues: [{ value: "1" }, { value: "1" }, { value: "3" }, { value: "300" }],
+            metricValues: [{ value: "1" }, { value: "1" }, { value: "3" }, { value: "300" }, { value: "0.1" }],
           }],
         }),
       } as any;
@@ -321,7 +321,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
         rowCount: 2,
         rows: [1, 2].map(() => ({
           dimensionValues: [{ value: "/same" }, { value: "google" }, { value: "cpc" }],
-          metricValues: [{ value: "2" }, { value: "2" }, { value: "0" }, { value: "0" }],
+          metricValues: [{ value: "2" }, { value: "2" }, { value: "0" }, { value: "0" }, { value: "0.1" }],
         })),
       }),
     })));
@@ -341,7 +341,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
         rowCount: 2,
         rows: [{
           dimensionValues: [{ value: "/only-one" }, { value: "google" }, { value: "cpc" }],
-          metricValues: [{ value: "2" }, { value: "2" }, { value: "1" }, { value: "0" }],
+          metricValues: [{ value: "2" }, { value: "2" }, { value: "1" }, { value: "0" }, { value: "0.1" }],
         }],
       }),
     })));

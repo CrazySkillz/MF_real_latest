@@ -40,6 +40,7 @@ const toInputs = (totals: ReturnType<typeof summarizeGA4TrafficRows>) => ({
   conversions: totals.conversions || 0,
   ga4Revenue: Number((totals.revenue || 0).toFixed(2)),
   engagementRate: Number(totals.engagementRate || 0) || 0,
+  conversionRate: totals.conversionRate,
 });
 
 type StoredGA4TrafficFreshnessInput = {
@@ -358,7 +359,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
         (value) => Array.isArray(value) && value.length > 0).catch(() => null as any),
       !usesFinancialSource || useSavedOverview || isYesopMockProperty(propertyId) ? Promise.resolve(null)
         : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
-      usesFinancialSource || metric === "users" || metric === "sessions" || metric === "engagement_rate"
+      usesFinancialSource || metric === "users" || metric === "sessions" || metric === "engagement_rate" || metric === "conversion_rate"
         ? readSource("overview-snapshot", [financialStartDate, endDate],
           () => storage.getGA4OverviewSnapshot(campaignId, propertyId),
           (value) => !!value).catch(() => null as any)
@@ -558,6 +559,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     }
 
     const inputs = usesFinancialSource ? financialInputs! : ga4Inputs;
+    if (metric === "conversion_rate" && ga4Inputs.conversionRate == null) return blockAlertDecision(resolved, "unavailable");
     const currentValue = computeKpiValue(metric, {
       users: inputs.users,
       sessions: inputs.sessions,
@@ -567,6 +569,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       importedRevenue: importedRevenueValue ?? 0,
       spend: spendValue ?? 0,
       engagementRate: inputs.engagementRate,
+      conversionRate: ga4Inputs.conversionRate,
     });
     return applyAlertDataSufficiency(
       { ...resolved, currentValue: String(currentValue) },

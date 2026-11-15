@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import evidence from './fixtures/ga4-period-sessions-real-2026-11-15.json';
+import evidence from './fixtures/ga4-native-values-real-2026-11-15.json';
 import { ga4Service } from './analytics';
 import { getGA4PeriodTraffic, summarizeGA4TrafficRows } from '../shared/ga4-traffic-window';
 import { deriveExactCumulativeGA4Traffic } from '../client/src/lib/trend-analysis-cumulative';
@@ -9,7 +9,7 @@ const { scope, breakdown, daily } = evidence;
 const snapshot = { windowStart: scope.startDate, windowEnd: scope.endDate, campaignBreakdown: breakdown };
 const key = (body: any) => JSON.stringify([body.dateRanges, body.dimensions || [], body.metrics,
   body.dimensionFilter, body.limit]);
-const aggregate = evidence.requests.find(row => row.request.metrics.length === 4 && !('dimensions' in row.request))!;
+const aggregate = evidence.requests.find(row => row.request.metrics.length === 5 && !('dimensions' in row.request))!;
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('whole-period Sessions from recorded real GA4 responses', () => {
@@ -31,7 +31,7 @@ describe('whole-period Sessions from recorded real GA4 responses', () => {
 
   it('matches a separate Sessions-only provider query rather than adding daily counts', async () => {
     replay(); const result = await fetchPeriod();
-    const independent = evidence.requests.find(row => row.request.metrics.length === 1 && row.request.metrics[0].name === 'sessions')!;
+    const independent = evidence.requests.find(row => row.request.metrics.length === 4 && row.request.metrics[0].name === 'sessions')!;
     expect(result.sessions).toBe(Number(independent.response.rows[0].metricValues[0].value));
     expect(result.sessions).toBe(4472);
     expect(daily.reduce((sum, row) => sum + row.sessions, 0)).toBe(4497);
@@ -44,7 +44,7 @@ describe('whole-period Sessions from recorded real GA4 responses', () => {
     expect(result.engagedSessions).toBe(3246);
     expect(result.engagementRate).toBe(Number(aggregate.response.rows[0].metricValues[3].value));
     expect(result.conversions).toBe(440);
-    expect((result.conversions / result.sessions * 100).toFixed(1)).toBe('9.8');
+    expect(result.conversionRate?.toFixed(1)).toBe('9.6');
     expect((result.engagementRate * 100).toFixed(1)).toBe('72.6');
     expect(result.revenue).toBe(summarizeGA4TrafficRows(daily).revenue);
     expect(JSON.stringify(daily)).toBe(before);

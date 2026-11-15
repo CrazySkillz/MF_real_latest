@@ -38,7 +38,9 @@ export const getGA4PeriodTraffic = (snapshot: any, startDate: string, endDate: s
     : current ? period : period.windows?.find((row: any) => row.startDate === startDate && row.endDate === endDate);
   if (![value?.sessions, value?.engagedSessions].every(n => Number.isSafeInteger(n) && n >= 0) ||
       typeof value?.engagementRate !== 'number' || !Number.isFinite(value.engagementRate) || value.engagementRate < 0 || value.engagementRate > 1) return null;
-  return { sessions: value.sessions as number, engagedSessions: value.engagedSessions as number, engagementRate: value.engagementRate as number };
+  const rate = value.sessionKeyEventRate;
+  const conversionRate = typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate <= 1 ? rate * 100 : null;
+  return { sessions: value.sessions as number, engagedSessions: value.engagedSessions as number, engagementRate: value.engagementRate as number, conversionRate };
 };
 
 export const summarizeGA4TrafficRows = (rows: any[], snapshot?: any, startDate?: string, endDate?: string) => {
@@ -58,6 +60,7 @@ export const summarizeGA4TrafficRows = (rows: any[], snapshot?: any, startDate?:
   if (snapshot && (snapshot.campaignBreakdown ?? snapshot)?.meta?.distinctUsers?.sessionTotalsVersion && !period) throw new Error('GA4_PERIOD_SESSIONS_UNVERIFIED');
   return {
     ...totals,
+    conversionRate: null as number | null,
     engagementRate: totals.sessions > 0 ? totals.engagedSessions / totals.sessions : 0,
     ...period,
   };

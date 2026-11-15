@@ -1466,7 +1466,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     else if (key === "revenue" && performancePageTotals.revenueAvailable === true) value = financialValue("revenue");
     else if (key === "spend") value = performancePageTotals.spendAvailable === true && performancePageTotals.spendRecordsAvailable !== false ? financialValue("spend") : null;
     else if (key === "cvr" && available(trafficValue("sessions")) && available(trafficValue("conversions"))) {
-      value = trafficValue("sessions") > 0 ? (trafficValue("conversions") / trafficValue("sessions")) * 100 : null;
+      value = performancePageTrafficTotals.conversionRate ?? null;
     } else if (key === "engagementRate" && available(trafficValue("sessions"))) {
       value = trafficValue("sessions") > 0 ? (Number(performancePageTrafficTotals.engagedSessions) / trafficValue("sessions")) * 100 : null;
     } else if (["roas", "roi"].includes(key)) {
@@ -1718,9 +1718,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const trendCurrentMetric = (key: string): number | null => {
     if (performancePageTrafficTotals) {
       if (["users", "sessions", "conversions"].includes(key)) return Number((performancePageTrafficTotals as any)?.[key]);
-      if (key === "cvr") return performancePageTrafficTotals.sessions > 0
-        ? (performancePageTrafficTotals.conversions / performancePageTrafficTotals.sessions) * 100
-        : null;
+      if (key === "cvr") return performancePageTrafficTotals.conversionRate ?? null;
       if (key === "engagementRate") return performancePageTrafficTotals.sessions > 0
         ? (performancePageTrafficTotals.engagedSessions / performancePageTrafficTotals.sessions) * 100
         : null;
@@ -1728,11 +1726,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     return metricAvailable(key) ? metricNumber(key) : null;
   };
   const trendPreviousMetric = (key: string): number | null => {
-    if (trendPreviousTrafficTotals && Object.values(trendPreviousTrafficTotals).every((value) => Number.isFinite(value) && value >= 0)) {
+    if (trendPreviousTrafficTotals && [trendPreviousTrafficTotals.sessions, trendPreviousTrafficTotals.conversions, trendPreviousTrafficTotals.engagedSessions].every((value) => Number.isFinite(value) && value >= 0)) {
       if (["users", "sessions", "conversions"].includes(key)) return Number((trendPreviousTrafficTotals as any)?.[key]);
-      if (key === "cvr") return trendPreviousTrafficTotals.sessions > 0
-        ? (trendPreviousTrafficTotals.conversions / trendPreviousTrafficTotals.sessions) * 100
-        : null;
+      if (key === "cvr") return trendPreviousTrafficTotals.conversionRate ?? null;
       if (key === "engagementRate") return trendPreviousTrafficTotals.sessions > 0
         ? (trendPreviousTrafficTotals.engagedSessions / trendPreviousTrafficTotals.sessions) * 100
         : null;

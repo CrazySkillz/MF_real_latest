@@ -2,12 +2,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import evidence from './fixtures/ga4-native-values-real-2026-11-15.json';
 import { ga4Service, GoogleAnalytics4Service } from './analytics';
 import { checkGA4SourceNumbers } from './ga4-source-verification';
+import { readFileSync } from 'node:fs';
+import { transformSync } from 'esbuild';
 import { getGA4PeriodTraffic, summarizeGA4TrafficRows } from '../shared/ga4-traffic-window';
 import { resolveGA4KpiLiveValue } from '../shared/ga4-kpi-live-value';
 import { formatGA4AdComparisonCardPct } from '../shared/ga4-ad-comparison-cards';
 
 const { scope, breakdown, reference } = evidence;
 const sourceNumbers = reference.rows[0].metricValues.map(row => Number(row.value));
+it('prefills KPI creation with the same real GA4 rate, including zero and unavailable', () => {
+  const page = readFileSync('client/src/pages/ga4-metrics.tsx', 'utf8');
+  const body = page.slice(page.indexOf('  const calculateKPIValueFromSources ='), page.indexOf('  // Create KPI mutation'));
+  const calculate = new Function(transformSync(body, { loader: 'ts' }).code + ';return calculateKPIValueFromSources;')();
+  expect(calculate('Conversion Rate', { sessions: 4472, conversions: 440, conversionRate: sourceNumbers[3] * 100 })).toBe('9.59');
+  expect(calculate('Conversion Rate', { sessions: 0, conversions: 0, conversionRate: 0 })).toBe('0.00');
+  expect(calculate('Conversion Rate', { sessions: 4472, conversions: 440 })).toBe('Unavailable');
+});
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('native GA4 revenue precision and session key-event rate — recorded real API data', () => {

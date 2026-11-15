@@ -761,6 +761,7 @@ export default function GA4Metrics() {
     sessions: number;
     users: number;
     engagementRate?: number;
+    conversionRate?: number | null;
     spend: number;
   }) => {
     try {
@@ -777,7 +778,7 @@ export default function GA4Metrics() {
         case "Total Conversions":
           return String(conversions);
         case "Conversion Rate":
-          return sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : "0.00";
+          return sources.conversionRate == null || !Number.isFinite(sources.conversionRate) ? "Unavailable" : sources.conversionRate.toFixed(2);
         case "Engagement Rate":
           return normalizeRateToPercent(engagementRate).toFixed(2);
         case "Total Users":
@@ -808,6 +809,7 @@ export default function GA4Metrics() {
     },
     mutationFn: async (data: KPIFormData) => {
       // Store an initial snapshot currentValue, matching the GA4 Overview source model.
+      if (selectedKPITemplate?.name === "Conversion Rate" && (breakdownTotals.conversionRate == null || !Number.isFinite(breakdownTotals.conversionRate))) throw new Error("GA4 Conversion Rate is unavailable. Wait for a successful refresh.");
       let calculatedValue = "0.00";
       if (selectedKPITemplate && !(selectedKPITemplate as any)?._isCustom) {
         try {
@@ -822,6 +824,7 @@ export default function GA4Metrics() {
             sessions: Number(breakdownTotals.sessions || 0),
             users: Number(breakdownTotals.users || 0),
             engagementRate: overviewEngagementRate,
+            conversionRate: breakdownTotals.conversionRate,
             spend: Number(financialSpend || 0),
           });
         } catch (error) {
@@ -10469,7 +10472,7 @@ export default function GA4Metrics() {
                     },
                     {
                       name: "Conversion Rate",
-                      formula: "Conversions ÷ Sessions × 100",
+                      formula: "GA4 session key-event rate × 100",
                       unit: "%",
                       description: "Overall conversion rate for the selected period",
                     },
@@ -10498,7 +10501,8 @@ export default function GA4Metrics() {
                     const requiresRevenue = template.name === "ROAS" || template.name === "ROI" || template.name === "Revenue";
                     const disabled =
                       (requiresSpend && !spendMetricAvailable) ||
-                      (requiresRevenue && !revenueMetricAvailable);
+                      (requiresRevenue && !revenueMetricAvailable) ||
+                      (template.name === "Conversion Rate" && (breakdownTotals.conversionRate == null || !Number.isFinite(breakdownTotals.conversionRate)));
                     return (
                       <div
                         key={template.name}
@@ -10538,6 +10542,7 @@ export default function GA4Metrics() {
                             sessions: Number(breakdownTotals.sessions || 0),
                             users: Number(breakdownTotals.users || 0),
                             engagementRate: overviewEngagementRate,
+                            conversionRate: breakdownTotals.conversionRate,
                             spend: Number(financialSpend || 0),
                           });
                           kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit, true));

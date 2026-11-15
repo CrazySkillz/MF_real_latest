@@ -54,7 +54,7 @@ describe("Endpoint auth guard audit", () => {
     expect(missing, `Salesforce endpoints missing auth:\n${missing.join("\n")}`).toHaveLength(0);
   });
 
-  it("all HubSpot :campaignId endpoints have ensureCampaignAccess", () => {
+  it("all HubSpot :campaignId endpoints have campaign or credential-maintenance authentication", () => {
     const content = readRoutes();
     const lines = content.split("\n");
     const missing: string[] = [];
@@ -69,6 +69,16 @@ describe("Endpoint auth guard audit", () => {
         continue;
 
       const block = lines.slice(i, i + 12).join("\n");
+      if (line.includes("app.post('/api/hubspot/:campaignId/monitor/renew-token',")) {
+        // This operator-only endpoint has executable rejection/scope tests in hubspot-monitor-renewal.test.ts.
+        expect(block).toContain("process.env.HUBSPOT_MONITOR_SECRET");
+        expect(block).toContain("!/^[a-f0-9]{64}$/.test(secret)");
+        expect(block).toContain("!/^[a-f0-9]{64}$/.test(supplied)");
+        expect(block).toContain("!timingSafeEqual(Buffer.from(secret, 'hex'), Buffer.from(supplied, 'hex'))");
+        expect(block).toContain("return res.status(401)");
+        expect(block).not.toContain("await storage.");
+        continue;
+      }
       if (!block.includes("ensureCampaignAccess")) {
         const route = line.trim().slice(0, 100);
         missing.push(`routes-oauth.ts:${i + 1} — ${route}`);

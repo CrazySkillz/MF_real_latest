@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import evidence from './fixtures/ga4-period-sessions-real-2026-11-15.json';
 import { ga4Service } from './analytics';
 import { getGA4PeriodTraffic, summarizeGA4TrafficRows } from '../shared/ga4-traffic-window';
@@ -66,5 +67,18 @@ describe('whole-period Sessions from recorded real GA4 responses', () => {
     expect(getGA4PeriodTraffic({ ...snapshot, windowEnd: '2026-11-14' }, scope.startDate, scope.endDate)).toBeNull();
     const corrupt = structuredClone(snapshot); corrupt.campaignBreakdown.meta.propertyId = 'other';
     expect(() => summarizeGA4TrafficRows(daily, corrupt, scope.startDate, scope.endDate)).toThrow('GA4_PERIOD_SESSIONS_UNVERIFIED');
+  });
+  it.each([true, false])('returns period Sessions in saved diagnostic inputs (available=%s)', available => {
+    const source = readFileSync('server/routes-oauth.ts', 'utf8').replace(/\r\n/g, '\n');
+    const start = source.indexOf('      if (useSavedOverview) {\n        ga4Totals.users = financialGa4Totals.users');
+    const end = source.indexOf('      res.json({', start);
+    expect(start).toBeGreaterThan(0); expect(end).toBeGreaterThan(start);
+    const ga4 = { ...summarizeGA4TrafficRows(daily) }, web = { ...ga4, provider: 'ga4' };
+    const saved = { ...breakdown.totals, available };
+    new Function('useSavedOverview', 'ga4Totals', 'financialGa4Totals', 'webAnalytics', 'financialWebAnalytics', source.slice(start, end))(true, ga4, saved, web, saved);
+    expect(ga4.sessions).toBe(available ? 4472 : null);
+    expect(web.sessions).toBe(available ? 4472 : null);
+    expect(ga4.conversions).toBe(440);
+    expect(ga4.revenue).toBe(summarizeGA4TrafficRows(daily).revenue);
   });
 });

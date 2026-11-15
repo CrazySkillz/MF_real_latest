@@ -4206,7 +4206,7 @@ index 24f14ea8..8b0c2f83 100644
                !conversionCreditsMatch(eventConversionTotal, expected.conversions, Math.max(1, overviewRows.length + (conversionEvents?.rows?.length || 0)))
 
 diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
-index 7cf698b3..1bec59e0 100644
+index 7cf698b3..53b42a36 100644
 --- a/server/routes-oauth.ts
 +++ b/server/routes-oauth.ts
 @@ -9736,7 +9736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
@@ -4233,7 +4233,7 @@ index 7cf698b3..1bec59e0 100644
          ga4Totals.users = financialGa4Totals.users ?? null;
 +        ga4Totals.sessions = financialGa4Totals.available ? financialGa4Totals.sessions : null;
          if (webAnalytics.provider === "ga4") webAnalytics.users = financialWebAnalytics.users ?? null;
-+        if (webAnalytics.provider === "ga4") webAnalytics.sessions = financialWebAnalytics.available ? financialWebAnalytics.sessions : null;
++        if (webAnalytics.provider === "ga4") webAnalytics.sessions = ga4Totals.sessions;
        }
        res.json({
          success: true,

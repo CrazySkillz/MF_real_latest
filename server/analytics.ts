@@ -1473,7 +1473,12 @@ export class GoogleAnalytics4Service {
     if (!names.length || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
       throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
     }
+    let verifiedEmptyTailAfter = '';
     const run = async (filter: any, from: string, to: string, daily = false): Promise<Array<{ date: string; users: number; sessions?: number; engagedSessions?: number; engagementRate?: number; sessionKeyEventRate?: number }>> => {
+      if (verifiedEmptyTailAfter) {
+        if (from > verifiedEmptyTailAfter) return [];
+        if (to > verifiedEmptyTailAfter) to = verifiedEmptyTailAfter;
+      }
       const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ dateRanges: [{ startDate: from, endDate: to }],
@@ -1508,15 +1513,39 @@ export class GoogleAnalytics4Service {
       const primary = this.buildCampaignDimensionFilter(selected, 'sessionCampaignName')!.dimensionFilter;
       const fallback = this.buildExactUtmCampaignPageLocationFilter(selected)!.dimensionFilter;
       if (!throughDate) return { dimensionFilter: fallback };
-      if (throughDate >= endDate) return { dimensionFilter: primary };
+      if (throughDate >= endDate || verifiedEmptyTailAfter) return { dimensionFilter: primary };
       const dateFilter = { filter: { fieldName: 'date', numericFilter: { operation: 'LESS_THAN_OR_EQUAL', value: { int64Value: throughDate.replace(/-/g, '') } } } };
       return { dimensionFilter: { orGroup: { expressions: [
         { andGroup: { expressions: [primary, dateFilter] } },
         { andGroup: { expressions: [fallback, { notExpression: dateFilter }] } },
       ] } } };
     };
-    const fullScope = scopeFor(names);
-    const [aggregate, dailyRows] = await Promise.all([run(fullScope, startDate, endDate), run(fullScope, startDate, endDate, true)]);
+    let fullScope = scopeFor(names);
+    const readScope = () => Promise.all([run(fullScope, startDate, endDate), run(fullScope, startDate, endDate, true)]);
+    let aggregate: Awaited<ReturnType<typeof run>>, dailyRows: Awaited<ReturnType<typeof run>>;
+    try { [aggregate, dailyRows] = await readScope(); }
+    catch (error: any) {
+      if (error?.code !== 'GA4_DATA_QUALITY_UNAVAILABLE' || JSON.stringify(error.reasons) !== '["sampling"]'
+        || !/^\d{4}-\d{2}-\d{2}$/.test(throughDate) || throughDate < startDate || throughDate >= endDate) throw error;
+      // Remove a branch only after GA4 proves its exact scope has no events.
+      // The aggregate still comes from one unsampled provider query, never daily sums.
+      const tailStart = new Date(Date.parse(throughDate) + 86400000).toISOString().slice(0, 10);
+      const response = await this.requestReport('https://analyticsdata.googleapis.com/v1beta/properties/' + normalizedPropertyId + ':runReport', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dateRanges: [{ startDate: tailStart, endDate }],
+          ...this.buildExactUtmCampaignPageLocationFilter(names), metrics: [{ name: 'eventCount' }], limit: 1 }),
+      });
+      if (!response.ok) throw error;
+      const proof = await response.json(), rows = proof?.rows === undefined ? [] : proof.rows;
+      const header = proof?.metricHeaders?.length === 1 && proof.metricHeaders[0]?.name === 'eventCount';
+      const empty = Array.isArray(rows) && rows.length <= 1 && Number(proof?.rowCount ?? rows.length) === rows.length
+        && (rows.length === 0 ? (header || (proof?.kind === 'analyticsData#runReport' && proof.metricHeaders === undefined))
+          : (header && rows[0]?.metricValues?.length === 1 && /^0(?:\.0+)?$/.test(String(rows[0].metricValues[0]?.value))));
+      if (!empty) throw error;
+      verifiedEmptyTailAfter = throughDate;
+      fullScope = scopeFor(names);
+      [aggregate, dailyRows] = await readScope();
+    }
     const byDate = new Map(dailyRows.map(row => [row.date, row.users]));
     if (byDate.size !== dailyRows.length || dailyRows.some(row => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < startDate || row.date > endDate)) {
       throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');

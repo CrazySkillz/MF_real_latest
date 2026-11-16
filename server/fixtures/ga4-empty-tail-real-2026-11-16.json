@@ -1,0 +1,2149 @@
+{
+  "scope": {
+    "propertyId": "425831989",
+    "from": "2026-10-14",
+    "through": "2026-11-16",
+    "filter": [
+      "coffee_bags",
+      "served_here"
+    ]
+  },
+  "result": {
+    "version": 1,
+    "metric": "totalUsers",
+    "propertyId": "425831989",
+    "startDate": "2026-10-14",
+    "endDate": "2026-11-16",
+    "total": 5,
+    "campaigns": [
+      {
+        "name": "coffee_bags",
+        "users": 4,
+        "sessions": 17,
+        "engagedSessions": 13,
+        "engagementRate": 0.7647058823529411,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "name": "served_here",
+        "users": 2,
+        "sessions": 9,
+        "engagedSessions": 5,
+        "engagementRate": 0.5555555555555556,
+        "sessionKeyEventRate": 0
+      }
+    ],
+    "daily": [
+      {
+        "date": "2026-10-14",
+        "users": 0
+      },
+      {
+        "date": "2026-10-15",
+        "users": 2
+      },
+      {
+        "date": "2026-10-16",
+        "users": 0
+      },
+      {
+        "date": "2026-10-17",
+        "users": 0
+      },
+      {
+        "date": "2026-10-18",
+        "users": 0
+      },
+      {
+        "date": "2026-10-19",
+        "users": 1
+      },
+      {
+        "date": "2026-10-20",
+        "users": 0
+      },
+      {
+        "date": "2026-10-21",
+        "users": 1
+      },
+      {
+        "date": "2026-10-22",
+        "users": 0
+      },
+      {
+        "date": "2026-10-23",
+        "users": 0
+      },
+      {
+        "date": "2026-10-24",
+        "users": 0
+      },
+      {
+        "date": "2026-10-25",
+        "users": 0
+      },
+      {
+        "date": "2026-10-26",
+        "users": 0
+      },
+      {
+        "date": "2026-10-27",
+        "users": 0
+      },
+      {
+        "date": "2026-10-28",
+        "users": 1
+      },
+      {
+        "date": "2026-10-29",
+        "users": 1
+      },
+      {
+        "date": "2026-10-30",
+        "users": 0
+      },
+      {
+        "date": "2026-10-31",
+        "users": 0
+      },
+      {
+        "date": "2026-11-01",
+        "users": 0
+      },
+      {
+        "date": "2026-11-02",
+        "users": 2
+      },
+      {
+        "date": "2026-11-03",
+        "users": 0
+      },
+      {
+        "date": "2026-11-04",
+        "users": 2
+      },
+      {
+        "date": "2026-11-05",
+        "users": 0
+      },
+      {
+        "date": "2026-11-06",
+        "users": 0
+      },
+      {
+        "date": "2026-11-07",
+        "users": 0
+      },
+      {
+        "date": "2026-11-08",
+        "users": 0
+      },
+      {
+        "date": "2026-11-09",
+        "users": 0
+      },
+      {
+        "date": "2026-11-10",
+        "users": 2
+      },
+      {
+        "date": "2026-11-11",
+        "users": 1
+      },
+      {
+        "date": "2026-11-12",
+        "users": 1
+      },
+      {
+        "date": "2026-11-13",
+        "users": 1
+      },
+      {
+        "date": "2026-11-14",
+        "users": 1
+      },
+      {
+        "date": "2026-11-15",
+        "users": 1
+      },
+      {
+        "date": "2026-11-16",
+        "users": 0
+      }
+    ],
+    "windows": [
+      {
+        "startDate": "2026-10-14",
+        "endDate": "2026-11-09",
+        "users": 3,
+        "sessions": 15,
+        "engagedSessions": 11,
+        "engagementRate": 0.7333333333333333,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-11-10",
+        "endDate": "2026-11-16",
+        "users": 3,
+        "sessions": 11,
+        "engagedSessions": 7,
+        "engagementRate": 0.6363636363636364,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-10-14",
+        "endDate": "2026-11-02",
+        "users": 2,
+        "sessions": 10,
+        "engagedSessions": 7,
+        "engagementRate": 0.7,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-11-03",
+        "endDate": "2026-11-16",
+        "users": 4,
+        "sessions": 16,
+        "engagedSessions": 11,
+        "engagementRate": 0.6875,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-10-14",
+        "endDate": "2026-10-17",
+        "users": 2,
+        "sessions": 2,
+        "engagedSessions": 1,
+        "engagementRate": 0.5,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-10-18",
+        "endDate": "2026-11-16",
+        "users": 5,
+        "sessions": 24,
+        "engagedSessions": 17,
+        "engagementRate": 0.7083333333333334,
+        "sessionKeyEventRate": 0
+      }
+    ],
+    "sessionTotalsVersion": 1,
+    "users": 5,
+    "sessions": 26,
+    "engagedSessions": 18,
+    "engagementRate": 0.6923076923076923,
+    "sessionKeyEventRate": 0
+  },
+  "responses": [
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-16"
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "date"
+          }
+        ],
+        "orderBys": [
+          {
+            "dimension": {
+              "dimensionName": "date"
+            }
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "date"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "20261015"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261019"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261021"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261028"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261029"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261102"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261104"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261110"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261111"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261112"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261113"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261114"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261115"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "rowCount": 13,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-16"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261115"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261115"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "5"
+              },
+              {
+                "value": "25"
+              },
+              {
+                "value": "17"
+              },
+              {
+                "value": "0.68"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin",
+          "samplingMetadatas": [
+            {
+              "samplesReadCount": "12153",
+              "samplingSpaceSize": "12164"
+            }
+          ]
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-16",
+            "endDate": "2026-11-16"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "eventCount"
+          }
+        ],
+        "limit": 1,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-16"
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "date"
+          }
+        ],
+        "orderBys": [
+          {
+            "dimension": {
+              "dimensionName": "date"
+            }
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261115"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261115"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "date"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "20261015"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261019"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261021"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261028"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261029"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261102"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261104"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261110"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261111"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261112"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261113"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261114"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "rowCount": 12,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin",
+          "samplingMetadatas": [
+            {
+              "samplesReadCount": "12153",
+              "samplingSpaceSize": "12164"
+            }
+          ]
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "5"
+              },
+              {
+                "value": "26"
+              },
+              {
+                "value": "18"
+              },
+              {
+                "value": "0.69230769230769229"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "date"
+          }
+        ],
+        "orderBys": [
+          {
+            "dimension": {
+              "dimensionName": "date"
+            }
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "date"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "20261015"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261019"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261021"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261028"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261029"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261102"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261104"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261110"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261111"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261112"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261113"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261114"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261115"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "rowCount": 13,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "filter": {
+            "fieldName": "sessionCampaignName",
+            "stringFilter": {
+              "matchType": "EXACT",
+              "value": "coffee_bags",
+              "caseSensitive": false
+            }
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "4"
+              },
+              {
+                "value": "17"
+              },
+              {
+                "value": "13"
+              },
+              {
+                "value": "0.76470588235294112"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "filter": {
+            "fieldName": "sessionCampaignName",
+            "stringFilter": {
+              "matchType": "EXACT",
+              "value": "served_here",
+              "caseSensitive": false
+            }
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "2"
+              },
+              {
+                "value": "9"
+              },
+              {
+                "value": "5"
+              },
+              {
+                "value": "0.55555555555555558"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-02"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "2"
+              },
+              {
+                "value": "10"
+              },
+              {
+                "value": "7"
+              },
+              {
+                "value": "0.7"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-09"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "3"
+              },
+              {
+                "value": "15"
+              },
+              {
+                "value": "11"
+              },
+              {
+                "value": "0.73333333333333328"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-03",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "4"
+              },
+              {
+                "value": "16"
+              },
+              {
+                "value": "11"
+              },
+              {
+                "value": "0.6875"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-10",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "3"
+              },
+              {
+                "value": "11"
+              },
+              {
+                "value": "7"
+              },
+              {
+                "value": "0.63636363636363635"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-10-17"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "2"
+              },
+              {
+                "value": "2"
+              },
+              {
+                "value": "1"
+              },
+              {
+                "value": "0.5"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-18",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "5"
+              },
+              {
+                "value": "24"
+              },
+              {
+                "value": "17"
+              },
+              {
+                "value": "0.70833333333333337"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    }
+  ]
+}

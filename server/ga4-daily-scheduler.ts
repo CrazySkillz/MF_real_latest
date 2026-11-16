@@ -621,7 +621,8 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     const date = getLatestCompleteReportingDate(config.reportingTimeZone, now);
     let due = getExpectedScheduledRefreshAt(date, config, now);
     if (due && due > now) due = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(date, -1), config, now);
-    if (trigger === "manual") due = now;
+    // Bootstrap must not replay an older scheduled slot after a newer manual publication.
+    if (trigger === "manual" || trigger === "snapshot_bootstrap") due = now;
     if (due) opts = { ...opts, workDueAt: due, refreshFinancialSources: true };
   }
   // Claims are acquired here, never accepted from a caller or request body.

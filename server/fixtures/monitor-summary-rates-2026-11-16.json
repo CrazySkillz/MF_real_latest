@@ -1,0 +1,2453 @@
+{
+  "capturedAt": "2026-11-16T07:42:22Z",
+  "description": "Read-only saved GA4 native period inputs and summaries; identities anonymized, unrelated fields omitted.",
+  "cases": [
+    {
+      "name": "Promo",
+      "now": "2026-11-16T09:00:00.000Z",
+      "snapshot": {
+        "campaign": {
+          "id": "campaign-a",
+          "name": "Promo",
+          "ownerId": "owner-a",
+          "clientId": "client-a",
+          "status": "active",
+          "currency": "EUR",
+          "reportingTimeZone": "Europe/Amsterdam",
+          "ga4CampaignFilter": "[\"yesop_brand_search\",\"yesop_retargeting\"]"
+        },
+        "rows": {
+          "ga4Connections": [
+            {
+              "campaignId": "campaign-a",
+              "propertyId": "542352127",
+              "importStartDate": "2026-09-04",
+              "isPrimary": true,
+              "isActive": true
+            }
+          ],
+          "ga4OverviewSnapshots": [
+            {
+              "campaignId": "campaign-a",
+              "propertyId": "542352127",
+              "windowStart": "2026-09-04",
+              "windowEnd": "2026-11-16",
+              "campaignBreakdown": {
+                "meta": {
+                  "propertyId": "542352127",
+                  "currencyCode": "EUR",
+                  "distinctUsers": {
+                    "daily": [
+                      {
+                        "date": "2026-09-04",
+                        "users": 115
+                      },
+                      {
+                        "date": "2026-09-05",
+                        "users": 119
+                      },
+                      {
+                        "date": "2026-09-06",
+                        "users": 118
+                      },
+                      {
+                        "date": "2026-09-07",
+                        "users": 106
+                      },
+                      {
+                        "date": "2026-09-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-09",
+                        "users": 126
+                      },
+                      {
+                        "date": "2026-09-10",
+                        "users": 105
+                      },
+                      {
+                        "date": "2026-09-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-12",
+                        "users": 220
+                      },
+                      {
+                        "date": "2026-09-13",
+                        "users": 123
+                      },
+                      {
+                        "date": "2026-09-14",
+                        "users": 117
+                      },
+                      {
+                        "date": "2026-09-15",
+                        "users": 117
+                      },
+                      {
+                        "date": "2026-09-16",
+                        "users": 119
+                      },
+                      {
+                        "date": "2026-09-17",
+                        "users": 112
+                      },
+                      {
+                        "date": "2026-09-18",
+                        "users": 120
+                      },
+                      {
+                        "date": "2026-09-19",
+                        "users": 107
+                      },
+                      {
+                        "date": "2026-09-20",
+                        "users": 112
+                      },
+                      {
+                        "date": "2026-09-21",
+                        "users": 115
+                      },
+                      {
+                        "date": "2026-09-22",
+                        "users": 112
+                      },
+                      {
+                        "date": "2026-09-23",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-24",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-27",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-30",
+                        "users": 240
+                      },
+                      {
+                        "date": "2026-10-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-02",
+                        "users": 117
+                      },
+                      {
+                        "date": "2026-10-03",
+                        "users": 113
+                      },
+                      {
+                        "date": "2026-10-04",
+                        "users": 111
+                      },
+                      {
+                        "date": "2026-10-05",
+                        "users": 100
+                      },
+                      {
+                        "date": "2026-10-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-07",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-09",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-12",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-13",
+                        "users": 121
+                      },
+                      {
+                        "date": "2026-10-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-16",
+                        "users": 113
+                      },
+                      {
+                        "date": "2026-10-17",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-18",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-19",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-20",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-21",
+                        "users": 119
+                      },
+                      {
+                        "date": "2026-10-22",
+                        "users": 118
+                      },
+                      {
+                        "date": "2026-10-23",
+                        "users": 112
+                      },
+                      {
+                        "date": "2026-10-24",
+                        "users": 107
+                      },
+                      {
+                        "date": "2026-10-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-27",
+                        "users": 121
+                      },
+                      {
+                        "date": "2026-10-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-30",
+                        "users": 115
+                      },
+                      {
+                        "date": "2026-10-31",
+                        "users": 114
+                      },
+                      {
+                        "date": "2026-11-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-02",
+                        "users": 117
+                      },
+                      {
+                        "date": "2026-11-03",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-04",
+                        "users": 123
+                      },
+                      {
+                        "date": "2026-11-05",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "users": 125
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "users": 123
+                      },
+                      {
+                        "date": "2026-11-09",
+                        "users": 104
+                      },
+                      {
+                        "date": "2026-11-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-12",
+                        "users": 122
+                      },
+                      {
+                        "date": "2026-11-13",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-16",
+                        "users": 0
+                      }
+                    ],
+                    "total": 4496,
+                    "users": 4496,
+                    "metric": "totalUsers",
+                    "endDate": "2026-11-16",
+                    "version": 1,
+                    "sessions": 4472,
+                    "startDate": "2026-09-04",
+                    "propertyId": "542352127",
+                    "engagementRate": 0.7258497316636852,
+                    "engagedSessions": 3246,
+                    "sessionKeyEventRate": 0.09593023255813954,
+                    "sessionTotalsVersion": 1
+                  }
+                },
+                "rows": [],
+                "totals": {
+                  "users": 4496,
+                  "revenue": 114314.62,
+                  "sessions": 4472,
+                  "conversions": 440,
+                  "sessionsRaw": 4472,
+                  "engagementRate": 0.7258497316636852,
+                  "engagedSessions": 3246
+                }
+              }
+            }
+          ],
+          "metricSnapshots": [
+            {
+              "campaignId": "campaign-a",
+              "snapshotType": "executive_summary_daily",
+              "reportingDate": "2026-11-16",
+              "recordedAt": "2026-11-16T07:00:51.921Z",
+              "metrics": {
+                "executiveSummaryDaily": {
+                  "totals": {
+                    "cpa": {
+                      "value": 2.5,
+                      "sources": [
+                        "conversions",
+                        "spend"
+                      ],
+                      "available": true
+                    },
+                    "cvr": {
+                      "value": 9.593023255813954,
+                      "sources": [
+                        "ga4.sessionKeyEventRate"
+                      ],
+                      "available": true
+                    },
+                    "roi": {
+                      "value": 10628.6,
+                      "sources": [
+                        "revenue",
+                        "spend"
+                      ],
+                      "available": true
+                    },
+                    "roas": {
+                      "value": 107.29,
+                      "sources": [
+                        "revenue",
+                        "spend"
+                      ],
+                      "available": true
+                    },
+                    "spend": {
+                      "value": 1100,
+                      "sources": [
+                        "canonical_spend_sources"
+                      ],
+                      "available": true
+                    },
+                    "users": {
+                      "value": 4496,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    },
+                    "revenue": {
+                      "value": 118014.62,
+                      "sources": [
+                        "ga4",
+                        "revenue_HubSpot (Deals)",
+                        "revenue_test_csv.csv.csv"
+                      ],
+                      "available": true
+                    },
+                    "sessions": {
+                      "value": 4472,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    },
+                    "conversions": {
+                      "value": 440,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    }
+                  },
+                  "version": "executive_summary_daily_snapshot_v2",
+                  "currency": "EUR",
+                  "ga4PropertyId": "542352127",
+                  "sourceSignature": [
+                    "ga4:web_analytics"
+                  ],
+                  "ga4CampaignFilter": "[\"yesop_brand_search\",\"yesop_retargeting\"]",
+                  "currentValueWindow": {
+                    "mode": "initial_import_to_latest_available_day",
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-09-04",
+                    "dataThroughDate": "2026-11-16",
+                    "reportingTimeZone": "Europe/Amsterdam"
+                  },
+                  "performanceSummaryVersion": "performance_summary_aggregate_v3"
+                }
+              }
+            },
+            {
+              "campaignId": "campaign-a",
+              "snapshotType": "platform_sync",
+              "reportingDate": null,
+              "recordedAt": "2026-11-16T07:00:51.636Z",
+              "metrics": {
+                "performanceSummary": {
+                  "totals": {
+                    "cpa": {
+                      "value": 2.5,
+                      "sources": [
+                        "spend",
+                        "conversions"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "cpc": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CPC requires available spend and clicks"
+                      ]
+                    },
+                    "cpm": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CPM requires available spend and impressions"
+                      ]
+                    },
+                    "ctr": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CTR requires available clicks and impressions"
+                      ]
+                    },
+                    "cvr": {
+                      "value": 9.593023255813954,
+                      "sources": [
+                        "ga4.sessionKeyEventRate"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "roi": {
+                      "value": 10628.6,
+                      "sources": [
+                        "revenue",
+                        "spend"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "roas": {
+                      "value": 107.29,
+                      "sources": [
+                        "revenue",
+                        "spend"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "leads": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected source provides leads"
+                      ]
+                    },
+                    "spend": {
+                      "value": 1100,
+                      "sources": [
+                        "canonical_spend_sources"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "users": {
+                      "value": 4496,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "clicks": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected paid-media source provides clicks"
+                      ]
+                    },
+                    "revenue": {
+                      "value": 118014.62,
+                      "sources": [
+                        "ga4",
+                        "revenue_hubspot",
+                        "revenue_csv"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "sessions": {
+                      "value": 4472,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "conversions": {
+                      "value": 440,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "impressions": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected paid-media source provides impressions; GA4 engagement rate is not an impressions metric"
+                      ]
+                    }
+                  }
+                },
+                "performanceSummaryVerification": {
+                  "spend": 1100,
+                  "version": 1,
+                  "currency": "EUR",
+                  "campaignId": "campaign-a",
+                  "propertyId": "542352127",
+                  "distinctUsers": {
+                    "daily": [
+                      {
+                        "date": "2026-09-04",
+                        "users": 115
+                      },
+                      {
+                        "date": "2026-09-05",
+                        "users": 119
+                      },
+                      {
+                        "date": "2026-09-06",
+                        "users": 118
+                      },
+                      {
+                        "date": "2026-09-07",
+                        "users": 106
+                      },
+                      {
+                        "date": "2026-09-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-09",
+                        "users": 126
+                      },
+                      {
+                        "date": "2026-09-10",
+                        "users": 105
+                      },
+                      {
+                        "date": "2026-09-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-12",
+                        "users": 220
+                      },
+                      {
+                        "date": "2026-09-13",
+                        "users": 123
+                      },
+                      {
+                        "date": "2026-09-14",
+                        "users": 117
+                      },
+                      {
+                        "date": "2026-09-15",
+                        "users": 117
+                      },
+                      {
+                        "date": "2026-09-16",
+                        "users": 119
+                      },
+                      {
+                        "date": "2026-09-17",
+                        "users": 112
+                      },
+                      {
+                        "date": "2026-09-18",
+                        "users": 120
+                      },
+                      {
+                        "date": "2026-09-19",
+                        "users": 107
+                      },
+                      {
+                        "date": "2026-09-20",
+                        "users": 112
+                      },
+                      {
+                        "date": "2026-09-21",
+                        "users": 115
+                      },
+                      {
+                        "date": "2026-09-22",
+                        "users": 112
+                      },
+                      {
+                        "date": "2026-09-23",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-24",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-27",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-30",
+                        "users": 240
+                      },
+                      {
+                        "date": "2026-10-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-02",
+                        "users": 117
+                      },
+                      {
+                        "date": "2026-10-03",
+                        "users": 113
+                      },
+                      {
+                        "date": "2026-10-04",
+                        "users": 111
+                      },
+                      {
+                        "date": "2026-10-05",
+                        "users": 100
+                      },
+                      {
+                        "date": "2026-10-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-07",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-09",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-12",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-13",
+                        "users": 121
+                      },
+                      {
+                        "date": "2026-10-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-16",
+                        "users": 113
+                      },
+                      {
+                        "date": "2026-10-17",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-18",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-19",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-20",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-21",
+                        "users": 119
+                      },
+                      {
+                        "date": "2026-10-22",
+                        "users": 118
+                      },
+                      {
+                        "date": "2026-10-23",
+                        "users": 112
+                      },
+                      {
+                        "date": "2026-10-24",
+                        "users": 107
+                      },
+                      {
+                        "date": "2026-10-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-27",
+                        "users": 121
+                      },
+                      {
+                        "date": "2026-10-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-30",
+                        "users": 115
+                      },
+                      {
+                        "date": "2026-10-31",
+                        "users": 114
+                      },
+                      {
+                        "date": "2026-11-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-02",
+                        "users": 117
+                      },
+                      {
+                        "date": "2026-11-03",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-04",
+                        "users": 123
+                      },
+                      {
+                        "date": "2026-11-05",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "users": 125
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "users": 123
+                      },
+                      {
+                        "date": "2026-11-09",
+                        "users": 104
+                      },
+                      {
+                        "date": "2026-11-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-12",
+                        "users": 122
+                      },
+                      {
+                        "date": "2026-11-13",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-16",
+                        "users": 0
+                      }
+                    ],
+                    "total": 4496,
+                    "users": 4496,
+                    "metric": "totalUsers",
+                    "endDate": "2026-11-16",
+                    "version": 1,
+                    "sessions": 4472,
+                    "startDate": "2026-09-04",
+                    "propertyId": "542352127",
+                    "engagementRate": 0.7258497316636852,
+                    "engagedSessions": 3246,
+                    "sessionKeyEventRate": 0.09593023255813954,
+                    "sessionTotalsVersion": 1
+                  },
+                  "fallbackSpend": 0,
+                  "nativeRevenue": 114314.62,
+                  "trafficWindow": {
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-08-18"
+                  },
+                  "campaignFilter": "[\"yesop_brand_search\",\"yesop_retargeting\"]",
+                  "usersDefinition": "ga4_totalUsers_distinct_v1",
+                  "financialConversions": {
+                    "value": 440,
+                    "available": true
+                  },
+                  "nativeFinancialWindow": {
+                    "days": 74,
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-09-04",
+                    "dataThroughDate": "2026-11-16",
+                    "reportingTimeZone": "Europe/Amsterdam"
+                  },
+                  "importedFinancialWindow": {
+                    "endDate": "2026-11-16",
+                    "startDate": "1900-01-01"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Batch 1 Provider Check",
+      "now": "2026-11-16T09:00:00.000Z",
+      "snapshot": {
+        "campaign": {
+          "id": "campaign-a",
+          "name": "Batch 1 Provider Check",
+          "ownerId": "owner-a",
+          "clientId": "client-a",
+          "status": "active",
+          "currency": "EUR",
+          "reportingTimeZone": "Europe/Amsterdam",
+          "ga4CampaignFilter": "yesop_brand_search"
+        },
+        "rows": {
+          "ga4Connections": [
+            {
+              "campaignId": "campaign-a",
+              "propertyId": "542352127",
+              "importStartDate": "2026-09-30",
+              "isPrimary": true,
+              "isActive": true
+            }
+          ],
+          "ga4OverviewSnapshots": [
+            {
+              "campaignId": "campaign-a",
+              "propertyId": "542352127",
+              "windowStart": "2026-09-30",
+              "windowEnd": "2026-11-16",
+              "campaignBreakdown": {
+                "meta": {
+                  "propertyId": "542352127",
+                  "currencyCode": "EUR",
+                  "distinctUsers": {
+                    "daily": [
+                      {
+                        "date": "2026-09-30",
+                        "users": 169
+                      },
+                      {
+                        "date": "2026-10-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-02",
+                        "users": 78
+                      },
+                      {
+                        "date": "2026-10-03",
+                        "users": 75
+                      },
+                      {
+                        "date": "2026-10-04",
+                        "users": 74
+                      },
+                      {
+                        "date": "2026-10-05",
+                        "users": 60
+                      },
+                      {
+                        "date": "2026-10-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-07",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-09",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-12",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-13",
+                        "users": 81
+                      },
+                      {
+                        "date": "2026-10-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-16",
+                        "users": 83
+                      },
+                      {
+                        "date": "2026-10-17",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-18",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-19",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-20",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-21",
+                        "users": 87
+                      },
+                      {
+                        "date": "2026-10-22",
+                        "users": 86
+                      },
+                      {
+                        "date": "2026-10-23",
+                        "users": 82
+                      },
+                      {
+                        "date": "2026-10-24",
+                        "users": 71
+                      },
+                      {
+                        "date": "2026-10-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-27",
+                        "users": 81
+                      },
+                      {
+                        "date": "2026-10-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-30",
+                        "users": 84
+                      },
+                      {
+                        "date": "2026-10-31",
+                        "users": 76
+                      },
+                      {
+                        "date": "2026-11-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-02",
+                        "users": 78
+                      },
+                      {
+                        "date": "2026-11-03",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-04",
+                        "users": 90
+                      },
+                      {
+                        "date": "2026-11-05",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "users": 91
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "users": 90
+                      },
+                      {
+                        "date": "2026-11-09",
+                        "users": 69
+                      },
+                      {
+                        "date": "2026-11-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-12",
+                        "users": 89
+                      },
+                      {
+                        "date": "2026-11-13",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-16",
+                        "users": 0
+                      }
+                    ],
+                    "total": 1694,
+                    "users": 1694,
+                    "metric": "totalUsers",
+                    "endDate": "2026-11-16",
+                    "version": 1,
+                    "sessions": 1701,
+                    "startDate": "2026-09-30",
+                    "propertyId": "542352127",
+                    "engagementRate": 0.7248677248677249,
+                    "engagedSessions": 1233,
+                    "sessionKeyEventRate": 0.09994121105232216,
+                    "sessionTotalsVersion": 1
+                  }
+                },
+                "rows": [],
+                "totals": {
+                  "users": 1694,
+                  "revenue": 51828.87,
+                  "sessions": 1701,
+                  "conversions": 177,
+                  "sessionsRaw": 1701,
+                  "engagementRate": 0.7248677248677249,
+                  "engagedSessions": 1233
+                }
+              }
+            }
+          ],
+          "metricSnapshots": [
+            {
+              "campaignId": "campaign-a",
+              "snapshotType": "executive_summary_daily",
+              "reportingDate": "2026-11-16",
+              "recordedAt": "2026-11-16T07:01:31.943Z",
+              "metrics": {
+                "executiveSummaryDaily": {
+                  "totals": {
+                    "cpa": {
+                      "value": 1.95,
+                      "sources": [
+                        "conversions",
+                        "spend"
+                      ],
+                      "available": true
+                    },
+                    "cvr": {
+                      "value": 9.994121105232216,
+                      "sources": [
+                        "ga4.sessionKeyEventRate"
+                      ],
+                      "available": true
+                    },
+                    "roi": {
+                      "value": 25390.68,
+                      "sources": [
+                        "revenue",
+                        "spend"
+                      ],
+                      "available": true
+                    },
+                    "roas": {
+                      "value": 254.91,
+                      "sources": [
+                        "revenue",
+                        "spend"
+                      ],
+                      "available": true
+                    },
+                    "spend": {
+                      "value": 344.89,
+                      "sources": [
+                        "canonical_spend_sources"
+                      ],
+                      "available": true
+                    },
+                    "users": {
+                      "value": 1694,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    },
+                    "revenue": {
+                      "value": 87914.82,
+                      "sources": [
+                        "ga4",
+                        "revenue_Google Sheets revenue",
+                        "revenue_HubSpot (Deals)",
+                        "revenue_Salesforce (Opportunities)",
+                        "revenue_Shopify (linkedin-revenue.myshopify.com)"
+                      ],
+                      "available": true
+                    },
+                    "sessions": {
+                      "value": 1701,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    },
+                    "conversions": {
+                      "value": 177,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    }
+                  },
+                  "version": "executive_summary_daily_snapshot_v2",
+                  "currency": "EUR",
+                  "ga4PropertyId": "542352127",
+                  "sourceSignature": [
+                    "ga4:web_analytics"
+                  ],
+                  "ga4CampaignFilter": "yesop_brand_search",
+                  "currentValueWindow": {
+                    "mode": "initial_import_to_latest_available_day",
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-09-30",
+                    "dataThroughDate": "2026-11-16",
+                    "reportingTimeZone": "Europe/Amsterdam"
+                  },
+                  "performanceSummaryVersion": "performance_summary_aggregate_v3"
+                }
+              }
+            },
+            {
+              "campaignId": "campaign-a",
+              "snapshotType": "platform_sync",
+              "reportingDate": null,
+              "recordedAt": "2026-11-16T07:01:31.673Z",
+              "metrics": {
+                "performanceSummary": {
+                  "totals": {
+                    "cpa": {
+                      "value": 1.95,
+                      "sources": [
+                        "spend",
+                        "conversions"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "cpc": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CPC requires available spend and clicks"
+                      ]
+                    },
+                    "cpm": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CPM requires available spend and impressions"
+                      ]
+                    },
+                    "ctr": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CTR requires available clicks and impressions"
+                      ]
+                    },
+                    "cvr": {
+                      "value": 9.994121105232216,
+                      "sources": [
+                        "ga4.sessionKeyEventRate"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "roi": {
+                      "value": 25390.68,
+                      "sources": [
+                        "revenue",
+                        "spend"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "roas": {
+                      "value": 254.91,
+                      "sources": [
+                        "revenue",
+                        "spend"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "leads": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected source provides leads"
+                      ]
+                    },
+                    "spend": {
+                      "value": 344.89,
+                      "sources": [
+                        "canonical_spend_sources"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "users": {
+                      "value": 1694,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "clicks": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected paid-media source provides clicks"
+                      ]
+                    },
+                    "revenue": {
+                      "value": 87914.82,
+                      "sources": [
+                        "ga4",
+                        "revenue_shopify",
+                        "revenue_hubspot",
+                        "revenue_google_sheets",
+                        "revenue_salesforce"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "sessions": {
+                      "value": 1701,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "conversions": {
+                      "value": 177,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "impressions": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected paid-media source provides impressions; GA4 engagement rate is not an impressions metric"
+                      ]
+                    }
+                  }
+                },
+                "performanceSummaryVerification": {
+                  "spend": 344.89,
+                  "version": 1,
+                  "currency": "EUR",
+                  "campaignId": "campaign-a",
+                  "propertyId": "542352127",
+                  "distinctUsers": {
+                    "daily": [
+                      {
+                        "date": "2026-09-30",
+                        "users": 169
+                      },
+                      {
+                        "date": "2026-10-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-02",
+                        "users": 78
+                      },
+                      {
+                        "date": "2026-10-03",
+                        "users": 75
+                      },
+                      {
+                        "date": "2026-10-04",
+                        "users": 74
+                      },
+                      {
+                        "date": "2026-10-05",
+                        "users": 60
+                      },
+                      {
+                        "date": "2026-10-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-07",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-09",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-12",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-13",
+                        "users": 81
+                      },
+                      {
+                        "date": "2026-10-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-16",
+                        "users": 83
+                      },
+                      {
+                        "date": "2026-10-17",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-18",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-19",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-20",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-21",
+                        "users": 87
+                      },
+                      {
+                        "date": "2026-10-22",
+                        "users": 86
+                      },
+                      {
+                        "date": "2026-10-23",
+                        "users": 82
+                      },
+                      {
+                        "date": "2026-10-24",
+                        "users": 71
+                      },
+                      {
+                        "date": "2026-10-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-27",
+                        "users": 81
+                      },
+                      {
+                        "date": "2026-10-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-30",
+                        "users": 84
+                      },
+                      {
+                        "date": "2026-10-31",
+                        "users": 76
+                      },
+                      {
+                        "date": "2026-11-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-02",
+                        "users": 78
+                      },
+                      {
+                        "date": "2026-11-03",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-04",
+                        "users": 90
+                      },
+                      {
+                        "date": "2026-11-05",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "users": 91
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "users": 90
+                      },
+                      {
+                        "date": "2026-11-09",
+                        "users": 69
+                      },
+                      {
+                        "date": "2026-11-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-12",
+                        "users": 89
+                      },
+                      {
+                        "date": "2026-11-13",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-16",
+                        "users": 0
+                      }
+                    ],
+                    "total": 1694,
+                    "users": 1694,
+                    "metric": "totalUsers",
+                    "endDate": "2026-11-16",
+                    "version": 1,
+                    "sessions": 1701,
+                    "startDate": "2026-09-30",
+                    "propertyId": "542352127",
+                    "engagementRate": 0.7248677248677249,
+                    "engagedSessions": 1233,
+                    "sessionKeyEventRate": 0.09994121105232216,
+                    "sessionTotalsVersion": 1
+                  },
+                  "fallbackSpend": 0,
+                  "nativeRevenue": 51828.87,
+                  "trafficWindow": {
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-08-18"
+                  },
+                  "campaignFilter": "yesop_brand_search",
+                  "usersDefinition": "ga4_totalUsers_distinct_v1",
+                  "financialConversions": {
+                    "value": 177,
+                    "available": true
+                  },
+                  "nativeFinancialWindow": {
+                    "days": 48,
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-09-30",
+                    "dataThroughDate": "2026-11-16",
+                    "reportingTimeZone": "Europe/Amsterdam"
+                  },
+                  "importedFinancialWindow": {
+                    "endDate": "2026-11-16",
+                    "startDate": "1900-01-01"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "V1 Batch 5 Test",
+      "now": "2026-11-16T09:00:00.000Z",
+      "snapshot": {
+        "campaign": {
+          "id": "campaign-a",
+          "name": "V1 Batch 5 Test",
+          "ownerId": "owner-a",
+          "clientId": "client-a",
+          "status": "active",
+          "currency": "EUR",
+          "reportingTimeZone": "Europe/Amsterdam",
+          "ga4CampaignFilter": "[\"yesop_prospecting\",\"yesop_paid_social\"]"
+        },
+        "rows": {
+          "ga4Connections": [
+            {
+              "campaignId": "campaign-a",
+              "propertyId": "542352127",
+              "importStartDate": "2026-09-23",
+              "isPrimary": true,
+              "isActive": true
+            }
+          ],
+          "ga4OverviewSnapshots": [
+            {
+              "campaignId": "campaign-a",
+              "propertyId": "542352127",
+              "windowStart": "2026-09-23",
+              "windowEnd": "2026-11-16",
+              "campaignBreakdown": {
+                "meta": {
+                  "propertyId": "542352127",
+                  "currencyCode": "EUR",
+                  "distinctUsers": {
+                    "daily": [
+                      {
+                        "date": "2026-09-23",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-24",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-27",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-30",
+                        "users": 204
+                      },
+                      {
+                        "date": "2026-10-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-02",
+                        "users": 101
+                      },
+                      {
+                        "date": "2026-10-03",
+                        "users": 97
+                      },
+                      {
+                        "date": "2026-10-04",
+                        "users": 200
+                      },
+                      {
+                        "date": "2026-10-05",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-07",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-09",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-12",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-13",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-16",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-17",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-18",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-19",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-20",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-21",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-22",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-23",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-24",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-27",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-30",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-31",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-02",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-03",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-04",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-05",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-09",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-12",
+                        "users": 97
+                      },
+                      {
+                        "date": "2026-11-13",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-16",
+                        "users": 0
+                      }
+                    ],
+                    "total": 699,
+                    "users": 699,
+                    "metric": "totalUsers",
+                    "endDate": "2026-11-16",
+                    "version": 1,
+                    "sessions": 702,
+                    "startDate": "2026-09-23",
+                    "propertyId": "542352127",
+                    "engagementRate": 0.5897435897435898,
+                    "engagedSessions": 414,
+                    "sessionKeyEventRate": 0.06267806267806268,
+                    "sessionTotalsVersion": 1
+                  }
+                },
+                "rows": [],
+                "totals": {
+                  "users": 699,
+                  "revenue": 9349.01,
+                  "sessions": 702,
+                  "conversions": 47,
+                  "sessionsRaw": 702,
+                  "engagementRate": 0.5897435897435898,
+                  "engagedSessions": 414
+                }
+              }
+            }
+          ],
+          "metricSnapshots": [
+            {
+              "campaignId": "campaign-a",
+              "snapshotType": "executive_summary_daily",
+              "reportingDate": "2026-11-16",
+              "recordedAt": "2026-11-16T07:00:51.668Z",
+              "metrics": {
+                "executiveSummaryDaily": {
+                  "totals": {
+                    "cpa": {
+                      "value": null,
+                      "sources": [],
+                      "available": false
+                    },
+                    "cvr": {
+                      "value": 6.267806267806268,
+                      "sources": [
+                        "ga4.sessionKeyEventRate"
+                      ],
+                      "available": true
+                    },
+                    "roi": {
+                      "value": null,
+                      "sources": [],
+                      "available": false
+                    },
+                    "roas": {
+                      "value": null,
+                      "sources": [],
+                      "available": false
+                    },
+                    "spend": {
+                      "value": null,
+                      "sources": [],
+                      "available": false
+                    },
+                    "users": {
+                      "value": 699,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    },
+                    "revenue": {
+                      "value": 13099.01,
+                      "sources": [
+                        "ga4",
+                        "revenue_HubSpot (Deals)",
+                        "revenue_Salesforce (Opportunities)"
+                      ],
+                      "available": true
+                    },
+                    "sessions": {
+                      "value": 702,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    },
+                    "conversions": {
+                      "value": 47,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true
+                    }
+                  },
+                  "version": "executive_summary_daily_snapshot_v2",
+                  "currency": "EUR",
+                  "ga4PropertyId": "542352127",
+                  "sourceSignature": [
+                    "ga4:web_analytics"
+                  ],
+                  "ga4CampaignFilter": "[\"yesop_prospecting\",\"yesop_paid_social\"]",
+                  "currentValueWindow": {
+                    "mode": "initial_import_to_latest_available_day",
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-09-23",
+                    "dataThroughDate": "2026-11-16",
+                    "reportingTimeZone": "Europe/Amsterdam"
+                  },
+                  "performanceSummaryVersion": "performance_summary_aggregate_v3"
+                }
+              }
+            },
+            {
+              "campaignId": "campaign-a",
+              "snapshotType": "platform_sync",
+              "reportingDate": null,
+              "recordedAt": "2026-11-16T07:00:51.348Z",
+              "metrics": {
+                "performanceSummary": {
+                  "totals": {
+                    "cpa": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CPA requires available spend and conversions"
+                      ]
+                    },
+                    "cpc": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CPC requires available spend and clicks"
+                      ]
+                    },
+                    "cpm": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CPM requires available spend and impressions"
+                      ]
+                    },
+                    "ctr": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "CTR requires available clicks and impressions"
+                      ]
+                    },
+                    "cvr": {
+                      "value": 6.267806267806268,
+                      "sources": [
+                        "ga4.sessionKeyEventRate"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "roi": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "ROI requires available revenue and spend"
+                      ]
+                    },
+                    "roas": {
+                      "value": null,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "ROAS requires available revenue and spend"
+                      ]
+                    },
+                    "leads": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected source provides leads"
+                      ]
+                    },
+                    "spend": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected spend source or paid-platform spend is available"
+                      ]
+                    },
+                    "users": {
+                      "value": 699,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "clicks": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected paid-media source provides clicks"
+                      ]
+                    },
+                    "revenue": {
+                      "value": 13099.01,
+                      "sources": [
+                        "ga4",
+                        "revenue_hubspot",
+                        "revenue_salesforce"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "sessions": {
+                      "value": 702,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "conversions": {
+                      "value": 47,
+                      "sources": [
+                        "ga4"
+                      ],
+                      "available": true,
+                      "unavailableReasons": []
+                    },
+                    "impressions": {
+                      "value": 0,
+                      "sources": [],
+                      "available": false,
+                      "unavailableReasons": [
+                        "No connected paid-media source provides impressions; GA4 engagement rate is not an impressions metric"
+                      ]
+                    }
+                  }
+                },
+                "performanceSummaryVerification": {
+                  "spend": 0,
+                  "version": 1,
+                  "currency": "EUR",
+                  "campaignId": "campaign-a",
+                  "propertyId": "542352127",
+                  "distinctUsers": {
+                    "daily": [
+                      {
+                        "date": "2026-09-23",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-24",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-27",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-09-30",
+                        "users": 204
+                      },
+                      {
+                        "date": "2026-10-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-02",
+                        "users": 101
+                      },
+                      {
+                        "date": "2026-10-03",
+                        "users": 97
+                      },
+                      {
+                        "date": "2026-10-04",
+                        "users": 200
+                      },
+                      {
+                        "date": "2026-10-05",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-07",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-09",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-12",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-13",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-16",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-17",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-18",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-19",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-20",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-21",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-22",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-23",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-24",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-25",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-26",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-27",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-28",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-29",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-30",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-10-31",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-01",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-02",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-03",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-04",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-05",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-09",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-10",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-11",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-12",
+                        "users": 97
+                      },
+                      {
+                        "date": "2026-11-13",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-14",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-15",
+                        "users": 0
+                      },
+                      {
+                        "date": "2026-11-16",
+                        "users": 0
+                      }
+                    ],
+                    "total": 699,
+                    "users": 699,
+                    "metric": "totalUsers",
+                    "endDate": "2026-11-16",
+                    "version": 1,
+                    "sessions": 702,
+                    "startDate": "2026-09-23",
+                    "propertyId": "542352127",
+                    "engagementRate": 0.5897435897435898,
+                    "engagedSessions": 414,
+                    "sessionKeyEventRate": 0.06267806267806268,
+                    "sessionTotalsVersion": 1
+                  },
+                  "fallbackSpend": 0,
+                  "nativeRevenue": 9349.01,
+                  "trafficWindow": {
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-08-18"
+                  },
+                  "campaignFilter": "[\"yesop_prospecting\",\"yesop_paid_social\"]",
+                  "usersDefinition": "ga4_totalUsers_distinct_v1",
+                  "financialConversions": {
+                    "value": 47,
+                    "available": true
+                  },
+                  "nativeFinancialWindow": {
+                    "days": 55,
+                    "endDate": "2026-11-16",
+                    "startDate": "2026-09-23",
+                    "dataThroughDate": "2026-11-16",
+                    "reportingTimeZone": "Europe/Amsterdam"
+                  },
+                  "importedFinancialWindow": {
+                    "endDate": "2026-11-16",
+                    "startDate": "1900-01-01"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

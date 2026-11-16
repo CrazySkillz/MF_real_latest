@@ -127,7 +127,7 @@ export async function runLiveNumberMonitor(configInput: unknown, scheduledOnly =
       try {
         let before = await storage.getLiveNumberCheckSnapshot(campaignIdHash);
         if (before.campaign.reportingTimeZone !== reportingTimeZone) throw new Error("MONITOR_TIMEZONE_CHANGED");
-        const reportRead = { ...restoreLegacyReportInputOrder(before), usersDefinition: config.application?.usersDefinition };
+        const reportRead = { ...restoreLegacyReportInputOrder(before), usersDefinition: config.application?.usersDefinition, comparisonRateDefinition: config.application?.comparisonRateDefinition };
         const checks = checkStoredNumbers(reportRead, now);
         checks.push(...await checkSavedReportNumbers(reportRead));
         if (!checks.some(check => check.section === "scope")) {

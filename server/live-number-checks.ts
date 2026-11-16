@@ -282,12 +282,20 @@ export function checkStoredNumbers(snapshot: LiveNumberSnapshot, now = new Date(
     // Arithmetic is independently checkable even when a legacy snapshot omitted its source-window metadata.
     const available = (key: string) => values[key]?.available === true ? numberOrNull(values[key].value) : null;
     const verification = sync.metrics.performanceSummaryVerification;
+    const trafficWindow = verification?.trafficWindow, financialWindow = verification?.nativeFinancialWindow;
+    const rateScopeValid = verification?.version === 1 && verification.campaignId === campaign.id && verification.propertyId === connection.propertyId
+      && verification.campaignFilter === campaign.ga4CampaignFilter && verification.currency === currency
+      && dateIsValid(trafficWindow?.startDate) && trafficWindow?.endDate === endDate && trafficWindow.startDate <= endDate
+      && financialWindow?.startDate === startDate && financialWindow?.endDate === endDate && financialWindow?.reportingTimeZone === reportingTimeZone;
+    const nativeRate = rateScopeValid ? monitoredPeriodTraffic(snapshot, { ...scope,
+      publication: { campaignBreakdown: { meta: { distinctUsers: verification.distinctUsers } } },
+      startDate: trafficWindow.startDate > startDate ? trafficWindow.startDate : startDate })?.conversionRate ?? null : null;
     const rev = available("revenue"), cost = available("spend"), conv = available("conversions"), sessions = available("sessions");
     const cpaConversions = verification?.version === 1 ? (verification.financialConversions?.available === true ? numberOrNull(verification.financialConversions.value) : null) : conv;
     const calculated = { roas: cost! > 0 && rev !== null ? rev / cost! : null,
       roi: cost! > 0 && rev !== null ? (rev - cost!) / cost! * 100 : null,
       cpa: cpaConversions! > 0 && cost !== null ? cost / cpaConversions! : null,
-      cvr: sessions! > 0 && conv !== null ? conv / sessions! * 100 : null };
+      cvr: snapshot.comparisonRateDefinition === "ga4_session_key_event_rate" ? nativeRate : sessions! > 0 && conv !== null ? conv / sessions! * 100 : null };
     for (const [metric, expected] of Object.entries(calculated)) {
       if (expected === null && values[metric]?.available === false) continue;
       push("Performance Summary", metric, expected, available(metric), 2);

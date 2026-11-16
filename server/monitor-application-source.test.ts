@@ -227,6 +227,14 @@ it("prepares exact pinned sources, preserves the live source, and rejects change
   writeFileSync(join(overviewNoticePrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(overviewNoticeApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...overviewNoticeApp, expectedCommit: "ae".repeat(20) }, root)).toThrow();
+  const insightsSpendApp = { ...landingApp, expectedCommit: "ba".repeat(20), comparisonRateDefinition: "ga4_session_key_event_rate" };
+  writeFileSync(join(root, "scripts/monitor-current-day-insights-spend-details.json"), JSON.stringify({ expectedCommit: insightsSpendApp.expectedCommit, files: [...files, extra].map(path => ({ path, before: hash("old\n"), after: hash("spend-label\n") })) }));
+  writeFileSync(join(root, "scripts/monitor-current-day-insights-spend-details.patch"), [...files, extra].map(file => `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-old\n+spend-label\n`).join(""));
+  const insightsSpendPrepared = prepareMonitorApplication(root, true, true, "-insights-spend-details");
+  expect(monitorApplicationDirectory(insightsSpendApp, root)).toBe(insightsSpendPrepared);
+  expect(monitorApplicationDirectory(landingApp, root)).toBe(landingPrepared);
+  writeFileSync(join(insightsSpendPrepared, extra), "tampered\n");
+  expect(() => monitorApplicationDirectory(insightsSpendApp, root)).toThrow();
   writeFileSync(join(landingPrepared, extra), "tampered\n");
   expect(() => monitorApplicationDirectory(landingApp, root)).toThrow();
   expect(() => monitorApplicationDirectory({ ...landingApp, expectedCommit: "46".repeat(20) }, root)).toThrow();

@@ -1,4 +1,5 @@
 import { conversionCreditsMatch, formatRoasRatio } from "@shared/metric-math";
+import { getGA4InsightsSevenDayUsers } from "@shared/ga4-insights";
 import { requestReportSaveFile, writeReportSaveFile } from "@/lib/pdfExport";
 import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching, isCancelledError } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -2194,6 +2195,7 @@ export default function GA4Metrics() {
   const trendsLatestImportedDate = String(trendsImportedRows[trendsImportedRows.length - 1]?.date || "").trim();
   const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";
   const trendsRollups = useMemo(() => buildGA4InsightsRollups(trendsDailyRows, trendsDataThroughDate), [trendsDailyRows, trendsDataThroughDate]);
+  const sevenDayUsers = (rollup: { startDate: string | null; endDate: string | null; complete: boolean }) => getGA4InsightsSevenDayUsers(ga4InsightsDailyResp?.usersComparisons, rollup);
 
   const {
     data: ga4Breakdown,
@@ -4468,7 +4470,8 @@ export default function GA4Metrics() {
           for (const row of trendSorted) {
             const rollup = buildGA4InsightsCalendarRollup(trendSorted, String(row.date), windowDays);
             if (!rollup.complete) continue;
-            const value = trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
+            const value = trendMetric === "users" ? sevenDayUsers(rollup) : trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
+            if (value === null) continue;
             trendChartData.push({ date: String(row.date).slice(5), recordedDate: String(row.date), value: Number(value.toFixed(2)) });
           }
         }
@@ -4552,11 +4555,11 @@ export default function GA4Metrics() {
               : (() => {
                   const cur = insightsTrendMode === "7d" ? trendsRollups.last7 : trendsRollups.last30;
                   const prior = insightsTrendMode === "7d" ? trendsRollups.prior7 : trendsRollups.prior30;
-                  const getVal = (rollup: any) => trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
+                  const getVal = (rollup: any) => trendMetric === "users" ? sevenDayUsers(rollup) : trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
                   const curVal = getVal(cur), priorVal = getVal(prior);
                   return [
-                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, cur.complete ? trendFmtValue(curVal) : "Unavailable", cur.complete && prior.complete ? trendFmtDelta(curVal, priorVal) : "Not comparable"],
-                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, prior.complete ? trendFmtValue(priorVal) : "Unavailable", prior.complete ? "baseline" : "Not comparable"],
+                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, cur.complete && curVal !== null ? trendFmtValue(curVal) : "Unavailable", cur.complete && prior.complete && curVal !== null && priorVal !== null ? trendFmtDelta(curVal, priorVal) : "Not comparable"],
+                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, prior.complete && priorVal !== null ? trendFmtValue(priorVal) : "Unavailable", prior.complete && priorVal !== null ? "baseline" : "Not comparable"],
                   ];
                 })();
           if (trendRows.length > 0) {
@@ -9723,7 +9726,7 @@ export default function GA4Metrics() {
                                     setInsightsDailyShowMore(false);
                                     setInsightsTrendMode(mode);
                                     // Users is non-additive — only accurate in daily mode
-                                    if (mode !== "daily" && insightsTrendMetric === "users") setInsightsTrendMetric("sessions");
+                                    if (mode !== "daily" && mode !== "7d" && insightsTrendMetric === "users") setInsightsTrendMetric("sessions");
                                   }}
                                 >
                                   {mode === "daily" ? "Daily" : mode === "monthly" ? "Monthly" : mode}
@@ -9739,7 +9742,7 @@ export default function GA4Metrics() {
                                 onChange={(event) => setInsightsTrendMetric(event.target.value)}
                               >
                                 <option value="sessions">Sessions</option>
-                                {insightsTrendMode === "daily" && <option value="users">Users</option>}
+                                {(insightsTrendMode === "daily" || insightsTrendMode === "7d") && <option value="users">Users</option>}
                                 <option value="conversions">Conversions</option>
                                 <option value="revenue">Revenue</option>
                                 <option value="pageviews">Page Views</option>
@@ -9851,8 +9854,10 @@ export default function GA4Metrics() {
                             const finalDate = String(completeRows[completeRows.length - 1]?.date || "");
                             while (cursor && cursor <= finalDate) {
                               const rollup = buildGA4InsightsCalendarRollup(sorted, cursor, windowDays);
-                              let val = 0;
-                              if (isRate) {
+                              let val: number | null = 0;
+                              if (metric === "users") {
+                                val = sevenDayUsers(rollup);
+                              } else if (isRate) {
                                 val = rollup.engagementRate;
                               } else {
                                 val = Number((rollup as any)[metric] || 0);
@@ -9861,7 +9866,7 @@ export default function GA4Metrics() {
                                 if (!rollingChartStartDate) rollingChartStartDate = String(rollup.startDate || "");
                                 rollingChartEndDate = String(rollup.endDate || "");
                               }
-                              chartData.push({ date: cursor.slice(5), value: rollup.complete ? Number(val.toFixed(2)) : null, idx: chartData.length });
+                              chartData.push({ date: cursor.slice(5), value: rollup.complete && val !== null ? Number(val.toFixed(2)) : null, idx: chartData.length });
                               cursor = addGA4InsightsDateDays(cursor, 1) || "";
                             }
                           }
@@ -10069,12 +10074,14 @@ export default function GA4Metrics() {
                                         }
 
                                         const getVal = (rollup: typeof cur) => {
+                                          if (metric === "users") return sevenDayUsers(rollup);
                                           if (metric === "engagementRate") return rollup.engagementRate;
                                           return (rollup as any)[metric] || 0;
                                         };
 
                                         const curVal = getVal(cur);
                                         const priorVal = getVal(prior);
+                                        if (curVal === null || priorVal === null) return <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">GA4 seven-day Users totals are unavailable for this comparison.</td></tr>;
                                         const delta = deltaPct(curVal, priorVal);
 
                                         return [

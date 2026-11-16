@@ -10,6 +10,7 @@ type CampaignFilter = string | string[] | undefined;
 // Owned by one scheduler connection attempt; never persisted or shared across requests.
 export type GA4DailyTrafficCapture = {
   campaignId: string;
+  rollingUsersStartDate?: string;
   primaryScope?: { propertyId: string; startDate: string; endDate: string; campaigns: string[]; throughDate: string };
   captured?: {
     propertyId: string; startDate: string; endDate: string; currencyCode: string;
@@ -1467,6 +1468,7 @@ export class GoogleAnalytics4Service {
     propertyId: string, accessToken: string, startDate: string, endDate: string,
     campaignFilter: CampaignFilter, primaryScope?: GA4DailyTrafficCapture['primaryScope'],
     includeSessions = false,
+    rollingUsersStartDate?: string,
   ) {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const names = this.normalizeCampaignFilter(campaignFilter);
@@ -1540,6 +1542,36 @@ export class GoogleAnalytics4Service {
       }
     }
     for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { Object.assign(window, period(await run(fullScope, window.startDate, window.endDate))); }));
+    if (rollingUsersStartDate) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(rollingUsersStartDate) || rollingUsersStartDate > endDate) throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
+      const earliest = [startDate, rollingUsersStartDate, new Date(Date.parse(endDate) - 59 * 86400000).toISOString().slice(0, 10)].sort().at(-1)!;
+      const rolling: Array<{ startDate: string; endDate: string; users: number }> = [];
+      for (let to = new Date(Date.parse(earliest) + 6 * 86400000).toISOString().slice(0, 10); to <= endDate; to = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10)) {
+        const from = new Date(Date.parse(to) - 6 * 86400000).toISOString().slice(0, 10);
+        if (!windows.some(window => window.startDate === from && window.endDate === to)) rolling.push({ startDate: from, endDate: to, users: 0 });
+      }
+      // Named date ranges let GA4 deduplicate each window independently (four per request).
+      for (let i = 0; i < rolling.length; i += 4) {
+        const batch = rolling.slice(i, i + 4);
+        const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+          method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dateRanges: batch.map((window, index) => ({ startDate: window.startDate, endDate: window.endDate, name: `window_${index}` })),
+            ...fullScope, metrics: [{ name: 'totalUsers' }], metricAggregations: ['TOTAL'], keepEmptyRows: true, limit: 100 }),
+        });
+        if (!response.ok) throw new Error(`GA4 rolling users API error: ${await response.text()}`);
+        const data = await response.json(), rangeIndex = data.dimensionHeaders?.findIndex((header: any) => header.name === 'dateRange') ?? -1;
+        const totals = Array.isArray(data.totals) ? data.totals : [];
+        const namesSeen = new Set<string>();
+        if (data.metricHeaders?.[0]?.name !== 'totalUsers' || totals.length !== batch.length || Number(data.rowCount ?? 0) !== (data.rows || []).length) throw new Error('GA4_ROLLING_USERS_INCOMPLETE');
+        for (const row of totals) {
+          const name = rangeIndex >= 0 ? row.dimensionValues?.[rangeIndex]?.value : batch.length === 1 ? 'window_0' : '';
+          const index = batch.findIndex((_, index) => name === `window_${index}`), raw = row.metricValues?.[0]?.value;
+          if (index < 0 || namesSeen.has(name) || raw == null || raw === '' || !Number.isSafeInteger(Number(raw)) || Number(raw) < 0) throw new Error('GA4_ROLLING_USERS_INCOMPLETE');
+          namesSeen.add(name); batch[index].users = Number(raw);
+        }
+        windows.push(...batch);
+      }
+    }
     return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows,
       ...(includeSessions ? { sessionTotalsVersion: 1, ...period(aggregate) } : {}) };
   }
@@ -2752,7 +2784,7 @@ export class GoogleAnalytics4Service {
     const resolvedEngagedSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[4]?.value || '0', 10) || 0 : totalEngagedSessions;
 
     const distinctUsers = preferOverviewCampaignTotals && this.normalizeCampaignFilter(campaignFilter).length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && endDate
-      ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope, true)
+      ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope, true, overviewDailyTraffic?.rollingUsersStartDate)
       : undefined;
     return {
       rows,

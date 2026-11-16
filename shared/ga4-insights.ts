@@ -1,5 +1,13 @@
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "./ga4-kpi-metric-identity";
 
+// Multi-day Users must use GA4's exact window; daily distinct counts are not additive.
+export const getGA4InsightsSevenDayUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
+  if (!rollup.complete || !rollup.startDate || !rollup.endDate || addGA4InsightsDateDays(rollup.startDate, 6) !== rollup.endDate || !Array.isArray(windows)) return null;
+  const matches = windows.filter(row => row?.startDate === rollup.startDate && row?.endDate === rollup.endDate);
+  const value = matches.length === 1 ? matches[0].users : null;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+};
+
 export type GA4InsightsDailyRow = {
   date: string;
   sessions?: number;

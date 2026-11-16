@@ -114,7 +114,7 @@ Current meaning:
 - a date without a stored row remains unavailable and cannot complete a comparison window; dates before campaign creation remain hidden, and an explicit persisted zero remains a valid observed value
 - the daily scheduler also persists explicit zero rows for completed no-activity dates after it verifies the provider response; an incomplete or failed provider response preserves the last-good stored window instead of writing false zeros
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
-- the metric selector uses a native select; Users is available only in Daily because daily distinct-user counts cannot be summed across days
+- the metric selector uses a native select; Users is available in Daily and 7d. Seven-day Users comes from GA4 `totalUsers` for each exact inclusive seven-day window, using the same property and campaign filter as the saved Overview publication. It is never a sum of daily Users. The scheduler saves up to 54 rolling windows (60 days of history), batched into at most four named ranges per GA4 request. Chart, adjacent-window comparison and Insights PDF use these saved totals. Missing, incomplete or invalid window totals remain unavailable; recorded zero totals remain zero. Users stays unavailable in 30d and Monthly.
 
 History gates:
 

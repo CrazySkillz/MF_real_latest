@@ -5860,3 +5860,18 @@ index fd339d98..39cdc079 100644
                                          const delta = deltaPct(curVal, priorVal);
  
                                          return [
+
+diff --git a/server/ga4-daily-scheduler.ts b/server/ga4-daily-scheduler.ts
+index 283d31d4..854c36cf 100644
+--- a/server/ga4-daily-scheduler.ts
++++ b/server/ga4-daily-scheduler.ts
+@@ -621,7 +621,8 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
+     const date = getLatestCompleteReportingDate(config.reportingTimeZone, now);
+     let due = getExpectedScheduledRefreshAt(date, config, now);
+     if (due && due > now) due = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(date, -1), config, now);
+-    if (trigger === "manual") due = now;
++    // Bootstrap must not replay an older scheduled slot after a newer manual publication.
++    if (trigger === "manual" || trigger === "snapshot_bootstrap") due = now;
+     if (due) opts = { ...opts, workDueAt: due, refreshFinancialSources: true };
+   }
+   // Claims are acquired here, never accepted from a caller or request body.

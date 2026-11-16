@@ -25,6 +25,9 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   if (application.usersDefinition !== undefined && application.usersDefinition !== "ga4_totalUsers_distinct_v1") throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   if (application.usersDefinition && application.comparisonRateDefinition === undefined) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   if (application.comparisonRateDefinition === undefined) return root;
+  const emptyTailPath = join(root, "scripts/monitor-current-day-ga4-empty-tail.json");
+  const emptyTail = application.reportingMode === "current_day" && existsSync(emptyTailPath)
+    && (() => { const value = revision(root, true, true, "-ga4-empty-tail"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
   const hubspotRenewalPath = join(root, "scripts/monitor-current-day-hubspot-monitor-renewal.json");
   const hubspotRenewal = application.reportingMode === "current_day" && existsSync(hubspotRenewalPath)
     && (() => { const value = revision(root, true, true, "-hubspot-monitor-renewal"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
@@ -85,8 +88,8 @@ export function monitorApplicationDirectory(application: { expectedCommit: strin
   const wordingPath = join(root, "scripts/monitor-current-day-revenue-wording.json");
   const wording = application.reportingMode === "current_day" && existsSync(wordingPath)
     && (() => { const value = revision(root, true, true, "-revenue-wording"); return [value.expectedCommit, ...(value.equivalentCommits || [])].includes(application.expectedCommit); })();
-  const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", hubspotRenewal ? "-hubspot-monitor-renewal" : downstreamValues ? "-downstream-native-values" : nativeValues ? "-native-values" : periodSessions ? "-period-sessions" : overviewNotice ? "-overview-notice" : landingZero ? "-ga4-landing-sampled-zero" : sampling ? "-ga4-presence-sampling" : listRetry ? "-ga4-campaign-list-retry" : connectionTimeout ? "-ga4-connection-timeout" : discovery ? "-ga4-campaign-discovery" : csvLayout ? "-csv-revenue-layout" : csvFilename ? "-csv-editor-filename" : csvRetainedNext ? "-csv-retained-next" : revenueGrouping ? "-revenue-grouping" : csvSavedInputs ? "-csv-saved-inputs" : revenueFollowup ? "-revenue-followup" : shopifyReview ? "-shopify-review" : editSafety ? "-revenue-edit-safety" : sourceEdit ? "-revenue-source-edit" : wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
-  if (application.comparisonRateDefinition !== ((nativeValues || downstreamValues || hubspotRenewal) ? "ga4_session_key_event_rate" : "conversions_per_session") || ![pinned.expectedCommit, ...(pinned.equivalentCommits || [])].includes(application.expectedCommit)
+  const pinned = revision(root, !!application.usersDefinition, application.reportingMode === "current_day", emptyTail ? "-ga4-empty-tail" : hubspotRenewal ? "-hubspot-monitor-renewal" : downstreamValues ? "-downstream-native-values" : nativeValues ? "-native-values" : periodSessions ? "-period-sessions" : overviewNotice ? "-overview-notice" : landingZero ? "-ga4-landing-sampled-zero" : sampling ? "-ga4-presence-sampling" : listRetry ? "-ga4-campaign-list-retry" : connectionTimeout ? "-ga4-connection-timeout" : discovery ? "-ga4-campaign-discovery" : csvLayout ? "-csv-revenue-layout" : csvFilename ? "-csv-editor-filename" : csvRetainedNext ? "-csv-retained-next" : revenueGrouping ? "-revenue-grouping" : csvSavedInputs ? "-csv-saved-inputs" : revenueFollowup ? "-revenue-followup" : shopifyReview ? "-shopify-review" : editSafety ? "-revenue-edit-safety" : sourceEdit ? "-revenue-source-edit" : wording ? "-revenue-wording" : ""), directory = join(root, ".monitor-applications", pinned.expectedCommit);
+  if (application.comparisonRateDefinition !== ((emptyTail || nativeValues || downstreamValues || hubspotRenewal) ? "ga4_session_key_event_rate" : "conversions_per_session") || ![pinned.expectedCommit, ...(pinned.equivalentCommits || [])].includes(application.expectedCommit)
     || pinned.files.some(file => digest(join(directory, file.path)) !== file.after)) throw new Error("MONITOR_APPLICATION_SOURCE_UNVERIFIED");
   return directory;
 }
@@ -108,7 +111,7 @@ export function prepareMonitorApplication(root = process.cwd(), distinctUsers = 
   execFileSync("git", ["apply", "--no-index", "--whitespace=nowarn", "-"],
     { cwd: directory, env: { ...process.env, GIT_CEILING_DIRECTORIES: dirname(directory) }, windowsHide: true, stdio: "pipe",
       input: readFileSync(join(root, currentDay ? `scripts/monitor-current-day${variant}.patch` : distinctUsers ? "scripts/monitor-distinct-users.patch" : "scripts/monitor-conversion-parity.patch"), "utf8").replaceAll("\r\n", "\n") });
-  return monitorApplicationDirectory({ expectedCommit: pinned.expectedCommit, comparisonRateDefinition: ["-native-values", "-downstream-native-values", "-hubspot-monitor-renewal"].includes(variant) ? "ga4_session_key_event_rate" : "conversions_per_session", ...(distinctUsers ? { usersDefinition: "ga4_totalUsers_distinct_v1" } : {}), ...(currentDay ? { reportingMode: "current_day" } : {}) }, root);
+  return monitorApplicationDirectory({ expectedCommit: pinned.expectedCommit, comparisonRateDefinition: ["-native-values", "-downstream-native-values", "-hubspot-monitor-renewal", "-ga4-empty-tail"].includes(variant) ? "ga4_session_key_event_rate" : "conversions_per_session", ...(distinctUsers ? { usersDefinition: "ga4_totalUsers_distinct_v1" } : {}), ...(currentDay ? { reportingMode: "current_day" } : {}) }, root);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   prepareMonitorApplication();
@@ -134,5 +137,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (existsSync("scripts/monitor-current-day-native-values.json")) prepareMonitorApplication(process.cwd(), true, true, "-native-values");
   if (existsSync("scripts/monitor-current-day-downstream-native-values.json")) prepareMonitorApplication(process.cwd(), true, true, "-downstream-native-values");
   if (existsSync("scripts/monitor-current-day-hubspot-monitor-renewal.json")) prepareMonitorApplication(process.cwd(), true, true, "-hubspot-monitor-renewal");
+  if (existsSync("scripts/monitor-current-day-ga4-empty-tail.json")) prepareMonitorApplication(process.cwd(), true, true, "-ga4-empty-tail");
   console.log("Pinned test application replay source verified");
 }

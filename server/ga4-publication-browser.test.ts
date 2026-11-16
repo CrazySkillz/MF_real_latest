@@ -47,6 +47,7 @@ describe("GA4 publication in the rendered page", () => {
     let financialPublished = false;
     let provisional = false; let publishedProxy = 200; let confirmedCRM = 0;
     let financialRequests = 0;
+    let spendEvidence: { amount: number; sources?: any[]; campaignId?: string } | undefined;
     const updatedAt = () => `${day === "2026-10-17" ? "2026-10-18" : "2026-10-19"}T${generation === 1 ? "06" : "12"}:06:00.000Z`;
     const totals = () => ({ sessions: generation === 1 ? 2977 : 3100, users: generation === 1 ? 2978 : 3101, conversions: conversionCredit ?? (generation === 1 ? 262 : 275), revenue: financialRevenue ?? (generation === 1 ? 65659.50 : 68000), engagedSessions: 2200, engagementRate: 0.724, pageviews: 4100 });
     let releaseFinancial: (() => void) | undefined;
@@ -96,6 +97,11 @@ describe("GA4 publication in the rendered page", () => {
             mappingConfig: { platformContext: "ga4", selectedValues: ["search"], pipelineEnabled: true, pipelineStageId: "open", pipelineStageLabel: "Open",
               pipelineTotalToDate: publishedProxy, pipelineValueRevenueTotals: publishedProxy ? [{ campaignValue: "search", revenue: publishedProxy }] : [],
               pipelineCurrency: financialCurrency, pipelineLastUpdatedAt: updatedAt(), pipelineProxyMode: "current_stage" } }] } };
+      }
+      if (spendEvidence && data.snapshot?.metrics?.financialDaily) {
+        data.snapshot.campaignId = spendEvidence.campaignId || "a";
+        data.snapshot.metrics.financialDaily.inputs.spend = { available: true, value: spendEvidence.amount };
+        data.snapshot.metrics.revenuePublication = { display: { nativeRevenue: financialRevenue, sources: [], spendSources: spendEvidence.sources } };
       }
       if (provisional && url.pathname.endsWith("/pipeline-proxy")) data = { success: true, sourceId: "crm", pipelineEnabled: true,
         mode: "current_stage", totalToDate: 0, pipelineValueRevenueTotals: [], currency: financialCurrency, lastUpdatedAt: updatedAt() };
@@ -285,6 +291,34 @@ describe("GA4 publication in the rendered page", () => {
       await browserExpect(page.getByTestId("ga4-provisional-notice")).toContainText("provisional");
       await page.getByRole("tab", { name: "Overview", exact: true }).click();
       await browserExpect(page.getByTestId("ga4-provisional-notice")).toHaveCount(0);
+      // The source label must come from the same reconciled publication as Spend.
+      // Independent source endpoints intentionally have no details in this fixture.
+      campaignCurrency = financialCurrency = "EUR"; financialRevenue = 118014.62;
+      conversionCredit = 440; provisional = false;
+      spendEvidence = { amount: 1100, sources: [{ sourceId: "csv-spend", sourceType: "csv", displayName: "Test_spend.csv", spend: 1100 }] };
+      await page.goto("http://ga4-fixture.test/campaigns/a/ga4-metrics?readOnly=1&tab=insights");
+      const executive = page.getByTestId("insights-executive-financials");
+      await browserExpect(executive).toContainText("Spend: Test_spend.csv");
+      await browserExpect(executive).not.toContainText("Source details unavailable");
+      for (const [field, value] of [["spend", "€1,100.00"], ["revenue", "€118,014.62"], ["profit", "€116,914.62"], ["roas", "107.29x"], ["roi", "10628.6%"]]) {
+        await browserExpect(page.getByTestId("insights-financial-" + field)).toContainText(value);
+      }
+      for (const sources of [undefined, [{ sourceId: "csv-spend", displayName: "Wrong.csv", spend: 999 }]]) {
+        spendEvidence = { amount: 1100, sources };
+        await page.goto("http://ga4-fixture.test/campaigns/a/ga4-metrics?readOnly=1&tab=insights");
+        await browserExpect(executive).toContainText("Spend: Source details unavailable");
+        await browserExpect(executive).not.toContainText("Test_spend.csv");
+        await browserExpect(executive).not.toContainText("Wrong.csv");
+        await browserExpect(page.getByTestId("insights-financial-spend")).toContainText("€1,100.00");
+      }
+      spendEvidence = { amount: 0, sources: [{ sourceId: "csv-zero", displayName: "Zero.csv", spend: 0 }] };
+      await page.goto("http://ga4-fixture.test/campaigns/a/ga4-metrics?readOnly=1&tab=insights");
+      await browserExpect(executive).toContainText("Spend: Zero.csv");
+      await browserExpect(page.getByTestId("insights-financial-spend")).toContainText("€0.00");
+      spendEvidence.campaignId = "another-client";
+      await page.goto("http://ga4-fixture.test/campaigns/a/ga4-metrics?readOnly=1&tab=insights");
+      await browserExpect(page.getByTestId("insights-financial-spend")).toContainText("Unavailable");
+      await browserExpect(executive).not.toContainText("Zero.csv");
       expect(errors).toEqual([]);
     } catch (error) {
       console.error({ browserErrors: errors, requests, pageText: (await page.locator("body").innerText()).slice(0, 4000) });

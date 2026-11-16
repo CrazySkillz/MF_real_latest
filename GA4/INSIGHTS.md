@@ -86,7 +86,7 @@ Current meaning:
 - Profit, ROAS and ROI derive from that saved Revenue and Spend together; unavailable inputs remain unavailable and zero Spend leaves ratios undefined
 - the existing financial scope/freshness checks retain earlier saved amounts with a warning and withhold incompatible inputs; independent live totals do not replace them
 - the shared `Sources used` footer matches saved Revenue contributor IDs to source names and includes native Revenue only when its saved marker is present
-- saved Spend has no individual contributor IDs, so available Spend shows `Source details unavailable` instead of using a newer contributor list; missing Revenue names are also explicitly unavailable
+- Spend source names come only from the same saved financial publication, using Overview's campaign/currency scope and amount-reconciliation checks. Missing or inconsistent saved details remain explicitly unavailable; newer source lists do not substitute for saved contributors. Missing Revenue names are also explicitly unavailable.
 - this section does not show the Trends date-range controls; the bounded 2026-10-17 correction is covered by local render tests, with deployment and whole-tab recertification still unverified (see the Task 2 entry in `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`)
 
 ### Trends

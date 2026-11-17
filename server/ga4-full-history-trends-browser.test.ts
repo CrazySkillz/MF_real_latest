@@ -97,14 +97,13 @@ it('navigates every metric across the full imported GA4 history without writes o
           } else await ui(page.getByTestId('insights-trends-empty')).toHaveCount(0);
           if(mode==='Monthly') {
             const september=trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^September 2026/})}).getByRole('cell').last();
-            await ui(september).toContainText('September 2026 is incomplete. Missing dates: Sep 1, 2026 – Sep 3, 2026 (before imported history starts Sep 4, 2026).');
-            await ui(september).toContainText('August 2026 is incomplete. Missing dates: Aug 1, 2026 – Aug 31, 2026');
+            await ui(september).toHaveText('Not comparable: September 2026 is incomplete.');
             if(selected>='2026-10-31') {
               const october=trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^October 2026/})}).getByRole('cell').last();
-              await ui(october).toContainText('September 2026 is incomplete. Missing dates: Sep 1, 2026 – Sep 3, 2026');
+              await ui(october).toHaveText('Not comparable: September 2026 is incomplete.');
               await ui(october).not.toContainText('October 2026 is incomplete');
             }
-            if(selected==='2026-11-17') await ui(trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^November 2026/})}).getByRole('cell').last()).toContainText('November 2026 is incomplete. Missing dates: Nov 18, 2026 – Nov 30, 2026 (after data cutoff Nov 17, 2026).');
+            if(selected==='2026-11-17') await ui(trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^November 2026/})}).getByRole('cell').last()).toHaveText('Not comparable: November 2026 is incomplete.');
           }
           if(mode==='7d'||mode==='30d') {
             const days=mode==='7d'?7:30;
@@ -162,7 +161,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     const octoberRow=trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^October 2026/})});
     await ui(octoberRow).toContainText('Unavailable');
     await ui(octoberRow).toContainText('Not comparable');
-    await ui(octoberRow).toContainText('October 2026: the GA4 Users total is unavailable.');
+    await ui(octoberRow.getByRole('cell').last()).toHaveText('Not comparable: October 2026 GA4 Users total is unavailable.');
     const monthly=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
     expect(monthly.find((r:any)=>r.date==="Oct '26").value).toBeNull();
     expect(monthly.find((r:any)=>r.date==="Nov '26").value).toBe(0);
@@ -176,10 +175,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     await ui(note).not.toContainText('fall outside');
     await trends.getByRole('button',{name:'Monthly',exact:true}).click();
     const november=trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^November 2026/})}).getByRole('cell').last();
-    await ui(november).toContainText('Nov 3, 2026 – Nov 4, 2026 (no stored data)');
-    await ui(november).toContainText('Nov 18, 2026 – Nov 30, 2026 (after data cutoff Nov 17, 2026)');
-    await ui(november).toContainText('October 2026 is incomplete. Missing dates: Oct 31, 2026 (no stored data).');
-    await ui(november).not.toContainText('Nov 1, 2026');
+    await ui(november).toHaveText('Not comparable: November 2026 is incomplete.');
     // Complete adjacent months keep their existing zero-baseline and percentage behavior.
     daily=Array.from({length:61},(_,i)=>({ ...real.daily[0],date:new Date(Date.UTC(2026,9,1+i)).toISOString().slice(0,10),sessions:i<31?0:1,users:i<31?0:1,engagedSessions:0,engagementRate:0 }));
     cutoff='2026-11-30';windows=[{startDate:'2026-10-01',endDate:'2026-10-31',users:0},{startDate:'2026-11-01',endDate:cutoff,users:15}];

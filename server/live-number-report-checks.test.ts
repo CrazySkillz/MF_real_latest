@@ -108,6 +108,20 @@ describe("reviewed historical gaps stay visible without disabling current alerts
 });
 
 describe("numbers in the saved PDF, without regeneration", () => {
+  it("uses the archived GA4 summary rate for native-rate PDFs, not conversions divided by sessions", () => {
+    const basis = { comparisonRateDefinition: "ga4_session_key_event_rate", distinctUsers: { version: 1, sessions: 100, sessionKeyEventRate: 0.09 } };
+    const text = overview.replace("CONV. RATE\n12.5%", "CONV. RATE\n9.0%");
+    expect(checkReportTextNumbers(text, "overview", basis)).toContainEqual(expect.objectContaining({ code: "SUMMARY_CONVERSION_RATE", status: "passed" }));
+    expect(checkReportTextNumbers(overview, "overview", basis)).toContainEqual(expect.objectContaining({ code: "SUMMARY_CONVERSION_RATE", status: "difference" }));
+    expect(checkReportTextNumbers(text, "overview", { ...basis, distinctUsers: undefined })).toContainEqual(expect.objectContaining({ code: "SUMMARY_CONVERSION_RATE", status: "unverified" }));
+    for (const invalid of [{ version: 0 }, { sessions: 101 }, { sessionKeyEventRate: -1 }, { sessionKeyEventRate: 1.1 }, { sessionKeyEventRate: null }]) {
+      expect(checkReportTextNumbers(text, "overview", { ...basis, distinctUsers: { ...basis.distinctUsers, ...invalid } }))
+        .toContainEqual(expect.objectContaining({ code: "SUMMARY_CONVERSION_RATE", status: "unverified" }));
+    }
+    const zero = text.replace("SESSIONS\n100", "SESSIONS\n0").replace("CONV. RATE\n9.0%", "CONV. RATE\n0.0%");
+    expect(checkReportTextNumbers(zero, "overview", { ...basis, distinctUsers: { version: 1, sessions: 0, sessionKeyEventRate: 0 } }))
+      .toContainEqual(expect.objectContaining({ code: "SUMMARY_CONVERSION_RATE", status: "passed" }));
+  });
   it("checks fractional conversions and independent financial arithmetic", () => {
     expect(checkReportTextNumbers(overview, "overview").filter(check => check.status !== "passed")).toEqual([
       expect.objectContaining({ code: "CPA_HISTORICAL_CONVERSION_BASIS_UNVERIFIED", status: "unverified" }),

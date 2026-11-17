@@ -1,4 +1,5 @@
 import { checkGA4SourceNumbers } from "./ga4-source-verification";
+import { GoogleAnalytics4Service } from "./analytics";
 import { decryptTokens } from "./utils/tokenVault";
 import { hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
@@ -128,13 +129,51 @@ export function compareProviderRows(section: string, expected: any[], actual: an
   return checks;
 }
 
+// Rolling Users-only windows are verified separately from legacy windows that also contain rates.
+// Work on an in-memory publication copy; never remove or rewrite persisted evidence.
+export function checkRollingUsersWindows(scope: ReturnType<typeof resolveMonitorScope>, reference: any) {
+  const saved = scope.publication.campaignBreakdown?.meta?.distinctUsers;
+  for (const packet of [saved, reference]) {
+    if (packet?.version !== 1 || packet.metric !== "totalUsers" || packet.propertyId !== scope.connection.propertyId
+      || packet.startDate !== scope.startDate || packet.endDate !== scope.endDate || !Array.isArray(packet.windows)) {
+      throw new Error("ROLLING_USERS_SCOPE_UNVERIFIED");
+    }
+  }
+  const shift = (date: string, days: number) => new Date(Date.parse(date) + days * 86400000).toISOString().slice(0, 10);
+  const key = (row: any) => `${row.startDate}:${row.endDate}`, legacy = new Set<string>();
+  for (const days of [7, 14, 30, 90]) for (const [from, to] of [[scope.startDate, shift(scope.endDate, -days)], [shift(scope.endDate, 1 - days), scope.endDate]]) {
+    if (from >= scope.startDate && to >= scope.startDate && !(from === scope.startDate && to === scope.endDate)) legacy.add(`${from}:${to}`);
+  }
+  const earliest = [scope.startDate, shift(scope.endDate, -59)].sort().at(-1)!;
+  const extra = new Set<string>();
+  for (let to = shift(earliest, 6); to <= scope.endDate; to = shift(to, 1)) {
+    const identity = `${shift(to, -6)}:${to}`;
+    if (!legacy.has(identity)) extra.add(identity);
+  }
+  const provider = reference.windows.filter((row: any) => extra.has(key(row)));
+  if (provider.length !== extra.size || new Set(provider.map(key)).size !== extra.size
+    || provider.some((row: any) => !Number.isSafeInteger(row.users) || row.users < 0)) throw new Error("ROLLING_USERS_REFERENCE_INCOMPLETE");
+  const actual = saved.windows.filter((row: any) => extra.has(key(row)));
+  const checks = compareProviderRows("Historical Users comparisons / 7d", provider, actual, ["startDate", "endDate"], ["users"]);
+  if (actual.some((row: any) => !Number.isSafeInteger(row.users) || row.users < 0 || Object.hasOwn(row, "sessionKeyEventRate"))) {
+    checks.push({ section: "Historical Users comparisons / 7d", code: "ROLLING_USERS_CONTRACT_UNVERIFIED", status: "unverified" });
+  }
+  const publication = { ...scope.publication, campaignBreakdown: { ...scope.publication.campaignBreakdown,
+    meta: { ...scope.publication.campaignBreakdown.meta, distinctUsers: { ...saved, windows: saved.windows.filter((row: any) => !extra.has(key(row))) } } } };
+  return { checks, publication };
+}
+
 export async function checkGA4ProviderNumbers(snapshot: LiveNumberSnapshot, now = new Date()): Promise<NumberCheck[]> {
   const scope = resolveMonitorScope(snapshot, now), campaignId = String(snapshot.campaign.id);
   let connection = scope.connection;
   if (connection.method === "service_account") connection = await hydrateGA4ServiceAccountConnection(connection);
   else connection = { ...connection, accessToken: await googleMonitorCredential(connection) };
-  return checkGA4SourceNumbers({ ...scope, campaignId, connection }, (snapshot.rows.ga4DailyMetrics || [])
-    .filter(r => r.propertyId === connection.propertyId && r.date >= scope.startDate && r.date <= scope.endDate));
+  const service = new GoogleAnalytics4Service(AbortSignal.timeout(240_000));
+  const reference = await (service as any).getDistinctUsersWithToken(connection.propertyId, connection.accessToken,
+    scope.startDate, scope.endDate, scope.filter, undefined, false, scope.startDate);
+  const rolling = checkRollingUsersWindows(scope, reference);
+  return [...rolling.checks, ...await checkGA4SourceNumbers({ ...scope, campaignId, connection, publication: rolling.publication }, (snapshot.rows.ga4DailyMetrics || [])
+    .filter(r => r.propertyId === connection.propertyId && r.date >= scope.startDate && r.date <= scope.endDate))];
 }
 
 function uniqueConnection(snapshot: LiveNumberSnapshot, table: string, source: any, mapping: any) {

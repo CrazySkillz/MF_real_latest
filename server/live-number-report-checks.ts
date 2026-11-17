@@ -94,7 +94,11 @@ export function checkReportTextNumbers(text: string, reportType: string, verific
     const summary = summaryIndex >= 0 && financialIndex > summaryIndex ? lines.slice(summaryIndex + 1, financialIndex) : [];
     const sessions = parseValue(valueAfter("SESSIONS", summary), "count")?.value;
     const conversions = parseValue(valueAfter("CONVERSIONS", summary), "count")?.value;
-    if (sessions === 0 && missingValue.test(valueAfter("CONV. RATE", summary) || "")) {
+    if (verification?.comparisonRateDefinition === "ga4_session_key_event_rate") {
+      const basis = verification.distinctUsers, rate = numberOrNull(basis?.sessionKeyEventRate);
+      push("SUMMARY_CONVERSION_RATE", basis?.version === 1 && basis.sessions === sessions && rate !== null && rate >= 0 && rate <= 1
+        ? rate * 100 : null, parseValue(valueAfter("CONV. RATE", summary), "rate")?.value, 1);
+    } else if (sessions === 0 && missingValue.test(valueAfter("CONV. RATE", summary) || "")) {
       checks.push({ section, code: "SUMMARY_CONVERSION_RATE_UNAVAILABLE", status: "passed" });
     } else push("SUMMARY_CONVERSION_RATE", sessions !== null && sessions !== undefined && sessions > 0 && conversions !== null && conversions !== undefined
       ? conversions / sessions * 100 : null, parseValue(valueAfter("CONV. RATE", summary), "rate")?.value, 1);

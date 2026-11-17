@@ -9,6 +9,7 @@ import * as insightMath from "../shared/ga4-insights";
 import * as comparisonMath from "../shared/ga4-ad-comparison-cards";
 import { roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
 import { ga4ProvisionalNotice } from "../shared/ga4-financial-source";
+import sevenDayUsersReal from './fixtures/ga4-seven-day-users-real-20261116.json';
 
 const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
 const start = page.indexOf("const isGA4OverviewReportDetailBlocked =");
@@ -218,15 +219,28 @@ describe("Browser Overview reports without a Spend source", () => {
     const words = text.mock.calls.map(call => call[0]);
     return Object.assign((label: string) => words[words.indexOf(label.toUpperCase()) + 1], { doc, drawn, words, trendLines, content: words.flat().join(" ") });
   }
-  async function renderTrends(rows: any[], mode = "daily", metric = "sessions") {
+  async function renderTrends(rows: any[], mode = "daily", metric = "sessions", usersWindows: unknown = []) {
     const cutoff = rows.at(-1)?.date || "2026-10-27";
     const rollups = insightMath.buildGA4InsightsRollups(rows, cutoff);
     return render({ ...insightMath, insights: [], insightsRollups: rollups, trendsRollups: rollups,
+      sevenDayUsers: (rollup: any) => insightMath.getGA4InsightsSevenDayUsers(usersWindows, rollup),
       trendsDailyRows: rows, trendsMonthlyRows: rows, insightsTrendMetric: metric, insightsTrendMode: mode,
       trendsDataThroughDate: cutoff, trendsDataThroughLabel: cutoff, trendsReportingTimeZoneLabel: "Europe/Amsterdam", trendsLastRefreshedLabel: "Oct 28, 2026",
       formatMoney: (value: number) => `EUR ${value.toFixed(2)}`, formatNumber: (value: number) => value.toLocaleString("en-US"),
     }, "custom", { sections: { insights: true }, subsections: { insights: { trends: true, actions: false, summaryCards: false, dataSummary: false } } });
   }
+  it("prints real GA4 seven-day Users totals and withholds unavailable totals in the Trends PDF", async () => {
+    const result = await renderTrends(sevenDayUsersReal.daily, '7d', 'users', sevenDayUsersReal.windows);
+    expect(result.content).toContain('122');
+    expect(result.content).toContain('475');
+    expect(result.content).toContain('-74.3%');
+    expect(result.trendLines).toHaveLength(37);
+    const missing = await renderTrends(sevenDayUsersReal.daily, '7d', 'users', sevenDayUsersReal.windows.filter(w => w.endDate !== '2026-11-16'));
+    expect(missing.content).toContain('Unavailable');
+    expect(missing.content).toContain('Not comparable');
+    expect(missing.content).not.toContain('-74.3%');
+    expect(missing.trendLines).toHaveLength(36);
+  });
   it("writes the exact rendered GA4 PDF to the selected file without a second download", async () => {
     const handle = { name: "selected.pdf" };
     const write = vi.fn(async (_handle: unknown, _pdf: Blob) => undefined);

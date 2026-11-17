@@ -9739,7 +9739,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const overviewTotals = { ...summarizeGA4TrafficRows(overviewRows, usersSnapshot, overviewStartDate, overviewPublishedEndDate || ''),
         users: overviewPublishedEndDate && usersSnapshot?.windowEnd === overviewPublishedEndDate
           ? getGA4DistinctUsers(usersSnapshot, overviewStartDate, overviewPublishedEndDate) : null };
-      const usersComparisons = (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [];
+      const usersComparisons = overviewTotals.users !== null && (usersSnapshot?.campaignBreakdown as any)?.meta?.propertyId === String(selectedConnection.propertyId)
+        ? (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [] : [];
       // Monthly Trends needs the two preceding calendar months plus the current month.
       // Reuse the scoped Overview read; keep daily coverage and refresh metadata unchanged.
       const monthlyStartDate = new Date(Date.UTC(Number(dataThroughDate.slice(0, 4)), Number(dataThroughDate.slice(5, 7)) - 3, 1)).toISOString().slice(0, 10);

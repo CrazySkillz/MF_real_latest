@@ -9597,6 +9597,8 @@ export default function GA4Metrics() {
                     {(() => {
                       const executiveSpendAvailable = ["ready", "stale"].includes(snapshotSpendKpiInputState);
                       const executiveRevenueAvailable = ["ready", "stale"].includes(snapshotRevenueKpiInputState);
+                      const savedSpendSources = Array.isArray(overviewFinancialSnapshot?.metrics?.revenuePublication?.display?.spendSources)
+                        ? spendSnapshotDisplay : [];
                       const savedRevenueSources: string[] = overviewFinancialInputs?.revenue?.sources || [];
                       const savedRevenueSourceIds = savedRevenueSources.filter((source) => source.startsWith("revenue-source:"))
                         .map((source) => source.slice("revenue-source:".length));
@@ -9604,7 +9606,9 @@ export default function GA4Metrics() {
                         overviewSpend: overviewFinancialSpend,
                         overviewSpendAvailable: executiveSpendAvailable,
                         overviewHasSpendSources: overviewFinancialSpendAvailable,
-                        // Saved Spend has no contributor IDs; newer source lists cannot identify its contributors.
+                        // Use only the reconciled contributors saved with this financial publication.
+                        spendBreakdown: { totalSpend: overviewFinancialSpend, sources: savedSpendSources },
+                        spendDisplaySources: savedSpendSources,
                         spendDetailsError: executiveSpendAvailable,
                         revenueToDate: savedRevenueSourceIds.length > 0 ? { sourceIds: savedRevenueSourceIds } : undefined,
                         revenueDisplaySources,

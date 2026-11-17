@@ -181,7 +181,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     await ui(november).toContainText('October 2026 is incomplete. Missing dates: Oct 31, 2026 (no stored data).');
     await ui(november).not.toContainText('Nov 1, 2026');
     // Complete adjacent months keep their existing zero-baseline and percentage behavior.
-    daily=Array.from({length:61},(_,i)=>({ ...real.daily[0],date:new Date(Date.UTC(2026,9,1+i)).toISOString().slice(0,10),sessions:i<31?0:1,users:i<31?0:1 }));
+    daily=Array.from({length:61},(_,i)=>({ ...real.daily[0],date:new Date(Date.UTC(2026,9,1+i)).toISOString().slice(0,10),sessions:i<31?0:1,users:i<31?0:1,engagedSessions:0,engagementRate:0 }));
     cutoff='2026-11-30';windows=[{startDate:'2026-10-01',endDate:'2026-10-31',users:0},{startDate:'2026-11-01',endDate:cutoff,users:15}];
     await open();await trends.getByRole('button',{name:'Monthly',exact:true}).click();
     await ui(november).toHaveText('No % baseline');

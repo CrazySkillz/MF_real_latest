@@ -1,5 +1,5 @@
 import { conversionCreditsMatch, formatRoasRatio } from "@shared/metric-math";
-import { getGA4InsightsSevenDayUsers } from "@shared/ga4-insights";
+import { getGA4InsightsSevenDayUsers, getGA4InsightsTrendsRange } from "@shared/ga4-insights";
 import { requestReportSaveFile, writeReportSaveFile } from "@/lib/pdfExport";
 import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching, isCancelledError } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -402,6 +402,8 @@ export default function GA4Metrics() {
   // Insights Trends state
   const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d" | "monthly">("daily");
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<string>("sessions");
+  const [insightsTrendDate, setInsightsTrendDate] = useState("");
+  useEffect(() => { setInsightsTrendDate(""); }, [campaignId]);
   const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
   const [ga4ReportForm, setGa4ReportForm] = useState({
     name: "",
@@ -2033,7 +2035,7 @@ export default function GA4Metrics() {
     isLoading: ga4InsightsDailyLoading,
     error: ga4InsightsDailyError,
   } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency, "monthly"],
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency, "full-trends-history"],
     enabled: (activeTab === "insights" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
@@ -2042,7 +2044,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(
-        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&readOnly=1&includeMonthly=1`
+        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&readOnly=1&includeMonthly=1&includeTrendsHistory=1`
       );
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || data?.success === false) {
@@ -2180,21 +2182,16 @@ export default function GA4Metrics() {
     ? (ga4InsightsDailyResp as any)?.lastCompletedRefreshAt
     : (ga4InsightsDailyResp as any)?.lastUpdated;
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
-  const trendsDailyRows = useMemo(() => {
-    if (!trendsCampaignStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate) || trendsCampaignStartDate > trendsDataThroughDate) return [];
-    return ga4InsightsTimeSeries.filter((row: any) =>
-      String(row.date) >= trendsCampaignStartDate && String(row.date) <= trendsDataThroughDate);
-  }, [ga4InsightsTimeSeries, trendsDataThroughDate, trendsCampaignStartDate]);
-  const trendsMonthlyRows = useMemo(() => {
-    if (!trendsCampaignStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate) || trendsCampaignStartDate > trendsDataThroughDate) return [];
-    return normalizeGA4InsightsDailyRows(ga4InsightsDailyResp?.monthlyData ?? ga4InsightsDailyResp?.data, trendsDataThroughDate)
-      .filter((row) => row.date >= trendsCampaignStartDate);
-  }, [ga4InsightsDailyResp, trendsDataThroughDate, trendsCampaignStartDate]);
-  const trendsImportedRows = ga4InsightsTimeSeries
-    .filter((row: any) => trendsCampaignStartDate && String(row?.date || "") >= trendsCampaignStartDate && String(row?.date || "") <= trendsDataThroughDate);
-  const trendsLatestImportedDate = String(trendsImportedRows[trendsImportedRows.length - 1]?.date || "").trim();
+  const trendsImportStartDate = String(ga4InsightsDailyResp?.overviewStartDate || trendsCampaignStartDate || "");
+  const trendsDailyRows = useMemo(() => !/^\d{4}-\d{2}-\d{2}$/.test(trendsImportStartDate) || !/^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate) ? [] : normalizeGA4InsightsDailyRows(
+    ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, trendsDataThroughDate,
+  ).filter((row) => row.date >= trendsImportStartDate), [ga4InsightsDailyResp, trendsDataThroughDate, trendsImportStartDate]);
+  const trendsMonthlyRows = trendsDailyRows;
+  const trendsLatestImportedDate = String(trendsDailyRows.at(-1)?.date || "");
   const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";
-  const trendsRollups = useMemo(() => buildGA4InsightsRollups(trendsDailyRows, trendsDataThroughDate), [trendsDailyRows, trendsDataThroughDate]);
+  const trendsRange = getGA4InsightsTrendsRange(trendsImportStartDate, trendsDataThroughDate, insightsTrendDate, insightsTrendMode);
+  const trendsVisibleDate = (date: string) => date >= trendsRange.startDate && date <= trendsRange.endDate;
+  const trendsRollups = useMemo(() => buildGA4InsightsRollups(trendsDailyRows, trendsRange.endDate), [trendsDailyRows, trendsRange.endDate]);
   const sevenDayUsers = (rollup: { startDate: string | null; endDate: string | null; complete: boolean }) => getGA4InsightsSevenDayUsers(ga4InsightsDailyResp?.usersComparisons, rollup);
 
   const {
@@ -4455,19 +4452,18 @@ export default function GA4Metrics() {
       if (includeInsightsTrends && trendSorted.length >= 1) {
         const trendChartData: { date: string; value: number; recordedDate?: string; month?: string; partial?: boolean }[] = [];
         if (insightsTrendMode === "daily") {
-          const firstChartDate = addGA4InsightsDateDays(String(trendSorted.at(-1)?.date), -29) || "";
-          trendSorted.filter((r: any) => String(r.date) >= firstChartDate).forEach((r: any) => trendChartData.push({
+          trendSorted.filter((r: any) => trendsVisibleDate(String(r.date))).forEach((r: any) => trendChartData.push({
             date: String(r.date || "").slice(5), recordedDate: String(r.date),
             value: trendIsRate ? Number((Number(r[trendMetric] || 0) * 100).toFixed(2)) : Number(r[trendMetric] || 0),
           }));
         } else if (insightsTrendMode === "monthly") {
-          buildGA4InsightsMonthlySeries(trendSorted, trendsDataThroughDate, trendMetric).forEach(row => {
+          buildGA4InsightsMonthlySeries(trendSorted, trendsRange.endDate, trendMetric).filter(row => row.month >= trendsRange.startDate.slice(0, 7) && row.month <= trendsRange.endDate.slice(0, 7)).forEach(row => {
             const [yr, mo] = row.month.split("-");
             trendChartData.push({ date: `${new Date(Number(yr), Number(mo) - 1).toLocaleString("en-US", { month: "short" })} '${yr.slice(2)}`, value: row.value, month: row.month, partial: row.partial });
           });
         } else {
           const windowDays = insightsTrendMode === "7d" ? 7 : 30;
-          for (const row of trendSorted) {
+          for (const row of trendSorted.filter(row => trendsVisibleDate(row.date))) {
             const rollup = buildGA4InsightsCalendarRollup(trendSorted, String(row.date), windowDays);
             if (!rollup.complete) continue;
             const value = trendMetric === "users" ? sevenDayUsers(rollup) : trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
@@ -4478,7 +4474,7 @@ export default function GA4Metrics() {
 
         if (trendChartData.length > 0) {
           doc.setFontSize(7); doc.setFont("helvetica", "normal");
-          const trendNoteLines = wrapPdfText("Daily shows recorded values; missing dates are unavailable. 7d/30d require consecutive recorded days. Monthly comparisons require adjacent complete months.", CW - 8);
+          const trendNoteLines = wrapPdfText(`Displayed history: ${trendsRange.startDate} to ${trendsRange.endDate}. Daily shows recorded values; missing dates are unavailable. 7d/30d require consecutive recorded days. Monthly comparisons require adjacent complete months.`, CW - 8);
           sectionTitle("Trends", C.insights, trendNoteLines.length * 4.5 + 77);
           checkPage(trendNoteLines.length * 4.5 + 77);
           doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
@@ -4538,9 +4534,9 @@ export default function GA4Metrics() {
           y += 50;
 
           const trendRows: string[][] = insightsTrendMode === "daily"
-            ? trendSorted.slice(-14).reverse().map((r: any, idx: number) => {
+            ? trendSorted.filter(row => trendsVisibleDate(row.date)).slice(insightsDailyShowMore ? -31 : -14).reverse().map((r: any, idx: number) => {
                 const curVal = trendIsRate ? Number(r[trendMetric] || 0) * 100 : Number(r[trendMetric] || 0);
-                const sortedIdx = trendSorted.length - 1 - idx;
+                const sortedIdx = trendSorted.findIndex(row => row.date === r.date);
                 const previous = sortedIdx > 0 ? trendSorted[sortedIdx - 1] : null;
                 const prevRow = previous && addGA4InsightsDateDays(String(previous.date), 1) === String(r.date) ? previous : null;
                 const prevVal = prevRow ? (trendIsRate ? Number(prevRow[trendMetric] || 0) * 100 : Number(prevRow[trendMetric] || 0)) : 0;
@@ -4548,8 +4544,8 @@ export default function GA4Metrics() {
               })
             : insightsTrendMode === "monthly"
               ? trendChartData.slice().reverse().slice(0, 12).map((row, idx, arr) => {
-                  const prev = idx < arr.length - 1 ? arr[idx + 1] : null;
-                  const comparable = prev && !row.partial && !prev.partial && areGA4InsightsMonthsAdjacent(String(row.month), String(prev.month));
+                  const prev = buildGA4InsightsMonthlySeries(trendSorted, trendsRange.endDate, trendMetric).find(candidate => areGA4InsightsMonthsAdjacent(String(row.month), candidate.month));
+                  const comparable = prev && !row.partial && !prev.partial;
                   return [`${row.date}${row.partial ? " (partial)" : ""}`, trendFmtValue(row.value), comparable ? trendFmtDelta(row.value, prev!.value) : "Not comparable"];
                 })
               : (() => {
@@ -4558,8 +4554,8 @@ export default function GA4Metrics() {
                   const getVal = (rollup: any) => trendMetric === "users" ? sevenDayUsers(rollup) : trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
                   const curVal = getVal(cur), priorVal = getVal(prior);
                   return [
-                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, cur.complete && curVal !== null ? trendFmtValue(curVal) : "Unavailable", cur.complete && prior.complete && curVal !== null && priorVal !== null ? trendFmtDelta(curVal, priorVal) : "Not comparable"],
-                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, prior.complete && priorVal !== null ? trendFmtValue(priorVal) : "Unavailable", prior.complete && priorVal !== null ? "baseline" : "Not comparable"],
+                    [`${cur.startDate} to ${cur.endDate}`, cur.complete && curVal !== null ? trendFmtValue(curVal) : "Unavailable", cur.complete && prior.complete && curVal !== null && priorVal !== null ? trendFmtDelta(curVal, priorVal) : "Not comparable"],
+                    [`${prior.startDate} to ${prior.endDate}`, prior.complete && priorVal !== null ? trendFmtValue(priorVal) : "Unavailable", prior.complete && priorVal !== null ? "baseline" : "Not comparable"],
                   ];
                 })();
           if (trendRows.length > 0) {
@@ -5427,7 +5423,7 @@ export default function GA4Metrics() {
     return "Medium";
   };
 
-  const findingsDailyRows = trendsDailyRows;
+  const findingsDailyRows = useMemo(() => ga4InsightsTimeSeries.filter((row: any) => trendsCampaignStartDate && row.date >= trendsCampaignStartDate && row.date <= trendsDataThroughDate), [ga4InsightsTimeSeries, trendsCampaignStartDate, trendsDataThroughDate]);
   const findingsRollups = useMemo(
     () => buildGA4InsightsRollups(findingsDailyRows, trendsDataThroughDate),
     [findingsDailyRows, trendsDataThroughDate],
@@ -9764,6 +9760,15 @@ export default function GA4Metrics() {
                         {timeSeriesLoading && ga4InsightsDailyResp === undefined && (
                           <div className="h-64 rounded-md bg-muted animate-pulse" aria-label="Loading GA4 Insights daily history" />
                         )}
+                        <div className="flex flex-wrap items-center gap-2" data-testid="insights-trends-navigation">
+                          <Button variant="outline" size="sm" disabled={!trendsRange.previousDate} onClick={() => setInsightsTrendDate(trendsRange.previousDate)}>Previous month</Button>
+                          <label className="flex items-center gap-2 text-sm">Through
+                            <Input aria-label="Trends through date" type="date" className="w-auto" min={trendsImportStartDate} max={trendsDataThroughDate} value={trendsRange.endDate} onChange={e => setInsightsTrendDate(e.target.value)} />
+                          </label>
+                          <Button variant="outline" size="sm" disabled={!trendsRange.nextDate} onClick={() => setInsightsTrendDate(trendsRange.nextDate)}>Next month</Button>
+                          <Button variant="ghost" size="sm" disabled={!insightsTrendDate} onClick={() => setInsightsTrendDate("")}>Back to latest</Button>
+                          <p className="w-full text-xs text-muted-foreground">{insightsTrendMode === "monthly" ? "Up to 12 calendar months" : "Selected month"}: {trendsRange.startDate} → {trendsRange.endDate}. Comparisons follow the selected date.</p>
+                        </div>
                         {/* Trends line chart */}
                         {(!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
                           const dailyRows = (insightsTrendMode === "monthly" ? trendsMonthlyRows : trendsDailyRows).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || "")));
@@ -9813,23 +9818,19 @@ export default function GA4Metrics() {
                           const metric = insightsTrendMetric;
                           const isRate = metric === "engagementRate";
                           const isMoney = metric === "revenue";
-                          const monthlySeries = buildGA4InsightsMonthlySeries(sorted, trendsDataThroughDate, metric);
+                          const allMonthlySeries = buildGA4InsightsMonthlySeries(sorted, trendsRange.endDate, metric);
+                          const monthlySeries = allMonthlySeries.filter(row => row.month >= trendsRange.startDate.slice(0, 7) && row.month <= trendsRange.endDate.slice(0, 7));
 
                           // Build chart data depending on mode
                           let chartData: { date: string; value: number | null; idx: number; partial?: boolean }[] = [];
                           let rollingChartStartDate = "";
                           let rollingChartEndDate = "";
                           if (insightsTrendMode === "daily") {
-                            // Show up to 30 calendar days, starting at the first imported date in that window.
+                            // Show the selected month; missing stored dates remain gaps.
                             const dailyRowsByDate = new Map(sorted.map((row: any) => [String(row.date || ""), row]));
-                            const finalDate = String(sorted[sorted.length - 1]?.date || "");
-                            const initialDate = finalDate ? addGA4InsightsDateDays(finalDate, -29) || "" : "";
-                            const firstImportedDate = sorted.find((row: any) => {
-                              const date = String(row.date || "");
-                              return date >= initialDate && date <= finalDate;
-                            });
-                            let cursor = String(firstImportedDate?.date || initialDate);
-                            if (trendsCampaignStartDate >= initialDate && trendsCampaignStartDate < cursor) cursor = trendsCampaignStartDate;
+                            const finalDate = trendsRange.endDate;
+                            const initialDate = trendsRange.startDate;
+                            let cursor = initialDate;
                             while (cursor && cursor <= finalDate) {
                               const row: any = dailyRowsByDate.get(cursor);
                               chartData.push({
@@ -9847,7 +9848,7 @@ export default function GA4Metrics() {
                             });
                           } else {
                             const windowDays = insightsTrendMode === "7d" ? 7 : 30;
-                            const completeRows = insightsTrendMode === "7d" ? complete7DayRows : complete30DayRows;
+                            const completeRows = (insightsTrendMode === "7d" ? complete7DayRows : complete30DayRows).filter(row => trendsVisibleDate(row.date));
                             // Non-rate metrics show rolling window totals (sum of last N days).
                             // engagementRate is already a weighted average of engaged sessions over sessions.
                             let cursor = String(completeRows[0]?.date || "");
@@ -9970,8 +9971,8 @@ export default function GA4Metrics() {
                                     </thead>
                                     <tbody>
                                       {(() => {
-                                        const showCount = insightsDailyShowMore ? 30 : 14;
-                                        const recentRows = sorted.slice(-showCount).reverse();
+                                        const showCount = insightsDailyShowMore ? 31 : 14;
+                                        const recentRows = sorted.filter(row => trendsVisibleDate(row.date)).slice(-showCount).reverse();
                                         return recentRows.map((r: any, idx: number) => {
                                           const curVal = isRate ? Number(r[metric] || 0) * 100 : Number(r[metric] || 0);
                                           const previousDate = addGA4InsightsDateDays(String(r.date || ""), -1);
@@ -9991,7 +9992,7 @@ export default function GA4Metrics() {
                                       })()}
                                     </tbody>
                                   </table>
-                                  {sorted.length > 14 && (
+                                  {sorted.filter(row => trendsVisibleDate(row.date)).length > 14 && (
                                     <div className="px-3 py-2 border-t bg-muted">
                                       <Button variant="ghost" size="sm" onClick={() => setInsightsDailyShowMore(!insightsDailyShowMore)}>
                                         {insightsDailyShowMore ? "Show less" : "Show all"}
@@ -10024,8 +10025,8 @@ export default function GA4Metrics() {
                                         });
 
                                         return monthValues.map((row, i) => {
-                                          const prev = i < monthValues.length - 1 ? monthValues[i + 1] : null;
-                                          const comparable = Boolean(prev && areGA4InsightsMonthsAdjacent(row.ym, prev.ym) && !row.isPartial && !prev.isPartial);
+                                          const prev = allMonthlySeries.find(candidate => areGA4InsightsMonthsAdjacent(row.ym, candidate.month));
+                                          const comparable = Boolean(prev && !row.isPartial && !prev.partial);
                                           const delta = comparable && prev ? deltaPct(row.value, prev.value) : 0;
                                           return (
                                             <tr key={row.ym} className="border-b last:border-b-0">
@@ -10068,7 +10069,7 @@ export default function GA4Metrics() {
                                         if (!cur.complete || !prior.complete) {
                                           return (
                                             <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">
-                                              Latest adjacent {windowDays}-day comparison is unavailable. The chart shows only complete historical {windowDays}-day windows.
+                                              Adjacent {windowDays}-day comparison ending {trendsRange.endDate} is unavailable. The chart shows only complete historical {windowDays}-day windows.
                                             </td></tr>
                                           );
                                         }
@@ -10085,7 +10086,7 @@ export default function GA4Metrics() {
                                         const delta = deltaPct(curVal, priorVal);
 
                                         return [
-                                          { label: `Last ${windowDays} days`, dateRange: `${cur.startDate} → ${cur.endDate}`, value: curVal, delta, hasDelta: priorVal !== 0, zeroBaseline: priorVal === 0 },
+                                          { label: `${insightsTrendDate ? "Selected" : "Last"} ${windowDays} days`, dateRange: `${cur.startDate} → ${cur.endDate}`, value: curVal, delta, hasDelta: priorVal !== 0, zeroBaseline: priorVal === 0 },
                                           { label: `Prior ${windowDays} days`, dateRange: `${prior.startDate} → ${prior.endDate}`, value: priorVal, delta: 0, hasDelta: false },
                                         ].map((row, i) => (
                                           <tr key={i} className="border-b last:border-b-0">

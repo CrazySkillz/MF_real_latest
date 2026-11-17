@@ -10,6 +10,7 @@ import * as comparisonMath from "../shared/ga4-ad-comparison-cards";
 import { roundGA4CampaignRevenueForDisplay } from "../shared/ga4-campaign-breakdown";
 import { ga4ProvisionalNotice } from "../shared/ga4-financial-source";
 import sevenDayUsersReal from './fixtures/ga4-seven-day-users-real-20261116.json';
+import fullHistoryReal from './fixtures/ga4-trends-history';
 
 const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
 const start = page.indexOf("const isGA4OverviewReportDetailBlocked =");
@@ -208,7 +209,9 @@ describe("Browser Overview reports without a Spend source", () => {
       ga4RefreshStatusText: "Imported GA4 data, updated daily", overviewVisibleDataUsingLastGoodData: false,
       pipelineProxyConfigured: false, pipelineProxyLoading: false, pipelineProxyUnavailable: false, hasPipelineProxy: false,
       pipelineProxyData: { success: false, totalToDate: 0 },
-      insightsTrendMode: "daily", trendsMonthlyRows: [],
+      insightsTrendMode: "daily", trendsMonthlyRows: [], insightsDailyShowMore: false,
+      trendsRange: insightMath.getGA4InsightsTrendsRange(changes.trendsDailyRows?.[0]?.date || "2026-09-04", changes.trendsDataThroughDate || "2026-10-16", "", changes.insightsTrendMode || "daily"),
+      trendsVisibleDate: (date: string) => { const range = insightMath.getGA4InsightsTrendsRange(changes.trendsDailyRows?.[0]?.date || "2026-09-04", changes.trendsDataThroughDate || "2026-10-16", "", changes.insightsTrendMode || "daily"); return date >= range.startDate && date <= range.endDate; },
       adComparisonNativeRevenue: Number((changes.adComparisonBreakdownAgg || []).reduce((sum: number, row: any) => sum + row.revenue, 0).toFixed(2)),
       adComparisonChartRows: changes.campaignBreakdownAgg || [],
       ...changes,
@@ -219,12 +222,14 @@ describe("Browser Overview reports without a Spend source", () => {
     const words = text.mock.calls.map(call => call[0]);
     return Object.assign((label: string) => words[words.indexOf(label.toUpperCase()) + 1], { doc, drawn, words, trendLines, content: words.flat().join(" ") });
   }
-  async function renderTrends(rows: any[], mode = "daily", metric = "sessions", usersWindows: unknown = []) {
+  async function renderTrends(rows: any[], mode = "daily", metric = "sessions", usersWindows: unknown = [], selected = "") {
     const cutoff = rows.at(-1)?.date || "2026-10-27";
-    const rollups = insightMath.buildGA4InsightsRollups(rows, cutoff);
+    const range = insightMath.getGA4InsightsTrendsRange(rows[0]?.date || cutoff, cutoff, selected, mode);
+    const rollups = insightMath.buildGA4InsightsRollups(rows, range.endDate);
     return render({ ...insightMath, insights: [], insightsRollups: rollups, trendsRollups: rollups,
       sevenDayUsers: (rollup: any) => insightMath.getGA4InsightsSevenDayUsers(usersWindows, rollup),
       trendsDailyRows: rows, trendsMonthlyRows: rows, insightsTrendMetric: metric, insightsTrendMode: mode,
+      trendsRange: range, trendsVisibleDate: (date: string) => date >= range.startDate && date <= range.endDate,
       trendsDataThroughDate: cutoff, trendsDataThroughLabel: cutoff, trendsReportingTimeZoneLabel: "Europe/Amsterdam", trendsLastRefreshedLabel: "Oct 28, 2026",
       formatMoney: (value: number) => `EUR ${value.toFixed(2)}`, formatNumber: (value: number) => value.toLocaleString("en-US"),
     }, "custom", { sections: { insights: true }, subsections: { insights: { trends: true, actions: false, summaryCards: false, dataSummary: false } } });
@@ -234,12 +239,21 @@ describe("Browser Overview reports without a Spend source", () => {
     expect(result.content).toContain('122');
     expect(result.content).toContain('475');
     expect(result.content).toContain('-74.3%');
-    expect(result.trendLines).toHaveLength(37);
+    expect(result.trendLines).toHaveLength(15);
     const missing = await renderTrends(sevenDayUsersReal.daily, '7d', 'users', sevenDayUsersReal.windows.filter(w => w.endDate !== '2026-11-16'));
     expect(missing.content).toContain('Unavailable');
     expect(missing.content).toContain('Not comparable');
     expect(missing.content).not.toContain('-74.3%');
-    expect(missing.trendLines).toHaveLength(36);
+    expect(missing.trendLines).toHaveLength(14);
+  });
+  it("exports the selected historical Users window with real GA4 totals and adjacent comparison", async () => {
+    const result = await renderTrends(fullHistoryReal.daily, '7d', 'users', fullHistoryReal.windows, '2026-09-17');
+    expect(result.content).toContain('2026-09-11 to 2026-09-17');
+    expect(result.content).toContain('2026-09-04 to 2026-09-10');
+    const current=fullHistoryReal.windows.find(w=>w.endDate==='2026-09-17')!.users, prior=fullHistoryReal.windows[0].users; expect(result.content).toContain(String(current)); expect(result.content).toContain(String(prior));
+    expect(result.content).toContain(((current-prior)/prior*100).toFixed(1)+'%');
+    expect(result.trendLines).toHaveLength(7);
+    for (const box of result.drawn) { expect(box.x).toBeGreaterThanOrEqual(10); expect(box.x + box.width).toBeLessThanOrEqual(198); expect(box.y).toBeLessThanOrEqual(287); }
   });
   it("writes the exact rendered GA4 PDF to the selected file without a second download", async () => {
     const handle = { name: "selected.pdf" };
@@ -289,16 +303,14 @@ describe("Browser Overview reports without a Spend source", () => {
     const gapWidth = result.trendLines[1][0] - result.trendLines[0][2];
     expect(gapWidth / firstWidth).toBeCloseTo(8);
   });
-  it("keeps the PDF Daily chart within 30 calendar days and the 7d chart's older complete windows", async () => {
+  it("keeps PDF charts within the selected month and withholds incomplete comparisons", async () => {
     const sparse = Array.from({ length: 20 }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays("2026-09-01", i * 2), sessions: 1 }));
     const daily = await renderTrends(sparse);
     expect(daily.words).not.toContain("09-01");
     const rows = [...Array.from({ length: 7 }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays("2026-08-01", i), sessions: 2 })),
       ...Array.from({ length: 15 }, (_, i) => ({ date: insightMath.addGA4InsightsDateDays("2026-08-10", i * 2), sessions: 2 }))];
     const rolling = await renderTrends(rows, "7d");
-    expect(rolling.words).toContain("Trends");
-    expect(rolling.words).toContain("08-07");
-    expect(rolling.content).toContain("Not comparable");
+    expect(rolling.words).not.toContain("08-07");
   });
   it("retains full long finding titles in an actual browser Insights PDF", async () => {
     const title = "International expansion campaign sessions from qualified prospects across northern and southern European markets Below Saved Target";

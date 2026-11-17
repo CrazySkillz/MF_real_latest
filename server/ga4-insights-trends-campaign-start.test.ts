@@ -15,38 +15,32 @@ const js = (source: string) => transpileModule(source, { compilerOptions: { targ
 
 const getStartDate = new Function(js(`${extract("const getTrendsCampaignStartDate =", "\nconst formatReportingTimeZoneLabel")}; return getTrendsCampaignStartDate;`))() as
   (createdAt: string | null, reportingTimeZone: string) => string;
-const buildRows = new Function("addGA4InsightsDateDays", js(`
-  return (ga4InsightsTimeSeries: any[], trendsDataThroughDate: string, trendsCampaignStartDate: string) => {
-    ${extract("    if (!trendsCampaignStartDate ||", "\n  }, [ga4InsightsTimeSeries,")}
-  };
-`))(addGA4InsightsDateDays) as (rows: any[], cutoff: string, startDate: string) => any[];
-const importedRows = new Function(js(`
-  return (ga4InsightsTimeSeries: any[], trendsCampaignStartDate: string, trendsDataThroughDate: string) => {
-    ${extract("  const trendsImportedRows =", "\n  const trendsLatestImportedDate =")}
-    return trendsImportedRows;
-  };
-`))() as (rows: any[], startDate: string, cutoff: string) => any[];
-const monthlyRows = new Function("normalizeGA4InsightsDailyRows", js(`
-  return (ga4InsightsDailyResp, trendsCampaignStartDate, trendsDataThroughDate) => {
-    ${extract("  const trendsMonthlyRows = useMemo(() => {", "\n  const trendsImportedRows =").replace("  const trendsMonthlyRows = useMemo(() => {", "").split("\n  }, [ga4InsightsDailyResp,")[0]}
+const buildRows = new Function("normalizeGA4InsightsDailyRows", js(`
+  return (rows, cutoff, startDate) => {
+    const ga4InsightsDailyResp = {trendsData: rows};
+    const trendsDataThroughDate = cutoff, trendsImportStartDate = startDate;
+    const useMemo = (fn) => fn();
+    ${extract("  const trendsDailyRows =", "  const trendsMonthlyRows =")}
+    return trendsDailyRows;
   };
 `))(normalizeGA4InsightsDailyRows);
+const importedRows = (rows: any[], start: string, cutoff: string) => buildRows(rows, cutoff, start);
+const monthlyRows = (response: any, start: string, cutoff: string) => buildRows(response.trendsData ?? response.data, cutoff, start);
 const dailyChart = new Function("addGA4InsightsDateDays", js(`
-  return (sorted: any[], trendsCampaignStartDate: string) => {
-    const metric = "sessions";
-    const isRate = false;
-    let chartData: any[] = [];
-    ${extract("                            // Show up to 30 calendar days", "\n                          } else if (insightsTrendMode === \"monthly\")")}
-    return { chartData };
+  return (sorted, start) => {
+    const metric = "sessions", isRate = false, trendsRange = {startDate: start, endDate: sorted.at(-1).date};
+    let chartData = [];
+    ${extract("                            // Show the selected month", "\n                          } else if (insightsTrendMode === \"monthly\")")}
+    return {chartData};
   };
-`))(addGA4InsightsDateDays) as (rows: any[], startDate: string) => { chartData: any[] };
+`))(addGA4InsightsDateDays);
 
 const row = (date: string, sessions: number) => ({ date, sessions, users: sessions, conversions: 0, revenue: 0, pageviews: sessions, engagedSessions: 0, engagementRate: 0 });
 
-describe("GA4 Insights Trends campaign creation boundary", () => {
-  it("isolates extra monthly history from daily windows and still enforces creation and cutoff", () => {
+describe("GA4 Insights Trends imported history boundary", () => {
+  it("isolates extra monthly history from daily windows and enforces import start and cutoff", () => {
     const extra = [row("2026-08-01", 2), row("2026-08-02", 3), row("2026-09-30", 5), row("2026-10-01", 7)];
-    const response = { data: extra.slice(2), monthlyData: extra };
+    const response = { data: extra.slice(2), trendsData: extra };
     expect(monthlyRows(response, "2026-08-02", "2026-09-30")).toEqual(extra.slice(1, 3));
     expect(buildRows(response.data, "2026-09-30", "2026-08-02")).toEqual([extra[2]]);
     expect(monthlyRows({ data: extra.slice(2) }, "2026-08-02", "2026-09-30")).toEqual([extra[2]]);
@@ -60,7 +54,7 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     expect(getStartDate("invalid", "Europe/Amsterdam")).toBe("");
   });
 
-  it("excludes dates before creation and leaves unrecorded dates unavailable", () => {
+  it("excludes dates before import start and leaves unrecorded dates unavailable", () => {
     const startDate = getStartDate("2026-09-08T10:06:04.469Z", "Europe/Amsterdam");
     const coverage = {
       startDate: "2026-08-18",
@@ -86,7 +80,7 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     expect(page).toContain('comparable ? "No % baseline" : "Not comparable"');
   });
 
-  it("renders missing dates as gaps and fails closed without a creation date", () => {
+  it("renders missing dates as gaps and fails closed without an import date", () => {
     const rows = [row("2026-09-03", 10), row("2026-09-04", 30), row("2026-09-06", 34)];
     expect(buildRows(rows, "2026-09-06", "2026-09-04")).toEqual([
       row("2026-09-04", 30),
@@ -99,7 +93,7 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     expect(chart.chartData.map((point) => point.value)).toEqual([null, 38, 38]);
   });
 
-  it("keeps recorded rows bounded by creation and the completed-day cutoff", () => {
+  it("keeps recorded rows bounded by import start and the completed-day cutoff", () => {
     const rows = buildRows([row("2026-09-09", 38), row("2026-09-17", 8)], "2026-09-17", "2026-09-08");
     expect(rows).toHaveLength(2);
     expect(rows.filter((item) => item.sessions === 0)).toEqual([]);

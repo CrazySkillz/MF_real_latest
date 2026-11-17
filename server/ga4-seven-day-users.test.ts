@@ -56,6 +56,14 @@ describe('GA4 seven-day distinct Users', () => {
     const snapshot = { windowStart: start, windowEnd: end, campaignBreakdown: { meta: { propertyId: '123', distinctUsers: result } } };
     expect(getGA4DistinctUsers(snapshot, '2026-10-01', '2026-10-07')).toBe(1);
   });
+  it('requests every seven-day Users window from June without a 60-day truncation', async () => {
+    fixture();
+    const result = await ga4Service.getDistinctUsersWithToken('123', 'isolated', '2026-06-01', end, ['brand'], undefined, false, '2026-06-01');
+    const seven = result.windows.filter(w => Date.parse(w.endDate) - Date.parse(w.startDate) === 6 * 86400000);
+    expect(seven).toHaveLength(134);
+    expect(seven.find(w => w.startDate === '2026-06-01')).toMatchObject({endDate:'2026-06-07',users:0});
+    expect(seven.find(w => w.startDate === '2026-10-01')).toMatchObject({endDate:'2026-10-07',users:1});
+  });
   it.each(['missing', 'duplicate', 'negative', 'invalid', 'truncated', 'threshold', 'sampled'])('rejects %s provider results before publication', async failure => {
     fixture(failure); await expect(fetchWindows()).rejects.toThrow();
   });

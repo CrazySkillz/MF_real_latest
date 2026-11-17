@@ -362,6 +362,22 @@ export const buildGA4InsightsRollups = (
   };
 };
 
+// Navigation bounds affect presentation/comparison dates, never metric formulas.
+export const getGA4InsightsTrendsRange = (start: string, cutoff: string, selected: string, mode: string) => {
+  const valid = (date: string) => DATE_ONLY.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date;
+  if (!valid(start) || !valid(cutoff) || start > cutoff) return { startDate: '', endDate: '', previousDate: '', nextDate: '' };
+  const endDate = valid(selected) ? [start, selected, cutoff].sort()[1] : cutoff;
+  const [year, month] = endDate.split('-').map(Number);
+  const displayStart = new Date(Date.UTC(year, month - (mode === 'monthly' ? 12 : 1), 1)).toISOString().slice(0, 10);
+  const previousDate = new Date(Date.UTC(year, month - 1, 0)).toISOString().slice(0, 10);
+  const nextMonthEnd = new Date(Date.UTC(year, month + 1, 0)).toISOString().slice(0, 10);
+  return {
+    startDate: [start, displayStart].sort()[1], endDate,
+    previousDate: previousDate >= start ? previousDate : '',
+    nextDate: endDate < cutoff ? [nextMonthEnd, cutoff].sort()[0] : '',
+  };
+};
+
 export const buildGA4InsightsMonthlySeries = (
   rawRows: unknown,
   dataThroughDate: string | null,

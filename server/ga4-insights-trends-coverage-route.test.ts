@@ -102,9 +102,10 @@ describe("Insights Trends zero-day coverage route", () => {
     const url = `${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?propertyId=${connection.propertyId}&days=60&readOnly=1`;
     const baseline = await (await fetch(url)).json();
     storageMock.getGA4DailyMetrics.mockClear();
-    const response = await fetch(`${url}&includeMonthly=1`);
+    const response = await fetch(`${url}&includeMonthly=1&includeTrendsHistory=1`);
     expect(response.status).toBe(200);
-    const { monthlyData, ...unchanged } = await response.json();
+    const { monthlyData, trendsData, ...unchanged } = await response.json();
+    expect(trendsData.map((row: any) => row.date)).toEqual(rows.map(row => row.date));
     expect(unchanged).toEqual(baseline);
     expect(unchanged.data).toHaveLength(60);
     expect(monthlyData?.[0]?.date).toBe(monthStart);
@@ -119,7 +120,7 @@ describe("Insights Trends zero-day coverage route", () => {
 
   it("does not expose monthly history to a different owner", async () => {
     vi.mocked(getAuth).mockReturnValue({ userId: "other-owner" } as any);
-    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?propertyId=${connection.propertyId}&days=60&readOnly=1&includeMonthly=1`);
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?propertyId=${connection.propertyId}&days=60&readOnly=1&includeMonthly=1&includeTrendsHistory=1`);
     expect(response.status).toBe(404);
     expect(storageMock.getGA4DailyMetrics).not.toHaveBeenCalled();
   });

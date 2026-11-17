@@ -51,8 +51,11 @@ it('renders all real-GA4 seven-day Users windows, preserves zero and refuses mis
     await ui(trends.getByRole('row').filter({hasText:'Last 7 days'})).toContainText('-74.3%');
     await ui(trends.getByRole('row').filter({hasText:'Prior 7 days'})).toContainText('475');
     const series=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
-    expect(series.map((point:any)=>({end:point.date,users:point.value}))).toEqual(real.windows.map(w=>({end:w.endDate.slice(5),users:w.users})));
-    expect(series.some((point:any)=>point.value===0)).toBe(true);
+    expect(series.map((point:any)=>({end:point.date,users:point.value}))).toEqual(real.windows.filter(w=>w.endDate >= "2026-11-01").map(w=>({end:w.endDate.slice(5),users:w.users})));
+    await trends.getByRole("button",{name:"Previous month",exact:true}).click();
+    const previous=JSON.parse((await page.getByTestId("insights-trends-chart").getAttribute("data-chart-series"))!);
+    expect(previous.some((point:any)=>point.value===0)).toBe(true);
+    await trends.getByRole("button",{name:"Back to latest",exact:true}).click();
     // The Daily-to-7d transition retains the Users selection.
     await trends.getByRole('button',{name:'Daily',exact:true}).click();
     await trends.getByRole('button',{name:'7d',exact:true}).click();

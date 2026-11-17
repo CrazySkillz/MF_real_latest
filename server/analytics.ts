@@ -1544,7 +1544,7 @@ export class GoogleAnalytics4Service {
     for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { Object.assign(window, period(await run(fullScope, window.startDate, window.endDate))); }));
     if (rollingUsersStartDate) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(rollingUsersStartDate) || rollingUsersStartDate > endDate) throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
-      const earliest = [startDate, rollingUsersStartDate, new Date(Date.parse(endDate) - 59 * 86400000).toISOString().slice(0, 10)].sort().at(-1)!;
+      const earliest = [startDate, rollingUsersStartDate].sort().at(-1)!;
       const rolling: Array<{ startDate: string; endDate: string; users: number }> = [];
       for (let to = new Date(Date.parse(earliest) + 6 * 86400000).toISOString().slice(0, 10); to <= endDate; to = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10)) {
         const from = new Date(Date.parse(to) - 6 * 86400000).toISOString().slice(0, 10);
@@ -1573,6 +1573,7 @@ export class GoogleAnalytics4Service {
       }
     }
     return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows,
+      ...(rollingUsersStartDate ? { rollingUsersStartDate: [startDate, rollingUsersStartDate].sort().at(-1)! } : {}),
       ...(includeSessions ? { sessionTotalsVersion: 1, ...period(aggregate) } : {}) };
   }
 

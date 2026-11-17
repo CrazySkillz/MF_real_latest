@@ -104,23 +104,25 @@ Shows completed daily-history views:
 
 Current meaning:
 
-- Trends uses persisted GA4 daily facts for the selected campaign/property/scope and shows only reporting dates on or after the campaign creation calendar date in the campaign reporting timezone; this display filter does not delete pre-creation stored rows or change other sections
+- Trends uses the full persisted GA4 daily history from the selected connection's initial import date through its published history cutoff, scoped to the campaign/property/filter. Campaign creation no longer truncates this Trends-only display.
 - Insights requests an isolated 60-calendar-day stored-history window so two exact 30-day windows can be evaluated without changing Overview or KPI windows; sparse or unrequested dates remain unavailable
-- Monthly additionally uses the two preceding calendar months plus the current month from the same scoped daily-history response (`includeMonthly=1`). The server reuses its existing initial-import history read; the 60-day rows, refresh metadata, Daily/7d/30d views, and findings retain their existing boundaries. Campaign creation and completed-day limits still apply; unavailable dates remain gaps.
+- Trends requests `includeTrendsHistory=1`. The response adds `trendsData` using the existing scoped initial-import read. Recent `data`, freshness, Overview, financials and findings retain their existing boundaries. No additional provider request or campaign write occurs during navigation.
 - all normal browser daily-history requests are read-only; Insights Trends renders scheduler-produced stored facts and does not run a live GA4 coverage request when the page loads
 - today's intraday data is excluded until it becomes a completed reporting day
-- `Latest imported day` remains visible and is the latest persisted row eligible for Trends after the creation-date filter; the scheduler-derived completed-history boundary limits the series but is not shown as `Chart through`
+- `Latest imported day` remains visible and is the latest persisted row eligible for Trends within the imported history; the scheduler-derived completed-history boundary limits the series but is not shown as `Chart through`
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
-- a date without a stored row remains unavailable and cannot complete a comparison window; dates before campaign creation remain hidden, and an explicit persisted zero remains a valid observed value
+- a date without a stored row remains unavailable and cannot complete a comparison window; an explicit persisted zero remains a valid observed value
 - the daily scheduler also persists explicit zero rows for completed no-activity dates after it verifies the provider response; an incomplete or failed provider response preserves the last-good stored window instead of writing false zeros
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
-- the metric selector uses a native select; Users is available in Daily and 7d. Seven-day Users comes from GA4 `totalUsers` for each exact inclusive seven-day window, using the same property and campaign filter as the saved Overview publication. It is never a sum of daily Users. The scheduler saves up to 54 rolling windows (60 days of history), batched into at most four named ranges per GA4 request. Chart, adjacent-window comparison and Insights PDF use these saved totals. Missing, incomplete or invalid window totals remain unavailable; recorded zero totals remain zero. Users stays unavailable in 30d and Monthly.
+- the metric selector uses a native select; Users is available in Daily and 7d. Seven-day Users comes from GA4 `totalUsers` for each exact inclusive seven-day window, using the same property and campaign filter as the saved Overview publication. It is never a sum of daily Users. The scheduler saves every complete seven-day window from the initial import date, batched into at most four named ranges per GA4 request. Chart, adjacent-window comparison and Insights PDF use these saved totals. Missing, incomplete or invalid window totals remain unavailable; recorded zero totals remain zero. Users stays unavailable in 30d and Monthly.
+
+Navigation uses Previous month, Next month, a Through date picker, and Back to latest. Daily/7d/30d show at most one calendar month of point end dates. Monthly shows up to 12 months ending in the selected month. The table follows the selected date; rolling comparisons use the adjacent preceding window, including days outside the visible month. The downloaded Insights PDF follows the same selection. Missing days and missing native seven-day Users totals remain unavailable. Existing saved/scheduled reports and findings are not redefined by this presentation change.
 
 History gates:
 
-- `Daily`: at least 1 eligible recorded completed date; the chart considers up to 30 calendar days through the completed-history boundary, excludes pre-creation dates, leaves gaps for missing rows, and shows a delta against the prior calendar day when present; its coverage note says `Missing stored dates are unavailable; recorded zero values remain 0.` The table shows 14 recent rows initially and up to 30 with `Show all`
-- `7d`: each complete rolling window requires 7 consecutive recorded calendar days, including explicit zero rows; the latest comparison requires two complete adjacent 7-day windows
-- `30d`: each complete rolling window requires 30 consecutive recorded calendar days, including explicit zero rows; the latest comparison requires two complete adjacent 30-day windows
+- `Daily`: at least 1 eligible recorded completed date; the chart shows the selected calendar month through the selected date, leaves gaps for missing rows, and shows a delta against the prior calendar day when present; its coverage note says `Missing stored dates are unavailable; recorded zero values remain 0.` The table shows 14 recent rows initially and up to 31 with `Show all`
+- `7d`: each complete rolling window requires 7 consecutive recorded calendar days, including explicit zero rows; the selected-date comparison requires two complete adjacent 7-day windows
+- `30d`: each complete rolling window requires 30 consecutive recorded calendar days, including explicit zero rows; the selected-date comparison requires two complete adjacent 30-day windows
 - `Monthly`: one calendar month can be shown and is marked partial when incomplete; only two adjacent complete calendar months are compared
 
 ### Data Summary

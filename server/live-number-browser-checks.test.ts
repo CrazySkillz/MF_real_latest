@@ -174,3 +174,13 @@ describe("missing and duplicate notification monitoring", () => {
     } finally {transport.mockRestore();}
   });
 });
+
+it('checks pre-creation imported Trends dates for the full-history test release only', () => {
+  const snapshot=fixture(); snapshot.campaign.createdAt='2026-11-05T12:00:00Z';
+  const text='Executive Financials\nREVENUE\nEUR 100.00\nSPEND\nUnavailable\nPROFIT\nUnavailable\nROAS\n—\nROI\n—\nTrends\n2026-11-04 20 —\nData Summary\nSESSIONS\n20\nCONVERSIONS\n1.5\nREVENUE\n€100.00';
+  const check=()=>checkBrowserReportText(snapshot,text,'insights',now).find(c=>c.code==='TREND_TABLE_OR_EXPLICIT_HISTORY_STATE');
+  expect(check()?.status).toBe('difference');
+  snapshot.rows.ga4OverviewSnapshots[0].campaignBreakdown.meta.distinctUsers={rollingUsersStartDate:'2026-11-04'};
+  expect(check()?.status).toBe('passed');
+  expect(checkBrowserReportText(snapshot,text.replace('2026-11-04 20','2026-11-03 20'),'insights',now)).toContainEqual(expect.objectContaining({code:'TREND_TABLE_OR_EXPLICIT_HISTORY_STATE',status:'difference'}));
+});

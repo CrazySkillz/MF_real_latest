@@ -146,11 +146,13 @@ export function checkBrowserReportText(snapshot: LiveNumberSnapshot, text: strin
     checks.push(checkDisplayedNumber(section, "TREND_SESSIONS", daily ? Number(daily.sessions) : null, match[2], 0));
   }
   const created = new Date(snapshot.campaign.createdAt), validCreated = Number.isFinite(created.getTime()) && created <= now;
-  const historyStart = validCreated ? new Intl.DateTimeFormat("en-CA", { timeZone: e.scope.reportingTimeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(created) : "";
+  const fullHistory = e.scope.publication.campaignBreakdown?.meta?.distinctUsers?.rollingUsersStartDate === e.scope.startDate;
+  const historyStart = fullHistory ? [e.scope.startDate, e.scope.endDate.slice(0, 7) + "-01"].sort().at(-1)!
+    : validCreated ? new Intl.DateTimeFormat("en-CA", { timeZone: e.scope.reportingTimeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(created) : "";
   const expectedDates = e.daily.filter(row => historyStart && row.date >= historyStart && row.date <= e.scope.endDate).map(row => row.date).sort().slice(-14);
   const emptyNewHistory = validCreated && historyStart > e.scope.endDate && start >= 0 && end > start && !lines.includes("Trends")
     && (summaryStart > start || summaryStart < 0 && e.totals.sessions === 0 && e.revenue === 0);
-  checks.push({ section, code: "TREND_TABLE_OR_EXPLICIT_HISTORY_STATE", status: !validCreated ? "unverified"
+  checks.push({ section, code: "TREND_TABLE_OR_EXPLICIT_HISTORY_STATE", status: !fullHistory && !validCreated ? "unverified"
     : dates.length ? JSON.stringify(dates.map(match => match[1]).sort()) === JSON.stringify(expectedDates) ? "passed" : "difference"
     : expectedDates.length ? "unverified" : emptyNewHistory || /comparison unavailable|Need at least|No daily history/i.test(text) ? "passed" : "unverified" });
   return checks;

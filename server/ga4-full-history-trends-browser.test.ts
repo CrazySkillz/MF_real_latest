@@ -20,6 +20,7 @@ it('navigates every metric across the full imported GA4 history without writes o
   const page=await context.newPage(), errors:string[]=[];
   page.on('pageerror',error=>errors.push(error.message));
   let windows: typeof real.windows=real.windows;
+  let daily=real.daily, cutoff=real.endDate;
   await page.clock.install({time:new Date('2026-11-17T09:00:00Z')});
   await context.route('**/*',async route=>{
     const req=route.request(), url=new URL(req.url());
@@ -30,7 +31,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     const property={propertyId:real.propertyId,propertyName:'Mock',isPrimary:true,lookbackDays:30};
     if(url.pathname==='/api/campaigns/a') data={id:'a',name:'Isolated Promo',currency:'EUR',status:'active',reportingTimeZone:'Europe/Amsterdam',ga4CampaignFilter:'["yesop_brand_search","yesop_retargeting"]',createdAt:'2026-10-04T00:00:00Z'};
     else if(url.pathname.startsWith('/api/ga4/check-connection/') || url.pathname.endsWith('/ga4-connections')) data={success:true,connected:true,connections:[property]};
-    else if(url.pathname.endsWith('/ga4-daily')) data={success:true,propertyId:real.propertyId,startDate:real.startDate,overviewStartDate:'2026-09-04',endDate:real.endDate,dataThroughDate:real.endDate,historyDataThroughDate:real.endDate,latestStoredDailyDate:real.endDate,reportingTimeZone:'Europe/Amsterdam',refreshStatus:'current',refreshIsStale:false,overviewTotals:{users:4496,sessions:4472,conversions:440},data:real.daily.slice(-60),trendsData:real.daily,usersComparisons:windows};
+    else if(url.pathname.endsWith('/ga4-daily')) data={success:true,propertyId:real.propertyId,startDate:real.startDate,overviewStartDate:'2026-09-04',endDate:cutoff,dataThroughDate:cutoff,historyDataThroughDate:cutoff,latestStoredDailyDate:cutoff,reportingTimeZone:'Europe/Amsterdam',refreshStatus:'current',refreshIsStale:false,overviewTotals:{users:4496,sessions:4472,conversions:440},data:daily.slice(-60),trendsData:daily,usersComparisons:windows};
     else if(url.pathname.endsWith('/ga4-publication-status')) data={success:true,publicationToken:'real-saved-fixture',refreshStatus:'current'};
     else if(url.pathname.endsWith('/financial-daily-snapshot')) data={success:true,snapshot:null};
     else if(url.pathname.includes('/platforms/google_analytics/')) data=[];
@@ -107,7 +108,20 @@ it('navigates every metric across the full imported GA4 history without writes o
               await ui(table).toContainText(priorStart+' → '+priorEnd);
               if(before!==0) await ui(table.getByRole('row').filter({hasText:(selected===real.endDate?'Last ':'Selected ')+days+' days'})).toContainText(((current-before)/Math.abs(before)*100).toFixed(1)+'%');
               else await ui(table).toContainText('No % baseline');
-            } else await ui(trends).toContainText('comparison ending '+selected+' is unavailable');
+            } else {
+              const note=page.getByTestId('insights-trends-comparison-unavailable');
+              await ui(note).toContainText('Cannot calculate the 30-day change.');
+              await ui(note).toContainText('Imported history starts: Sep 4, 2026. Data cutoff: Nov 17, 2026.');
+              if(selected==='2026-09-30') {
+                await ui(note).toContainText('Comparison end date: Sep 30, 2026.');
+                await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 30 days: Sep 1, 2026 – Sep 30, 2026. Missing dates in this app: Sep 1, 2026 – Sep 3, 2026.');
+                await ui(note.getByRole('listitem').nth(1)).toHaveText('Previous 30 days: Aug 2, 2026 – Aug 31, 2026. Missing dates in this app: Aug 2, 2026 – Aug 31, 2026.');
+              } else {
+                await ui(note).toContainText('Comparison end date: Oct 31, 2026.');
+                await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 30 days: Oct 2, 2026 – Oct 31, 2026. Complete daily data.');
+                await ui(note.getByRole('listitem').nth(1)).toHaveText('Previous 30 days: Sep 2, 2026 – Oct 1, 2026. Missing dates in this app: Sep 2, 2026 – Sep 3, 2026.');
+              }
+            }
           }
         }
       }
@@ -125,6 +139,23 @@ it('navigates every metric across the full imported GA4 history without writes o
     await ui(trends.getByRole('table')).toContainText(String(real.windows.find(w=>w.endDate==='2026-09-23')!.users));
     expect(await page.getByTestId('insights-executive-financials').innerText()).toBe(cards);
     expect(await page.getByTestId('insights-trackers').getAttribute('data-findings')).toBe(findings);
+    // Gaps inside the imported period are listed exactly; recorded zero days are not missing.
+    daily=real.daily.filter(r=>!['2026-10-31','2026-11-03','2026-11-04'].includes(r.date));
+    await open();await trends.getByRole('button',{name:'30d',exact:true}).click();
+    const note=page.getByTestId('insights-trends-comparison-unavailable');
+    await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 30 days: Oct 19, 2026 – Nov 17, 2026. Missing dates in this app: Oct 31, 2026; Nov 3, 2026 – Nov 4, 2026.');
+    await ui(note.getByRole('listitem').nth(1)).toHaveText('Previous 30 days: Sep 19, 2026 – Oct 18, 2026. Complete daily data.');
+    await ui(note).not.toContainText('fall outside');
+    // The same explanation is present when no complete rolling window exists anywhere.
+    daily=real.daily.filter(r=>r.date<='2026-09-06');cutoff='2026-09-06';
+    await open();
+    await ui(note).toContainText('Cannot calculate the 7-day change.');
+    await ui(note).toContainText('Data cutoff: Sep 6, 2026.');
+    await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 7 days: Aug 31, 2026 – Sep 6, 2026. Missing dates in this app: Aug 31, 2026 – Sep 3, 2026.');
+    await ui(note.getByRole('listitem').nth(1)).toHaveText('Previous 7 days: Aug 24, 2026 – Aug 30, 2026. Missing dates in this app: Aug 24, 2026 – Aug 30, 2026.');
+    await trends.getByRole('button',{name:'30d',exact:true}).click();
+    await ui(note).toContainText('Cannot calculate the 30-day change.');
+    await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 30 days: Aug 8, 2026 – Sep 6, 2026. Missing dates in this app: Aug 8, 2026 – Sep 3, 2026.');
     expect(errors).toEqual([]);
   } finally {await browser.close();}
 },120000);

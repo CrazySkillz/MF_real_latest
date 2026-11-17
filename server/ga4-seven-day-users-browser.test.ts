@@ -62,7 +62,11 @@ it('renders all real-GA4 seven-day Users windows, preserves zero and refuses mis
     await trends.getByRole('button',{name:'7d',exact:true}).click();
     await ui(page.getByTestId('insights-trend-metric')).toHaveValue('users');
     windows=real.windows.filter(w=>w.endDate!=='2026-11-16'); trends=await open();
-    await ui(trends).toContainText('GA4 seven-day Users totals are unavailable for this comparison.');
+    const note=page.getByTestId('insights-trends-comparison-unavailable');
+    await ui(note).toContainText('Comparison end date: Nov 16, 2026.');
+    await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 7 days: Nov 10, 2026 – Nov 16, 2026. The GA4 Users total for this exact period is unavailable.');
+    await ui(note.getByRole('listitem').nth(1)).toHaveText('Previous 7 days: Nov 3, 2026 – Nov 9, 2026. Complete daily data.');
+    await ui(note).not.toContainText('Missing dates in this app:');
     const missing=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
     expect(missing.at(-1).value).toBeNull();
     await ui(page.getByTestId('insights-trends-empty')).toHaveCount(0);

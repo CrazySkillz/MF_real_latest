@@ -9781,6 +9781,35 @@ export default function GA4Metrics() {
                               .filter((ym: string) => /^\d{4}-\d{2}$/.test(ym))
                           ).size;
                           const minRequiredDays = insightsTrendMode === "daily" ? 1 : 0;
+                          const rollingWindow = insightsTrendMode === "7d"
+                            ? { days: 7, current: trendsRollups.last7, prior: trendsRollups.prior7 }
+                            : insightsTrendMode === "30d" ? { days: 30, current: trendsRollups.last30, prior: trendsRollups.prior30 } : null;
+                          const renderUnavailableComparison = () => {
+                            if (!rollingWindow) return null;
+                            const recordedDates = new Set(sorted.map(row => String(row.date)));
+                            return <div className="space-y-2 text-sm text-muted-foreground" data-testid="insights-trends-comparison-unavailable">
+                              <p className="font-medium text-foreground">Cannot calculate the {rollingWindow.days}-day change.</p>
+                              <p>Comparison end date: {formatReportingDateLabel(trendsRange.endDate)}.</p>
+                              <p>Imported history starts: {formatReportingDateLabel(trendsImportStartDate)}. Data cutoff: {formatReportingDateLabel(trendsDataThroughDate)}.</p>
+                              <ul className="list-disc pl-5 space-y-1">
+                                {[{ label: "Selected", window: rollingWindow.current }, { label: "Previous", window: rollingWindow.prior }].map(({ label, window }) => {
+                                  const missing: string[][] = [];
+                                  for (let date = window.startDate || ""; date && date <= (window.endDate || ""); date = addGA4InsightsDateDays(date, 1) || "") {
+                                    if (recordedDates.has(date)) continue;
+                                    const last = missing[missing.length - 1];
+                                    if (last && addGA4InsightsDateDays(last[1], 1) === date) last[1] = date;
+                                    else missing.push([date, date]);
+                                  }
+                                  const missingLabel = missing.map(([start, end]) => start === end ? formatReportingDateLabel(start) : `${formatReportingDateLabel(start)} – ${formatReportingDateLabel(end)}`).join("; ");
+                                  return <li key={label}><span className="font-medium">{label} {rollingWindow.days} days: {formatReportingDateLabel(window.startDate)} – {formatReportingDateLabel(window.endDate)}.</span>{" "}
+                                    {missing.length ? `Missing dates in this app: ${missingLabel}.` : insightsTrendMetric === "users" && sevenDayUsers(window) === null ? "The GA4 Users total for this exact period is unavailable." : "Complete daily data."}
+                                  </li>;
+                                })}
+                              </ul>
+                              {rollingWindow.prior.startDate && rollingWindow.prior.startDate < trendsImportStartDate && <p>Dates before {formatReportingDateLabel(trendsImportStartDate)} fall outside this campaign's imported history.</p>}
+                              <p>Both periods need complete data before a percentage change can be shown. Recorded zero days count as available data.</p>
+                            </div>;
+                          };
                           const hasRequiredHistory = insightsTrendMode === "monthly"
                             ? availableMonths >= 1
                             : insightsTrendMode === "daily"
@@ -9789,19 +9818,8 @@ export default function GA4Metrics() {
                                 ? complete7DayRows.length > 0
                                 : complete30DayRows.length > 0;
                           if (!hasRequiredHistory) {
-                            const rollingWindow = insightsTrendMode === "7d"
-                              ? { label: "7-day", current: trendsRollups.last7, prior: trendsRollups.prior7 }
-                              : insightsTrendMode === "30d"
-                                ? { label: "30-day", current: trendsRollups.last30, prior: trendsRollups.prior30 }
-                                : null;
                             const intradayHistoryNote = insightsTrendMode === "monthly" ? "" : ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? " Today's available GA4 data is provisional." : ` Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.`;
-                            if (rollingWindow) {
-                              return (
-                                <div className="text-sm text-muted-foreground/70 py-4">
-                                  {rollingWindow.label} comparison unavailable. Recorded daily history does not cover both adjacent windows.{intradayHistoryNote}
-                                </div>
-                              );
-                            }
+                            if (rollingWindow) return renderUnavailableComparison();
                             const requiredHistory = insightsTrendMode === "monthly" ? "1 calendar month" : `${minRequiredDays} imported daily rows`;
                             const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} imported row${dailyRows.length === 1 ? "" : "s"}`;
                             return (
@@ -10077,7 +10095,7 @@ export default function GA4Metrics() {
                                         if (!cur.complete || !prior.complete) {
                                           return (
                                             <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">
-                                              Adjacent {windowDays}-day comparison ending {trendsRange.endDate} is unavailable. The chart shows only complete historical {windowDays}-day windows.
+                                              {renderUnavailableComparison()}
                                             </td></tr>
                                           );
                                         }
@@ -10090,7 +10108,7 @@ export default function GA4Metrics() {
 
                                         const curVal = getVal(cur);
                                         const priorVal = getVal(prior);
-                                        if (curVal === null || priorVal === null) return <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">GA4 seven-day Users totals are unavailable for this comparison.</td></tr>;
+                                        if (curVal === null || priorVal === null) return <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">{renderUnavailableComparison()}</td></tr>;
                                         const delta = deltaPct(curVal, priorVal);
 
                                         return [

@@ -65,7 +65,7 @@ describe("live GA4 Insights production boundary", () => {
   it("reports exact rolling-window coverage instead of calling scattered rows complete days", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
 
-    expect(page).toContain("Recorded daily history does not cover both adjacent windows.");
+    expect(page).toContain('data-testid="insights-trends-comparison-unavailable"');
     expect(page).not.toContain("Missing dates are not assumed to be zero.");
     expect(page).not.toContain("`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day");
     expect(page).not.toContain("completed GA4 day${availableDays");
@@ -79,7 +79,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("? complete7DayRows.length > 0");
     expect(page).toContain("const complete30DayRows = insightsTrendMode === \"30d\"");
     expect(page).toContain(": complete30DayRows.length > 0");
-    expect(page).toContain("Adjacent {windowDays}-day comparison ending {trendsRange.endDate} is unavailable.");
+    expect(page).toContain("Comparison end date: {formatReportingDateLabel(trendsRange.endDate)}.");
     expect(page).not.toContain('data-testid="insights-7d-historical-coverage"');
     expect(page).toContain('chartData.length === 1 ? { r: 3 } : false');
     expect(page).toContain("const finalDate = trendsRange.endDate;");

@@ -120,6 +120,7 @@ Navigation uses only Previous month and Next month. The displayed date range ide
 
 History gates:
 
+- When the selected period contains no usable chart points, an explanation replaces the empty plot inside the chart area. Rolling charts explain the consecutive-day requirement and, when known, the first complete period after the selection. Missing native seven-day Users totals have a separate message. Recorded zero values remain chart data, including an all-zero series; calculations and comparison tables are unchanged.
 - `Daily`: at least 1 eligible recorded completed date; the chart shows the selected calendar month through the selected date, leaves gaps for missing rows, and shows a delta against the prior calendar day when present; its coverage note says `Missing stored dates are unavailable; recorded zero values remain 0.` The table shows 14 recent rows initially and up to 31 with `Show all`
 - `7d`: each complete rolling window requires 7 consecutive recorded calendar days, including explicit zero rows; the selected-date comparison requires two complete adjacent 7-day windows
 - `30d`: each complete rolling window requires 30 consecutive recorded calendar days, including explicit zero rows; the selected-date comparison requires two complete adjacent 30-day windows

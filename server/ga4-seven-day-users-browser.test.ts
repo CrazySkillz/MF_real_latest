@@ -65,6 +65,17 @@ it('renders all real-GA4 seven-day Users windows, preserves zero and refuses mis
     await ui(trends).toContainText('GA4 seven-day Users totals are unavailable for this comparison.');
     const missing=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
     expect(missing.at(-1).value).toBeNull();
+    await ui(page.getByTestId('insights-trends-empty')).toHaveCount(0);
+    // Recorded zeros remain a chart, even when every point is zero.
+    await page.getByTestId('insights-trend-metric').selectOption('conversions');
+    const zeros=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
+    expect(zeros.length).toBeGreaterThan(0);
+    expect(zeros.every((point:any)=>point.value===0)).toBe(true);
+    await ui(page.getByTestId('insights-trends-empty')).toHaveCount(0);
+    await ui(page.getByTestId('insights-trends-chart').locator('svg')).toHaveCount(1);
+    windows=[]; trends=await open();
+    await ui(page.getByTestId('insights-trends-empty')).toHaveText('GA4 seven-day Users totals are unavailable for this month.');
+    await ui(page.getByTestId('insights-trends-chart').locator('svg')).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {await browser.close();}
 },60000);

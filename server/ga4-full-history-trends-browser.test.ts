@@ -88,6 +88,11 @@ it('navigates every metric across the full imported GA4 history without writes o
           });
           expect(series.map((p:any)=>({date:p.date,value:p.value})),mode+' '+metric+' '+selected).toEqual(expected);
           expect(series.length).toBeLessThanOrEqual(mode==='Monthly'?12:31);
+          if(expected.length===0) {
+            await ui(page.getByTestId('insights-trends-empty')).toContainText('Not enough data for a 30-day chart in this month.');
+            await ui(page.getByTestId('insights-trends-empty')).toContainText('The first complete 30-day period ends on 3 October 2026.');
+            await ui(page.getByTestId('insights-trends-chart').locator('svg')).toHaveCount(0);
+          } else await ui(page.getByTestId('insights-trends-empty')).toHaveCount(0);
           if(mode==='7d'||mode==='30d') {
             const days=mode==='7d'?7:30;
             const start=new Date(Date.parse(selected)-(days-1)*86400000).toISOString().slice(0,10);

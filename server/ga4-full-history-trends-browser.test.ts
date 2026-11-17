@@ -100,7 +100,7 @@ it('navigates every metric across the full imported GA4 history without writes o
               const table=trends.getByRole('table');
               await ui(table).toContainText(start+' → '+selected);
               await ui(table).toContainText(priorStart+' → '+priorEnd);
-              if(before!==0) await ui(table.getByRole('row').filter({hasText:'Selected '+days+' days'})).toContainText(((current-before)/Math.abs(before)*100).toFixed(1)+'%');
+              if(before!==0) await ui(table.getByRole('row').filter({hasText:(selected===real.endDate?'Last ':'Selected ')+days+' days'})).toContainText(((current-before)/Math.abs(before)*100).toFixed(1)+'%');
               else await ui(table).toContainText('No % baseline');
             } else await ui(trends).toContainText('comparison ending '+selected+' is unavailable');
           }

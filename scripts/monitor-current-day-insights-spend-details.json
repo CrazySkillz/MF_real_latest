@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "5839bd26e2e0224630e08a0c287d2ec6c112e418",
+  "expectedCommit": "e50382d3c958a82e58abd0cbb46b3f3fbfbb6859",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -49,7 +49,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "dc0004e8af8dd8dcad26edee6b1b6ac3933496bcd6005faaf3d4fd7c9c2b2414"
+      "after": "e3305b102f443c85eb45d8d14c278cc1b429603c1c1672b243bf1d4487f28f51"
     },
     {
       "path": "client/src/pages/reports.tsx",
@@ -64,7 +64,7 @@
     {
       "path": "server/analytics.ts",
       "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
-      "after": "4ed0637de5d4fb54ab48490a203c8376ac437545410331c223101147f82053d3"
+      "after": "b2c9f7086da59e2b874384ad803f21c684475ee3923fa898e7404e7743018d20"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -74,7 +74,7 @@
     {
       "path": "server/ga4-daily-scheduler.ts",
       "before": "48373a06062b31e6089d6d8ffdc1f6b77b0806a251543608751e1130da25d37c",
-      "after": "f02bed0087c333c8c9d865e12a0eb874ed12c4a6248dfc00f98b0b0fd121e60e"
+      "after": "c103f5f271821a8763afc790fb9bb62f136ba7d3ea5953606c58ae4212dac2b0"
     },
     {
       "path": "server/ga4-kpi-benchmark-jobs.ts",
@@ -104,7 +104,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "4e1a0c3438463120b60d605406fd4bccf8d06eea66b3ecf8e8f3f645f3ec304b"
+      "after": "512ef7f9e66f4bb7611396a3abb2da346417edd009b0fe8a9e4b8b32aac4f8dc"
     },
     {
       "path": "server/scheduler.ts",
@@ -204,7 +204,7 @@
     {
       "path": "shared/ga4-insights.ts",
       "before": "a149fd7be1992b616474d370b33681bb4576ab0ccdc996854fa9f94dfbfbbf84",
-      "after": "03b53748b34688852c1b960d7d56972e024e65d0c1fb0e71117e2a0d9f8eb4c3"
+      "after": "442e0dbd568bc70c82142d873a14cf209b6c0aef3e8cd148c2a90fee962c18fe"
     }
   ],
   "equivalentCommits": []

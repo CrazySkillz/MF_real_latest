@@ -51,3 +51,15 @@ describe("independent monitor seven-day Users contract", () => {
     expect(checkRollingUsersWindows(scope, packet).checks.every(check => check.status === "passed")).toBe(true);
   });
 });
+
+it('verifies full imported history only for publications declaring that coverage', () => {
+  const shift=(d:string,n:number)=>new Date(Date.parse(d)+n*86400000).toISOString().slice(0,10);
+  const windows=Array.from({length:94},(_,i)=>({startDate:shift('2026-06-01',i),endDate:shift('2026-06-01',i+6),users:i%9}));
+  const packet={version:1,metric:'totalUsers',propertyId:'synthetic',startDate:'2026-06-01',endDate:shift('2026-06-01',99),rollingUsersStartDate:'2026-06-01',windows};
+  const scope={connection:{propertyId:'synthetic'},startDate:packet.startDate,endDate:packet.endDate,publication:{campaignBreakdown:{meta:{distinctUsers:structuredClone(packet)}}}} as any;
+  expect(checkRollingUsersWindows(scope,packet).checks.every(c=>c.status==='passed')).toBe(true);
+  scope.publication.campaignBreakdown.meta.distinctUsers.windows.shift();
+  expect(checkRollingUsersWindows(scope,packet).checks.some(c=>c.status!=='passed')).toBe(true);
+  scope.publication.campaignBreakdown.meta.distinctUsers.rollingUsersStartDate='2026-07-01';
+  expect(()=>checkRollingUsersWindows(scope,packet)).toThrow('ROLLING_USERS_SCOPE_UNVERIFIED');
+});

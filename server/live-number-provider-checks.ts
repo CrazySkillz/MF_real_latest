@@ -144,7 +144,8 @@ export function checkRollingUsersWindows(scope: ReturnType<typeof resolveMonitor
   for (const days of [7, 14, 30, 90]) for (const [from, to] of [[scope.startDate, shift(scope.endDate, -days)], [shift(scope.endDate, 1 - days), scope.endDate]]) {
     if (from >= scope.startDate && to >= scope.startDate && !(from === scope.startDate && to === scope.endDate)) legacy.add(`${from}:${to}`);
   }
-  const earliest = [scope.startDate, shift(scope.endDate, -59)].sort().at(-1)!;
+  const earliest = reference.rollingUsersStartDate || [scope.startDate, shift(scope.endDate, -59)].sort().at(-1)!;
+  if (reference.rollingUsersStartDate && (reference.rollingUsersStartDate !== scope.startDate || saved.rollingUsersStartDate !== scope.startDate)) throw new Error("ROLLING_USERS_SCOPE_UNVERIFIED");
   const extra = new Set<string>();
   for (let to = shift(earliest, 6); to <= scope.endDate; to = shift(to, 1)) {
     const identity = `${shift(to, -6)}:${to}`;

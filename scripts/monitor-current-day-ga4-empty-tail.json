@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "f8aeaf6220bf58c480a70cd09116697fcf3cbe3a",
+  "expectedCommit": "f0479ad634d6b33c435e2a49287413b5f85a4416",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -49,7 +49,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "8475c7f9f020ecdc35932bfdd73ee391f6aeb576dead444ea9e6d90a50a0753f"
+      "after": "666adfee7e245946b1a7e7f10312654fcd3ecc89c6198e9b4f731524ed0d1c38"
     },
     {
       "path": "client/src/pages/reports.tsx",
@@ -64,7 +64,7 @@
     {
       "path": "server/analytics.ts",
       "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
-      "after": "dd3aa6b5def53a8ee0208e12aeba2d772546cb02687065656899c6a5351f42d1"
+      "after": "6819c3e1e9573787eb39b835dd62780bb3941339998ca13dae5c7230ca47f8a4"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -74,7 +74,7 @@
     {
       "path": "server/ga4-daily-scheduler.ts",
       "before": "48373a06062b31e6089d6d8ffdc1f6b77b0806a251543608751e1130da25d37c",
-      "after": "731490fedbf6b9581ad96bc491a4c0259d0520aecb565337a63762e465c3c825"
+      "after": "f02bed0087c333c8c9d865e12a0eb874ed12c4a6248dfc00f98b0b0fd121e60e"
     },
     {
       "path": "server/ga4-kpi-benchmark-jobs.ts",
@@ -104,7 +104,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "10c4f764e42cde2388a3e22c9f66c1020351f24ede767678b53ad5ac30a9e29f"
+      "after": "4e1a0c3438463120b60d605406fd4bccf8d06eea66b3ecf8e8f3f645f3ec304b"
     },
     {
       "path": "server/scheduler.ts",
@@ -200,7 +200,14 @@
       "path": "shared/ga4-ad-comparison-cards.ts",
       "before": "58043214e1fdd1f134b7b4ba1027a80df096f3ac1b2ab10d2808903d916ccfbe",
       "after": "019b8b8620c7ebc719ea4ac8bc0d5d76cdbd27dc4b915d1a028bc5e4282b1388"
+    },
+    {
+      "path": "shared/ga4-insights.ts",
+      "before": "a149fd7be1992b616474d370b33681bb4576ab0ccdc996854fa9f94dfbfbbf84",
+      "after": "03b53748b34688852c1b960d7d56972e024e65d0c1fb0e71117e2a0d9f8eb4c3"
     }
   ],
-  "equivalentCommits": []
+  "equivalentCommits": [
+    "d73f6b4d7df0b03596b95879d6143c5f734fe306"
+  ]
 }

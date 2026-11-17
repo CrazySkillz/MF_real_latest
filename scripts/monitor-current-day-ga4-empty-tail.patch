@@ -5687,3 +5687,227 @@ index e4b1aa35..079cfd8b 100644
      if (byDate.size !== dailyRows.length || dailyRows.some(row => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < startDate || row.date > endDate)) {
        throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
 
+
+diff --git a/server/analytics.ts b/server/analytics.ts
+index 079cfd8b..a58ad33e 100644
+--- a/server/analytics.ts
++++ b/server/analytics.ts
+@@ -10,6 +10,7 @@ type CampaignFilter = string | string[] | undefined;
+ // Owned by one scheduler connection attempt; never persisted or shared across requests.
+ export type GA4DailyTrafficCapture = {
+   campaignId: string;
++  rollingUsersStartDate?: string;
+   primaryScope?: { propertyId: string; startDate: string; endDate: string; campaigns: string[]; throughDate: string };
+   captured?: {
+     propertyId: string; startDate: string; endDate: string; currencyCode: string;
+@@ -1467,6 +1468,7 @@ export class GoogleAnalytics4Service {
+     propertyId: string, accessToken: string, startDate: string, endDate: string,
+     campaignFilter: CampaignFilter, primaryScope?: GA4DailyTrafficCapture['primaryScope'],
+     includeSessions = false,
++    rollingUsersStartDate?: string,
+   ) {
+     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
+     const names = this.normalizeCampaignFilter(campaignFilter);
+@@ -1569,6 +1571,36 @@ export class GoogleAnalytics4Service {
+       }
+     }
+     for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { Object.assign(window, period(await run(fullScope, window.startDate, window.endDate))); }));
++    if (rollingUsersStartDate) {
++      if (!/^\d{4}-\d{2}-\d{2}$/.test(rollingUsersStartDate) || rollingUsersStartDate > endDate) throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
++      const earliest = [startDate, rollingUsersStartDate, new Date(Date.parse(endDate) - 59 * 86400000).toISOString().slice(0, 10)].sort().at(-1)!;
++      const rolling: Array<{ startDate: string; endDate: string; users: number }> = [];
++      for (let to = new Date(Date.parse(earliest) + 6 * 86400000).toISOString().slice(0, 10); to <= endDate; to = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10)) {
++        const from = new Date(Date.parse(to) - 6 * 86400000).toISOString().slice(0, 10);
++        if (!windows.some(window => window.startDate === from && window.endDate === to)) rolling.push({ startDate: from, endDate: to, users: 0 });
++      }
++      // Named date ranges let GA4 deduplicate each window independently (four per request).
++      for (let i = 0; i < rolling.length; i += 4) {
++        const batch = rolling.slice(i, i + 4);
++        const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
++          method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
++          body: JSON.stringify({ dateRanges: batch.map((window, index) => ({ startDate: window.startDate, endDate: window.endDate, name: `window_${index}` })),
++            ...fullScope, metrics: [{ name: 'totalUsers' }], metricAggregations: ['TOTAL'], keepEmptyRows: true, limit: 100 }),
++        });
++        if (!response.ok) throw new Error(`GA4 rolling users API error: ${await response.text()}`);
++        const data = await response.json(), rangeIndex = data.dimensionHeaders?.findIndex((header: any) => header.name === 'dateRange') ?? -1;
++        const totals = Array.isArray(data.totals) ? data.totals : [];
++        const namesSeen = new Set<string>();
++        if (data.metricHeaders?.[0]?.name !== 'totalUsers' || totals.length !== batch.length || Number(data.rowCount ?? 0) !== (data.rows || []).length) throw new Error('GA4_ROLLING_USERS_INCOMPLETE');
++        for (const row of totals) {
++          const name = rangeIndex >= 0 ? row.dimensionValues?.[rangeIndex]?.value : batch.length === 1 ? 'window_0' : '';
++          const index = batch.findIndex((_, index) => name === `window_${index}`), raw = row.metricValues?.[0]?.value;
++          if (index < 0 || namesSeen.has(name) || raw == null || raw === '' || !Number.isSafeInteger(Number(raw)) || Number(raw) < 0) throw new Error('GA4_ROLLING_USERS_INCOMPLETE');
++          namesSeen.add(name); batch[index].users = Number(raw);
++        }
++        windows.push(...batch);
++      }
++    }
+     return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows,
+       ...(includeSessions ? { sessionTotalsVersion: 1, ...period(aggregate) } : {}) };
+   }
+@@ -2781,7 +2813,7 @@ export class GoogleAnalytics4Service {
+     const resolvedEngagedSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[4]?.value || '0', 10) || 0 : totalEngagedSessions;
+ 
+     const distinctUsers = preferOverviewCampaignTotals && this.normalizeCampaignFilter(campaignFilter).length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && endDate
+-      ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope, true)
++      ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope, true, overviewDailyTraffic?.rollingUsersStartDate)
+       : undefined;
+     return {
+       rows,
+
+diff --git a/server/ga4-daily-scheduler.ts b/server/ga4-daily-scheduler.ts
+index ed3d97c4..854c36cf 100644
+--- a/server/ga4-daily-scheduler.ts
++++ b/server/ga4-daily-scheduler.ts
+@@ -480,7 +480,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
+               withGA4DailyStage("overview_campaign_breakdown", provider.getAcquisitionBreakdown(
+                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 10000, campaignFilter,
+                 reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
+-                overviewDailyTraffic,
++                { ...overviewDailyTraffic, campaignId: currentCampaignId, rollingUsersStartDate: getReportingDateWindow(60, c.reportingTimeZone, now).startDate },
+               )),
+               withGA4DailyStage("overview_landing_pages", provider.getLandingPagesReport(
+                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
+@@ -621,7 +621,8 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
+     const date = getLatestCompleteReportingDate(config.reportingTimeZone, now);
+     let due = getExpectedScheduledRefreshAt(date, config, now);
+     if (due && due > now) due = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(date, -1), config, now);
+-    if (trigger === "manual") due = now;
++    // Bootstrap must not replay an older scheduled slot after a newer manual publication.
++    if (trigger === "manual" || trigger === "snapshot_bootstrap") due = now;
+     if (due) opts = { ...opts, workDueAt: due, refreshFinancialSources: true };
+   }
+   // Claims are acquired here, never accepted from a caller or request body.
+
+diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
+index 3e79081c..ff5ff47c 100644
+--- a/server/routes-oauth.ts
++++ b/server/routes-oauth.ts
+@@ -9739,7 +9739,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       const overviewTotals = { ...summarizeGA4TrafficRows(overviewRows, usersSnapshot, overviewStartDate, overviewPublishedEndDate || ''),
+         users: overviewPublishedEndDate && usersSnapshot?.windowEnd === overviewPublishedEndDate
+           ? getGA4DistinctUsers(usersSnapshot, overviewStartDate, overviewPublishedEndDate) : null };
+-      const usersComparisons = (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [];
++      const usersComparisons = overviewTotals.users !== null && (usersSnapshot?.campaignBreakdown as any)?.meta?.propertyId === String(selectedConnection.propertyId)
++        ? (usersSnapshot?.campaignBreakdown as any)?.meta?.distinctUsers?.windows || [] : [];
+       // Monthly Trends needs the two preceding calendar months plus the current month.
+       // Reuse the scoped Overview read; keep daily coverage and refresh metadata unchanged.
+       const monthlyStartDate = new Date(Date.UTC(Number(dataThroughDate.slice(0, 4)), Number(dataThroughDate.slice(5, 7)) - 3, 1)).toISOString().slice(0, 10);
+
+diff --git a/shared/ga4-insights.ts b/shared/ga4-insights.ts
+index f4474868..b780f55f 100644
+--- a/shared/ga4-insights.ts
++++ b/shared/ga4-insights.ts
+@@ -1,5 +1,13 @@
+ import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "./ga4-kpi-metric-identity";
+ 
++// Multi-day Users must use GA4's exact window; daily distinct counts are not additive.
++export const getGA4InsightsSevenDayUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
++  if (!rollup.complete || !rollup.startDate || !rollup.endDate || addGA4InsightsDateDays(rollup.startDate, 6) !== rollup.endDate || !Array.isArray(windows)) return null;
++  const matches = windows.filter(row => row?.startDate === rollup.startDate && row?.endDate === rollup.endDate);
++  const value = matches.length === 1 ? matches[0].users : null;
++  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
++};
++
+ export type GA4InsightsDailyRow = {
+   date: string;
+   sessions?: number;
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 4e986c8b..71b473ee 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -1,4 +1,5 @@
+ import { conversionCreditsMatch, formatRoasRatio } from "@shared/metric-math";
++import { getGA4InsightsSevenDayUsers } from "@shared/ga4-insights";
+ import { requestReportSaveFile, writeReportSaveFile } from "@/lib/pdfExport";
+ import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching, isCancelledError } from "@tanstack/react-query";
+ import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+@@ -2194,6 +2195,7 @@ export default function GA4Metrics() {
+   const trendsLatestImportedDate = String(trendsImportedRows[trendsImportedRows.length - 1]?.date || "").trim();
+   const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";
+   const trendsRollups = useMemo(() => buildGA4InsightsRollups(trendsDailyRows, trendsDataThroughDate), [trendsDailyRows, trendsDataThroughDate]);
++  const sevenDayUsers = (rollup: { startDate: string | null; endDate: string | null; complete: boolean }) => getGA4InsightsSevenDayUsers(ga4InsightsDailyResp?.usersComparisons, rollup);
+ 
+   const {
+     data: ga4Breakdown,
+@@ -4468,7 +4470,8 @@ export default function GA4Metrics() {
+           for (const row of trendSorted) {
+             const rollup = buildGA4InsightsCalendarRollup(trendSorted, String(row.date), windowDays);
+             if (!rollup.complete) continue;
+-            const value = trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
++            const value = trendMetric === "users" ? sevenDayUsers(rollup) : trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
++            if (value === null) continue;
+             trendChartData.push({ date: String(row.date).slice(5), recordedDate: String(row.date), value: Number(value.toFixed(2)) });
+           }
+         }
+@@ -4552,11 +4555,11 @@ export default function GA4Metrics() {
+               : (() => {
+                   const cur = insightsTrendMode === "7d" ? trendsRollups.last7 : trendsRollups.last30;
+                   const prior = insightsTrendMode === "7d" ? trendsRollups.prior7 : trendsRollups.prior30;
+-                  const getVal = (rollup: any) => trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
++                  const getVal = (rollup: any) => trendMetric === "users" ? sevenDayUsers(rollup) : trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
+                   const curVal = getVal(cur), priorVal = getVal(prior);
+                   return [
+-                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, cur.complete ? trendFmtValue(curVal) : "Unavailable", cur.complete && prior.complete ? trendFmtDelta(curVal, priorVal) : "Not comparable"],
+-                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, prior.complete ? trendFmtValue(priorVal) : "Unavailable", prior.complete ? "baseline" : "Not comparable"],
++                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, cur.complete && curVal !== null ? trendFmtValue(curVal) : "Unavailable", cur.complete && prior.complete && curVal !== null && priorVal !== null ? trendFmtDelta(curVal, priorVal) : "Not comparable"],
++                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, prior.complete && priorVal !== null ? trendFmtValue(priorVal) : "Unavailable", prior.complete && priorVal !== null ? "baseline" : "Not comparable"],
+                   ];
+                 })();
+           if (trendRows.length > 0) {
+@@ -9719,7 +9722,7 @@ export default function GA4Metrics() {
+                                     setInsightsDailyShowMore(false);
+                                     setInsightsTrendMode(mode);
+                                     // Users is non-additive — only accurate in daily mode
+-                                    if (mode !== "daily" && insightsTrendMetric === "users") setInsightsTrendMetric("sessions");
++                                    if (mode !== "daily" && mode !== "7d" && insightsTrendMetric === "users") setInsightsTrendMetric("sessions");
+                                   }}
+                                 >
+                                   {mode === "daily" ? "Daily" : mode === "monthly" ? "Monthly" : mode}
+@@ -9735,7 +9738,7 @@ export default function GA4Metrics() {
+                                 onChange={(event) => setInsightsTrendMetric(event.target.value)}
+                               >
+                                 <option value="sessions">Sessions</option>
+-                                {insightsTrendMode === "daily" && <option value="users">Users</option>}
++                                {(insightsTrendMode === "daily" || insightsTrendMode === "7d") && <option value="users">Users</option>}
+                                 <option value="conversions">Conversions</option>
+                                 <option value="revenue">Revenue</option>
+                                 <option value="pageviews">Page Views</option>
+@@ -9847,8 +9850,10 @@ export default function GA4Metrics() {
+                             const finalDate = String(completeRows[completeRows.length - 1]?.date || "");
+                             while (cursor && cursor <= finalDate) {
+                               const rollup = buildGA4InsightsCalendarRollup(sorted, cursor, windowDays);
+-                              let val = 0;
+-                              if (isRate) {
++                              let val: number | null = 0;
++                              if (metric === "users") {
++                                val = sevenDayUsers(rollup);
++                              } else if (isRate) {
+                                 val = rollup.engagementRate;
+                               } else {
+                                 val = Number((rollup as any)[metric] || 0);
+@@ -9857,7 +9862,7 @@ export default function GA4Metrics() {
+                                 if (!rollingChartStartDate) rollingChartStartDate = String(rollup.startDate || "");
+                                 rollingChartEndDate = String(rollup.endDate || "");
+                               }
+-                              chartData.push({ date: cursor.slice(5), value: rollup.complete ? Number(val.toFixed(2)) : null, idx: chartData.length });
++                              chartData.push({ date: cursor.slice(5), value: rollup.complete && val !== null ? Number(val.toFixed(2)) : null, idx: chartData.length });
+                               cursor = addGA4InsightsDateDays(cursor, 1) || "";
+                             }
+                           }
+@@ -10065,12 +10070,14 @@ export default function GA4Metrics() {
+                                         }
+ 
+                                         const getVal = (rollup: typeof cur) => {
++                                          if (metric === "users") return sevenDayUsers(rollup);
+                                           if (metric === "engagementRate") return rollup.engagementRate;
+                                           return (rollup as any)[metric] || 0;
+                                         };
+ 
+                                         const curVal = getVal(cur);
+                                         const priorVal = getVal(prior);
++                                        if (curVal === null || priorVal === null) return <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">GA4 seven-day Users totals are unavailable for this comparison.</td></tr>;
+                                         const delta = deltaPct(curVal, priorVal);
+ 
+                                         return [

@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "166df82c9ff64f941ddb7830d704fe361a995b60",
+  "expectedCommit": "b63e532eeb7cc1b295d216868e9b4133a09bf4e3",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -49,7 +49,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "2e5b4e4ddee767c020fa025e2b5f4d732be36f4b762e1ed974d0111b6b36391e"
+      "after": "b82fb1801e73b0609ead541313956f18bd35c355f2933ca3a87f5b291c65fc3d"
     },
     {
       "path": "client/src/pages/reports.tsx",
@@ -64,7 +64,7 @@
     {
       "path": "server/analytics.ts",
       "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
-      "after": "b2c9f7086da59e2b874384ad803f21c684475ee3923fa898e7404e7743018d20"
+      "after": "f5a560d62e26096ddfce767e5c5a8d5cc3300847b4885267cb7dc3c612d12ac0"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -204,7 +204,7 @@
     {
       "path": "shared/ga4-insights.ts",
       "before": "a149fd7be1992b616474d370b33681bb4576ab0ccdc996854fa9f94dfbfbbf84",
-      "after": "442e0dbd568bc70c82142d873a14cf209b6c0aef3e8cd148c2a90fee962c18fe"
+      "after": "c73e13b91eb8b4511b5673ba2aaf633f59fa307182ad51f37d3ff55fdbf71614"
     }
   ],
   "equivalentCommits": []

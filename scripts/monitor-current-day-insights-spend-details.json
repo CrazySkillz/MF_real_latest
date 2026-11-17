@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "92922a60b9759b3d468db112f3ed027d08bc8415",
+  "expectedCommit": "c63959e67ffec7000b61560e2b71d05789425c54",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -49,7 +49,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "b82fb1801e73b0609ead541313956f18bd35c355f2933ca3a87f5b291c65fc3d"
+      "after": "12fd9f767b2adf76645930e35317c605f3b06ff1a3fa166d9ecd13aefea2403c"
     },
     {
       "path": "client/src/pages/reports.tsx",

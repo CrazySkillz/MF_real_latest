@@ -227,7 +227,8 @@ describe("Browser Overview reports without a Spend source", () => {
     const range = insightMath.getGA4InsightsTrendsRange(rows[0]?.date || cutoff, cutoff, selected, mode);
     const rollups = insightMath.buildGA4InsightsRollups(rows, range.endDate);
     return render({ ...insightMath, insights: [], insightsRollups: rollups, trendsRollups: rollups,
-      sevenDayUsers: (rollup: any) => insightMath.getGA4InsightsSevenDayUsers(usersWindows, rollup),
+      periodUsers: (rollup: any) => insightMath.getGA4InsightsPeriodUsers(usersWindows, rollup),
+      monthlyUsers: (month: string) => insightMath.getGA4InsightsMonthlyUsers(usersWindows, rows, month, rows[0]?.date || cutoff, range.endDate),
       trendsDailyRows: rows, trendsMonthlyRows: rows, insightsTrendMetric: metric, insightsTrendMode: mode,
       trendsRange: range, trendsVisibleDate: (date: string) => date >= range.startDate && date <= range.endDate,
       trendsDataThroughDate: cutoff, trendsDataThroughLabel: cutoff, trendsReportingTimeZoneLabel: "Europe/Amsterdam", trendsLastRefreshedLabel: "Oct 28, 2026",
@@ -263,6 +264,27 @@ describe("Browser Overview reports without a Spend source", () => {
     expect(write.mock.calls[0][0]).toBe(handle);
     const blob = write.mock.calls[0][1] as Blob;
     expect(Buffer.from(await blob.arrayBuffer())).toEqual(Buffer.from(result.doc.output("arraybuffer")));
+  });
+  it('prints native 30-day Users comparisons and never substitutes daily sums', async () => {
+    const current=fullHistoryReal.windows.find(w=>w.startDate==='2026-10-19'&&w.endDate==='2026-11-17')!;
+    const prior=fullHistoryReal.windows.find(w=>w.startDate==='2026-09-19'&&w.endDate==='2026-10-18')!;
+    const result=await renderTrends(fullHistoryReal.daily,'30d','users',fullHistoryReal.windows);
+    expect(result.content).toContain(current.users.toLocaleString('en-US'));
+    expect(result.content).toContain(prior.users.toLocaleString('en-US'));
+    const delta=(current.users-prior.users)/prior.users*100;
+    expect(result.content).toContain((delta>=0?'+':'')+delta.toFixed(1)+'%');
+    const missing=await renderTrends(fullHistoryReal.daily,'30d','users',fullHistoryReal.windows.filter(w=>w!==current));
+    expect(missing.content).toContain('Unavailable');expect(missing.content).toContain('Not comparable');
+  });
+  it('compares native distinct Users for complete calendar months, retaining zero and missing totals', async () => {
+    const rows=Array.from({length:61},(_,i)=>({date:insightMath.addGA4InsightsDateDays('2026-09-01',i),users:3}));
+    const windows=[{startDate:'2026-09-01',endDate:'2026-09-30',users:10},{startDate:'2026-10-01',endDate:'2026-10-31',users:15}];
+    const result=await renderTrends(rows,'monthly','users',windows);
+    expect(result.content).toContain('+50.0%');expect(result.content).not.toContain('93');
+    const missing=await renderTrends(rows,'monthly','users',windows.slice(0,1));
+    expect(missing.content).toContain('Unavailable');expect(missing.content).not.toContain('+50.0%');
+    const zero=await renderTrends(rows,'monthly','users',windows.map(w=>({...w,users:0})));
+    expect(zero.content).toContain('No % baseline');expect(zero.content).not.toContain('Unavailable');
   });
   it.each(["daily", "7d", "30d", "monthly"])("withholds a zero-baseline percentage in the %s Trends PDF", async mode => {
     const count = mode === "monthly" ? 61 : mode === "30d" ? 60 : mode === "7d" ? 14 : 2;

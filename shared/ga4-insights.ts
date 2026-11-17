@@ -1,11 +1,24 @@
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "./ga4-kpi-metric-identity";
 
 // Multi-day Users must use GA4's exact window; daily distinct counts are not additive.
-export const getGA4InsightsSevenDayUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
-  if (!rollup.complete || !rollup.startDate || !rollup.endDate || addGA4InsightsDateDays(rollup.startDate, 6) !== rollup.endDate || !Array.isArray(windows)) return null;
+export const getGA4InsightsPeriodUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
+  if (!rollup.complete || !rollup.startDate || !rollup.endDate || rollup.startDate > rollup.endDate || !Array.isArray(windows)) return null;
   const matches = windows.filter(row => row?.startDate === rollup.startDate && row?.endDate === rollup.endDate);
   const value = matches.length === 1 ? matches[0].users : null;
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+};
+
+export const getGA4InsightsSevenDayUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null =>
+  rollup.startDate && addGA4InsightsDateDays(rollup.startDate, 6) === rollup.endDate ? getGA4InsightsPeriodUsers(windows, rollup) : null;
+
+export const getGA4InsightsMonthlyUsers = (windows: unknown, rows: GA4InsightsDailyRow[], month: string, importStart: string, cutoff: string): number | null => {
+  if (!/^\d{4}-\d{2}$/.test(month)) return null;
+  const [year, number] = month.split('-').map(Number);
+  const startDate = [month + '-01', importStart].sort()[1];
+  const endDate = [new Date(Date.UTC(year, number, 0)).toISOString().slice(0, 10), cutoff].sort()[0];
+  if (startDate > endDate) return null;
+  const days = (Date.parse(endDate) - Date.parse(startDate)) / 86400000 + 1;
+  return getGA4InsightsPeriodUsers(windows, buildGA4InsightsCalendarRollup(rows, endDate, days));
 };
 
 export type GA4InsightsDailyRow = {

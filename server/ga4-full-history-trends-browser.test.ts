@@ -70,7 +70,7 @@ it('navigates every metric across the full imported GA4 history without writes o
       : rows.reduce((n,r)=>n+r[metric],0);
     for(const mode of ['Daily','7d','30d','Monthly']) {
       await trends.getByRole('button',{name:mode,exact:true}).click();
-      for(const metric of metrics.filter(m=>m!=='users'||['Daily','7d'].includes(mode))) {
+      for(const metric of metrics) {
         await page.getByTestId('insights-trend-metric').selectOption(metric);
         for(const selected of ['2026-11-17','2026-10-31','2026-09-30']) {
           await selectMonth(selected);
@@ -78,13 +78,14 @@ it('navigates every metric across the full imported GA4 history without writes o
           const rangeMonth=selected.slice(0,7);
           const expected=mode==='Monthly' ? ['2026-09','2026-10','2026-11'].filter(m=>m<=rangeMonth).map(m=>{
             const rows=real.daily.filter(r=>r.date.startsWith(m)&&r.date<=selected);
-            return {date:new Date(m+'-01T00:00:00Z').toLocaleString('en-US',{month:'short',timeZone:'UTC'})+" '26",value:Number(value(rows,metric).toFixed(2))};
+            const total=metric==='users'?real.windows.find(w=>w.startDate===rows[0].date&&w.endDate===rows.at(-1)!.date)!.users:value(rows,metric);
+            return {date:new Date(m+'-01T00:00:00Z').toLocaleString('en-US',{month:'short',timeZone:'UTC'})+" '26",value:Number(total.toFixed(2))};
           }) : real.daily.filter(r=>r.date.startsWith(rangeMonth)&&r.date<=selected).flatMap(r=>{
             const n=mode==='7d'?7:mode==='30d'?30:1;
             const start=new Date(Date.parse(r.date)-(n-1)*86400000).toISOString().slice(0,10);
             const rows=real.daily.filter(d=>d.date>=start&&d.date<=r.date);
             if(rows.length!==n)return [];
-            const total=metric==='users'&&mode==='7d'?real.windows.find(w=>w.endDate===r.date)!.users:value(rows,metric);
+            const total=metric==='users'&&mode!=='Daily'?real.windows.find(w=>w.startDate===start&&w.endDate===r.date)!.users:value(rows,metric);
             return [{date:r.date.slice(5),value:mode==='Daily'&&metric!=='engagementRate'?total:Number(total.toFixed(2))}];
           });
           expect(series.map((p:any)=>({date:p.date,value:p.value})),mode+' '+metric+' '+selected).toEqual(expected);
@@ -101,8 +102,8 @@ it('navigates every metric across the full imported GA4 history without writes o
             const priorStart=new Date(Date.parse(start)-days*86400000).toISOString().slice(0,10);
             const cur=real.daily.filter(r=>r.date>=start&&r.date<=selected),prior=real.daily.filter(r=>r.date>=priorStart&&r.date<=priorEnd);
             if(cur.length===days&&prior.length===days) {
-              const current=metric==='users'?real.windows.find(w=>w.endDate===selected)!.users:value(cur,metric);
-              const before=metric==='users'?real.windows.find(w=>w.endDate===priorEnd)!.users:value(prior,metric);
+              const current=metric==='users'?real.windows.find(w=>w.startDate===start&&w.endDate===selected)!.users:value(cur,metric);
+              const before=metric==='users'?real.windows.find(w=>w.startDate===priorStart&&w.endDate===priorEnd)!.users:value(prior,metric);
               const table=trends.getByRole('table');
               await ui(table).toContainText(start+' → '+selected);
               await ui(table).toContainText(priorStart+' → '+priorEnd);
@@ -130,7 +131,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     await page.getByTestId('insights-trend-metric').selectOption('users');
     await selectMonth('2026-11-17');
     await ui(navigation.getByRole('button',{name:'Next month',exact:true})).toBeDisabled();
-    await ui(trends.getByRole('row').filter({hasText:'Last 7 days'})).toContainText(String(real.windows.at(-1)!.users));
+    await ui(trends.getByRole('row').filter({hasText:'Last 7 days'})).toContainText(String(real.windows.find(w=>w.startDate==='2026-11-11'&&w.endDate===real.endDate)!.users));
     await selectMonth('2026-10-31');
     await selectMonth('2026-09-30');
     await ui(trends.getByRole('button',{name:'Previous month',exact:true})).toBeDisabled();
@@ -139,6 +140,20 @@ it('navigates every metric across the full imported GA4 history without writes o
     await ui(trends.getByRole('table')).toContainText(String(real.windows.find(w=>w.endDate==='2026-09-23')!.users));
     expect(await page.getByTestId('insights-executive-financials').innerText()).toBe(cards);
     expect(await page.getByTestId('insights-trackers').getAttribute('data-findings')).toBe(findings);
+    // Missing native totals are unavailable, never summed from daily Users; zero is a valid total.
+    windows=real.windows.filter(w=>!(w.startDate==='2026-10-19'&&w.endDate==='2026-11-17')&&!(w.startDate==='2026-10-01'&&w.endDate==='2026-10-31'));
+    await open();await trends.getByRole('button',{name:'30d',exact:true}).click();
+    await ui(page.getByTestId('insights-trend-metric')).toHaveValue('users');
+    expect(JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!).at(-1).value).toBeNull();
+    await ui(trends.getByRole('table')).toContainText('The GA4 Users total for this exact period is unavailable.');
+    windows=windows.map(w=>w.startDate==='2026-11-01'&&w.endDate==='2026-11-17'?{...w,users:0}:w);
+    await open();await trends.getByRole('button',{name:'Monthly',exact:true}).click();
+    await ui(trends.getByRole('row').filter({hasText:'October 2026'})).toContainText('Unavailable');
+    await ui(trends.getByRole('row').filter({hasText:'October 2026'})).toContainText('Not comparable');
+    const monthly=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
+    expect(monthly.find((r:any)=>r.date==="Oct '26").value).toBeNull();
+    expect(monthly.find((r:any)=>r.date==="Nov '26").value).toBe(0);
+    windows=real.windows;
     // Gaps inside the imported period are listed exactly; recorded zero days are not missing.
     daily=real.daily.filter(r=>!['2026-10-31','2026-11-03','2026-11-04'].includes(r.date));
     await open();await trends.getByRole('button',{name:'30d',exact:true}).click();

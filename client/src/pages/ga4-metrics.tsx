@@ -1,5 +1,5 @@
 import { conversionCreditsMatch, formatRoasRatio } from "@shared/metric-math";
-import { getGA4InsightsSevenDayUsers, getGA4InsightsTrendsRange } from "@shared/ga4-insights";
+import { getGA4InsightsPeriodUsers, getGA4InsightsMonthlyUsers, getGA4InsightsTrendsRange } from "@shared/ga4-insights";
 import { requestReportSaveFile, writeReportSaveFile } from "@/lib/pdfExport";
 import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching, isCancelledError } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -2192,7 +2192,8 @@ export default function GA4Metrics() {
   const trendsRange = getGA4InsightsTrendsRange(trendsImportStartDate, trendsDataThroughDate, insightsTrendDate, insightsTrendMode);
   const trendsVisibleDate = (date: string) => date >= trendsRange.startDate && date <= trendsRange.endDate;
   const trendsRollups = useMemo(() => buildGA4InsightsRollups(trendsDailyRows, trendsRange.endDate), [trendsDailyRows, trendsRange.endDate]);
-  const sevenDayUsers = (rollup: { startDate: string | null; endDate: string | null; complete: boolean }) => getGA4InsightsSevenDayUsers(ga4InsightsDailyResp?.usersComparisons, rollup);
+  const periodUsers = (rollup: { startDate: string | null; endDate: string | null; complete: boolean }) => getGA4InsightsPeriodUsers(ga4InsightsDailyResp?.usersComparisons, rollup);
+  const monthlyUsers = (month: string) => getGA4InsightsMonthlyUsers(ga4InsightsDailyResp?.usersComparisons, trendsMonthlyRows, month, trendsImportStartDate, trendsRange.endDate);
 
   const {
     data: ga4Breakdown,
@@ -4382,6 +4383,7 @@ export default function GA4Metrics() {
         revenue: "Revenue", pageviews: "Page Views", engagementRate: "Engagement Rate",
       };
       const trendFmtValue = (v: any) => {
+        if (v === null) return "Unavailable";
         const n = Number(v || 0);
         if (trendIsMoney) return formatMoney(n);
         if (trendIsRate) return formatPct(n);
@@ -4450,7 +4452,7 @@ export default function GA4Metrics() {
       }
 
       if (includeInsightsTrends && trendSorted.length >= 1) {
-        const trendChartData: { date: string; value: number; recordedDate?: string; month?: string; partial?: boolean }[] = [];
+        const trendChartData: { date: string; value: number | null; recordedDate?: string; month?: string; partial?: boolean }[] = [];
         if (insightsTrendMode === "daily") {
           trendSorted.filter((r: any) => trendsVisibleDate(String(r.date))).forEach((r: any) => trendChartData.push({
             date: String(r.date || "").slice(5), recordedDate: String(r.date),
@@ -4459,14 +4461,14 @@ export default function GA4Metrics() {
         } else if (insightsTrendMode === "monthly") {
           buildGA4InsightsMonthlySeries(trendSorted, trendsRange.endDate, trendMetric).filter(row => row.month >= trendsRange.startDate.slice(0, 7) && row.month <= trendsRange.endDate.slice(0, 7)).forEach(row => {
             const [yr, mo] = row.month.split("-");
-            trendChartData.push({ date: `${new Date(Number(yr), Number(mo) - 1).toLocaleString("en-US", { month: "short" })} '${yr.slice(2)}`, value: row.value, month: row.month, partial: row.partial });
+            trendChartData.push({ date: `${new Date(Number(yr), Number(mo) - 1).toLocaleString("en-US", { month: "short" })} '${yr.slice(2)}`, value: trendMetric === "users" ? monthlyUsers(row.month) : row.value, month: row.month, partial: row.partial });
           });
         } else {
           const windowDays = insightsTrendMode === "7d" ? 7 : 30;
           for (const row of trendSorted.filter(row => trendsVisibleDate(row.date))) {
             const rollup = buildGA4InsightsCalendarRollup(trendSorted, String(row.date), windowDays);
             if (!rollup.complete) continue;
-            const value = trendMetric === "users" ? sevenDayUsers(rollup) : trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
+            const value = trendMetric === "users" ? periodUsers(rollup) : trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
             if (value === null) continue;
             trendChartData.push({ date: String(row.date).slice(5), recordedDate: String(row.date), value: Number(value.toFixed(2)) });
           }
@@ -4510,6 +4512,7 @@ export default function GA4Metrics() {
           if (insightsTrendMode === "monthly") {
             const barW = Math.max(4, chartW / Math.max(trendChartData.length * 1.8, 1));
             trendChartData.forEach((p, idx) => {
+              if (p.value === null) return;
               const px = chartX + idx * (chartW / Math.max(trendChartData.length, 1)) + 2;
               const barH = Math.max(1, (Number(p.value || 0) / yAxisMax) * chartH);
               doc.setFillColor(...(p.partial ? [147, 197, 253] : [59, 130, 246]) as [number, number, number]);
@@ -4545,13 +4548,14 @@ export default function GA4Metrics() {
             : insightsTrendMode === "monthly"
               ? trendChartData.slice().reverse().slice(0, 12).map((row, idx, arr) => {
                   const prev = buildGA4InsightsMonthlySeries(trendSorted, trendsRange.endDate, trendMetric).find(candidate => areGA4InsightsMonthsAdjacent(String(row.month), candidate.month));
-                  const comparable = prev && !row.partial && !prev.partial;
-                  return [`${row.date}${row.partial ? " (partial)" : ""}`, trendFmtValue(row.value), comparable ? trendFmtDelta(row.value, prev!.value) : "Not comparable"];
+                  const previousValue = prev ? trendMetric === "users" ? monthlyUsers(prev.month) : prev.value : null;
+                  const comparable = prev && !row.partial && !prev.partial && row.value !== null && previousValue !== null;
+                  return [`${row.date}${row.partial ? " (partial)" : ""}`, trendFmtValue(row.value), comparable ? trendFmtDelta(row.value!, previousValue!) : "Not comparable"];
                 })
               : (() => {
                   const cur = insightsTrendMode === "7d" ? trendsRollups.last7 : trendsRollups.last30;
                   const prior = insightsTrendMode === "7d" ? trendsRollups.prior7 : trendsRollups.prior30;
-                  const getVal = (rollup: any) => trendMetric === "users" ? sevenDayUsers(rollup) : trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
+                  const getVal = (rollup: any) => trendMetric === "users" ? periodUsers(rollup) : trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
                   const curVal = getVal(cur), priorVal = getVal(prior);
                   return [
                     [`${cur.startDate} to ${cur.endDate}`, cur.complete && curVal !== null ? trendFmtValue(curVal) : "Unavailable", cur.complete && prior.complete && curVal !== null && priorVal !== null ? trendFmtDelta(curVal, priorVal) : "Not comparable"],
@@ -9721,8 +9725,6 @@ export default function GA4Metrics() {
                                   onClick={() => {
                                     setInsightsDailyShowMore(false);
                                     setInsightsTrendMode(mode);
-                                    // Users is non-additive — only accurate in daily mode
-                                    if (mode !== "daily" && mode !== "7d" && insightsTrendMetric === "users") setInsightsTrendMetric("sessions");
                                   }}
                                 >
                                   {mode === "daily" ? "Daily" : mode === "monthly" ? "Monthly" : mode}
@@ -9738,7 +9740,7 @@ export default function GA4Metrics() {
                                 onChange={(event) => setInsightsTrendMetric(event.target.value)}
                               >
                                 <option value="sessions">Sessions</option>
-                                {(insightsTrendMode === "daily" || insightsTrendMode === "7d") && <option value="users">Users</option>}
+                                <option value="users">Users</option>
                                 <option value="conversions">Conversions</option>
                                 <option value="revenue">Revenue</option>
                                 <option value="pageviews">Page Views</option>
@@ -9802,7 +9804,7 @@ export default function GA4Metrics() {
                                   }
                                   const missingLabel = missing.map(([start, end]) => start === end ? formatReportingDateLabel(start) : `${formatReportingDateLabel(start)} – ${formatReportingDateLabel(end)}`).join("; ");
                                   return <li key={label}><span className="font-medium">{label} {rollingWindow.days} days: {formatReportingDateLabel(window.startDate)} – {formatReportingDateLabel(window.endDate)}.</span>{" "}
-                                    {missing.length ? `Missing dates in this app: ${missingLabel}.` : insightsTrendMetric === "users" && sevenDayUsers(window) === null ? "The GA4 Users total for this exact period is unavailable." : "Complete daily data."}
+                                    {missing.length ? `Missing dates in this app: ${missingLabel}.` : insightsTrendMetric === "users" && periodUsers(window) === null ? "The GA4 Users total for this exact period is unavailable." : "Complete daily data."}
                                   </li>;
                                 })}
                               </ul>
@@ -9832,7 +9834,7 @@ export default function GA4Metrics() {
                           const metric = insightsTrendMetric;
                           const isRate = metric === "engagementRate";
                           const isMoney = metric === "revenue";
-                          const allMonthlySeries = buildGA4InsightsMonthlySeries(sorted, trendsRange.endDate, metric);
+                          const allMonthlySeries = buildGA4InsightsMonthlySeries(sorted, trendsRange.endDate, metric).map(row => ({ ...row, value: metric === "users" ? monthlyUsers(row.month) : row.value }));
                           const monthlySeries = allMonthlySeries.filter(row => row.month >= trendsRange.startDate.slice(0, 7) && row.month <= trendsRange.endDate.slice(0, 7));
 
                           // Build chart data depending on mode
@@ -9858,12 +9860,12 @@ export default function GA4Metrics() {
                             chartData = monthlySeries.map((row, i) => {
                               const [y, m] = row.month.split("-");
                               const monthLabel = new Date(Number(y), Number(m) - 1).toLocaleString("en-US", { month: "short" }) + " '" + y.slice(2);
-                              return { date: monthLabel, value: Number(row.value.toFixed(2)), idx: i, partial: row.partial };
+                              return { date: monthLabel, value: row.value === null ? null : Number(row.value.toFixed(2)), idx: i, partial: row.partial };
                             });
                           } else {
                             const windowDays = insightsTrendMode === "7d" ? 7 : 30;
                             const completeRows = (insightsTrendMode === "7d" ? complete7DayRows : complete30DayRows).filter(row => trendsVisibleDate(row.date));
-                            // Non-rate metrics show rolling window totals (sum of last N days).
+                            // Additive metrics sum days; Users uses GA4's distinct window total.
                             // engagementRate is already a weighted average of engaged sessions over sessions.
                             let cursor = String(completeRows[0]?.date || "");
                             const finalDate = String(completeRows[completeRows.length - 1]?.date || "");
@@ -9871,7 +9873,7 @@ export default function GA4Metrics() {
                               const rollup = buildGA4InsightsCalendarRollup(sorted, cursor, windowDays);
                               let val: number | null = 0;
                               if (metric === "users") {
-                                val = sevenDayUsers(rollup);
+                                val = periodUsers(rollup);
                               } else if (isRate) {
                                 val = rollup.engagementRate;
                               } else {
@@ -9887,6 +9889,7 @@ export default function GA4Metrics() {
                           }
 
                           const fmtValue = (v: any) => {
+                            if (v === null) return "Unavailable";
                             const n = Number(v || 0);
                             if (isMoney) return formatMoney(n);
                             if (isRate) return formatPct(n);
@@ -9913,7 +9916,7 @@ export default function GA4Metrics() {
                                       <p className="font-medium text-foreground">Not enough data for a {chartWindowDays}-day chart in this month.</p>
                                       <p>Each point needs {chartWindowDays} consecutive days of data.</p>
                                       {firstCompleteDate > trendsRange.endDate && <p>The first complete {chartWindowDays}-day period ends on {new Date(firstCompleteDate + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}.</p>}
-                                    </> : <p>{metric === "users" && insightsTrendMode === "7d" ? "GA4 seven-day Users totals are unavailable for this month." : "No recorded values are available for this chart in the selected period."}</p>}
+                                    </> : <p>{metric === "users" ? insightsTrendMode === "7d" ? "GA4 seven-day Users totals are unavailable for this month." : "GA4 Users totals for the selected periods are unavailable." : "No recorded values are available for this chart in the selected period."}</p>}
                                   </div>
                                 ) : (
                                 <ResponsiveContainer width="100%" height="100%">
@@ -10052,8 +10055,8 @@ export default function GA4Metrics() {
 
                                         return monthValues.map((row, i) => {
                                           const prev = allMonthlySeries.find(candidate => areGA4InsightsMonthsAdjacent(row.ym, candidate.month));
-                                          const comparable = Boolean(prev && !row.isPartial && !prev.partial);
-                                          const delta = comparable && prev ? deltaPct(row.value, prev.value) : 0;
+                                          const comparable = Boolean(prev && !row.isPartial && !prev.partial && row.value !== null && prev.value !== null);
+                                          const delta = comparable && prev ? deltaPct(row.value!, prev.value!) : 0;
                                           return (
                                             <tr key={row.ym} className="border-b last:border-b-0">
                                               <td className="p-3">
@@ -10101,7 +10104,7 @@ export default function GA4Metrics() {
                                         }
 
                                         const getVal = (rollup: typeof cur) => {
-                                          if (metric === "users") return sevenDayUsers(rollup);
+                                          if (metric === "users") return periodUsers(rollup);
                                           if (metric === "engagementRate") return rollup.engagementRate;
                                           return (rollup as any)[metric] || 0;
                                         };

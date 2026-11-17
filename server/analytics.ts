@@ -1546,9 +1546,22 @@ export class GoogleAnalytics4Service {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(rollingUsersStartDate) || rollingUsersStartDate > endDate) throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
       const earliest = [startDate, rollingUsersStartDate].sort().at(-1)!;
       const rolling: Array<{ startDate: string; endDate: string; users: number }> = [];
-      for (let to = new Date(Date.parse(earliest) + 6 * 86400000).toISOString().slice(0, 10); to <= endDate; to = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10)) {
-        const from = new Date(Date.parse(to) - 6 * 86400000).toISOString().slice(0, 10);
-        if (!windows.some(window => window.startDate === from && window.endDate === to)) rolling.push({ startDate: from, endDate: to, users: 0 });
+      const seen = new Set(windows.map(window => `${window.startDate}/${window.endDate}`));
+      const addWindow = (from: string, to: string) => {
+        const key = `${from}/${to}`;
+        if (!seen.has(key)) { seen.add(key); rolling.push({ startDate: from, endDate: to, users: 0 }); }
+      };
+      for (const days of [7, 30]) {
+        for (let to = new Date(Date.parse(earliest) + (days - 1) * 86400000).toISOString().slice(0, 10); to <= endDate; to = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10)) {
+          addWindow(new Date(Date.parse(to) - (days - 1) * 86400000).toISOString().slice(0, 10), to);
+        }
+      }
+      // Calendar months include the imported portion of the first/current month.
+      for (let from = earliest; from <= endDate;) {
+        const [year, month] = from.split('-').map(Number);
+        const next = new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
+        addWindow(from, [new Date(Date.parse(next) - 86400000).toISOString().slice(0, 10), endDate].sort()[0]);
+        from = next;
       }
       // Named date ranges let GA4 deduplicate each window independently (four per request).
       for (let i = 0; i < rolling.length; i += 4) {

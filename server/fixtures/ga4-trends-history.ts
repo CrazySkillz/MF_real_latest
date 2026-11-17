@@ -10,6 +10,9 @@ const daily = Array.from({length:75}, (_, i) => {
 });
 const windows = Array.from({length:69},(_,i)=>({startDate:date(i),endDate:date(i+6),
   users:new Set(daily.slice(i,i+7).flatMap((row,offset)=>Array.from({length:row.users},(_,user)=>((i+offset)*3+user)%45))).size}));
+for (const [from, to] of [...Array.from({length:46}, (_, i) => [i, i + 29]), [0,26], [27,57], [58,74]]) {
+  windows.push({startDate:date(from),endDate:date(to),users:new Set(daily.slice(from,to+1).flatMap((row,offset)=>Array.from({length:row.users},(_,user)=>((from+offset)*3+user)%45))).size});
+}
 const synthetic = {propertyId:'542352127',startDate:date(0),endDate:date(74),daily,windows};
 export default process.env.GA4_TRENDS_REAL_FIXTURE
   ? JSON.parse(readFileSync(process.env.GA4_TRENDS_REAL_FIXTURE,'utf8')) as typeof synthetic

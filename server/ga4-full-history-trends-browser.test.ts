@@ -95,6 +95,17 @@ it('navigates every metric across the full imported GA4 history without writes o
             await ui(page.getByTestId('insights-trends-empty')).toContainText('The first complete 30-day period ends on 3 October 2026.');
             await ui(page.getByTestId('insights-trends-chart').locator('svg')).toHaveCount(0);
           } else await ui(page.getByTestId('insights-trends-empty')).toHaveCount(0);
+          if(mode==='Monthly') {
+            const september=trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^September 2026/})}).getByRole('cell').last();
+            await ui(september).toContainText('September 2026 is incomplete. Missing dates: Sep 1, 2026 – Sep 3, 2026 (before imported history starts Sep 4, 2026).');
+            await ui(september).toContainText('August 2026 is incomplete. Missing dates: Aug 1, 2026 – Aug 31, 2026');
+            if(selected>='2026-10-31') {
+              const october=trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^October 2026/})}).getByRole('cell').last();
+              await ui(october).toContainText('September 2026 is incomplete. Missing dates: Sep 1, 2026 – Sep 3, 2026');
+              await ui(october).not.toContainText('October 2026 is incomplete');
+            }
+            if(selected==='2026-11-17') await ui(trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^November 2026/})}).getByRole('cell').last()).toContainText('November 2026 is incomplete. Missing dates: Nov 18, 2026 – Nov 30, 2026 (after data cutoff Nov 17, 2026).');
+          }
           if(mode==='7d'||mode==='30d') {
             const days=mode==='7d'?7:30;
             const start=new Date(Date.parse(selected)-(days-1)*86400000).toISOString().slice(0,10);
@@ -148,8 +159,10 @@ it('navigates every metric across the full imported GA4 history without writes o
     await ui(trends.getByRole('table')).toContainText('The GA4 Users total for this exact period is unavailable.');
     windows=windows.map(w=>w.startDate==='2026-11-01'&&w.endDate==='2026-11-17'?{...w,users:0}:w);
     await open();await trends.getByRole('button',{name:'Monthly',exact:true}).click();
-    await ui(trends.getByRole('row').filter({hasText:'October 2026'})).toContainText('Unavailable');
-    await ui(trends.getByRole('row').filter({hasText:'October 2026'})).toContainText('Not comparable');
+    const octoberRow=trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^October 2026/})});
+    await ui(octoberRow).toContainText('Unavailable');
+    await ui(octoberRow).toContainText('Not comparable');
+    await ui(octoberRow).toContainText('October 2026: the GA4 Users total is unavailable.');
     const monthly=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
     expect(monthly.find((r:any)=>r.date==="Oct '26").value).toBeNull();
     expect(monthly.find((r:any)=>r.date==="Nov '26").value).toBe(0);
@@ -161,6 +174,20 @@ it('navigates every metric across the full imported GA4 history without writes o
     await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 30 days: Oct 19, 2026 – Nov 17, 2026. Missing dates in this app: Oct 31, 2026; Nov 3, 2026 – Nov 4, 2026.');
     await ui(note.getByRole('listitem').nth(1)).toHaveText('Previous 30 days: Sep 19, 2026 – Oct 18, 2026. Complete daily data.');
     await ui(note).not.toContainText('fall outside');
+    await trends.getByRole('button',{name:'Monthly',exact:true}).click();
+    const november=trends.getByRole('row').filter({has:page.getByRole('cell').filter({hasText:/^November 2026/})}).getByRole('cell').last();
+    await ui(november).toContainText('Nov 3, 2026 – Nov 4, 2026 (no stored data)');
+    await ui(november).toContainText('Nov 18, 2026 – Nov 30, 2026 (after data cutoff Nov 17, 2026)');
+    await ui(november).toContainText('October 2026 is incomplete. Missing dates: Oct 31, 2026 (no stored data).');
+    await ui(november).not.toContainText('Nov 1, 2026');
+    // Complete adjacent months keep their existing zero-baseline and percentage behavior.
+    daily=Array.from({length:61},(_,i)=>({ ...real.daily[0],date:new Date(Date.UTC(2026,9,1+i)).toISOString().slice(0,10),sessions:i<31?0:1,users:i<31?0:1 }));
+    cutoff='2026-11-30';windows=[{startDate:'2026-10-01',endDate:'2026-10-31',users:0},{startDate:'2026-11-01',endDate:cutoff,users:15}];
+    await open();await trends.getByRole('button',{name:'Monthly',exact:true}).click();
+    await ui(november).toHaveText('No % baseline');
+    daily=daily.map(r=>({...r,sessions:1,users:1}));windows[0]={...windows[0],users:10};
+    await open();await trends.getByRole('button',{name:'Monthly',exact:true}).click();
+    await ui(november).toHaveText('+50.0%');
     // The same explanation is present when no complete rolling window exists anywhere.
     daily=real.daily.filter(r=>r.date<='2026-09-06');cutoff='2026-09-06';
     await open();

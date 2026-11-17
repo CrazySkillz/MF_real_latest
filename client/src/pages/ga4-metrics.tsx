@@ -2194,6 +2194,28 @@ export default function GA4Metrics() {
   const trendsRollups = useMemo(() => buildGA4InsightsRollups(trendsDailyRows, trendsRange.endDate), [trendsDailyRows, trendsRange.endDate]);
   const periodUsers = (rollup: { startDate: string | null; endDate: string | null; complete: boolean }) => getGA4InsightsPeriodUsers(ga4InsightsDailyResp?.usersComparisons, rollup);
   const monthlyUsers = (month: string) => getGA4InsightsMonthlyUsers(ga4InsightsDailyResp?.usersComparisons, trendsMonthlyRows, month, trendsImportStartDate, trendsRange.endDate);
+  const monthlyComparisonReasons = (month: string): string[] => {
+    const recorded = new Set(trendsMonthlyRows.filter(row => row.date <= trendsRange.endDate).map(row => row.date));
+    const [year, number] = month.split("-").map(Number);
+    const priorMonth = new Date(Date.UTC(year, number - 2, 1)).toISOString().slice(0, 7);
+    return [month, priorMonth].flatMap(ym => {
+      const [y, m] = ym.split("-").map(Number);
+      const label = new Date(Date.UTC(y, m - 1, 1)).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+      const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+      const missing: Array<{ start: string; end: string; reason: string }> = [];
+      for (let date = ym + "-01"; date && date <= end; date = addGA4InsightsDateDays(date, 1) || "") {
+        if (recorded.has(date)) continue;
+        const reason = date < trendsImportStartDate ? `before imported history starts ${formatReportingDateLabel(trendsImportStartDate)}`
+          : date > trendsDataThroughDate ? `after data cutoff ${formatReportingDateLabel(trendsDataThroughDate)}`
+          : date > trendsRange.endDate ? `after selected date ${formatReportingDateLabel(trendsRange.endDate)}` : "no stored data";
+        const last = missing.at(-1);
+        if (last && last.reason === reason && addGA4InsightsDateDays(last.end, 1) === date) last.end = date;
+        else missing.push({ start: date, end: date, reason });
+      }
+      if (missing.length) return [`${label} is incomplete. Missing dates: ${missing.map(({ start, end, reason }) => `${formatReportingDateLabel(start)}${start === end ? "" : ` – ${formatReportingDateLabel(end)}`} (${reason})`).join("; ")}.`];
+      return insightsTrendMetric === "users" && monthlyUsers(ym) === null ? [`${label}: the GA4 Users total is unavailable.`] : [];
+    });
+  };
 
   const {
     data: ga4Breakdown,
@@ -10069,7 +10091,10 @@ export default function GA4Metrics() {
                                               <td className="p-3 text-right">
                                                 {comparable && prev && prev.value !== 0
                                                   ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span>
-                                                  : <span className="text-xs text-muted-foreground/70">{comparable ? "No % baseline" : "Not comparable"}</span>}
+                                                  : <div className="text-xs text-muted-foreground/70 max-w-sm ml-auto space-y-1">
+                                                      <div>{comparable ? "No % baseline" : "Not comparable"}</div>
+                                                      {!comparable && monthlyComparisonReasons(row.ym).map(reason => <p key={reason}>{reason}</p>)}
+                                                    </div>}
                                               </td>
                                             </tr>
                                           );

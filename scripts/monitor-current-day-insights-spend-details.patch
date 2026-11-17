@@ -6219,3 +6219,38 @@ index fa01a4d7..3f01164f 100644
                            <p className="w-full text-xs text-muted-foreground">{insightsTrendMode === "monthly" ? "Up to 12 calendar months" : "Selected month"}: {trendsRange.startDate} → {trendsRange.endDate}. Comparisons follow the selected date.</p>
                          </div>
                          {/* Trends line chart */}
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 3f01164f..377bcc25 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -9883,10 +9883,21 @@ export default function GA4Metrics() {
+                           const deltaColor = (n: number) => n >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
+                           const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+                           const deltaPct = calculateGA4InsightsDeltaPct;
++                          const chartWindowDays = insightsTrendMode === "7d" ? 7 : insightsTrendMode === "30d" ? 30 : null;
++                          const firstCompleteDate = String((insightsTrendMode === "7d" ? complete7DayRows : complete30DayRows)[0]?.date || "");
+ 
+                           return (
+                             <>
+                               <div className="h-64" data-testid="insights-trends-chart" data-chart-series={JSON.stringify(chartData)}>
++                                {!chartData.some(point => point.value !== null) ? (
++                                  <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground" role="status" data-testid="insights-trends-empty">
++                                    {chartWindowDays && chartData.length === 0 ? <>
++                                      <p className="font-medium text-foreground">Not enough data for a {chartWindowDays}-day chart in this month.</p>
++                                      <p>Each point needs {chartWindowDays} consecutive days of data.</p>
++                                      {firstCompleteDate > trendsRange.endDate && <p>The first complete {chartWindowDays}-day period ends on {new Date(firstCompleteDate + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}.</p>}
++                                    </> : <p>{metric === "users" && insightsTrendMode === "7d" ? "GA4 seven-day Users totals are unavailable for this month." : "No recorded values are available for this chart in the selected period."}</p>}
++                                  </div>
++                                ) : (
+                                 <ResponsiveContainer width="100%" height="100%">
+                                   {insightsTrendMode === "monthly" ? (
+                                     <BarChart data={chartData} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
+@@ -9937,6 +9948,7 @@ export default function GA4Metrics() {
+                                     </LineChart>
+                                   )}
+                                 </ResponsiveContainer>
++                                )}
+                               </div>
+                               {insightsTrendMode === "daily" && (
+                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">

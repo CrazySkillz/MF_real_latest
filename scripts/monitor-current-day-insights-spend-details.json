@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "b63e532eeb7cc1b295d216868e9b4133a09bf4e3",
+  "expectedCommit": "92922a60b9759b3d468db112f3ed027d08bc8415",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",

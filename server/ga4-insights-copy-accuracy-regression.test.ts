@@ -51,7 +51,7 @@ describe("GA4 Insights copy accuracy", () => {
     expect(page).toContain('ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? `Data through: ${trendsDataThroughLabel}`');
     expect(scheduledPdf).toContain('ga4ProvisionalNotice(payload.reportingMode) ? `Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}`');
     expect(page).not.toContain("7d/30d show rolling daily averages");
-    expect(page).toContain("Non-rate metrics show rolling window totals (sum of last N days)");
+    expect(page).toContain("Additive metrics sum days; Users uses GA4's distinct window total.");
     expect(page).toContain("engagementRate is already a weighted average");
     expect(scheduledPdf).not.toContain("7d/30d show rolling daily averages");
   });

@@ -126,7 +126,7 @@ History gates:
 - `7d`: each complete rolling window requires 7 consecutive recorded calendar days, including explicit zero rows; the selected-date comparison requires two complete adjacent 7-day windows
 - `30d`: each complete rolling window requires 30 consecutive recorded calendar days, including explicit zero rows; the selected-date comparison requires two complete adjacent 30-day windows
 - `Monthly`: one calendar month can be shown and is marked partial when incomplete; only two adjacent complete calendar months are compared
-- Monthly table comparisons explain each incomplete current/prior calendar month and group its missing dates into exact ranges. The explanation distinguishes dates before the initial import, after the published cutoff/selected date, and gaps inside stored history. Missing native Users totals are identified separately. Recorded zero days remain available; all totals, percentage formulas and comparison eligibility rules are unchanged. This is browser-table wording only.
+- Monthly table comparisons show one concise reason, checking the current month before the previous month: `Not comparable: November 2026 is incomplete.` A complete October correctly names an incomplete September. Missing native Users totals are identified separately. Recorded zero days remain available; all totals, percentage formulas and comparison eligibility rules are unchanged. This is browser-table wording only.
 
 ### Data Summary
 

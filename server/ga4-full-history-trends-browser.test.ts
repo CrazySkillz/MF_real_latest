@@ -47,6 +47,20 @@ it('navigates every metric across the full imported GA4 history without writes o
   };
   try {
     const trends=await open();
+    const navigation=page.getByTestId('insights-trends-navigation');
+    await ui(navigation.getByRole('button')).toHaveText(['Previous month','Next month']);
+    await ui(navigation.locator('input')).toHaveCount(0);
+    let visibleMonth='2026-11';
+    const selectMonth=async(selected:string)=>{
+      const target=selected.slice(0,7);
+      while(visibleMonth!==target){
+        const forward=visibleMonth<target;
+        await navigation.getByRole('button',{name:forward?'Next month':'Previous month',exact:true}).click();
+        const [year,month]=visibleMonth.split('-').map(Number);
+        visibleMonth=new Date(Date.UTC(year,month-1+(forward?1:-1),1)).toISOString().slice(0,7);
+      }
+      await ui(navigation).toContainText('→ '+selected);
+    };
     const cards=await page.getByTestId('insights-executive-financials').innerText();
     const findings=await page.getByTestId('insights-trackers').getAttribute('data-findings');
     const metrics=['sessions','users','conversions','revenue','pageviews','engagementRate'];
@@ -58,8 +72,7 @@ it('navigates every metric across the full imported GA4 history without writes o
       for(const metric of metrics.filter(m=>m!=='users'||['Daily','7d'].includes(mode))) {
         await page.getByTestId('insights-trend-metric').selectOption(metric);
         for(const selected of ['2026-11-17','2026-10-31','2026-09-30']) {
-          await trends.getByLabel('Trends through date').fill(selected);
-          await ui(trends.getByLabel('Trends through date')).toHaveValue(selected);
+          await selectMonth(selected);
           const series=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
           const rangeMonth=selected.slice(0,7);
           const expected=mode==='Monthly' ? ['2026-09','2026-10','2026-11'].filter(m=>m<=rangeMonth).map(m=>{
@@ -96,16 +109,15 @@ it('navigates every metric across the full imported GA4 history without writes o
     }
     await trends.getByRole('button',{name:'7d',exact:true}).click();
     await page.getByTestId('insights-trend-metric').selectOption('users');
-    await trends.getByRole('button',{name:'Back to latest',exact:true}).click();
+    await selectMonth('2026-11-17');
+    await ui(navigation.getByRole('button',{name:'Next month',exact:true})).toBeDisabled();
     await ui(trends.getByRole('row').filter({hasText:'Last 7 days'})).toContainText(String(real.windows.at(-1)!.users));
-    await trends.getByRole('button',{name:'Previous month',exact:true}).click();
-    await ui(trends.getByLabel('Trends through date')).toHaveValue('2026-10-31');
-    await trends.getByRole('button',{name:'Previous month',exact:true}).click();
+    await selectMonth('2026-10-31');
+    await selectMonth('2026-09-30');
     await ui(trends.getByRole('button',{name:'Previous month',exact:true})).toBeDisabled();
-    await trends.getByLabel('Trends through date').fill('2026-09-17');
-    await ui(trends.getByRole('table')).toContainText('2026-09-11 → 2026-09-17');
-    await ui(trends.getByRole('table')).toContainText(String(real.windows.find(w=>w.endDate==='2026-09-17')!.users));
-    await ui(trends.getByRole('table')).toContainText(String(real.windows[0].users));
+    await ui(trends.getByRole('table')).toContainText('2026-09-24 → 2026-09-30');
+    await ui(trends.getByRole('table')).toContainText(String(real.windows.find(w=>w.endDate==='2026-09-30')!.users));
+    await ui(trends.getByRole('table')).toContainText(String(real.windows.find(w=>w.endDate==='2026-09-23')!.users));
     expect(await page.getByTestId('insights-executive-financials').innerText()).toBe(cards);
     expect(await page.getByTestId('insights-trackers').getAttribute('data-findings')).toBe(findings);
     expect(errors).toEqual([]);

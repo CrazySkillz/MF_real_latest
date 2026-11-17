@@ -9762,11 +9762,7 @@ export default function GA4Metrics() {
                         )}
                         <div className="flex flex-wrap items-center gap-2" data-testid="insights-trends-navigation">
                           <Button variant="outline" size="sm" disabled={!trendsRange.previousDate} onClick={() => setInsightsTrendDate(trendsRange.previousDate)}>Previous month</Button>
-                          <label className="flex items-center gap-2 text-sm">Through
-                            <Input aria-label="Trends through date" type="date" className="w-auto" min={trendsImportStartDate} max={trendsDataThroughDate} value={trendsRange.endDate} onChange={e => setInsightsTrendDate(e.target.value)} />
-                          </label>
-                          <Button variant="outline" size="sm" disabled={!trendsRange.nextDate} onClick={() => setInsightsTrendDate(trendsRange.nextDate)}>Next month</Button>
-                          <Button variant="ghost" size="sm" disabled={!insightsTrendDate} onClick={() => setInsightsTrendDate("")}>Back to latest</Button>
+                          <Button variant="outline" size="sm" disabled={!trendsRange.nextDate} onClick={() => setInsightsTrendDate(trendsRange.nextDate === trendsDataThroughDate ? "" : trendsRange.nextDate)}>Next month</Button>
                           <p className="w-full text-xs text-muted-foreground">{insightsTrendMode === "monthly" ? "Up to 12 calendar months" : "Selected month"}: {trendsRange.startDate} → {trendsRange.endDate}. Comparisons follow the selected date.</p>
                         </div>
                         {/* Trends line chart */}

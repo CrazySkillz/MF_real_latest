@@ -16,7 +16,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('&insightsChannelAttribution=1&readOnly=1`');
     expect(page).toContain('"ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly');
     expect(page).toContain('activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"');
-    expect(page).toContain('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency, "monthly"]');
+    expect(page).toContain('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency, "full-trends-history"]');
     expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');
     expect(page).toContain('String(data?.propertyId || "") !== String(selectedGA4PropertyId)');
@@ -55,7 +55,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('(ga4DailyResp as any)?.refreshIsStale === true');
     expect(page).toContain('trafficState: schedulerSynchronizedTrafficState');
     expect(page).toContain('financialConversionsState: snapshotConversionsKpiInputState');
-    expect(page).toContain('const findingsDailyRows = trendsDailyRows;');
+    expect(page).toContain('const findingsDailyRows = useMemo(() => ga4InsightsTimeSeries.filter');
+    expect(page).toContain('row.date >= trendsCampaignStartDate && row.date <= trendsDataThroughDate');
     expect(page).not.toContain('id: "info:scheduler_no_history"');
     expect(page).toContain('id: "integrity:analytics_history_unavailable"');
     expect(page).toContain("if (!resp.ok) throw new Error(json?.message || json?.error || \"Failed to fetch KPI analytics history\")");
@@ -78,14 +79,13 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("? complete7DayRows.length > 0");
     expect(page).toContain("const complete30DayRows = insightsTrendMode === \"30d\"");
     expect(page).toContain(": complete30DayRows.length > 0");
-    expect(page).toContain("Latest adjacent {windowDays}-day comparison is unavailable.");
+    expect(page).toContain("Adjacent {windowDays}-day comparison ending {trendsRange.endDate} is unavailable.");
     expect(page).not.toContain('data-testid="insights-7d-historical-coverage"');
     expect(page).toContain('chartData.length === 1 ? { r: 3 } : false');
-    expect(page).toContain("const finalDate = String(sorted[sorted.length - 1]?.date || \"\");");
+    expect(page).toContain("const finalDate = trendsRange.endDate;");
     expect(page).not.toContain("const finalDate = String(trendsDataThroughDate || sorted[sorted.length - 1]?.date || \"\");");
-    expect(page).toContain("const initialDate = finalDate ? addGA4InsightsDateDays(finalDate, -29) || \"\" : \"\";");
-    expect(page).toContain("const firstImportedDate = sorted.find((row: any) => {");
-    expect(page).toContain("let cursor = String(firstImportedDate?.date || initialDate);");
+    expect(page).toContain("const initialDate = trendsRange.startDate;");
+    expect(page).toContain("let cursor = initialDate;");
     expect(page).not.toContain("const dailyChartRows = sorted.slice(-30);");
     expect(page).toContain('data-testid="insights-daily-chart-coverage"');
     expect(page.indexOf('data-testid="insights-daily-chart-coverage"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));

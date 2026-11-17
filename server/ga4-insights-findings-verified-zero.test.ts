@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { addGA4InsightsDateDays, buildGA4InsightsRollups } from "../shared/ga4-insights";
 
 describe("GA4 Insights findings use scheduler-synchronized campaign daily history", () => {
-  it("uses the chart's campaign-start zero-filled rows without scheduler-freshness gates", () => {
+  it("preserves findings campaign-start rows independently of the browsed Trends history", () => {
     const content = readFileSync(join(process.cwd(), "client/src/pages/ga4-metrics.tsx"), "utf8");
     const source = ts.createSourceFile("ga4-metrics.tsx", content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const findingMemo = content.slice(content.indexOf("const insights = useMemo<InsightItem[]>(() => {"), content.indexOf("const insightsActionDescription = useMemo"));
@@ -37,7 +37,9 @@ describe("GA4 Insights findings use scheduler-synchronized campaign daily histor
     visit(source);
     expect(selectedRollups).toBe("findingsRollups");
     expect(content).toContain("buildGA4InsightsRollups(findingsDailyRows, trendsDataThroughDate)");
-    expect(findingsRows).toBe("trendsDailyRows");
+    const evaluateRows = new Function("useMemo", "ga4InsightsTimeSeries", "trendsCampaignStartDate", "trendsDataThroughDate", ts.transpileModule(`return ${findingsRows};`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText);
+    expect(evaluateRows((fn:any)=>fn(), [{date:'2026-09-04'},{date:'2026-10-04'},{date:'2026-10-05'}], '2026-10-04', '2026-10-04')).toEqual([{date:'2026-10-04'}]);
+    expect(findingsRows).not.toContain("trendsRange");
     expect(sevenDayReady && threeDayReady && correlatedDrop && topChannelReady).toBeTruthy();
     expect(findingMemo).not.toContain("ga4TrendsCoverage");
     expect(findingMemo).not.toContain("trendsRefreshIsStale");

@@ -13,6 +13,7 @@ if (start < 0 || end < 0) throw new Error("Trends rolling-chart body not found")
 const body = transpileModule(`
   function chart(sorted: any[], insightsTrendMode: "7d" | "30d") {
     const metric = "sessions";
+    const trendsVisibleDate = (date: string) => date.slice(0,7) === sorted[0].date.slice(0,7);
     const isRate = false;
     const complete7DayRows = sorted.filter((row) => buildGA4InsightsCalendarRollup(sorted, row.date, 7).complete);
     const complete30DayRows = sorted.filter((row) => buildGA4InsightsCalendarRollup(sorted, row.date, 30).complete);

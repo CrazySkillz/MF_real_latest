@@ -480,7 +480,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
               withGA4DailyStage("overview_campaign_breakdown", provider.getAcquisitionBreakdown(
                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 10000, campaignFilter,
                 reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
-                overviewDailyTraffic,
+                { ...overviewDailyTraffic, campaignId: currentCampaignId, rollingUsersStartDate: getReportingDateWindow(60, c.reportingTimeZone, now).startDate },
               )),
               withGA4DailyStage("overview_landing_pages", provider.getLandingPagesReport(
                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
@@ -621,7 +621,8 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     const date = getLatestCompleteReportingDate(config.reportingTimeZone, now);
     let due = getExpectedScheduledRefreshAt(date, config, now);
     if (due && due > now) due = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(date, -1), config, now);
-    if (trigger === "manual") due = now;
+    // Bootstrap must not replay an older scheduled slot after a newer manual publication.
+    if (trigger === "manual" || trigger === "snapshot_bootstrap") due = now;
     if (due) opts = { ...opts, workDueAt: due, refreshFinancialSources: true };
   }
   // Claims are acquired here, never accepted from a caller or request body.

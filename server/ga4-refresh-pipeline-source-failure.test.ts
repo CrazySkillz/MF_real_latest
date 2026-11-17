@@ -323,12 +323,32 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     it.each([
       ["America/New_York", "2026-10-16T00:00:00.000Z"],
       ["Asia/Tokyo", "2026-10-16T05:00:00.000Z"],
-    ])("uses %s's latest due slot for a targeted recovery claim", async (reportingTimeZone, due) => {
+    ])("uses %s's latest due slot for a targeted scheduled claim", async (reportingTimeZone, due) => {
       campaigns[0].reportingTimeZone = reportingTimeZone;
-      await runGA4DailyRefreshPipelineForTrigger("snapshot_bootstrap", { campaignId: "campaign-a", refreshFinancialSources: true });
+      await runGA4DailyRefreshPipelineForTrigger("scheduled", { campaignId: "campaign-a", refreshFinancialSources: true });
       expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledExactlyOnceWith("campaign-a", "campaign-a-owner",
         new Date(due), reportingDate, { suppressAlerts: false });
       expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", "work-a", "owner-token", "complete", 120_000, expect.any(String));
+    });
+    it("recovers confirmation after a later alert-suppressed manual refresh without replaying the old scheduled slot", async () => {
+      const manualAt = new Date("2026-10-16T06:01:00Z");
+      vi.setSystemTime(manualAt);
+      await runGA4DailyRefreshPipelineForTrigger("manual", { campaignId: "campaign-a", suppressAlerts: true });
+      expect(markers.has("campaign-a")).toBe(false);
+      vi.clearAllMocks();
+      // Storage rejects work older than the newer completed manual request.
+      mocks.storage.ensureGA4RefreshWork.mockImplementation(async (_id, _owner, due) => due <= manualAt
+        ? undefined : { id: "work-a", status: "pending", scope: { kind: "scheduled" }, suppressAlerts: false });
+      const recoveredAt = new Date("2026-10-16T06:05:00Z");
+      vi.setSystemTime(recoveredAt);
+      await runGA4DailyRefreshPipelineForTrigger("snapshot_bootstrap", { campaignId: "campaign-a", refreshFinancialSources: true });
+      expect(mocks.storage.ensureGA4RefreshWork).toHaveBeenCalledExactlyOnceWith("campaign-a", "campaign-a-owner", recoveredAt, reportingDate, { suppressAlerts: false });
+      expect(mocks.kpiAlerts).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate, { refreshScope: scope });
+      expect(mocks.benchmarkAlerts).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate, { refreshScope: scope });
+      expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", "work-a", "owner-token", "complete", 120_000, recoveredAt.toISOString());
+      expect(markers.get("campaign-a")).toBe(`ga4_aligned_refresh_v1:${reportingDate}:${recoveredAt.toISOString()}`);
+      expect(mocks.storage.replaceGA4DailyMetricsWindow.mock.calls.map(([id]) => id)).toEqual(["campaign-a"]);
+      expect(saved.has("campaign-b")).toBe(false);
     });
     it("claims only the due native campaign and leaves the other timezone's work untouched", async () => {
       campaigns[1].reportingTimeZone = "America/New_York";

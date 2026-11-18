@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "309fb75c0e66ae6d243d42aee0587515903129db",
+  "expectedCommit": "be62a03bf741cd8fcf9ec1f4386fdc8ce61721f6",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -49,7 +49,7 @@
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "dc0004e8af8dd8dcad26edee6b1b6ac3933496bcd6005faaf3d4fd7c9c2b2414"
+      "after": "c22fe7082652f1efdab6f952c2a0492cd55a1b701fff063a1811b066c8e39234"
     },
     {
       "path": "client/src/pages/reports.tsx",
@@ -64,7 +64,7 @@
     {
       "path": "server/analytics.ts",
       "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
-      "after": "6819c3e1e9573787eb39b835dd62780bb3941339998ca13dae5c7230ca47f8a4"
+      "after": "cb7e49ce3823ada79b5013700ab6d0891997637fe85367a4e3781814dfc7d67b"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -74,7 +74,7 @@
     {
       "path": "server/ga4-daily-scheduler.ts",
       "before": "48373a06062b31e6089d6d8ffdc1f6b77b0806a251543608751e1130da25d37c",
-      "after": "f02bed0087c333c8c9d865e12a0eb874ed12c4a6248dfc00f98b0b0fd121e60e"
+      "after": "cd647dfacd770369354f66dbb565b043e89e875f82debd017621789955537b87"
     },
     {
       "path": "server/ga4-kpi-benchmark-jobs.ts",
@@ -104,7 +104,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "4e1a0c3438463120b60d605406fd4bccf8d06eea66b3ecf8e8f3f645f3ec304b"
+      "after": "512ef7f9e66f4bb7611396a3abb2da346417edd009b0fe8a9e4b8b32aac4f8dc"
     },
     {
       "path": "server/scheduler.ts",
@@ -179,7 +179,7 @@
     {
       "path": "shared/schema.ts",
       "before": "34b22e5c75cb3e263df57b0e2b7a2cfea6ec353a68ff2a0654f7815277ebe731",
-      "after": "a5a0bfb9c53008be256edc0f5054775405f6d3994cca3ea4ad2b9a5d4459d2ff"
+      "after": "80036260831caaa4c5510f28a31d87a6ad4605df2518af0ba03a725ffd12cd6b"
     },
     {
       "path": "client/src/components/HubSpotRevenueWizard.tsx",
@@ -204,10 +204,8 @@
     {
       "path": "shared/ga4-insights.ts",
       "before": "a149fd7be1992b616474d370b33681bb4576ab0ccdc996854fa9f94dfbfbbf84",
-      "after": "03b53748b34688852c1b960d7d56972e024e65d0c1fb0e71117e2a0d9f8eb4c3"
+      "after": "94d2905ed2f443ae5811d43f87e7b12c8dc9e9480f0fd18b007df102b9a2095c"
     }
   ],
-  "equivalentCommits": [
-    "87fcd402ac7bf83d0cd069c35f991edacc52db88"
-  ]
+  "equivalentCommits": []
 }

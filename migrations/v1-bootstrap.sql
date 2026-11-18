@@ -26,6 +26,39 @@ CREATE TABLE "service_account_resource_grants" (
 	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
+CREATE TABLE "ga4_client_service_accounts" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"owner_id" text NOT NULL,
+	"client_id" text NOT NULL,
+	"property_id" text NOT NULL,
+	"email" text NOT NULL,
+	"google_unique_id" text,
+	"verified_at" timestamp,
+	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE "google_ads_client_service_accounts" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"owner_id" text NOT NULL,
+	"client_id" text NOT NULL,
+	"customer_id" text NOT NULL,
+	"email" text NOT NULL,
+	"google_unique_id" text,
+	"verified_at" timestamp,
+	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE "google_sheets_client_service_accounts" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"owner_id" text NOT NULL,
+	"client_id" text NOT NULL,
+	"spreadsheet_id" text NOT NULL,
+	"email" text NOT NULL,
+	"google_unique_id" text,
+	"verified_at" timestamp,
+	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
 CREATE TABLE "campaigns" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"owner_id" text,
@@ -90,6 +123,7 @@ CREATE TABLE "ga4_connections" (
 	"access_token" text,
 	"refresh_token" text,
 	"service_account_key" text,
+	"service_account_binding_id" varchar,
 	"method" text NOT NULL,
 	"property_name" text,
 	"website_url" text,
@@ -149,13 +183,15 @@ CREATE TABLE "ga4_daily_metrics" (
 	"sessions" integer DEFAULT 0 NOT NULL,
 	"engaged_sessions" integer,
 	"pageviews" integer DEFAULT 0 NOT NULL,
-	"conversions" integer DEFAULT 0 NOT NULL,
-	"revenue" numeric(15, 2) DEFAULT '0' NOT NULL,
+	"conversions" double precision DEFAULT 0 NOT NULL,
+	"revenue" numeric DEFAULT '0' NOT NULL,
 	"engagement_rate" numeric(7, 4) DEFAULT '0',
 	"revenue_metric" text,
 	"is_simulated" boolean DEFAULT false NOT NULL,
 	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "ga4_daily_metrics_conversions_finite" CHECK ("ga4_daily_metrics"."conversions" > '-Infinity'::double precision AND "ga4_daily_metrics"."conversions" < 'Infinity'::double precision),
+	CONSTRAINT "ga4_daily_metrics_revenue_finite" CHECK ("ga4_daily_metrics"."revenue" > -10000000000000 AND "ga4_daily_metrics"."revenue" < 10000000000000)
 );
 
 CREATE TABLE "ga4_overview_snapshots" (
@@ -189,11 +225,12 @@ CREATE TABLE "spend_records" (
 	"campaign_id" text NOT NULL,
 	"spend_source_id" text NOT NULL,
 	"date" text NOT NULL,
-	"spend" numeric(12, 2) NOT NULL,
+	"spend" numeric NOT NULL,
 	"currency" text,
 	"source_type" varchar(50),
 	"sub_campaign_urn" text,
-	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "spend_records_spend_micros" CHECK ("spend_records"."spend" > -10000000000 AND "spend_records"."spend" < 10000000000 AND "spend_records"."spend" = round("spend_records"."spend", 6))
 );
 
 CREATE TABLE "revenue_sources" (
@@ -260,6 +297,7 @@ CREATE TABLE "email_alert_events" (
 );
 
 CREATE TABLE "google_sheets_connections" (
+	"service_account_binding_id" varchar,
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"campaign_id" text NOT NULL,
 	"spreadsheet_id" text NOT NULL,
@@ -457,7 +495,7 @@ CREATE TABLE "google_ads_daily_metrics" (
 	"date" text NOT NULL,
 	"impressions" integer DEFAULT 0 NOT NULL,
 	"clicks" integer DEFAULT 0 NOT NULL,
-	"spend" numeric(10, 2) DEFAULT 0 NOT NULL,
+	"spend" numeric(14, 6) DEFAULT 0 NOT NULL,
 	"conversions" numeric(10, 2) DEFAULT 0 NOT NULL,
 	"conversion_value" numeric(10, 2) DEFAULT 0 NOT NULL,
 	"ctr" numeric(8, 4),
@@ -769,8 +807,8 @@ CREATE TABLE "kpis" (
 	"aggregation_method" text,
 	"calculation_config" jsonb,
 	"target_value" numeric(18, 2) NOT NULL,
-	"current_value" numeric(18, 2) DEFAULT '0',
-	"last_computed_value" numeric(18, 2),
+	"current_value" numeric DEFAULT '0',
+	"last_computed_value" numeric,
 	"unit" text NOT NULL,
 	"description" text,
 	"priority" text DEFAULT 'medium' NOT NULL,
@@ -790,7 +828,9 @@ CREATE TABLE "kpis" (
 	"apply_to" text DEFAULT 'all',
 	"specific_campaign_id" text,
 	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "kpis_current_value_finite" CHECK ("kpis"."current_value" > '-Infinity'::numeric AND "kpis"."current_value" < 'Infinity'::numeric),
+	CONSTRAINT "kpis_last_computed_value_finite" CHECK ("kpis"."last_computed_value" > '-Infinity'::numeric AND "kpis"."last_computed_value" < 'Infinity'::numeric)
 );
 
 CREATE TABLE "kpi_periods" (
@@ -800,30 +840,36 @@ CREATE TABLE "kpi_periods" (
 	"period_end" timestamp NOT NULL,
 	"period_type" text NOT NULL,
 	"period_label" text NOT NULL,
-	"final_value" numeric(10, 2) NOT NULL,
+	"final_value" numeric NOT NULL,
 	"target_value" numeric(10, 2) NOT NULL,
 	"unit" text NOT NULL,
 	"target_achieved" boolean NOT NULL,
 	"performance_percentage" numeric(5, 2),
 	"performance_level" text,
-	"previous_period_value" numeric(10, 2),
-	"change_amount" numeric(10, 2),
+	"previous_period_value" numeric,
+	"change_amount" numeric,
 	"change_percentage" numeric(5, 2),
 	"trend_direction" text,
 	"notes" text,
 	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "kpi_periods_final_value_finite" CHECK ("kpi_periods"."final_value" > '-Infinity'::numeric AND "kpi_periods"."final_value" < 'Infinity'::numeric),
+	CONSTRAINT "kpi_periods_previous_period_value_finite" CHECK ("kpi_periods"."previous_period_value" > '-Infinity'::numeric AND "kpi_periods"."previous_period_value" < 'Infinity'::numeric),
+	CONSTRAINT "kpi_periods_change_amount_finite" CHECK ("kpi_periods"."change_amount" > '-Infinity'::numeric AND "kpi_periods"."change_amount" < 'Infinity'::numeric)
 );
 
 CREATE TABLE "kpi_progress" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"kpi_id" text NOT NULL,
-	"value" numeric(18, 2) NOT NULL,
-	"rolling_average_7d" numeric(18, 2),
-	"rolling_average_30d" numeric(18, 2),
+	"value" numeric NOT NULL,
+	"rolling_average_7d" numeric,
+	"rolling_average_30d" numeric,
 	"trend_direction" text DEFAULT 'neutral',
 	"recorded_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"notes" text
+	"notes" text,
+	CONSTRAINT "kpi_progress_value_finite" CHECK ("kpi_progress"."value" > '-Infinity'::numeric AND "kpi_progress"."value" < 'Infinity'::numeric),
+	CONSTRAINT "kpi_progress_rolling_average_7d_finite" CHECK ("kpi_progress"."rolling_average_7d" > '-Infinity'::numeric AND "kpi_progress"."rolling_average_7d" < 'Infinity'::numeric),
+	CONSTRAINT "kpi_progress_rolling_average_30d_finite" CHECK ("kpi_progress"."rolling_average_30d" > '-Infinity'::numeric AND "kpi_progress"."rolling_average_30d" < 'Infinity'::numeric)
 );
 
 CREATE TABLE "kpi_alerts" (
@@ -832,7 +878,7 @@ CREATE TABLE "kpi_alerts" (
 	"alert_type" text NOT NULL,
 	"severity" text DEFAULT 'medium' NOT NULL,
 	"message" text NOT NULL,
-	"current_value" numeric(18, 2),
+	"current_value" numeric,
 	"target_value" numeric(18, 2),
 	"threshold_value" numeric(18, 2),
 	"is_active" boolean DEFAULT true NOT NULL,
@@ -841,7 +887,8 @@ CREATE TABLE "kpi_alerts" (
 	"email_sent" boolean DEFAULT false NOT NULL,
 	"slack_sent" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "kpi_alerts_current_value_finite" CHECK ("kpi_alerts"."current_value" > '-Infinity'::numeric AND "kpi_alerts"."current_value" < 'Infinity'::numeric)
 );
 
 CREATE TABLE "benchmarks" (
@@ -853,7 +900,7 @@ CREATE TABLE "benchmarks" (
 	"metric" text,
 	"description" text,
 	"benchmark_value" numeric(18, 2) NOT NULL,
-	"current_value" numeric(18, 2) DEFAULT '0',
+	"current_value" numeric DEFAULT '0',
 	"unit" text NOT NULL,
 	"benchmark_type" text DEFAULT 'industry' NOT NULL,
 	"competitor_name" text,
@@ -877,18 +924,20 @@ CREATE TABLE "benchmarks" (
 	"last_alert_sent" timestamp,
 	"last_updated" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "benchmarks_current_value_finite" CHECK ("benchmarks"."current_value" > '-Infinity'::numeric AND "benchmarks"."current_value" < 'Infinity'::numeric)
 );
 
 CREATE TABLE "benchmark_history" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"benchmark_id" text NOT NULL,
-	"current_value" numeric(18, 2) NOT NULL,
+	"current_value" numeric NOT NULL,
 	"benchmark_value" numeric(18, 2) NOT NULL,
 	"variance" numeric(10, 2) NOT NULL,
 	"performance_rating" text DEFAULT 'average' NOT NULL,
 	"recorded_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"notes" text
+	"notes" text,
+	CONSTRAINT "benchmark_history_current_value_finite" CHECK ("benchmark_history"."current_value" > '-Infinity'::numeric AND "benchmark_history"."current_value" < 'Infinity'::numeric)
 );
 
 CREATE TABLE "metric_snapshots" (
@@ -897,18 +946,20 @@ CREATE TABLE "metric_snapshots" (
 	"total_impressions" integer DEFAULT 0 NOT NULL,
 	"total_engagements" integer DEFAULT 0 NOT NULL,
 	"total_clicks" integer DEFAULT 0 NOT NULL,
-	"total_conversions" integer DEFAULT 0 NOT NULL,
+	"total_conversions" double precision DEFAULT 0 NOT NULL,
 	"total_leads" integer DEFAULT 0 NOT NULL,
 	"total_spend" numeric(10, 2) DEFAULT '0' NOT NULL,
 	"metrics" jsonb,
 	"snapshot_type" text DEFAULT 'automatic' NOT NULL,
 	"reporting_date" text,
 	"recorded_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"notes" text
+	"notes" text,
+	CONSTRAINT "metric_snapshots_total_conversions_finite" CHECK ("metric_snapshots"."total_conversions" > '-Infinity'::double precision AND "metric_snapshots"."total_conversions" < 'Infinity'::double precision)
 );
 
 CREATE TABLE "ga4_google_ads_spend_connections" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"service_account_binding_id" varchar,
 	"campaign_id" text NOT NULL,
 	"customer_id" text NOT NULL,
 	"customer_name" text,
@@ -935,7 +986,7 @@ CREATE TABLE "ga4_google_ads_spend_daily_metrics" (
 	"date" text NOT NULL,
 	"impressions" integer DEFAULT 0 NOT NULL,
 	"clicks" integer DEFAULT 0 NOT NULL,
-	"spend" numeric(12, 2) DEFAULT 0 NOT NULL,
+	"spend" numeric(16, 6) DEFAULT 0 NOT NULL,
 	"imported_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
@@ -1160,6 +1211,12 @@ ALTER TABLE "service_account_resource_grants" ADD CONSTRAINT "service_account_re
 ALTER TABLE "campaigns" ADD CONSTRAINT "campaigns_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE no action ON UPDATE no action;
 CREATE UNIQUE INDEX "campaign_creation_requests_scope_unique" ON "campaign_creation_requests" USING btree ("owner_id","client_id","request_id");
 CREATE UNIQUE INDEX "service_account_resource_grants_scope_idx" ON "service_account_resource_grants" USING btree ("owner_id","client_id","provider","resource_id");
+CREATE UNIQUE INDEX "ga4_client_service_accounts_scope_idx" ON "ga4_client_service_accounts" USING btree ("owner_id","client_id","property_id");
+CREATE UNIQUE INDEX "ga4_client_service_accounts_email_idx" ON "ga4_client_service_accounts" USING btree ("email");
+CREATE UNIQUE INDEX "google_ads_client_service_accounts_scope_idx" ON "google_ads_client_service_accounts" USING btree ("owner_id","client_id","customer_id");
+CREATE UNIQUE INDEX "google_ads_client_service_accounts_email_idx" ON "google_ads_client_service_accounts" USING btree ("email");
+CREATE UNIQUE INDEX "google_sheets_client_service_accounts_scope_idx" ON "google_sheets_client_service_accounts" USING btree ("owner_id","client_id","spreadsheet_id");
+CREATE UNIQUE INDEX "google_sheets_client_service_accounts_email_idx" ON "google_sheets_client_service_accounts" USING btree ("email");
 CREATE INDEX "metrics_owner_id_idx" ON "metrics" USING btree ("owner_id");
 CREATE INDEX "integrations_owner_id_idx" ON "integrations" USING btree ("owner_id");
 CREATE INDEX "performance_data_owner_id_idx" ON "performance_data" USING btree ("owner_id");

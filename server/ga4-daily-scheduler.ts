@@ -521,8 +521,8 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
                 ga4DailyStage: "overview_campaign_breakdown",
               });
             }
-            // Daily revenue is stored at cent precision while GA4's aggregate can retain
-            // more source precision. Permit only the maximum per-day quantization delta.
+            // Retained legacy daily rows may still have cent precision until repaired.
+            // Keep their bounded reconciliation allowance; new imports preserve fractions.
             const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
             const breakdownTotals = campaignBreakdown?.totals || {};
             const eventTotals = conversionEvents?.totals || {};

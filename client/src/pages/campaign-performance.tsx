@@ -8,6 +8,7 @@ import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -1468,7 +1469,14 @@ export default function CampaignPerformanceSummary() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <UITooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" aria-label="About Total Users" className="text-muted-foreground cursor-help rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          <Users className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Distinct GA4 users for the displayed dates and selected campaigns.</TooltipContent>
+                    </UITooltip>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
@@ -1477,7 +1485,6 @@ export default function CampaignPerformanceSummary() {
                     <p className="text-xs text-muted-foreground">
                       {overviewSourceLabel(overviewUsers, "Sources unavailable")}
                     </p>
-                    <p className="text-xs text-muted-foreground">Distinct GA4 users for the displayed dates and selected campaigns.</p>
                   </CardContent>
                 </Card>
 

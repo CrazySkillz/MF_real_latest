@@ -6,6 +6,7 @@ const storageMock = vi.hoisted(() => ({
   getGA4OverviewSnapshot: vi.fn(async () => null),
   getCampaign: vi.fn(),
   getGA4Connection: vi.fn(),
+  getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   replaceGA4DailyMetricsWindow: vi.fn(),
   updateGA4ConnectionTokens: vi.fn(),
@@ -77,6 +78,7 @@ describe("Insights Trends zero-day coverage route", () => {
     });
     storageMock.getCampaign.mockResolvedValue(campaign);
     storageMock.getGA4Connection.mockResolvedValue(connection);
+    storageMock.getGA4Connections.mockImplementation(async () => [await storageMock.getGA4Connection()]);
     storageMock.getGA4DailyMetrics.mockResolvedValue(dailyRows);
     ga4ServiceMock.getTrendsDailyPresenceWithToken.mockResolvedValue({ dailyRows, presentDates: dailyRows.map((row) => row.date) });
   });

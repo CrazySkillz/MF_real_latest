@@ -35,7 +35,7 @@ export type PerformanceRecommendedActionsInput = {
   revenueState: GA4KpiInputState;
   spendState: GA4KpiInputState;
   financialConversionsState: GA4KpiInputState;
-  trafficTotals: { sessions: number; users: number; conversions: number; pageviews: number; engagedSessions: number };
+  trafficTotals: { sessions: number; users: number; conversions: number; pageviews: number; engagedSessions: number; conversionRate?: number | null };
   trafficMetricAvailability?: Partial<Record<GA4KpiMetricIdentity, boolean>>;
   financialRevenue: number;
   financialSpend: number;
@@ -158,7 +158,7 @@ export const summarizePerformanceTrafficWindow = (rows: any[], dataThroughDate: 
 
 export const resolvePerformanceLiveMetricValue = (input: {
   item: any;
-  trafficTotals: { sessions: number; users: number; conversions: number; pageviews: number; engagedSessions: number };
+  trafficTotals: { sessions: number; users: number; conversions: number; pageviews: number; engagedSessions: number; conversionRate?: number | null };
   financialRevenue: number;
   financialSpend: number;
   financialConversions: number;

@@ -9686,7 +9686,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Resolve connection(s)
       let connections: any[] = [];
-      if (propertyId) {
+      if (String(req.query.readOnly || "").trim() === "1") {
+        connections = (await storage.getGA4Connections(campaignId, { migrateLegacyTokens: false, resolveRuntimeCredentials: false }))
+          .filter((connection: any) => !propertyId || connection.propertyId === propertyId);
+      } else if (propertyId) {
         const conn = await storage.getGA4Connection(campaignId, propertyId);
         connections = conn ? [conn] : [];
       } else {
@@ -10078,8 +10081,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         normalized ? `properties/${normalized}` : "",
       ].filter(Boolean)));
       let connection: any = null;
+      const savedConnections = validationReadOnly
+        ? await storage.getGA4Connections(campaignId, { migrateLegacyTokens: false, resolveRuntimeCredentials: false }) : null;
       for (const pid of candidates) {
-        connection = await storage.getGA4Connection(campaignId, pid).catch(() => null as any);
+        connection = savedConnections ? savedConnections.find((row: any) => row.propertyId === pid)
+          : await storage.getGA4Connection(campaignId, pid).catch(() => null as any);
         if (connection) break;
       }
       if (!connection || connection.isActive === false || !isSupportedGA4ConnectionMethod(connection.method)) {
@@ -10116,9 +10122,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if ((campaignFilter?.length || 0) > 0) {
+      if (validationReadOnly || (campaignFilter?.length || 0) > 0) {
         const saved = await storage.getGA4OverviewSnapshot(campaignId, String(connection.propertyId));
-        if (!requestedEndDate || endDateUsed === latestCompletedEndDate || saved?.windowEnd === endDateUsed) {
+        if (validationReadOnly || !requestedEndDate || endDateUsed === latestCompletedEndDate || saved?.windowEnd === endDateUsed) {
           const totals = (saved?.campaignBreakdown as any)?.totals;
           const currencyCode = String((saved?.campaignBreakdown as any)?.meta?.currencyCode || "").trim().toUpperCase();
           if (!saved || saved.campaignId !== campaignId || saved.propertyId !== String(connection.propertyId) ||
@@ -16027,7 +16033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
       const validationReadOnly = String(req.query.readOnly || "").trim() === "1";
-      const connections = await storage.getGA4Connections(campaignId, { migrateLegacyTokens: !validationReadOnly });
+      const connections = await storage.getGA4Connections(campaignId, { migrateLegacyTokens: !validationReadOnly, resolveRuntimeCredentials: !validationReadOnly });
       const usableConnections = connections.filter((connection: any) =>
         String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) === 30
       );

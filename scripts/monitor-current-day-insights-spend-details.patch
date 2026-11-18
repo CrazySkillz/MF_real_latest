@@ -7368,3 +7368,19 @@ index a7c4a252..0c55722c 100644
                  </CardHeader>
                  <CardContent>
                    {recentMovementChanges.length === 0 ? (
+
+diff --git a/client/src/pages/campaign-performance.tsx b/client/src/pages/campaign-performance.tsx
+index 0c55722c..3119807c 100644
+--- a/client/src/pages/campaign-performance.tsx
++++ b/client/src/pages/campaign-performance.tsx
+@@ -176,8 +176,8 @@ export default function CampaignPerformanceSummary() {
+   });
+   const performanceGA4FinancialEndDate = performanceGA4SummaryPlaceholder ? "" : String(performanceGA4SummaryResponse?.dataThroughDate || "");
+   const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading, isError: performanceGA4RevenueError, isPlaceholderData: performanceGA4RevenuePlaceholder } = useQuery<any>({
+-    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, performanceGA4FinancialEndDate, "performance-summary-read-only"],
+-    enabled: !!campaignId && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
++    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, performanceGA4FinancialEndDate, campaign?.currency, "performance-summary-read-only"],
++    enabled: !!campaignId && campaign?.id === campaignId && !!campaign.currency && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
+     placeholderData: keepPreviousData,
+     queryFn: async () => {
+       const [nativeResponse, importedResponse, publishedResponse] = await Promise.all([

@@ -5251,6 +5251,9 @@ export default function GA4Metrics() {
   const dataSummaryHistoryEndDate = String((ga4InsightsDailyResp as any)?.dataThroughDate || "");
   const dataSummaryHistorySessions = Number(dataSummaryHistoryTotals?.sessions);
   const dataSummaryHistoryConversions = Number(dataSummaryHistoryTotals?.conversions);
+  const dataSummaryHistoryConversionRate = typeof dataSummaryHistoryTotals?.conversionRate === "number" &&
+    Number.isFinite(dataSummaryHistoryTotals.conversionRate) && dataSummaryHistoryTotals.conversionRate >= 0 && dataSummaryHistoryTotals.conversionRate <= 100
+    ? dataSummaryHistoryTotals.conversionRate : null;
   const dataSummaryHistoryAvailable = ga4InsightsDailyResp !== undefined &&
     dataSummaryHistoryTotals?.sessions != null && dataSummaryHistoryTotals?.conversions != null &&
     /^\d{4}-\d{2}-\d{2}$/.test(dataSummaryHistoryStartDate) && /^\d{4}-\d{2}-\d{2}$/.test(dataSummaryHistoryEndDate) &&
@@ -10188,7 +10191,8 @@ export default function GA4Metrics() {
                                 <p className="text-xl font-bold text-foreground mt-1">{formatConversionCredit(dataSummaryHistoryConversions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
                                   {dataSummaryHistorySessions > 0
-                                    ? `${formatPct((dataSummaryHistoryConversions / dataSummaryHistorySessions) * 100)} conversion rate across imported history`
+                                    ? dataSummaryHistoryConversionRate === null ? "Conversion rate unavailable"
+                                      : `${formatPct(dataSummaryHistoryConversionRate)} conversion rate across imported history`
                                     : "Valid zero sessions"}
                                 </p>
                               </div>

@@ -132,7 +132,7 @@ History gates:
 
 ### Data Summary
 
-Shows GA4 Sessions, Conversions, and the resulting conversion rate for the selected campaign/property's imported history.
+Shows GA4 Sessions, Conversions, and GA4's session conversion rate for the selected campaign/property's imported history. The rate uses the saved exact-period `overviewTotals.conversionRate` (GA4 `sessionKeyEventRate`, already converted to percent); it must not be reconstructed by dividing conversion event count by sessions. Missing or invalid native rates show `Conversion rate unavailable`, while valid zero rates remain zero and zero-session history retains its existing explanation.
 
 Current meaning:
 

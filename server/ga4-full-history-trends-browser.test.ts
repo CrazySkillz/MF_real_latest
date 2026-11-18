@@ -21,6 +21,7 @@ it('navigates every metric across the full imported GA4 history without writes o
   page.on('pageerror',error=>errors.push(error.message));
   let windows: typeof real.windows=real.windows;
   let daily=real.daily.map(row=>({...row,engagementRate:Number(row.engagementRate.toFixed(4))})), cutoff=real.endDate;
+  let summaryTotals:any={users:4496,sessions:4472,conversions:440,conversionRate:9.593023255813954};
   await page.clock.install({time:new Date('2026-11-17T09:00:00Z')});
   await context.route('**/*',async route=>{
     const req=route.request(), url=new URL(req.url());
@@ -31,7 +32,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     const property={propertyId:real.propertyId,propertyName:'Mock',isPrimary:true,lookbackDays:30};
     if(url.pathname==='/api/campaigns/a') data={id:'a',name:'Isolated Promo',currency:'EUR',status:'active',reportingTimeZone:'Europe/Amsterdam',ga4CampaignFilter:'["yesop_brand_search","yesop_retargeting"]',createdAt:'2026-10-04T00:00:00Z'};
     else if(url.pathname.startsWith('/api/ga4/check-connection/') || url.pathname.endsWith('/ga4-connections')) data={success:true,connected:true,connections:[property]};
-    else if(url.pathname.endsWith('/ga4-daily')) data={success:true,propertyId:real.propertyId,startDate:real.startDate,overviewStartDate:'2026-09-04',endDate:cutoff,dataThroughDate:cutoff,historyDataThroughDate:cutoff,latestStoredDailyDate:cutoff,reportingTimeZone:'Europe/Amsterdam',refreshStatus:'current',refreshIsStale:false,overviewTotals:{users:4496,sessions:4472,conversions:440},data:daily.slice(-60),trendsData:daily,usersComparisons:windows};
+    else if(url.pathname.endsWith('/ga4-daily')) data={success:true,propertyId:real.propertyId,startDate:real.startDate,overviewStartDate:'2026-09-04',endDate:cutoff,dataThroughDate:cutoff,historyDataThroughDate:cutoff,latestStoredDailyDate:cutoff,reportingTimeZone:'Europe/Amsterdam',refreshStatus:'current',refreshIsStale:false,overviewTotals:summaryTotals,data:daily.slice(-60),trendsData:daily,usersComparisons:windows};
     else if(url.pathname.endsWith('/ga4-publication-status')) data={success:true,publicationToken:'real-saved-fixture',refreshStatus:'current'};
     else if(url.pathname.endsWith('/financial-daily-snapshot')) data={success:true,snapshot:null};
     else if(url.pathname.includes('/platforms/google_analytics/')) data=[];
@@ -64,6 +65,25 @@ it('navigates every metric across the full imported GA4 history without writes o
     };
     const cards=await page.getByTestId('insights-executive-financials').innerText();
     const findings=await page.getByTestId('insights-trackers').getAttribute('data-findings');
+    const summary=page.getByTestId('insights-data-summary');
+    // Native session conversion rate is already a percentage; event count / sessions is a different metric.
+    await ui(summary).toContainText('9.6% conversion rate across imported history');
+    const originalTotals={...summaryTotals};
+    for(const rate of [0,100,null,undefined,'9.593',-1,101,NaN,Infinity]) {
+      summaryTotals={...originalTotals,conversionRate:rate};await open();
+      await ui(page.getByTestId('insights-summary-sessions')).toContainText('4,472');
+      await ui(page.getByTestId('insights-summary-conversions')).toContainText('440');
+      await ui(summary).toContainText(rate===0?'0% conversion rate across imported history':rate===100?'100% conversion rate across imported history':'Conversion rate unavailable');
+      expect(await page.getByTestId('insights-executive-financials').innerText()).toBe(cards);
+      expect(await page.getByTestId('insights-trackers').getAttribute('data-findings')).toBe(findings);
+    }
+    summaryTotals={...originalTotals,sessions:0,conversions:0,conversionRate:0};await open();
+    await ui(summary).toContainText('Valid zero sessions');
+    summaryTotals=null;await open();
+    await ui(summary).toContainText('no usable imported history was returned');
+    await ui(page.getByTestId('insights-summary-conversions')).toHaveCount(0);
+    summaryTotals=originalTotals;await open();
+    await ui(summary).toContainText('9.6% conversion rate across imported history');
     const metrics=['sessions','users','conversions','revenue','pageviews','engagementRate'];
     const value=(rows:any[],metric:string)=>metric==='engagementRate'
       ? rows.reduce((n,r)=>n+r.engagedSessions,0)/Math.max(1,rows.reduce((n,r)=>n+r.sessions,0))*100

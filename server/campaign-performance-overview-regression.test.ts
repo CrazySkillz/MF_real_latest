@@ -313,8 +313,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('if (!responseWindowCoversComparison || performanceGA4SummaryResponse?.providerRefreshWarning) return null;');
     expect(movement).toContain('date < responseStartDate || date > responseEndDate');
     expect(movement).toContain('if (rowsByDate.has(date)) return null;');
-    expect(movement).toContain('continue;');
-    expect(movement).toContain('if (!Number.isFinite(value)) return null;');
+    expect(movement).toContain('if (!row || row[metricName] == null) return null;');
+    expect(movement).toContain('if (!Number.isFinite(value) || value < 0) return null;');
     expect(movement).toContain('const previous = current - recentTotal;');
     expect(movement).toContain('if (!Number.isFinite(previous) || previous < 0) return null;');
     expect(movement).toContain('return { current, previous, baselineDate };');

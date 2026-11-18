@@ -479,7 +479,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-connections?readOnly=1`);
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ validationReadOnly: true });
-    expect(storageMock.getGA4Connections).toHaveBeenLastCalledWith(campaign.id, { migrateLegacyTokens: false });
+    expect(storageMock.getGA4Connections).toHaveBeenLastCalledWith(campaign.id, { migrateLegacyTokens: false, resolveRuntimeCredentials: false });
 
     const status = await fetch(`${baseUrl}/api/ga4/check-connection/${campaign.id}?readOnly=1`);
     expect(status.status).toBe(200);
@@ -948,7 +948,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
   });
 
-  it("propagates read-only mode through breakdown and prevents to-date token refresh persistence", async () => {
+  it("propagates read-only mode through breakdown and prevents to-date provider work", async () => {
     vi.useRealTimers();
     const breakdown = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?dateRange=30days&propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
     expect(breakdown.status).toBe(200);
@@ -968,8 +968,9 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     storageMock.getGA4Connection.mockResolvedValue({ ...connection, refreshToken: "refresh-token" });
     ga4ServiceMock.getTotalsWithRevenue.mockRejectedValueOnce(new Error("GA4 API Error: 401 unauthenticated"));
     const toDate = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1&endDate=2026-07-30");
-    expect(toDate.status).toBe(401);
-    expect(await toDate.json()).toMatchObject({ validationReadOnly: true, error: "TOKEN_EXPIRED" });
+    expect(toDate.status).toBe(503);
+    expect(await toDate.json()).toMatchObject({ success: false, error: "Saved GA4 financial inputs are not available for this reporting window." });
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
     expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });

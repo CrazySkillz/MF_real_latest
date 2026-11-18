@@ -182,6 +182,7 @@ Current meaning:
 - the page header remains stable while loading and freshness details stay in the relevant finding cards
 - tracker counts and finding cards remain withheld during the initial multi-query load, then render once from settled inputs; background refetches retain the last stable query data
 - normal Insights page loads read the overlapping 30-day and 60-day stored daily windows without replacing them; only the daily scheduler writes GA4 daily history
+- volume-decline recommendations use general rules over the exact saved adjacent 7-day or 3-day windows: prioritize explicit trailing zero activity, fewer days with sessions, and single-day revenue concentration. Raw fields must be present, valid, unique by date, complete and reconciled with the finding totals; missing fields never become zero-activity evidence. Conversion-efficiency context requires exact saved native session rates and sessions in both windows. Recommendations ask whether inactivity was expected and condition measurement/scope checks on that answer; they do not infer budget, SEO, creative or order-value causes. Finding thresholds, identities, severities, counters and Trends calculations remain independent of this wording.
 - recommendations are phrased as checks, not proven causal conclusions
 
 ## Certification Boundary

@@ -46,7 +46,7 @@ import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4DistinctUsers, getGA4PeriodTraffic } from "@shared/ga4-traffic-window";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { getGA4KpiReportingWindowLabel, resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
-import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, getGA4InsightsSessionConversionRate, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState } from "@shared/ga4-insights";
+import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, buildGA4InsightsDeclineRecommendation, getGA4InsightsSessionConversionRate, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState } from "@shared/ga4-insights";
 
 interface Campaign {
   id: string;
@@ -6005,7 +6005,7 @@ export default function GA4Metrics() {
           severity: "high",
           title: `Sessions dropped ${Math.abs(sessionsDelta7).toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatNumber(findingRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(findingRollups.prior7.sessions)}.${channelNote}`,
-          recommendation: "Check paid campaign budgets, SEO ranking changes, and whether any traffic sources were paused or reduced.",
+          recommendation: buildGA4InsightsDeclineRecommendation('sessions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last7, findingRollups.prior7, ga4InsightsDailyResp?.usersComparisons),
         });
       }
 
@@ -6018,7 +6018,7 @@ export default function GA4Metrics() {
           severity: "high",
           title: `Revenue dropped ${Math.abs(revenueDelta7).toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatMoney(findingRollups.last7.revenue)} vs prior 7d: ${formatMoney(findingRollups.prior7.revenue)}.${channelNote}`,
-          recommendation: "Check conversion rate, AOV, and high-value campaign changes first.",
+          recommendation: buildGA4InsightsDeclineRecommendation('revenue', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last7, findingRollups.prior7, ga4InsightsDailyResp?.usersComparisons),
         });
       }
 
@@ -6028,7 +6028,7 @@ export default function GA4Metrics() {
           severity: "high",
           title: `Conversions dropped ${Math.abs(convDelta7).toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatConversionCredit(findingRollups.last7.conversions)} vs prior 7d: ${formatConversionCredit(findingRollups.prior7.conversions)}.`,
-          recommendation: "Check conversion event configuration, landing page changes, and traffic quality by source/medium.",
+          recommendation: buildGA4InsightsDeclineRecommendation('conversions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last7, findingRollups.prior7, ga4InsightsDailyResp?.usersComparisons),
         });
       }
 
@@ -6106,7 +6106,7 @@ export default function GA4Metrics() {
           severity: "medium",
           title: "Traffic and revenue fell in the latest 3 days",
           description: `Imported GA4 data for ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${formatNumber(findingRollups.last3.sessions)} sessions, ${formatConversionCredit(findingRollups.last3.conversions)} conversions, ${formatMoney(findingRollups.last3.revenue)} revenue. Prior ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${formatNumber(findingRollups.prior3.sessions)} sessions, ${formatConversionCredit(findingRollups.prior3.conversions)} conversions, ${formatMoney(findingRollups.prior3.revenue)} revenue. Conversion rate was ${formatPct(crA3)} vs ${formatPct(crB3)}; the newest day had ${formatNumber(latestDay?.sessions || 0)} sessions.${hasNativeAndImportedRevenue ? " These daily revenue amounts exclude separate imported revenue included in Total Revenue." : ""}`,
-          recommendation: "Check that the newest day's GA4 import is complete. If it is, compare traffic-source volume and campaign delivery between these periods before changing budgets; conversion rate did not fall.",
+          recommendation: buildGA4InsightsDeclineRecommendation('sessions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last3, findingRollups.prior3, ga4InsightsDailyResp?.usersComparisons),
         });
       }
 
@@ -6116,7 +6116,7 @@ export default function GA4Metrics() {
           severity: "medium",
           title: `Sessions dropped ${Math.abs(sessionsDelta3).toFixed(1)}% (3-day comparison)`,
           description: `Last 3d: ${formatNumber(findingRollups.last3.sessions)} vs prior 3d: ${formatNumber(findingRollups.prior3.sessions)}. Short window — monitor for confirmation.`,
-          recommendation: "Check campaign budgets and traffic sources for recent changes.",
+          recommendation: buildGA4InsightsDeclineRecommendation('sessions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last3, findingRollups.prior3, ga4InsightsDailyResp?.usersComparisons),
         });
       }
 
@@ -6126,7 +6126,7 @@ export default function GA4Metrics() {
           severity: "medium",
           title: `Revenue dropped ${Math.abs(revenueDelta3).toFixed(1)}% (3-day comparison)`,
           description: `Last 3d: ${formatMoney(findingRollups.last3.revenue)} vs prior 3d: ${formatMoney(findingRollups.prior3.revenue)}. Short window — monitor for confirmation.`,
-          recommendation: "Check conversion rate and AOV changes.",
+          recommendation: buildGA4InsightsDeclineRecommendation('revenue', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last3, findingRollups.prior3, ga4InsightsDailyResp?.usersComparisons),
         });
       }
 
@@ -6136,7 +6136,7 @@ export default function GA4Metrics() {
           severity: "medium",
           title: `Conversions dropped ${Math.abs(convDelta3).toFixed(1)}% (3-day comparison)`,
           description: `Last 3d: ${formatConversionCredit(findingRollups.last3.conversions)} vs prior 3d: ${formatConversionCredit(findingRollups.prior3.conversions)}. Short window — monitor for confirmation.`,
-          recommendation: "Check conversion event configuration and traffic quality.",
+          recommendation: buildGA4InsightsDeclineRecommendation('conversions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last3, findingRollups.prior3, ga4InsightsDailyResp?.usersComparisons),
         });
       }
 

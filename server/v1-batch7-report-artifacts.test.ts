@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { jsPDF } from "jspdf";
-import { buildGA4InsightsRollups, getGA4InsightsSessionConversionRate } from "../shared/ga4-insights";
+import { buildGA4InsightsDeclineRecommendation, buildGA4InsightsRollups, getGA4InsightsSessionConversionRate } from "../shared/ga4-insights";
 import { formatConversionCredit } from "../shared/metric-math";
 
 const hostRequire = createRequire(import.meta.url);
@@ -103,7 +103,7 @@ function clientTrendTitles(rows: any[]) {
   const usersComparisons = [findingRollups.last7, findingRollups.prior7, findingRollups.last3, findingRollups.prior3].map(r => ({ startDate: r.startDate, endDate: r.endDate, sessionKeyEventRate: r.cr / 100 }));
   const env = { out, findingRollups, sevenDayComparisonReady: findingRollups.last7.complete && findingRollups.prior7.complete, findingChannelAnalysis: null,
     formatNumber: String, formatPct: (v: number) => `${v}%`, formatMoney: (v: number) => `EUR ${v}`, formatConversionCredit, hasNativeAndImportedRevenue: false,
-    ga4InsightsDailyResp: { usersComparisons }, getGA4InsightsSessionConversionRate, historyCoverageLabel: "completed", historyRowsLabel: "missing days are unavailable", ...thresholds };
+    ga4InsightsDailyResp: { usersComparisons, trendsData: findingRollups.rows }, buildGA4InsightsDeclineRecommendation, getGA4InsightsSessionConversionRate, historyCoverageLabel: "completed", historyRowsLabel: "missing days are unavailable", ...thresholds };
   new Function(...Object.keys(env), ts.transpileModule(branch, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText)(...Object.values(env));
   return out.map(item => item.title).sort();
 }

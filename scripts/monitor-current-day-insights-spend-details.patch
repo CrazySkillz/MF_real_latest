@@ -7131,3 +7131,30 @@ index 67df91e8..11cdec2a 100644
                                {insightsTrendMode === "daily" && (
                                  <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
                                    Missing stored dates are unavailable; recorded zero values remain 0.
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 11cdec2a..37cf255e 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -9773,7 +9773,10 @@ export default function GA4Metrics() {
+                         <div className="flex flex-wrap items-center gap-2" data-testid="insights-trends-navigation">
+                           <Button variant="outline" size="sm" disabled={!trendsRange.previousDate} onClick={() => setInsightsTrendDate(trendsRange.previousDate)}>Previous month</Button>
+                           <Button variant="outline" size="sm" disabled={!trendsRange.nextDate} onClick={() => setInsightsTrendDate(trendsRange.nextDate === trendsDataThroughDate ? "" : trendsRange.nextDate)}>Next month</Button>
+-                          <p className="w-full text-xs text-muted-foreground">{insightsTrendMode === "monthly" ? "Up to 12 calendar months" : "Selected month"}: {trendsRange.startDate} → {trendsRange.endDate}. Comparisons follow the selected date.</p>
++                          <p className="w-full text-xs text-muted-foreground">{insightsTrendMode === "monthly" ? "Up to 12 calendar months" : "Selected month"}: {trendsRange.startDate} → {trendsRange.endDate}</p>
++                          <p className="w-full min-h-5 text-xs text-muted-foreground" data-testid="insights-trend-mode-description">
++                            {insightsTrendMode === "daily" ? "Daily day-by-day values" : insightsTrendMode === "monthly" ? "Monthly compares calendar months" : `${insightsTrendMode} rolling totals`}
++                          </p>
+                         </div>
+                         {/* Trends line chart */}
+                         {(!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
+@@ -9982,9 +9985,6 @@ export default function GA4Metrics() {
+                                 </ResponsiveContainer>
+                                 )}
+                               </div>
+-                              <p className="min-h-5 text-xs text-muted-foreground" data-testid="insights-trend-mode-description">
+-                                {insightsTrendMode === "daily" ? "Daily shows day-by-day values." : insightsTrendMode === "monthly" ? "Monthly compares calendar months." : `${insightsTrendMode} shows rolling totals.`}
+-                              </p>
+                               {insightsTrendMode === "daily" && (
+                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
+                                   Missing stored dates are unavailable; recorded zero values remain 0.

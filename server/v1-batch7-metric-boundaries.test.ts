@@ -1,3 +1,4 @@
+import { normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import ts from "typescript";
@@ -92,7 +93,7 @@ describe("Batch 7 metric display and data-state boundaries", () => {
   });
   it("V1-077 missing/unrequested dates do not manufacture complete comparisons", () => {
     const rows = Array.from({ length: 14 }, (_, i) => daily(addGA4InsightsDateDays("2026-10-05", i)!));
-    const build = (data: any[]) => binding(ga4Page, "trendsDailyRows", { useMemo: (fn: any) => fn(), ga4InsightsTimeSeries: data, trendsCampaignStartDate: "2026-07-01", trendsDataThroughDate: "2026-10-18", addGA4InsightsDateDays });
+    const build = (data: any[]) => binding(ga4Page, "trendsDailyRows", { useMemo: (fn: any) => fn(), ga4InsightsDailyResp: { trendsData: data }, normalizeGA4InsightsDailyRows, trendsImportStartDate: "2026-07-01", trendsDataThroughDate: "2026-10-18", addGA4InsightsDateDays });
     expect(build([])).toEqual([]);
     const missing = build(rows.filter(row => !["2026-10-13", "2026-10-14"].includes(row.date)));
     expect(missing).toHaveLength(12);

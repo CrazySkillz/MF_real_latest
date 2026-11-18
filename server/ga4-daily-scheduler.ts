@@ -480,7 +480,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
               withGA4DailyStage("overview_campaign_breakdown", provider.getAcquisitionBreakdown(
                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 10000, campaignFilter,
                 reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
-                { ...overviewDailyTraffic, campaignId: currentCampaignId, rollingUsersStartDate: getReportingDateWindow(60, c.reportingTimeZone, now).startDate },
+                { ...overviewDailyTraffic, campaignId: currentCampaignId, rollingUsersStartDate: overviewStartDate },
               )),
               withGA4DailyStage("overview_landing_pages", provider.getLandingPagesReport(
                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
@@ -521,8 +521,8 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
                 ga4DailyStage: "overview_campaign_breakdown",
               });
             }
-            // Daily revenue is stored at cent precision while GA4's aggregate can retain
-            // more source precision. Permit only the maximum per-day quantization delta.
+            // Retained legacy daily rows may still have cent precision until repaired.
+            // Keep their bounded reconciliation allowance; new imports preserve fractions.
             const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
             const breakdownTotals = campaignBreakdown?.totals || {};
             const eventTotals = conversionEvents?.totals || {};

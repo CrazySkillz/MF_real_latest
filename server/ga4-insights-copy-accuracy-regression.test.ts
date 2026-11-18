@@ -32,7 +32,7 @@ describe("GA4 Insights copy accuracy", () => {
     expect(scheduledPdf).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
   });
 
-  it("uses the requested Trends bullets while preserving rolling metric semantics", () => {
+  it("uses selected-mode chart guidance while preserving rolling metric semantics", () => {
     const page = readClient();
     const scheduledPdf = readScheduledPdf();
     const sectionStart = page.indexOf('<CardTitle className="text-lg">Trends</CardTitle>');
@@ -41,9 +41,11 @@ describe("GA4 Insights copy accuracy", () => {
 
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
-    expect(section).toContain("<li>Daily shows day-by-day values.</li>");
-    expect(section).toContain("<li>7d/30d show rolling totals.</li>");
-    expect(section).toContain("<li>Monthly compares calendar months.</li>");
+    expect(section).not.toContain("Comparisons follow the selected date.");
+    expect(section).toContain('data-testid="insights-trend-mode-description"');
+    expect(section).toContain("Daily day-by-day values");
+    expect(section).toContain("${insightsTrendMode} rolling totals");
+    expect(section).toContain("Monthly compares calendar months");
     expect(section).not.toContain("Completed-day cutoff");
     expect(page).toContain("Completed-day cutoff: ${trendsDataThroughLabel}");
     expect(scheduledPdf).toContain("Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");
@@ -51,7 +53,7 @@ describe("GA4 Insights copy accuracy", () => {
     expect(page).toContain('ga4ProvisionalNotice(ga4DailyResp?.reportingMode) ? `Data through: ${trendsDataThroughLabel}`');
     expect(scheduledPdf).toContain('ga4ProvisionalNotice(payload.reportingMode) ? `Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}`');
     expect(page).not.toContain("7d/30d show rolling daily averages");
-    expect(page).toContain("Non-rate metrics show rolling window totals (sum of last N days)");
+    expect(page).toContain("Additive metrics sum days; Users uses GA4's distinct window total.");
     expect(page).toContain("engagementRate is already a weighted average");
     expect(scheduledPdf).not.toContain("7d/30d show rolling daily averages");
   });

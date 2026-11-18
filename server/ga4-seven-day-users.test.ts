@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ga4Service } from './analytics';
-import { buildGA4InsightsCalendarRollup, getGA4InsightsSevenDayUsers } from '../shared/ga4-insights';
+import { buildGA4InsightsCalendarRollup, getGA4InsightsSevenDayUsers, getGA4InsightsPeriodUsers, getGA4InsightsMonthlyUsers } from '../shared/ga4-insights';
 import { getGA4DistinctUsers } from '../shared/ga4-traffic-window';
 
 const start = '2026-10-01', end = '2026-10-18';
@@ -56,8 +56,39 @@ describe('GA4 seven-day distinct Users', () => {
     const snapshot = { windowStart: start, windowEnd: end, campaignBreakdown: { meta: { propertyId: '123', distinctUsers: result } } };
     expect(getGA4DistinctUsers(snapshot, '2026-10-01', '2026-10-07')).toBe(1);
   });
+  it('requests every seven-day Users window from June without a 60-day truncation', async () => {
+    fixture();
+    const result = await ga4Service.getDistinctUsersWithToken('123', 'isolated', '2026-06-01', end, ['brand'], undefined, false, '2026-06-01');
+    const seven = result.windows.filter(w => Date.parse(w.endDate) - Date.parse(w.startDate) === 6 * 86400000);
+    expect(seven).toHaveLength(134);
+    expect(seven.find(w => w.startDate === '2026-06-01')).toMatchObject({endDate:'2026-06-07',users:0});
+    expect(seven.find(w => w.startDate === '2026-10-01')).toMatchObject({endDate:'2026-10-07',users:1});
+  });
   it.each(['missing', 'duplicate', 'negative', 'invalid', 'truncated', 'threshold', 'sampled'])('rejects %s provider results before publication', async failure => {
     fixture(failure); await expect(fetchWindows()).rejects.toThrow();
+  });
+  it('fetches all 30-day and calendar totals with returning users counted once and no duplicate periods', async () => {
+    fixture();
+    const result = await ga4Service.getDistinctUsersWithToken('123', 'isolated', '2026-09-04', '2026-11-17', ['brand'], undefined, false, '2026-09-04');
+    const thirty = result.windows.filter(w => Date.parse(w.endDate) - Date.parse(w.startDate) === 29 * 86400000);
+    expect(thirty).toHaveLength(46);
+    expect(new Set(result.windows.map(w => w.startDate + '/' + w.endDate)).size).toBe(result.windows.length);
+    expect(getGA4InsightsPeriodUsers(result.windows, buildGA4InsightsCalendarRollup(result.daily, '2026-10-30', 30))).toBe(2);
+    expect(result.daily.reduce((n, r) => n + r.users, 0)).toBe(3);
+    for (const [month, users] of [['2026-09',0],['2026-10',2],['2026-11',0]] as const) {
+      expect(getGA4InsightsMonthlyUsers(result.windows,result.daily,month,'2026-09-04','2026-11-17')).toBe(users);
+    }
+    expect(getGA4InsightsMonthlyUsers(result.windows,result.daily.filter(r=>r.date!=='2026-10-02'),'2026-10','2026-09-04','2026-11-17')).toBeNull();
+    for (const windows of [[], result.windows.filter(w=>w.endDate!=='2026-10-31'), [...result.windows,...result.windows]]) {
+      expect(getGA4InsightsMonthlyUsers(windows,result.daily,'2026-10','2026-09-04','2026-11-17')).toBeNull();
+    }
+  });
+  it('keeps leap-year, year-boundary and partial calendar month periods exact', async () => {
+    fixture();
+    const result = await ga4Service.getDistinctUsersWithToken('123','isolated','2023-12-20','2024-03-03',['brand'],undefined,false,'2023-12-20');
+    for(const [startDate,endDate] of [['2023-12-20','2023-12-31'],['2024-01-01','2024-01-31'],['2024-02-01','2024-02-29'],['2024-03-01','2024-03-03']]) {
+      expect(result.windows.filter(w=>w.startDate===startDate&&w.endDate===endDate)).toEqual([{startDate,endDate,users:0}]);
+    }
   });
   it('keeps absent, duplicate, invalid and incomplete windows unavailable', () => {
     const rollup = { startDate: start, endDate: '2026-10-07', complete: true };

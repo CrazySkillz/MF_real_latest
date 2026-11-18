@@ -46,7 +46,7 @@ import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4DistinctUsers, getGA4PeriodTraffic } from "@shared/ga4-traffic-window";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { getGA4KpiReportingWindowLabel, resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
-import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
+import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, getGA4InsightsSessionConversionRate, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState } from "@shared/ga4-insights";
 
 interface Campaign {
   id: string;
@@ -5313,14 +5313,9 @@ export default function GA4Metrics() {
       ? (topRevenueChannel.revenue / totalRevenue * 100)
       : 0;
 
-    const significantChannels = channels.filter(
-      ch => totalSessions > 0 && ch.sessions >= totalSessions * 0.05
-    );
-    const withCR = significantChannels.map(ch => ({
-      ...ch,
-      cr: ch.sessions > 0 ? (ch.conversions / ch.sessions) * 100 : 0,
-    }));
-    const lowestCRChannel = selectUniqueLowestGA4InsightsConversionRateChannel(withCR);
+    // The saved attribution rows have no exact-period native session conversion rates.
+    // Keep other channel context, but never rank rates using conversion-event counts.
+    const lowestCRChannel = null as { label: string; cr: number } | null;
 
     return {
       totalSessions,
@@ -5444,7 +5439,7 @@ export default function GA4Metrics() {
     return "Medium";
   };
 
-  const findingsDailyRows = useMemo(() => ga4InsightsTimeSeries.filter((row: any) => trendsCampaignStartDate && row.date >= trendsCampaignStartDate && row.date <= trendsDataThroughDate), [ga4InsightsTimeSeries, trendsCampaignStartDate, trendsDataThroughDate]);
+  const findingsDailyRows = trendsDailyRows;
   const findingsRollups = useMemo(
     () => buildGA4InsightsRollups(findingsDailyRows, trendsDataThroughDate),
     [findingsDailyRows, trendsDataThroughDate],
@@ -5966,16 +5961,16 @@ export default function GA4Metrics() {
     if (sevenDayComparisonReady) {
       const a = findingRollups.last7;
       const b = findingRollups.prior7;
-      const crA = a.sessions > 0 ? (a.conversions / a.sessions) * 100 : 0;
-      const crB = b.sessions > 0 ? (b.conversions / b.sessions) * 100 : 0;
-      const crDeltaPct = crB > 0 ? ((crA - crB) / crB) * 100 : 0;
+      const crA = getGA4InsightsSessionConversionRate(ga4InsightsDailyResp?.usersComparisons, a);
+      const crB = getGA4InsightsSessionConversionRate(ga4InsightsDailyResp?.usersComparisons, b);
+      const crDeltaPct = crA !== null && crB !== null && crB > 0 ? ((crA - crB) / crB) * 100 : 0;
 
-      if (crB > 0 && crDeltaPct <= ANOMALY_CR_DROP_PCT) {
+      if (crA !== null && crB !== null && crB > 0 && crDeltaPct <= ANOMALY_CR_DROP_PCT) {
         out.push({
           id: "anomaly:cr:wow",
           severity: "high",
           title: `Conversion rate dropped ${Math.abs(crDeltaPct).toFixed(1)}% week-over-week`,
-          description: `Last 7d ${formatPct(crA)} vs prior 7d ${formatPct(crB)} (GA4 sessions/conversions).`,
+          description: `Last 7d ${formatPct(crA)} vs prior 7d ${formatPct(crB)} (GA4 session conversion rate).`,
           recommendation:
             "Check landing page changes, conversion event configuration, and traffic mix by source/medium. If paid traffic is involved, validate targeting/creative changes.",
         });
@@ -6069,11 +6064,11 @@ export default function GA4Metrics() {
       }
     } else if (findingRollups.last3.complete && findingRollups.prior3.complete) {
       // Short-window fallback: 3d vs 3d with higher thresholds to reduce false positives
-      const crA3 = findingRollups.last3.cr;
-      const crB3 = findingRollups.prior3.cr;
-      const crDelta3 = crB3 > 0 ? ((crA3 - crB3) / crB3) * 100 : 0;
+      const crA3 = getGA4InsightsSessionConversionRate(ga4InsightsDailyResp?.usersComparisons, findingRollups.last3);
+      const crB3 = getGA4InsightsSessionConversionRate(ga4InsightsDailyResp?.usersComparisons, findingRollups.prior3);
+      const crDelta3 = crA3 !== null && crB3 !== null && crB3 > 0 ? ((crA3 - crB3) / crB3) * 100 : 0;
 
-      if (crB3 > 0 && crDelta3 <= ANOMALY_SHORT_CR_DROP_PCT) {
+      if (crA3 !== null && crB3 !== null && crB3 > 0 && crDelta3 <= ANOMALY_SHORT_CR_DROP_PCT) {
         out.push({
           id: "anomaly:cr:3d",
           severity: "medium",
@@ -6103,7 +6098,7 @@ export default function GA4Metrics() {
         sessionsDelta3 <= ANOMALY_SHORT_SESSIONS_DROP_PCT && findingRollups.prior3.sessions > 0 &&
         revenueDelta3 <= ANOMALY_SHORT_REVENUE_DROP_PCT && findingRollups.prior3.revenue > 0 &&
         convDelta3 <= ANOMALY_SHORT_CONVERSIONS_DROP_PCT && findingRollups.prior3.conversions > 0 &&
-        crA3 >= crB3;
+        crA3 !== null && crB3 !== null && crA3 >= crB3;
       if (correlatedVolumeDrop) {
         const latestDay = findingRollups.rows.find((row) => row.date === findingRollups.last3.endDate);
         out.push({
@@ -6162,7 +6157,7 @@ export default function GA4Metrics() {
         severity: "low",
         title: "Trend signals need more history",
         description: `Current 7-day window ${findingRollups.last7.startDate} to ${findingRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${findingRollups.prior7.startDate} to ${findingRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior window ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
-        recommendation: "Check the daily refresh. Comparisons require recorded data for every day in both windows.",
+        recommendation: "Check the saved import start and missing dates above. Comparisons require recorded data for every day in both windows; recorded zero days count as available.",
       });
     }
 

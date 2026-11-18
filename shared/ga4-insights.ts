@@ -1,5 +1,13 @@
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "./ga4-kpi-metric-identity";
 
+// Event counts are not converting-session counts; only an exact saved GA4 rate is usable.
+export const getGA4InsightsSessionConversionRate = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
+  if (!rollup.complete || !rollup.startDate || !rollup.endDate || rollup.startDate > rollup.endDate || !Array.isArray(windows)) return null;
+  const matches = windows.filter(row => row?.startDate === rollup.startDate && row?.endDate === rollup.endDate);
+  const rate = matches.length === 1 ? matches[0].sessionKeyEventRate : null;
+  return typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate <= 1 ? rate * 100 : null;
+};
+
 // Multi-day Users must use GA4's exact window; daily distinct counts are not additive.
 export const getGA4InsightsPeriodUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
   if (!rollup.complete || !rollup.startDate || !rollup.endDate || rollup.startDate > rollup.endDate || !Array.isArray(windows)) return null;

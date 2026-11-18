@@ -19,7 +19,7 @@ it('navigates every metric across the full imported GA4 history without writes o
   const context=await browser.newContext({viewport:{width:1400,height:1050},serviceWorkers:'block'});
   const page=await context.newPage(), errors:string[]=[];
   page.on('pageerror',error=>errors.push(error.message));
-  let windows: typeof real.windows=real.windows;
+  let windows: any[]=real.windows;
   let daily=real.daily.map(row=>({...row,engagementRate:Number(row.engagementRate.toFixed(4))})), cutoff=real.endDate;
   let summaryTotals:any={users:4496,sessions:4472,conversions:440,conversionRate:9.593023255813954};
   await page.clock.install({time:new Date('2026-11-17T09:00:00Z')});
@@ -30,7 +30,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     if(!url.pathname.startsWith('/api/')){await route.fulfill({contentType:'text/html',body:'<html><body><div id="root"></div><script src="/fixture.js"></script></body></html>'});return;}
     let data:any={success:true};
     const property={propertyId:real.propertyId,propertyName:'Mock',isPrimary:true,lookbackDays:30};
-    if(url.pathname==='/api/campaigns/a') data={id:'a',name:'Isolated Promo',currency:'EUR',status:'active',reportingTimeZone:'Europe/Amsterdam',ga4CampaignFilter:'["yesop_brand_search","yesop_retargeting"]',createdAt:'2026-10-04T00:00:00Z'};
+    if(url.pathname==='/api/campaigns/a') data={id:'a',name:'Isolated Promo',currency:'EUR',status:'active',reportingTimeZone:'Europe/Amsterdam',ga4CampaignFilter:'["yesop_brand_search","yesop_retargeting"]',createdAt:'2026-11-17T00:00:00Z'};
     else if(url.pathname.startsWith('/api/ga4/check-connection/') || url.pathname.endsWith('/ga4-connections')) data={success:true,connected:true,connections:[property]};
     else if(url.pathname.endsWith('/ga4-daily')) data={success:true,propertyId:real.propertyId,startDate:real.startDate,overviewStartDate:'2026-09-04',endDate:cutoff,dataThroughDate:cutoff,historyDataThroughDate:cutoff,latestStoredDailyDate:cutoff,reportingTimeZone:'Europe/Amsterdam',refreshStatus:'current',refreshIsStale:false,overviewTotals:summaryTotals,data:daily.slice(-60),trendsData:daily,usersComparisons:windows};
     else if(url.pathname.endsWith('/ga4-publication-status')) data={success:true,publicationToken:'real-saved-fixture',refreshStatus:'current'};
@@ -65,6 +65,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     };
     const cards=await page.getByTestId('insights-executive-financials').innerText();
     const findings=await page.getByTestId('insights-trackers').getAttribute('data-findings');
+    expect(JSON.parse(findings!).some((f:any)=>f.id==='anomaly:not-enough-history')).toBe(false);
     const summary=page.getByTestId('insights-data-summary');
     // Native session conversion rate is already a percentage; event count / sessions is a different metric.
     await ui(summary).toContainText('9.6% conversion rate across imported history');
@@ -233,6 +234,29 @@ it('navigates every metric across the full imported GA4 history without writes o
     await trends.getByRole('button',{name:'30d',exact:true}).click();
     await ui(note).toContainText('Cannot calculate the 30-day change.');
     await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 30 days: Aug 8, 2026 – Sep 6, 2026. Missing dates in this app: Aug 8, 2026 – Sep 3, 2026.');
+    // Findings use imported history even for a newly created copy, and native exact-window rates.
+    cutoff=real.endDate;daily=real.daily;windows=real.windows;
+    const findingIds=async()=>JSON.parse((await page.getByTestId('insights-trackers').getAttribute('data-findings'))!);
+    const native=(startDate:string,endDate:string,rate:unknown)=>({startDate,endDate,users:100,sessions:100,sessionKeyEventRate:rate});
+    for(const currentRate of [0.01,0,null,undefined,'0.01',-1,2]) {
+      windows=[native('2026-11-11',cutoff,currentRate),native('2026-11-04','2026-11-10',0.5)];
+      await open();
+      const alert=(await findingIds()).find((f:any)=>f.id==='anomaly:cr:wow');
+      expect(Boolean(alert)).toBe(currentRate===0.01||currentRate===0);
+      if(alert)expect(alert.description).toContain(currentRate===0?'Last 7d 0% vs prior 7d 50%':'Last 7d 1% vs prior 7d 50%');
+    }
+    windows=[native('2026-11-11',cutoff,0.01)];await open();
+    expect((await findingIds()).some((f:any)=>f.id==='anomaly:cr:wow')).toBe(false);
+    daily=real.daily.filter(r=>r.date>='2026-11-12');
+    windows=[native('2026-11-15',cutoff,0.1),native('2026-11-12','2026-11-14',0.5)];await open();
+    expect((await findingIds()).find((f:any)=>f.id==='anomaly:cr:3d')?.description).toContain('Last 3d 10% vs prior 3d 50%');
+    windows=[];await open();
+    expect((await findingIds()).some((f:any)=>f.id==='anomaly:cr:3d'||f.id==='anomaly:volume:3d')).toBe(false);
+    // Truly missing dates still withhold comparisons; explicit zeros complete the windows.
+    daily=real.daily.filter(r=>!['2026-11-10','2026-11-14'].includes(r.date));await open();
+    expect((await findingIds()).some((f:any)=>f.id==='anomaly:not-enough-history')).toBe(true);
+    daily=real.daily.map(r=>({...r,sessions:0,users:0,conversions:0,pageviews:0,revenue:0,engagedSessions:0,engagementRate:0}));await open();
+    expect((await findingIds()).some((f:any)=>f.id.startsWith('anomaly:'))).toBe(false);
     expect(errors).toEqual([]);
   } finally {await browser.close();}
 },120000);

@@ -55,8 +55,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('(ga4DailyResp as any)?.refreshIsStale === true');
     expect(page).toContain('trafficState: schedulerSynchronizedTrafficState');
     expect(page).toContain('financialConversionsState: snapshotConversionsKpiInputState');
-    expect(page).toContain('const findingsDailyRows = useMemo(() => ga4InsightsTimeSeries.filter');
-    expect(page).toContain('row.date >= trendsCampaignStartDate && row.date <= trendsDataThroughDate');
+    expect(page).toContain('const findingsDailyRows = trendsDailyRows;');
+    expect(page).toContain('.filter((row) => row.date >= trendsImportStartDate)');
     expect(page).not.toContain('id: "info:scheduler_no_history"');
     expect(page).toContain('id: "integrity:analytics_history_unavailable"');
     expect(page).toContain("if (!resp.ok) throw new Error(json?.message || json?.error || \"Failed to fetch KPI analytics history\")");

@@ -7337,3 +7337,34 @@ index a25df20f..be25246b 100644
        const usableConnections = connections.filter((connection: any) =>
          String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) === 30
        );
+
+diff --git a/client/src/pages/campaign-performance.tsx b/client/src/pages/campaign-performance.tsx
+index a7c4a252..0c55722c 100644
+--- a/client/src/pages/campaign-performance.tsx
++++ b/client/src/pages/campaign-performance.tsx
+@@ -69,7 +69,6 @@ const formatCompletedReportingDate = (date: string) => {
+   return new Intl.DateTimeFormat("en-GB", {
+     day: "numeric",
+     month: "short",
+-    year: "numeric",
+     timeZone: "UTC",
+   }).format(parsed);
+ };
+@@ -1679,13 +1678,14 @@ export default function CampaignPerformanceSummary() {
+                         <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent data-performance-movement-select>
+-                        <SelectItem value="24h">Compare with previous completed day{performanceDataThroughDate ? ` (${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '24h'))})` : ""}</SelectItem>
+-                        <SelectItem value="7d">Compare with 7 completed days earlier{performanceDataThroughDate ? ` (${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '7d'))})` : ""}</SelectItem>
+-                        <SelectItem value="30d">Compare with previous month cutoff{performanceDataThroughDate ? ` (${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '30d'))})` : ""}</SelectItem>
++                        <SelectItem value="24h">Previous day{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '24h'))}` : ""}</SelectItem>
++                        <SelectItem value="7d">7 days earlier{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '7d'))}` : ""}</SelectItem>
++                        <SelectItem value="30d">Previous month cutoff{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '30d'))}` : ""}</SelectItem>
+                       </SelectContent>
+                       </Select>
+                     </div>
+                   </div>
++                  <CardDescription>Compares campaign-to-date totals through each cutoff date.</CardDescription>
+                 </CardHeader>
+                 <CardContent>
+                   {recentMovementChanges.length === 0 ? (

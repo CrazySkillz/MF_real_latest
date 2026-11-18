@@ -176,8 +176,8 @@ export default function CampaignPerformanceSummary() {
   });
   const performanceGA4FinancialEndDate = performanceGA4SummaryPlaceholder ? "" : String(performanceGA4SummaryResponse?.dataThroughDate || "");
   const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading, isError: performanceGA4RevenueError, isPlaceholderData: performanceGA4RevenuePlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, performanceGA4FinancialEndDate, "performance-summary-read-only"],
-    enabled: !!campaignId && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
+    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, performanceGA4FinancialEndDate, campaign?.currency, "performance-summary-read-only"],
+    enabled: !!campaignId && campaign?.id === campaignId && !!campaign.currency && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const [nativeResponse, importedResponse, publishedResponse] = await Promise.all([

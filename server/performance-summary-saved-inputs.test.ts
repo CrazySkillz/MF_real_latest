@@ -3,6 +3,7 @@ import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { resolvePerformanceLiveMetricValue, buildPerformanceRecommendedActions } from "../client/src/lib/performance-recommended-actions";
 import { isGA4FinancialTotalsCandidate } from "../shared/ga4-financial-source";
+import { QueryClient, QueryObserver, keepPreviousData } from "@tanstack/react-query";
 
 const page = readFileSync("client/src/pages/campaign-performance.tsx", "utf8");
 const compile = (code: string, values: Record<string, any>) => new Function(...Object.keys(values),
@@ -22,6 +23,57 @@ const summary = () => ({
 const movement = (response: any, metric = "sessions", range = "7d") => compile(
   slice("const getGA4MovementComparison =", "// Calculate what's changed") + "return getGA4MovementComparison(metric);",
   { performanceGA4SummaryResponse: response, timeRange: range, resolveSpendComparisonEndDate: baseline, metric });
+
+describe("Performance Summary revenue loading order", () => {
+  const native = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: "2026-11-18", totals: { revenue: 114314.62, conversions: 440 } };
+  const imported = { success: true, platformContext: "ga4", endDate: "2026-11-18", totalRevenue: 0 };
+  const published = { snapshot: { campaignId: "campaign", reportingDate: "2026-11-18", metrics: { financialDaily: {
+    currency: "EUR", currentValueWindow: { startDate: "2026-09-04", reportingTimeZone: "Europe/Amsterdam" },
+    inputs: { revenue: { available: true, value: 114314.62 }, conversions: { available: true, value: 440 } },
+  } } } };
+  const setup = () => {
+    const fetch = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/ga4-to-date?") ? native : url.includes("/revenue-to-date?") ? imported : published }));
+    const options = (campaign: any): any => {
+      let captured: any;
+      compile(slice("const { data: performanceGA4RevenueResponse", "const { data: outcomeTotals"), {
+        campaignId: "campaign", campaign, performanceGA4PropertyId: "123", performanceGA4FinancialEndDate: "2026-11-18", demoMode: false,
+        performanceGA4SummaryResponse: { reportingTimeZone: "Europe/Amsterdam" }, keepPreviousData, fetch,
+        useQuery: (value: any) => { captured = value; return {}; },
+      });
+      return captured;
+    };
+    return { fetch, options };
+  };
+  it.each([undefined, { id: "campaign" }, { id: "campaign", currency: "" }, { id: "other", currency: "EUR" }])("waits for the current campaign currency before requesting revenue: %j", async campaign => {
+    const { fetch, options } = setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const observer = new QueryObserver(client, options(campaign));
+    const stop = observer.subscribe(() => {});
+    try {
+      await Promise.resolve();
+      expect(fetch).not.toHaveBeenCalled();
+      observer.setOptions(options({ id: "campaign", currency: "EUR" }));
+      await vi.waitFor(() => expect(observer.getCurrentResult().status).toBe("success"));
+      expect(observer.getCurrentResult().data).toEqual({ native, imported });
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(fetch.mock.calls.filter(([url]) => url.includes("/ga4-to-date?"))[0][0]).toContain("readOnly=1");
+    } finally { stop(); client.clear(); }
+  });
+  it("still rejects a genuine currency mismatch and revalidates when currency changes", async () => {
+    const { fetch, options } = setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const observer = new QueryObserver(client, options({ id: "campaign", currency: "USD" }));
+    const stop = observer.subscribe(() => {});
+    try {
+      await vi.waitFor(() => expect(observer.getCurrentResult().status).toBe("error"));
+      expect(observer.getCurrentResult().error?.message).toBe("Revenue is awaiting a successful aligned refresh");
+      observer.setOptions(options({ id: "campaign", currency: "EUR" }));
+      await vi.waitFor(() => expect(observer.getCurrentResult().status).toBe("success"));
+      expect(observer.getCurrentResult().data).toEqual({ native, imported });
+      expect(fetch).toHaveBeenCalledTimes(6);
+    } finally { stop(); client.clear(); }
+  });
+});
 
 describe("Performance Summary saved traffic comparisons", () => {
   it("uses the exact cumulative GA4 Sessions period instead of subtracting daily Sessions", () => {

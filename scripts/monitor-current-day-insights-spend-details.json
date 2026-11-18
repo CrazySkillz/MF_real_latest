@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "122eb9a77432014a3cb9f89b1547bf0b551f3c02",
+  "expectedCommit": "31b1446880fc785e748c9342a858d33e312ac0f7",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -24,7 +24,7 @@
     {
       "path": "client/src/pages/campaign-performance.tsx",
       "before": "f620db9a84a73f8cf6f2405db1b1842f386b880312118c1eaf1d34fb79ca038e",
-      "after": "894450fbe7aeac9606542a9e79d5aa1b93cdf56becbafc0bcae3d191fca9cc5c"
+      "after": "22111688990269efcac3f320ec20814161c98b46c777925e81b55feefa9212fe"
     },
     {
       "path": "client/src/pages/campaigns.tsx",

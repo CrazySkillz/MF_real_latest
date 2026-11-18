@@ -7435,3 +7435,17 @@ index b550f47a..183581ed 100644
                        </SelectContent>
                        </Select>
                      </div>
+
+diff --git a/client/src/pages/campaign-performance.tsx b/client/src/pages/campaign-performance.tsx
+index 183581ed..fc6e51b2 100644
+--- a/client/src/pages/campaign-performance.tsx
++++ b/client/src/pages/campaign-performance.tsx
+@@ -1687,7 +1687,7 @@ export default function CampaignPerformanceSummary() {
+                       <SelectContent data-performance-movement-select>
+                         <SelectItem value="24h">Previous day{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '24h'))}` : ""}</SelectItem>
+                         <SelectItem value="7d">7 days earlier{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '7d'))}` : ""}</SelectItem>
+-                        <SelectItem value="30d">Campaign total compared with{performanceDataThroughDate ? ` ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '30d'))}` : ""}</SelectItem>
++                        <SelectItem value="30d">A month ago{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '30d'))}` : ""}</SelectItem>
+                       </SelectContent>
+                       </Select>
+                     </div>

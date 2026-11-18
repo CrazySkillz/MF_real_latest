@@ -6664,3 +6664,64 @@ index 29e1ef83..8b95f43f 100644
                                                      </div>}
                                                </td>
                                              </tr>
+
+diff --git a/server/analytics.ts b/server/analytics.ts
+index cd54d023..901e5ffb 100644
+--- a/server/analytics.ts
++++ b/server/analytics.ts
+@@ -3650,7 +3650,7 @@ export class GoogleAnalytics4Service {
+               pageviews,
+               conversions,
+               users,
+-              revenue: Number(revenue.toFixed(2)),
++              revenue,
+               revenueMetric,
+               engagementRate,
+             });
+@@ -3687,7 +3687,7 @@ export class GoogleAnalytics4Service {
+           if (conversions !== 0 || revenue !== 0) {
+             conversionRevenueByDate.set(date, {
+               conversions,
+-              revenue: Number(revenue.toFixed(2)),
++              revenue,
+               revenueMetric: String(supplemental?.revenueMetric || revenueMetric),
+             });
+           }
+
+diff --git a/shared/schema.ts b/shared/schema.ts
+index f3933c72..bbbd4593 100644
+--- a/shared/schema.ts
++++ b/shared/schema.ts
+@@ -225,7 +225,7 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
+   engagedSessions: integer("engaged_sessions"),
+   pageviews: integer("pageviews").notNull().default(0),
+   conversions: doublePrecision("conversions").notNull().default(0), // GA4 may return fractional attribution credit; retain the numeric API contract.
+-  revenue: decimal("revenue", { precision: 15, scale: 2 }).notNull().default("0"),
++  revenue: decimal("revenue").notNull().default("0"), // Preserve GA4 fractions; round only after aggregation for display.
+   engagementRate: decimal("engagement_rate", { precision: 7, scale: 4 }).default("0"),
+   revenueMetric: text("revenue_metric"), // 'totalRevenue' | 'purchaseRevenue' (best-effort)
+   isSimulated: boolean("is_simulated").notNull().default(false),
+@@ -234,6 +234,7 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
+ }, (table) => [
+   uniqueIndex("ga4_daily_metrics_campaign_property_date_unique").on(table.campaignId, table.propertyId, table.date),
+   check("ga4_daily_metrics_conversions_finite", sql`${table.conversions} > '-Infinity'::double precision AND ${table.conversions} < 'Infinity'::double precision`),
++  check("ga4_daily_metrics_revenue_finite", sql`${table.revenue} > -10000000000000 AND ${table.revenue} < 10000000000000`),
+ ]);
+ 
+ // One complete Overview payload per campaign/property, published by the GA4 daily scheduler.
+
+diff --git a/server/ga4-daily-scheduler.ts b/server/ga4-daily-scheduler.ts
+index 3d394ff7..fc707841 100644
+--- a/server/ga4-daily-scheduler.ts
++++ b/server/ga4-daily-scheduler.ts
+@@ -521,8 +521,8 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
+                 ga4DailyStage: "overview_campaign_breakdown",
+               });
+             }
+-            // Daily revenue is stored at cent precision while GA4's aggregate can retain
+-            // more source precision. Permit only the maximum per-day quantization delta.
++            // Retained legacy daily rows may still have cent precision until repaired.
++            // Keep their bounded reconciliation allowance; new imports preserve fractions.
+             const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
+             const breakdownTotals = campaignBreakdown?.totals || {};
+             const eventTotals = conversionEvents?.totals || {};

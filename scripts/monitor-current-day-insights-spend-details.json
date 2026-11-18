@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "ab41b14def8afadd25252ba265b93ab535784e91",
+  "expectedCommit": "bc2415d9ee06d72b9917b749d6392c99da8a5de5",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -64,7 +64,7 @@
     {
       "path": "server/analytics.ts",
       "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
-      "after": "f5a560d62e26096ddfce767e5c5a8d5cc3300847b4885267cb7dc3c612d12ac0"
+      "after": "358e6949dfd6a65924fae6c95716bbf1648f6de71acd53d4024b7f66df729938"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -74,7 +74,7 @@
     {
       "path": "server/ga4-daily-scheduler.ts",
       "before": "48373a06062b31e6089d6d8ffdc1f6b77b0806a251543608751e1130da25d37c",
-      "after": "c103f5f271821a8763afc790fb9bb62f136ba7d3ea5953606c58ae4212dac2b0"
+      "after": "cd647dfacd770369354f66dbb565b043e89e875f82debd017621789955537b87"
     },
     {
       "path": "server/ga4-kpi-benchmark-jobs.ts",
@@ -179,7 +179,7 @@
     {
       "path": "shared/schema.ts",
       "before": "34b22e5c75cb3e263df57b0e2b7a2cfea6ec353a68ff2a0654f7815277ebe731",
-      "after": "a5a0bfb9c53008be256edc0f5054775405f6d3994cca3ea4ad2b9a5d4459d2ff"
+      "after": "80036260831caaa4c5510f28a31d87a6ad4605df2518af0ba03a725ffd12cd6b"
     },
     {
       "path": "client/src/components/HubSpotRevenueWizard.tsx",

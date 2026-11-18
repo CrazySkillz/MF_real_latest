@@ -9719,13 +9719,7 @@ export default function GA4Metrics() {
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                           <div>
                             <CardTitle className="text-lg">Trends</CardTitle>
-                            <CardDescription>
-                              <ul className="list-disc pl-5 space-y-1">
-                                <li>Daily shows day-by-day values.</li>
-                                <li>7d/30d show rolling totals.</li>
-                                <li>Monthly compares calendar months.</li>
-                              </ul>
-                            </CardDescription>
+
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                             <div className="flex items-center gap-1">
@@ -9733,6 +9727,8 @@ export default function GA4Metrics() {
                                 <Button
                                   key={mode}
                                   variant={insightsTrendMode === mode ? "default" : "outline"}
+                                  className={`border transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none ${insightsTrendMode === mode ? "border-primary" : ""}`}
+                                  aria-pressed={insightsTrendMode === mode}
                                   size="sm"
                                   onClick={() => {
                                     setInsightsDailyShowMore(false);
@@ -9957,7 +9953,10 @@ export default function GA4Metrics() {
                                         type="number"
                                         domain={chartData.length === 1 ? [-1, 1] : [0, Math.max(1, chartData.length - 1)]}
                                         ticks={chartData.length === 1 ? [0] : undefined}
-                                        tickFormatter={(idx: number) => chartData[Math.round(idx)]?.date || ""}
+                                        tickFormatter={(idx: number) => {
+                                          const date = chartData[Math.round(idx)]?.date;
+                                          return date ? new Date(`2000-${date}T00:00:00Z`).toLocaleString("en-US", { month: "short", timeZone: "UTC" }) + "-" + date.slice(3) : "";
+                                        }}
                                         allowDecimals={false}
                                         stroke="#64748b"
                                         fontSize={11}
@@ -9983,6 +9982,9 @@ export default function GA4Metrics() {
                                 </ResponsiveContainer>
                                 )}
                               </div>
+                              <p className="min-h-5 text-xs text-muted-foreground" data-testid="insights-trend-mode-description">
+                                {insightsTrendMode === "daily" ? "Daily shows day-by-day values." : insightsTrendMode === "monthly" ? "Monthly compares calendar months." : `${insightsTrendMode} shows rolling totals.`}
+                              </p>
                               {insightsTrendMode === "daily" && (
                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
                                   Missing stored dates are unavailable; recorded zero values remain 0.

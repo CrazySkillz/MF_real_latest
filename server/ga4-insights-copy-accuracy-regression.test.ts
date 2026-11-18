@@ -32,7 +32,7 @@ describe("GA4 Insights copy accuracy", () => {
     expect(scheduledPdf).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
   });
 
-  it("uses the requested Trends bullets while preserving rolling metric semantics", () => {
+  it("uses selected-mode chart guidance while preserving rolling metric semantics", () => {
     const page = readClient();
     const scheduledPdf = readScheduledPdf();
     const sectionStart = page.indexOf('<CardTitle className="text-lg">Trends</CardTitle>');
@@ -41,9 +41,11 @@ describe("GA4 Insights copy accuracy", () => {
 
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
-    expect(section).toContain("<li>Daily shows day-by-day values.</li>");
-    expect(section).toContain("<li>7d/30d show rolling totals.</li>");
-    expect(section).toContain("<li>Monthly compares calendar months.</li>");
+    expect(section).not.toContain("Daily shows day-by-day values.");
+    expect(page).toContain('data-testid="insights-trend-mode-description"');
+    expect(page).toContain("Daily shows day-by-day values.");
+    expect(page).toContain("${insightsTrendMode} shows rolling totals.");
+    expect(page).toContain("Monthly compares calendar months.");
     expect(section).not.toContain("Completed-day cutoff");
     expect(page).toContain("Completed-day cutoff: ${trendsDataThroughLabel}");
     expect(scheduledPdf).toContain("Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");

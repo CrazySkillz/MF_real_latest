@@ -3650,7 +3650,7 @@ export class GoogleAnalytics4Service {
               pageviews,
               conversions,
               users,
-              revenue: Number(revenue.toFixed(2)),
+              revenue,
               revenueMetric,
               engagementRate,
             });
@@ -3687,7 +3687,7 @@ export class GoogleAnalytics4Service {
           if (conversions !== 0 || revenue !== 0) {
             conversionRevenueByDate.set(date, {
               conversions,
-              revenue: Number(revenue.toFixed(2)),
+              revenue,
               revenueMetric: String(supplemental?.revenueMetric || revenueMetric),
             });
           }

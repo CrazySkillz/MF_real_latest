@@ -41,11 +41,11 @@ describe("GA4 Insights copy accuracy", () => {
 
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
-    expect(section).not.toContain("Daily shows day-by-day values.");
-    expect(page).toContain('data-testid="insights-trend-mode-description"');
-    expect(page).toContain("Daily shows day-by-day values.");
-    expect(page).toContain("${insightsTrendMode} shows rolling totals.");
-    expect(page).toContain("Monthly compares calendar months.");
+    expect(section).not.toContain("Comparisons follow the selected date.");
+    expect(section).toContain('data-testid="insights-trend-mode-description"');
+    expect(section).toContain("Daily day-by-day values");
+    expect(section).toContain("${insightsTrendMode} rolling totals");
+    expect(section).toContain("Monthly compares calendar months");
     expect(section).not.toContain("Completed-day cutoff");
     expect(page).toContain("Completed-day cutoff: ${trendsDataThroughLabel}");
     expect(scheduledPdf).toContain("Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");

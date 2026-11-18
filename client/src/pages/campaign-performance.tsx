@@ -1687,7 +1687,7 @@ export default function CampaignPerformanceSummary() {
                       <SelectContent data-performance-movement-select>
                         <SelectItem value="24h">Previous day{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '24h'))}` : ""}</SelectItem>
                         <SelectItem value="7d">7 days earlier{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '7d'))}` : ""}</SelectItem>
-                        <SelectItem value="30d">Previous month cutoff{performanceDataThroughDate ? ` · ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '30d'))}` : ""}</SelectItem>
+                        <SelectItem value="30d">Campaign total compared with{performanceDataThroughDate ? ` ${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '30d'))}` : ""}</SelectItem>
                       </SelectContent>
                       </Select>
                     </div>

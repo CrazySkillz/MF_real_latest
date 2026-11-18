@@ -120,7 +120,7 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
       expect(actual).toMatchObject({ campaignId: "a", propertyId: "property-a", date: input[i].date,
         users: i % 3 === 0 ? 0 : 8, sessions: i % 3 === 0 ? 0 : 10, pageviews: i % 3 === 0 ? 0 : 10,
         conversions: i % 3 === 0 ? 0 : 2, engagedSessions: i % 3 === 0 ? 0 : i % 3 === 1 ? null : 3,
-        engagementRate: i % 3 === 0 ? "0.0000" : "0.5000", revenue: i % 3 === 0 ? "0.00" : "-12.35",
+        engagementRate: i % 3 === 0 ? "0.0000" : "0.5000", revenue: i % 3 === 0 ? "0" : "-12.345",
         revenueMetric: i % 3 === 0 ? null : "purchaseRevenue", isSimulated: i % 3 === 0,
       });
       expect(actual.id).toBeTruthy(); expect(actual.updatedAt).toBeInstanceOf(Date); expect(actual.createdAt).toBeInstanceOf(Date);

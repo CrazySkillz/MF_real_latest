@@ -57,7 +57,7 @@ function worker(pauseAt = "", campaignId = "a", external = false) {
 const expire = () => pool.query("UPDATE ga4_refresh_work SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE campaign_id='a' AND status='running'");
 async function verifyPublication(external = false) {
   const daily = await storage.getGA4DailyMetrics("a", "123456", date, date);
-  expect(daily).toHaveLength(1); expect(daily[0]).toMatchObject({ sessions: 20, conversions: 2, revenue: "100.00" });
+  expect(daily).toHaveLength(1); expect(daily[0]).toMatchObject({ sessions: 20, conversions: 2, revenue: "100" });
   expect((await storage.getGA4OverviewSnapshot("a", "123456"))?.campaignBreakdown).toMatchObject({ totals: { sessions: 20, conversions: 2, revenue: 100 } });
   expect((await storage.getKPI("kpi-a"))?.currentValue).toBe("20");
   expect((await storage.getBenchmark("benchmark-a"))?.currentValue).toBe("20");

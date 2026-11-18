@@ -225,7 +225,7 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
   engagedSessions: integer("engaged_sessions"),
   pageviews: integer("pageviews").notNull().default(0),
   conversions: doublePrecision("conversions").notNull().default(0), // GA4 may return fractional attribution credit; retain the numeric API contract.
-  revenue: decimal("revenue", { precision: 15, scale: 2 }).notNull().default("0"),
+  revenue: decimal("revenue").notNull().default("0"), // Preserve GA4 fractions; round only after aggregation for display.
   engagementRate: decimal("engagement_rate", { precision: 7, scale: 4 }).default("0"),
   revenueMetric: text("revenue_metric"), // 'totalRevenue' | 'purchaseRevenue' (best-effort)
   isSimulated: boolean("is_simulated").notNull().default(false),
@@ -234,6 +234,7 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
 }, (table) => [
   uniqueIndex("ga4_daily_metrics_campaign_property_date_unique").on(table.campaignId, table.propertyId, table.date),
   check("ga4_daily_metrics_conversions_finite", sql`${table.conversions} > '-Infinity'::double precision AND ${table.conversions} < 'Infinity'::double precision`),
+  check("ga4_daily_metrics_revenue_finite", sql`${table.revenue} > -10000000000000 AND ${table.revenue} < 10000000000000`),
 ]);
 
 // One complete Overview payload per campaign/property, published by the GA4 daily scheduler.

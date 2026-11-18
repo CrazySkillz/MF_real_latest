@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { addGA4InsightsDateDays, buildGA4InsightsRollups } from "../shared/ga4-insights";
 
 describe("GA4 Insights findings use scheduler-synchronized campaign daily history", () => {
-  it("uses the chart's campaign-start zero-filled rows without scheduler-freshness gates", () => {
+  it("uses all imported finding rows independently of the browsed Trends month", () => {
     const content = readFileSync(join(process.cwd(), "client/src/pages/ga4-metrics.tsx"), "utf8");
     const source = ts.createSourceFile("ga4-metrics.tsx", content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const findingMemo = content.slice(content.indexOf("const insights = useMemo<InsightItem[]>(() => {"), content.indexOf("const insightsActionDescription = useMemo"));
@@ -37,7 +37,10 @@ describe("GA4 Insights findings use scheduler-synchronized campaign daily histor
     visit(source);
     expect(selectedRollups).toBe("findingsRollups");
     expect(content).toContain("buildGA4InsightsRollups(findingsDailyRows, trendsDataThroughDate)");
-    expect(findingsRows).toBe("trendsDailyRows");
+    const evaluateRows = new Function("trendsDailyRows", ts.transpileModule(`return ${findingsRows};`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText);
+    const importedRows = [{date:'2026-09-04'},{date:'2026-10-04'},{date:'2026-10-05'}];
+    expect(evaluateRows(importedRows)).toEqual(importedRows);
+    expect(findingsRows).not.toContain("trendsRange");
     expect(sevenDayReady && threeDayReady && correlatedDrop && topChannelReady).toBeTruthy();
     expect(findingMemo).not.toContain("ga4TrendsCoverage");
     expect(findingMemo).not.toContain("trendsRefreshIsStale");
@@ -80,6 +83,7 @@ describe("GA4 Insights findings use scheduler-synchronized campaign daily histor
       rows, rows.deltas.sessions3, rows.deltas.revenue3, rows.deltas.conversions3, rows.last3.cr, rows.prior3.cr, -30, -35, -30,
     );
     expect(isCorrelated(imported)).toBe(true);
+    expect(correlated(imported, -50, -50, -50, null, 10, -30, -35, -30)).toBe(false);
     expect(isCorrelated(validZero)).toBe(false);
     expect(findingMemo).toContain('id: "anomaly:volume:3d"');
     expect(findingMemo).not.toContain('id: "integrity:daily_history_outdated"');

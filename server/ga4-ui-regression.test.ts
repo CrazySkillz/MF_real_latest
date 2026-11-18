@@ -788,7 +788,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);");
     expect(ga4Metrics).not.toContain("const trendsRefreshScheduleTimeZone =");
     expect(ga4Metrics).not.toContain("const trendsExpectedRefreshLabel =");
-    expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(trendsImportedRows[trendsImportedRows.length - 1]?.date || "").trim();');
+    expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(trendsDailyRows.at(-1)?.date || "");');
     expect(ga4Metrics).toContain('const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";');
     expect(ga4Metrics).not.toContain("Completed-day cutoff <span");
     expect(ga4Metrics).toContain("Latest imported day");

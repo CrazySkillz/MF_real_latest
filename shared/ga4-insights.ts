@@ -1,11 +1,91 @@
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "./ga4-kpi-metric-identity";
 
+// Event counts are not converting-session counts; only an exact saved GA4 rate is usable.
+export const getGA4InsightsSessionConversionRate = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
+  if (!rollup.complete || !rollup.startDate || !rollup.endDate || rollup.startDate > rollup.endDate || !Array.isArray(windows)) return null;
+  const matches = windows.filter(row => row?.startDate === rollup.startDate && row?.endDate === rollup.endDate);
+  const rate = matches.length === 1 ? matches[0].sessionKeyEventRate : null;
+  return typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate <= 1 ? rate * 100 : null;
+};
+
+// Recommendation evidence uses raw saved fields: normalization may default absent metrics to zero.
+export const buildGA4InsightsDeclineRecommendation = (
+  metric: 'sessions' | 'conversions' | 'revenue', rawRows: unknown,
+  current: GA4InsightsRollup, previous: GA4InsightsRollup, nativeWindows: unknown,
+): string => {
+  const unavailable = 'Some daily activity evidence is unavailable. Check the saved dates and metric coverage before investigating the decline.';
+  const fields = ['sessions', 'pageviews', 'conversions', 'revenue'] as const;
+  const evidence = (period: GA4InsightsRollup) => {
+    if (!period.complete || !period.startDate || !period.endDate || ![3, 7].includes(period.expectedDays) || !Array.isArray(rawRows)) return null;
+    const rows = rawRows.filter(row => typeof row?.date === 'string' && row.date.trim() >= period.startDate! && row.date.trim() <= period.endDate!)
+      .map(row => ({ ...row, date: row.date.trim() })).sort((a, b) => a.date.localeCompare(b.date));
+    if (rows.length !== period.expectedDays || rows.some((row, i) => row.date !== addGA4InsightsDateDays(period.startDate!, i)) || rows.at(-1)?.date !== period.endDate) return null;
+    for (const field of fields) {
+      for (const row of rows) {
+        const value = row[field];
+        if (typeof value === 'string' && !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) return null;
+        if ((typeof value !== 'number' && typeof value !== 'string') || String(value).trim() === '' || !Number.isFinite(Number(value)) || (field !== 'revenue' && Number(value) < 0)) return null;
+        row[field] = Number(value);
+        if ((field === 'sessions' || field === 'pageviews') && !Number.isSafeInteger(row[field])) return null;
+      }
+      const total = rows.reduce((sum, row) => sum + row[field], 0);
+      if (!Number.isFinite(total) || !Number.isFinite(period[field]) || Math.abs(total - period[field]) > 1e-8 * Math.max(1, Math.abs(total))) return null;
+    }
+    return rows;
+  };
+  if (current.expectedDays !== previous.expectedDays || !previous.endDate || addGA4InsightsDateDays(previous.endDate, 1) !== current.startDate) return unavailable;
+  const now = evidence(current), prior = evidence(previous);
+  if (!now || !prior) return unavailable;
+  const active = now.filter(row => row.sessions > 0).length, priorActive = prior.filter(row => row.sessions > 0).length;
+  const reversed = [...now].reverse();
+  const zeroDays = countGA4InsightsConsecutiveDays(reversed, row => row.date, row => fields.every(field => row[field] === 0));
+  const parts: string[] = [];
+  if (metric === 'sessions' && active < priorActive) parts.push(`Sessions were recorded on ${active} of ${now.length} days versus ${priorActive} of ${prior.length} in the prior window.`);
+  if (metric === 'revenue') {
+    const revenueDays = now.filter(row => row.revenue !== 0);
+    if (revenueDays.length === 1 && revenueDays[0].revenue > 0) parts.push(`All recorded revenue in this window is on ${revenueDays[0].date}.`);
+  }
+  if (zeroDays > 0) {
+    const start = reversed[zeroDays - 1].date;
+    const dates = start === current.endDate ? start : `${start} to ${current.endDate}`;
+    parts.push(`${dates}: recorded zero sessions, pageviews, conversions and revenue. Check whether this inactivity was expected; if activity was expected, verify measurement and the saved campaign scope for these dates first.`);
+  } else {
+    parts.push(`Compare the saved daily ${metric} for ${current.startDate} to ${current.endDate} with ${previous.startDate} to ${previous.endDate} to locate the decline.`);
+    if (metric === 'sessions' && active < priorActive) parts.push('Check whether fewer days with sessions were expected.');
+  }
+  if (metric === 'conversions') {
+    const a = getGA4InsightsSessionConversionRate(nativeWindows, current), b = getGA4InsightsSessionConversionRate(nativeWindows, previous);
+    if (current.sessions === 0 || previous.sessions === 0) {
+      parts.push('A window has no sessions, so conversion efficiency cannot be compared.');
+    } else if (a === null || b === null) {
+      parts.push('An exact GA4 session conversion-rate comparison is unavailable; conversion counts alone do not establish an efficiency decline.');
+    } else {
+      parts.push(`GA4 session conversion rate is ${a.toFixed(1)}% versus ${b.toFixed(1)}% previously.`);
+      parts.push(a >= b ? 'This does not support a conversion-efficiency decline; review the recorded volume changes first.' : 'Review conversion recording and traffic mix for these windows; the saved rate does not establish the cause.');
+    }
+  }
+  return parts.join(' ');
+};
+
 // Multi-day Users must use GA4's exact window; daily distinct counts are not additive.
-export const getGA4InsightsSevenDayUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
-  if (!rollup.complete || !rollup.startDate || !rollup.endDate || addGA4InsightsDateDays(rollup.startDate, 6) !== rollup.endDate || !Array.isArray(windows)) return null;
+export const getGA4InsightsPeriodUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
+  if (!rollup.complete || !rollup.startDate || !rollup.endDate || rollup.startDate > rollup.endDate || !Array.isArray(windows)) return null;
   const matches = windows.filter(row => row?.startDate === rollup.startDate && row?.endDate === rollup.endDate);
   const value = matches.length === 1 ? matches[0].users : null;
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+};
+
+export const getGA4InsightsSevenDayUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null =>
+  rollup.startDate && addGA4InsightsDateDays(rollup.startDate, 6) === rollup.endDate ? getGA4InsightsPeriodUsers(windows, rollup) : null;
+
+export const getGA4InsightsMonthlyUsers = (windows: unknown, rows: GA4InsightsDailyRow[], month: string, importStart: string, cutoff: string): number | null => {
+  if (!/^\d{4}-\d{2}$/.test(month)) return null;
+  const [year, number] = month.split('-').map(Number);
+  const startDate = [month + '-01', importStart].sort()[1];
+  const endDate = [new Date(Date.UTC(year, number, 0)).toISOString().slice(0, 10), cutoff].sort()[0];
+  if (startDate > endDate) return null;
+  const days = (Date.parse(endDate) - Date.parse(startDate)) / 86400000 + 1;
+  return getGA4InsightsPeriodUsers(windows, buildGA4InsightsCalendarRollup(rows, endDate, days));
 };
 
 export type GA4InsightsDailyRow = {
@@ -267,6 +347,10 @@ export const normalizeGA4InsightsDailyRows = (
     byDate.set(date, {
       ...normalized,
       date,
+      // Stored rates may be rounded; preserve the exact counts for calculation.
+      engagementRate: normalized.engagedSessions != null
+        ? normalized.sessions ? normalized.engagedSessions / normalized.sessions : 0
+        : normalized.engagementRate,
     });
   }
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -359,6 +443,22 @@ export const buildGA4InsightsRollups = (
       users30: calculateGA4InsightsDeltaPct(last30.users, prior30.users),
       engRate30: calculateGA4InsightsDeltaPct(last30.engagementRate, prior30.engagementRate),
     },
+  };
+};
+
+// Navigation bounds affect presentation/comparison dates, never metric formulas.
+export const getGA4InsightsTrendsRange = (start: string, cutoff: string, selected: string, mode: string) => {
+  const valid = (date: string) => DATE_ONLY.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date;
+  if (!valid(start) || !valid(cutoff) || start > cutoff) return { startDate: '', endDate: '', previousDate: '', nextDate: '' };
+  const endDate = valid(selected) ? [start, selected, cutoff].sort()[1] : cutoff;
+  const [year, month] = endDate.split('-').map(Number);
+  const displayStart = new Date(Date.UTC(year, month - (mode === 'monthly' ? 12 : 1), 1)).toISOString().slice(0, 10);
+  const previousDate = new Date(Date.UTC(year, month - 1, 0)).toISOString().slice(0, 10);
+  const nextMonthEnd = new Date(Date.UTC(year, month + 1, 0)).toISOString().slice(0, 10);
+  return {
+    startDate: [start, displayStart].sort()[1], endDate,
+    previousDate: previousDate >= start ? previousDate : '',
+    nextDate: endDate < cutoff ? [nextMonthEnd, cutoff].sort()[0] : '',
   };
 };
 

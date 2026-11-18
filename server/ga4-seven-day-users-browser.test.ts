@@ -51,16 +51,35 @@ it('renders all real-GA4 seven-day Users windows, preserves zero and refuses mis
     await ui(trends.getByRole('row').filter({hasText:'Last 7 days'})).toContainText('-74.3%');
     await ui(trends.getByRole('row').filter({hasText:'Prior 7 days'})).toContainText('475');
     const series=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
-    expect(series.map((point:any)=>({end:point.date,users:point.value}))).toEqual(real.windows.map(w=>({end:w.endDate.slice(5),users:w.users})));
-    expect(series.some((point:any)=>point.value===0)).toBe(true);
+    expect(series.map((point:any)=>({end:point.date,users:point.value}))).toEqual(real.windows.filter(w=>w.endDate >= "2026-11-01").map(w=>({end:w.endDate.slice(5),users:w.users})));
+    await trends.getByRole("button",{name:"Previous month",exact:true}).click();
+    const previous=JSON.parse((await page.getByTestId("insights-trends-chart").getAttribute("data-chart-series"))!);
+    expect(previous.some((point:any)=>point.value===0)).toBe(true);
+    await trends.getByRole("button",{name:"Next month",exact:true}).click();
+    await ui(trends.getByRole('row').filter({hasText:'Last 7 days'})).toContainText('122');
     // The Daily-to-7d transition retains the Users selection.
     await trends.getByRole('button',{name:'Daily',exact:true}).click();
     await trends.getByRole('button',{name:'7d',exact:true}).click();
     await ui(page.getByTestId('insights-trend-metric')).toHaveValue('users');
     windows=real.windows.filter(w=>w.endDate!=='2026-11-16'); trends=await open();
-    await ui(trends).toContainText('GA4 seven-day Users totals are unavailable for this comparison.');
+    const note=page.getByTestId('insights-trends-comparison-unavailable');
+    await ui(note).toContainText('Comparison end date: Nov 16, 2026.');
+    await ui(note.getByRole('listitem').nth(0)).toHaveText('Selected 7 days: Nov 10, 2026 – Nov 16, 2026. The GA4 Users total for this exact period is unavailable.');
+    await ui(note.getByRole('listitem').nth(1)).toHaveText('Previous 7 days: Nov 3, 2026 – Nov 9, 2026. Complete daily data.');
+    await ui(note).not.toContainText('Missing dates in this app:');
     const missing=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
     expect(missing.at(-1).value).toBeNull();
+    await ui(page.getByTestId('insights-trends-empty')).toHaveCount(0);
+    // Recorded zeros remain a chart, even when every point is zero.
+    await page.getByTestId('insights-trend-metric').selectOption('conversions');
+    const zeros=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
+    expect(zeros.length).toBeGreaterThan(0);
+    expect(zeros.every((point:any)=>point.value===0)).toBe(true);
+    await ui(page.getByTestId('insights-trends-empty')).toHaveCount(0);
+    await ui(page.getByTestId('insights-trends-chart').locator('svg')).toHaveCount(1);
+    windows=[]; trends=await open();
+    await ui(page.getByTestId('insights-trends-empty')).toHaveText('GA4 seven-day Users totals are unavailable for this month.');
+    await ui(page.getByTestId('insights-trends-chart').locator('svg')).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {await browser.close();}
 },60000);

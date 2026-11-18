@@ -47,9 +47,9 @@ describe("GA4 Insights report parity", () => {
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");
     }
-    expect(liveSection).toContain("Daily shows day-by-day values.");
-    expect(liveSection).toContain("7d/30d show rolling totals.");
-    expect(liveSection).toContain("Monthly compares calendar months.");
+    expect(liveSection).toContain("Daily day-by-day values");
+    expect(liveSection).toContain("${insightsTrendMode} rolling totals");
+    expect(liveSection).toContain("Monthly compares calendar months");
     expect(reportSection).toContain(reportTrendCopy);
     expect(scheduledSection).toContain(reportTrendCopy);
     expect(reportSection).toContain("Total across revenue sources");

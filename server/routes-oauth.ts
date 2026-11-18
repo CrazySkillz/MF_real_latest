@@ -9780,6 +9780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportingTimeZone,
         historyDataThroughDate,
         data: stored.map(addDerivedEngagedSessions),
+        ...(req.query.includeTrendsHistory === "1" ? { trendsData: overviewRows.map(addDerivedEngagedSessions) } : {}),
         ...(req.query.includeMonthly === "1" ? { monthlyData: overviewRows.filter((row: any) => String(row.date) >= monthlyStartDate && String(row.date) <= endDate).map(addDerivedEngagedSessions) } : {}),
         validationReadOnly: readOnly,
         overviewStartDate,

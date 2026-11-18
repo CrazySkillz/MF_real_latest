@@ -6932,3 +6932,151 @@ index 6c05948d..bab8aaca 100644
  // Multi-day Users must use GA4's exact window; daily distinct counts are not additive.
  export const getGA4InsightsPeriodUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
    if (!rollup.complete || !rollup.startDate || !rollup.endDate || rollup.startDate > rollup.endDate || !Array.isArray(windows)) return null;
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 4023666a..67df91e8 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -46,7 +46,7 @@ import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
+ import { getGA4DistinctUsers, getGA4PeriodTraffic } from "@shared/ga4-traffic-window";
+ import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
+ import { getGA4KpiReportingWindowLabel, resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
+-import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, getGA4InsightsSessionConversionRate, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState } from "@shared/ga4-insights";
++import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, buildGA4InsightsDeclineRecommendation, getGA4InsightsSessionConversionRate, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState } from "@shared/ga4-insights";
+ 
+ interface Campaign {
+   id: string;
+@@ -6005,7 +6005,7 @@ export default function GA4Metrics() {
+           severity: "high",
+           title: `Sessions dropped ${Math.abs(sessionsDelta7).toFixed(1)}% week-over-week`,
+           description: `Last 7d: ${formatNumber(findingRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(findingRollups.prior7.sessions)}.${channelNote}`,
+-          recommendation: "Check paid campaign budgets, SEO ranking changes, and whether any traffic sources were paused or reduced.",
++          recommendation: buildGA4InsightsDeclineRecommendation('sessions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last7, findingRollups.prior7, ga4InsightsDailyResp?.usersComparisons),
+         });
+       }
+ 
+@@ -6018,7 +6018,7 @@ export default function GA4Metrics() {
+           severity: "high",
+           title: `Revenue dropped ${Math.abs(revenueDelta7).toFixed(1)}% week-over-week`,
+           description: `Last 7d: ${formatMoney(findingRollups.last7.revenue)} vs prior 7d: ${formatMoney(findingRollups.prior7.revenue)}.${channelNote}`,
+-          recommendation: "Check conversion rate, AOV, and high-value campaign changes first.",
++          recommendation: buildGA4InsightsDeclineRecommendation('revenue', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last7, findingRollups.prior7, ga4InsightsDailyResp?.usersComparisons),
+         });
+       }
+ 
+@@ -6028,7 +6028,7 @@ export default function GA4Metrics() {
+           severity: "high",
+           title: `Conversions dropped ${Math.abs(convDelta7).toFixed(1)}% week-over-week`,
+           description: `Last 7d: ${formatConversionCredit(findingRollups.last7.conversions)} vs prior 7d: ${formatConversionCredit(findingRollups.prior7.conversions)}.`,
+-          recommendation: "Check conversion event configuration, landing page changes, and traffic quality by source/medium.",
++          recommendation: buildGA4InsightsDeclineRecommendation('conversions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last7, findingRollups.prior7, ga4InsightsDailyResp?.usersComparisons),
+         });
+       }
+ 
+@@ -6106,7 +6106,7 @@ export default function GA4Metrics() {
+           severity: "medium",
+           title: "Traffic and revenue fell in the latest 3 days",
+           description: `Imported GA4 data for ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${formatNumber(findingRollups.last3.sessions)} sessions, ${formatConversionCredit(findingRollups.last3.conversions)} conversions, ${formatMoney(findingRollups.last3.revenue)} revenue. Prior ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${formatNumber(findingRollups.prior3.sessions)} sessions, ${formatConversionCredit(findingRollups.prior3.conversions)} conversions, ${formatMoney(findingRollups.prior3.revenue)} revenue. Conversion rate was ${formatPct(crA3)} vs ${formatPct(crB3)}; the newest day had ${formatNumber(latestDay?.sessions || 0)} sessions.${hasNativeAndImportedRevenue ? " These daily revenue amounts exclude separate imported revenue included in Total Revenue." : ""}`,
+-          recommendation: "Check that the newest day's GA4 import is complete. If it is, compare traffic-source volume and campaign delivery between these periods before changing budgets; conversion rate did not fall.",
++          recommendation: buildGA4InsightsDeclineRecommendation('sessions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last3, findingRollups.prior3, ga4InsightsDailyResp?.usersComparisons),
+         });
+       }
+ 
+@@ -6116,7 +6116,7 @@ export default function GA4Metrics() {
+           severity: "medium",
+           title: `Sessions dropped ${Math.abs(sessionsDelta3).toFixed(1)}% (3-day comparison)`,
+           description: `Last 3d: ${formatNumber(findingRollups.last3.sessions)} vs prior 3d: ${formatNumber(findingRollups.prior3.sessions)}. Short window — monitor for confirmation.`,
+-          recommendation: "Check campaign budgets and traffic sources for recent changes.",
++          recommendation: buildGA4InsightsDeclineRecommendation('sessions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last3, findingRollups.prior3, ga4InsightsDailyResp?.usersComparisons),
+         });
+       }
+ 
+@@ -6126,7 +6126,7 @@ export default function GA4Metrics() {
+           severity: "medium",
+           title: `Revenue dropped ${Math.abs(revenueDelta3).toFixed(1)}% (3-day comparison)`,
+           description: `Last 3d: ${formatMoney(findingRollups.last3.revenue)} vs prior 3d: ${formatMoney(findingRollups.prior3.revenue)}. Short window — monitor for confirmation.`,
+-          recommendation: "Check conversion rate and AOV changes.",
++          recommendation: buildGA4InsightsDeclineRecommendation('revenue', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last3, findingRollups.prior3, ga4InsightsDailyResp?.usersComparisons),
+         });
+       }
+ 
+@@ -6136,7 +6136,7 @@ export default function GA4Metrics() {
+           severity: "medium",
+           title: `Conversions dropped ${Math.abs(convDelta3).toFixed(1)}% (3-day comparison)`,
+           description: `Last 3d: ${formatConversionCredit(findingRollups.last3.conversions)} vs prior 3d: ${formatConversionCredit(findingRollups.prior3.conversions)}. Short window — monitor for confirmation.`,
+-          recommendation: "Check conversion event configuration and traffic quality.",
++          recommendation: buildGA4InsightsDeclineRecommendation('conversions', ga4InsightsDailyResp?.trendsData ?? ga4InsightsDailyResp?.data, findingRollups.last3, findingRollups.prior3, ga4InsightsDailyResp?.usersComparisons),
+         });
+       }
+ 
+
+diff --git a/shared/ga4-insights.ts b/shared/ga4-insights.ts
+index bab8aaca..7e8faf07 100644
+--- a/shared/ga4-insights.ts
++++ b/shared/ga4-insights.ts
+@@ -8,6 +8,65 @@ export const getGA4InsightsSessionConversionRate = (windows: unknown, rollup: {
+   return typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate <= 1 ? rate * 100 : null;
+ };
+ 
++// Recommendation evidence uses raw saved fields: normalization may default absent metrics to zero.
++export const buildGA4InsightsDeclineRecommendation = (
++  metric: 'sessions' | 'conversions' | 'revenue', rawRows: unknown,
++  current: GA4InsightsRollup, previous: GA4InsightsRollup, nativeWindows: unknown,
++): string => {
++  const unavailable = 'Some daily activity evidence is unavailable. Check the saved dates and metric coverage before investigating the decline.';
++  const fields = ['sessions', 'pageviews', 'conversions', 'revenue'] as const;
++  const evidence = (period: GA4InsightsRollup) => {
++    if (!period.complete || !period.startDate || !period.endDate || ![3, 7].includes(period.expectedDays) || !Array.isArray(rawRows)) return null;
++    const rows = rawRows.filter(row => typeof row?.date === 'string' && row.date.trim() >= period.startDate! && row.date.trim() <= period.endDate!)
++      .map(row => ({ ...row, date: row.date.trim() })).sort((a, b) => a.date.localeCompare(b.date));
++    if (rows.length !== period.expectedDays || rows.some((row, i) => row.date !== addGA4InsightsDateDays(period.startDate!, i)) || rows.at(-1)?.date !== period.endDate) return null;
++    for (const field of fields) {
++      for (const row of rows) {
++        const value = row[field];
++        if (typeof value === 'string' && !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) return null;
++        if ((typeof value !== 'number' && typeof value !== 'string') || String(value).trim() === '' || !Number.isFinite(Number(value)) || (field !== 'revenue' && Number(value) < 0)) return null;
++        row[field] = Number(value);
++        if ((field === 'sessions' || field === 'pageviews') && !Number.isSafeInteger(row[field])) return null;
++      }
++      const total = rows.reduce((sum, row) => sum + row[field], 0);
++      if (!Number.isFinite(total) || !Number.isFinite(period[field]) || Math.abs(total - period[field]) > 1e-8 * Math.max(1, Math.abs(total))) return null;
++    }
++    return rows;
++  };
++  if (current.expectedDays !== previous.expectedDays || !previous.endDate || addGA4InsightsDateDays(previous.endDate, 1) !== current.startDate) return unavailable;
++  const now = evidence(current), prior = evidence(previous);
++  if (!now || !prior) return unavailable;
++  const active = now.filter(row => row.sessions > 0).length, priorActive = prior.filter(row => row.sessions > 0).length;
++  const reversed = [...now].reverse();
++  const zeroDays = countGA4InsightsConsecutiveDays(reversed, row => row.date, row => fields.every(field => row[field] === 0));
++  const parts: string[] = [];
++  if (metric === 'sessions' && active < priorActive) parts.push(`Sessions were recorded on ${active} of ${now.length} days versus ${priorActive} of ${prior.length} in the prior window.`);
++  if (metric === 'revenue') {
++    const revenueDays = now.filter(row => row.revenue !== 0);
++    if (revenueDays.length === 1 && revenueDays[0].revenue > 0) parts.push(`All recorded revenue in this window is on ${revenueDays[0].date}.`);
++  }
++  if (zeroDays > 0) {
++    const start = reversed[zeroDays - 1].date;
++    const dates = start === current.endDate ? start : `${start} to ${current.endDate}`;
++    parts.push(`${dates}: recorded zero sessions, pageviews, conversions and revenue. Check whether this inactivity was expected; if activity was expected, verify measurement and the saved campaign scope for these dates first.`);
++  } else {
++    parts.push(`Compare the saved daily ${metric} for ${current.startDate} to ${current.endDate} with ${previous.startDate} to ${previous.endDate} to locate the decline.`);
++    if (metric === 'sessions' && active < priorActive) parts.push('Check whether fewer days with sessions were expected.');
++  }
++  if (metric === 'conversions') {
++    const a = getGA4InsightsSessionConversionRate(nativeWindows, current), b = getGA4InsightsSessionConversionRate(nativeWindows, previous);
++    if (current.sessions === 0 || previous.sessions === 0) {
++      parts.push('A window has no sessions, so conversion efficiency cannot be compared.');
++    } else if (a === null || b === null) {
++      parts.push('An exact GA4 session conversion-rate comparison is unavailable; conversion counts alone do not establish an efficiency decline.');
++    } else {
++      parts.push(`GA4 session conversion rate is ${a.toFixed(1)}% versus ${b.toFixed(1)}% previously.`);
++      parts.push(a >= b ? 'This does not support a conversion-efficiency decline; review the recorded volume changes first.' : 'Review conversion recording and traffic mix for these windows; the saved rate does not establish the cause.');
++    }
++  }
++  return parts.join(' ');
++};
++
+ // Multi-day Users must use GA4's exact window; daily distinct counts are not additive.
+ export const getGA4InsightsPeriodUsers = (windows: unknown, rollup: { startDate: string | null; endDate: string | null; complete: boolean }): number | null => {
+   if (!rollup.complete || !rollup.startDate || !rollup.endDate || rollup.startDate > rollup.endDate || !Array.isArray(windows)) return null;

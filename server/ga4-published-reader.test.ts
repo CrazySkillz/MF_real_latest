@@ -108,8 +108,8 @@ describe("published GA4 readers", () => {
     const res = response(); await route("/api/campaigns/:id/ga4-to-date", bindings)(req(), res);
     expect(res.code).toBe(503); expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
-  it("preserves the exact historical-date provider path", async () => {
-    const res = response(); await route("/api/campaigns/:id/ga4-to-date", bindings)(req({ endDate: "2026-10-15", readOnly: "1" }), res);
+  it("preserves the non-read-only exact historical-date provider path", async () => {
+    const res = response(); await route("/api/campaigns/:id/ga4-to-date", bindings)(req({ endDate: "2026-10-15" }), res);
     expect(res.code).toBe(200); expect(provider.getTotalsWithRevenue).toHaveBeenCalledWith("123", "token", "2026-10-15", "2026-10-15", ["sale"], "EUR");
   });
   it("checks campaign access before reading saved data", async () => {

@@ -911,6 +911,17 @@ Not certified by this boundary:
 - Trend Analysis, Budget & Financial Analysis, Platform Comparison, Executive Summary, Custom Report generation/delivery, and their independent certification boundaries
 - provider behavior, source configuration, or runtime dependencies changed after the exact certified boundary without a new Performance Summary revalidation
 
+## 2026-11-18 Performance Summary saved-input corrections (test only)
+
+The current Promo audit found four paths requiring correction; earlier certification does not prove these paths:
+
+- Sessions movement subtracted daily Sessions from an exact-period total. It must instead match one saved native cumulative period with the same import start and exact comparison end; missing or ambiguous periods are unavailable.
+- The page mounted the auto-refreshing `ga4-metrics` query, and historical `ga4-to-date?readOnly=1` fell through to the provider. Performance Summary now uses saved Overview traffic. Read-only to-date requests require an exact saved Overview window and do not resolve credentials, fetch GA4, refresh tokens, or invent historical financial values. Other, non-read-only provider callers retain their existing behavior.
+- Missing daily records were skipped during additive Conversions comparisons. Every required calendar day must exist with a valid value; recorded zero remains valid data.
+- Native `overviewTotals.conversionRate` was dropped before health, priority and recommendation scoring. Preserve the GA4 session conversion rate, including a valid zero; missing or invalid rates remain unavailable instead of using conversion-event counts divided by Sessions.
+
+The targeted behavioral regression is `server/performance-summary-saved-inputs.test.ts`; it executes the actual page calculations and to-date route with offline dependencies. The test Promo copy has no configured targets, so native-rate target scoring requires isolated fixtures rather than changing its configuration. No schema, imported data, scheduler, Insights findings or Trends calculations are changed. This is a bounded correction, not a renewed whole-section or live certification.
+
 ## 2026-07-30 Current Commit 10 Status — Closed For Bounded Packet
 
 Root cause: scheduler snapshots used 90-day GA4 financial values while Overview/current-value consumers used the ordered connected-source financial contract, and ROAS/ROI incorrectly required positive revenue. Commit `ec265895` deployed the shared full financial selector reuse, GA4-scoped persisted financial values, valid zero/negative revenue handling, and `performance_summary_aggregate_v2`; dynamic version comparison prevents v1 history from mixing with corrected values. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend. The historical packet did not include a Total Revenue card; the current UI now renders Total Revenue in Key Outcomes and Recent Movement under the controlling contract above. The bounded Commit 10 packet is closed; scheduler-snapshot, historical, live multi-source, and zero/negative production-fixture proof remain external.

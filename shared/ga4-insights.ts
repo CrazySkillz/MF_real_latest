@@ -280,6 +280,10 @@ export const normalizeGA4InsightsDailyRows = (
     byDate.set(date, {
       ...normalized,
       date,
+      // Stored rates may be rounded; preserve the exact counts for calculation.
+      engagementRate: normalized.engagedSessions != null
+        ? normalized.sessions ? normalized.engagedSessions / normalized.sessions : 0
+        : normalized.engagementRate,
     });
   }
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));

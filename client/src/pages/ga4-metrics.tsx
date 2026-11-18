@@ -4470,7 +4470,7 @@ export default function GA4Metrics() {
         if (insightsTrendMode === "daily") {
           trendSorted.filter((r: any) => trendsVisibleDate(String(r.date))).forEach((r: any) => trendChartData.push({
             date: String(r.date || "").slice(5), recordedDate: String(r.date),
-            value: trendIsRate ? Number((Number(r[trendMetric] || 0) * 100).toFixed(2)) : Number(r[trendMetric] || 0),
+            value: trendIsRate ? Number(r[trendMetric] || 0) * 100 : Number(r[trendMetric] || 0),
           }));
         } else if (insightsTrendMode === "monthly") {
           buildGA4InsightsMonthlySeries(trendSorted, trendsRange.endDate, trendMetric).filter(row => row.month >= trendsRange.startDate.slice(0, 7) && row.month <= trendsRange.endDate.slice(0, 7)).forEach(row => {
@@ -4484,7 +4484,7 @@ export default function GA4Metrics() {
             if (!rollup.complete) continue;
             const value = trendMetric === "users" ? periodUsers(rollup) : trendIsRate ? rollup.engagementRate : Number((rollup as any)[trendMetric] || 0);
             if (value === null) continue;
-            trendChartData.push({ date: String(row.date).slice(5), recordedDate: String(row.date), value: Number(value.toFixed(2)) });
+            trendChartData.push({ date: String(row.date).slice(5), recordedDate: String(row.date), value: trendIsRate ? value : Number(value.toFixed(2)) });
           }
         }
 
@@ -9865,7 +9865,7 @@ export default function GA4Metrics() {
                               const row: any = dailyRowsByDate.get(cursor);
                               chartData.push({
                                 date: cursor.slice(5),
-                                value: row ? (isRate ? Number((Number(row[metric] || 0) * 100).toFixed(2)) : Number(row[metric] || 0)) : null,
+                                value: row ? (isRate ? Number(row[metric] || 0) * 100 : Number(row[metric] || 0)) : null,
                                 idx: chartData.length,
                               });
                               cursor = addGA4InsightsDateDays(cursor, 1) || "";
@@ -9874,7 +9874,7 @@ export default function GA4Metrics() {
                             chartData = monthlySeries.map((row, i) => {
                               const [y, m] = row.month.split("-");
                               const monthLabel = new Date(Number(y), Number(m) - 1).toLocaleString("en-US", { month: "short" }) + " '" + y.slice(2);
-                              return { date: monthLabel, value: row.value === null ? null : Number(row.value.toFixed(2)), idx: i, partial: row.partial };
+                              return { date: monthLabel, value: row.value === null ? null : isRate ? row.value : Number(row.value.toFixed(2)), idx: i, partial: row.partial };
                             });
                           } else {
                             const windowDays = insightsTrendMode === "7d" ? 7 : 30;
@@ -9897,7 +9897,7 @@ export default function GA4Metrics() {
                                 if (!rollingChartStartDate) rollingChartStartDate = String(rollup.startDate || "");
                                 rollingChartEndDate = String(rollup.endDate || "");
                               }
-                              chartData.push({ date: cursor.slice(5), value: rollup.complete && val !== null ? Number(val.toFixed(2)) : null, idx: chartData.length });
+                              chartData.push({ date: cursor.slice(5), value: rollup.complete && val !== null ? isRate ? val : Number(val.toFixed(2)) : null, idx: chartData.length });
                               cursor = addGA4InsightsDateDays(cursor, 1) || "";
                             }
                           }

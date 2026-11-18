@@ -20,7 +20,7 @@ it('navigates every metric across the full imported GA4 history without writes o
   const page=await context.newPage(), errors:string[]=[];
   page.on('pageerror',error=>errors.push(error.message));
   let windows: typeof real.windows=real.windows;
-  let daily=real.daily, cutoff=real.endDate;
+  let daily=real.daily.map(row=>({...row,engagementRate:Number(row.engagementRate.toFixed(4))})), cutoff=real.endDate;
   await page.clock.install({time:new Date('2026-11-17T09:00:00Z')});
   await context.route('**/*',async route=>{
     const req=route.request(), url=new URL(req.url());
@@ -79,17 +79,36 @@ it('navigates every metric across the full imported GA4 history without writes o
           const expected=mode==='Monthly' ? ['2026-09','2026-10','2026-11'].filter(m=>m<=rangeMonth).map(m=>{
             const rows=real.daily.filter(r=>r.date.startsWith(m)&&r.date<=selected);
             const total=metric==='users'?real.windows.find(w=>w.startDate===rows[0].date&&w.endDate===rows.at(-1)!.date)!.users:value(rows,metric);
-            return {date:new Date(m+'-01T00:00:00Z').toLocaleString('en-US',{month:'short',timeZone:'UTC'})+" '26",value:Number(total.toFixed(2))};
+            return {date:new Date(m+'-01T00:00:00Z').toLocaleString('en-US',{month:'short',timeZone:'UTC'})+" '26",value:metric==='engagementRate'?total:Number(total.toFixed(2))};
           }) : real.daily.filter(r=>r.date.startsWith(rangeMonth)&&r.date<=selected).flatMap(r=>{
             const n=mode==='7d'?7:mode==='30d'?30:1;
             const start=new Date(Date.parse(r.date)-(n-1)*86400000).toISOString().slice(0,10);
             const rows=real.daily.filter(d=>d.date>=start&&d.date<=r.date);
             if(rows.length!==n)return [];
             const total=metric==='users'&&mode!=='Daily'?real.windows.find(w=>w.startDate===start&&w.endDate===r.date)!.users:value(rows,metric);
-            return [{date:r.date.slice(5),value:mode==='Daily'&&metric!=='engagementRate'?total:Number(total.toFixed(2))}];
+            return [{date:r.date.slice(5),value:mode==='Daily'||metric==='engagementRate'?total:Number(total.toFixed(2))}];
           });
           expect(series.map((p:any)=>({date:p.date,value:p.value})),mode+' '+metric+' '+selected).toEqual(expected);
           expect(series.length).toBeLessThanOrEqual(mode==='Monthly'?12:31);
+          if(mode==='Daily'&&metric==='engagementRate') {
+            const more=trends.getByRole('button',{name:'Show all',exact:true});
+            if(await more.isVisible()) await more.click();
+            for(const day of real.daily.filter(row=>row.date.startsWith(rangeMonth))) {
+              const row=trends.getByRole('row').filter({hasText:day.date});
+              const current=value([day],metric), prior=real.daily.find(r=>r.date===new Date(Date.parse(day.date)-86400000).toISOString().slice(0,10));
+              await ui(row.getByRole('cell').nth(1)).toHaveText(new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(current)+'%');
+              const previous=prior?value([prior],metric):0, change=(current-previous)/Math.abs(previous)*100;
+              await ui(row.getByRole('cell').last()).toHaveText(!prior?'—':previous===0?'No % baseline':(change>=0?'+':'')+change.toFixed(1)+'%');
+            }
+            if(selected==='2026-09-30') {
+              await page.clock.runFor(2000);
+              const dots=page.getByTestId('insights-trends-chart').locator('.recharts-line-dots circle');
+              for(const index of [10,11]) {
+                await dots.nth(index).hover({force:true});
+                await ui(trends.locator('.recharts-tooltip-wrapper')).toContainText(new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(value([real.daily[index]],metric))+'%');
+              }
+            }
+          }
           if(expected.length===0) {
             await ui(page.getByTestId('insights-trends-empty')).toContainText('Not enough data for a 30-day chart in this month.');
             await ui(page.getByTestId('insights-trends-empty')).toContainText('The first complete 30-day period ends on 3 October 2026.');

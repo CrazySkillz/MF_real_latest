@@ -4,7 +4,7 @@
   "credentialsEnvironmentPrefix": "LIVE_NUMBER_",
   "application": {
     "baseUrl": "https://app.mimosaas.app",
-    "expectedCommit": "f5a101efca77f06973c2e641d1a3f4ce7f2360df",
+    "expectedCommit": "299df260c42b1439bc3a25b5d381b39e2bb6991f",
     "comparisonRateDefinition": "ga4_session_key_event_rate",
     "usersDefinition": "ga4_totalUsers_distinct_v1",
     "reportingMode": "current_day"

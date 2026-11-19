@@ -33,12 +33,15 @@ describe('campaign discovery API and onboarding consumers', () => {
     const res = response(); await run({ params: { id: 'fixture' }, query: { propertyId: '123', allowPartial: '1' } }, res);
     expect(res.statusCode).toBe(500); expect(res.body.success).toBe(false);
   });
-  it.each([false, true])('Create Campaign keeps exact returned names and clearly labels partial=%s', async partial => {
-    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ success: true })).mockResolvedValueOnce(Response.json({ success: true, campaigns: [{ name: 'exact_campaign', users: 25 }], ...(partial ? { discoveryComplete: false } : {}) }));
-    const deps = { fetch, selectedGA4Property: '123', draftCampaignId: 'draft', wizardLookbackDays: 30, pendingGA4ConnectionId: 'pending', toast: vi.fn(), console,
+  it.each([[30, false], [30, true], [365, false], [365, true]] as const)('Create Campaign preserves discovery for %i days with partial=%s', async (wizardLookbackDays, partial) => {
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ success: true, importStartDate: '2025-11-19' })).mockResolvedValueOnce(Response.json({ success: true, campaigns: [{ name: 'exact_campaign', users: 25 }], ...(partial ? { discoveryComplete: false } : {}) }));
+    const deps = { fetch, selectedGA4Property: '123', draftCampaignId: 'draft', wizardLookbackDays, pendingGA4ConnectionId: 'pending', toast: vi.fn(), console, setWizardImportStartDate: vi.fn(),
       setIsGA4PropertyLoading: vi.fn(), setPendingGA4ConnectionId: vi.fn(), setConnectedPlatformsInDialog: vi.fn(), setWizardPlatformConnected: vi.fn(),
       setIsGA4CampaignLoading: vi.fn(), setGA4CampaignDiscoveryError: vi.fn(), setGA4CampaignValues: vi.fn(), setSelectedGA4CampaignValues: vi.fn(), setGa4ConfigSubStep: vi.fn() };
     await bind(extract('client/src/pages/campaigns.tsx', 'handleWizardPropertySelection'), deps)();
+    expect(deps.setWizardImportStartDate).toHaveBeenCalledWith('2025-11-19');
+    expect(JSON.parse(fetch.mock.calls[0][1].body).lookbackDays).toBe(wizardLookbackDays);
+    expect(fetch.mock.calls[1][0]).toContain(`dateRange=${wizardLookbackDays}days`);
     expect(fetch.mock.calls[1][0]).toContain('propertyId=123&allowPartial=1');
     expect(deps.setGA4CampaignValues).toHaveBeenCalledWith([{ name: 'exact_campaign', users: 25 }]);
     expect(deps.setSelectedGA4CampaignValues).toHaveBeenCalledWith([]);

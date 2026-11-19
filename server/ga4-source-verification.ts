@@ -109,7 +109,9 @@ export async function checkGA4SourceNumbers(scope: { campaignId: string; connect
     return { ...connection, refreshToken: null, serviceAccountKey: null };
   } };
   const service = new GoogleAnalytics4Service(signal ? AbortSignal.any([signal, AbortSignal.timeout(240_000)]) : AbortSignal.timeout(240_000));
-  const capture: GA4DailyTrafficCapture = { campaignId };
+  const rollingUsersStartDate = scope.publication.campaignBreakdown?.meta?.distinctUsers?.rollingUsersStartDate;
+  if (rollingUsersStartDate !== undefined && rollingUsersStartDate !== scope.startDate) throw new Error('PROVIDER_DATE_SCOPE_UNVERIFIED');
+  const capture: GA4DailyTrafficCapture = { campaignId, ...(rollingUsersStartDate ? { rollingUsersStartDate } : {}) };
   const daily = await service.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, scope.startDate,
     scope.filter, scope.endDate, scope.currency, capture);
   const byDate = new Map(daily.map(row => [row.date, row]));
@@ -139,7 +141,8 @@ export async function checkGA4SourceNumbers(scope: { campaignId: string; connect
     if (Object.hasOwn(distinctUsers, "sessionKeyEventRate")) {
       checks.push(compareNumber("Overview Conversion Rate", "SOURCE_SESSION_KEY_EVENT_RATE", distinctUsers.sessionKeyEventRate, savedUsers.sessionKeyEventRate));
       checks.push(...compareProviderRows("Campaign Conversion Rate", distinctUsers.campaigns, savedUsers.campaigns, ["name"], ["sessionKeyEventRate"]));
-      checks.push(...compareProviderRows("Historical Conversion Rate", distinctUsers.windows, savedUsers.windows, ["startDate", "endDate"], ["sessionKeyEventRate"]));
+      checks.push(...compareProviderRows("Historical Conversion Rate", distinctUsers.windows.filter(window => Object.hasOwn(window, 'sessionKeyEventRate')),
+        savedUsers.windows.filter((window: any) => Object.hasOwn(window, 'sessionKeyEventRate')), ["startDate", "endDate"], ["sessionKeyEventRate"]));
     }
   }
   checks.push(...compareProviderRows("GA4 daily inputs / Insights / Trend Analysis", expectedDaily, savedDaily, ["date"],

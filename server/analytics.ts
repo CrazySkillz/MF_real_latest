@@ -545,7 +545,8 @@ export class GoogleAnalytics4Service {
         const dates = error?.dataTruncationReasons;
         const validDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
           && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
-        if (error?.code !== 'GA4_DATA_QUALITY_UNAVAILABLE' || JSON.stringify(error.reasons) !== '["truncated"]'
+        if (error?.code !== 'GA4_DATA_QUALITY_UNAVAILABLE' || !Array.isArray(error.reasons) || !error.reasons.includes('truncated')
+          || error.reasons.some((reason: string) => reason !== 'truncated' && reason !== 'sampling')
           || !validDate(dateRange) || !validDate(endDate) || !Array.isArray(dates) || !dates.length
           || dates.some(d => d?.dataTruncationType !== 'DATA_TRUNCATION_TYPE_PROPERTY' || !validDate(d.dataTruncationDate)
             || d.dataTruncationDate <= dateRange || d.dataTruncationDate > endDate)) throw error;
@@ -1609,8 +1610,13 @@ export class GoogleAnalytics4Service {
         from = next;
       }
       // Named date ranges let GA4 deduplicate each window independently (four per request).
-      for (let i = 0; i < rolling.length; i += 4) {
-        const batch = rolling.slice(i, i + 4);
+      // Bound independent batches to four requests and preserve the saved window order.
+      // An unrestricted, complete native daily-users report proves empty windows are zero.
+      // Nonzero daily users are never summed to derive a period's distinct users.
+      const pending = rolling.filter(window => daily.some(row => row.date >= window.startDate && row.date <= window.endDate && row.users > 0));
+      for (let i = 0; i < pending.length; i += 16) {
+        await Promise.all(Array.from({ length: Math.ceil(Math.min(16, pending.length - i) / 4) }, async (_, group) => {
+        const batch = pending.slice(i + group * 4, i + group * 4 + 4);
         let response: Response;
         try { response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -1619,8 +1625,7 @@ export class GoogleAnalytics4Service {
         }); } catch (error: any) {
           const values = await Promise.all(batch.map(window => recoverComparison(error, window.startDate, window.endDate)));
           batch.forEach((window, index) => { window.users = values[index][0]?.users ?? 0; });
-          windows.push(...batch);
-          continue;
+          return batch;
         }
         if (!response.ok) throw new Error(`GA4 rolling users API error: ${await response.text()}`);
         const data = await response.json(), rangeIndex = data.dimensionHeaders?.findIndex((header: any) => header.name === 'dateRange') ?? -1;
@@ -1633,8 +1638,10 @@ export class GoogleAnalytics4Service {
           if (index < 0 || namesSeen.has(name) || raw == null || raw === '' || !Number.isSafeInteger(Number(raw)) || Number(raw) < 0) throw new Error('GA4_ROLLING_USERS_INCOMPLETE');
           namesSeen.add(name); batch[index].users = Number(raw);
         }
-        windows.push(...batch);
+        return batch;
+        }));
       }
+      windows.push(...rolling);
     }
     return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows,
       ...(rollingUsersStartDate ? { rollingUsersStartDate: [startDate, rollingUsersStartDate].sort().at(-1)! } : {}),

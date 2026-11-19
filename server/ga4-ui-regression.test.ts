@@ -225,7 +225,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency]');
     expect(ga4Metrics.match(/snapshotEndDate: ga4OverviewExpectedEndDate,/g)).toHaveLength(2);
     expect(ga4Metrics).toContain("const GA4_DAILY_LOOKBACK_DAYS = 30;");
-    expect(ga4Metrics).toContain("Number(property?.lookbackDays) === 30");
+    expect(ga4Metrics).toContain("[30, 365].includes(Number(property?.lookbackDays))");
     expect(ga4Metrics).toContain('const dateRange = `${GA4_DAILY_LOOKBACK_DAYS}days`;');
     expect(ga4Metrics).not.toContain('const dateRange = "90days";');
     expect(ga4Metrics.match(/window: 'import-to-date'/g)).toHaveLength(2);
@@ -271,7 +271,7 @@ describe("GA4 UI regression guard", () => {
     expect(connectionListStart).toBeGreaterThan(-1);
     expect(connectionListEnd).toBeGreaterThan(connectionListStart);
     for (const route of [checkRoute, connectionListRoute]) {
-      expect(route).toContain("lookbackDays: 30");
+      expect(route).toContain("lookbackDays: conn.lookbackDays");
       expect(route).toContain("unsupportedLookbackConnectionCount");
       expect(route).not.toContain("accessToken: conn.accessToken");
       expect(route).not.toContain("refreshToken: conn.refreshToken");

@@ -122,7 +122,11 @@ The visible wizard has five steps:
 5. `Confirm`
 
 The current enabled creation path is Google Analytics. The GA4 configuration
-step selects a property and campaign scope before final confirmation. The
+step selects a property, `Historical data` (`Last 30 days`, the default, or
+`Last 365 days`), and campaign scope before final confirmation. The saved start
+date appears in Configure and Confirm. History selection is locked after the
+initial import is accepted; existing campaigns are not backfilled by this option.
+See [historical import behavior and validation](GA4_365_DAY_IMPORT.md). The
 campaign remains a draft during setup. Final `Create Campaign` saves the initial
 GA4 import for background processing; activation follows successful import of
 all selected properties. Accepted imports appear in All Campaigns with their

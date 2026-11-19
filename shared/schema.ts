@@ -161,7 +161,7 @@ export const ga4Connections = pgTable("ga4_connections", {
   // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
   importStartDate: text("import_start_date"), // Fixed start of the initial historical import used by Overview Summary
   encryptedTokens: jsonb("encrypted_tokens"),
-  lookbackDays: integer("lookback_days").notNull().default(90), // How many days of historical data to import (30, 60, or 90)
+  lookbackDays: integer("lookback_days").notNull().default(90), // Initial import depth: new campaigns select 30 or 365; retain the legacy database default.
   expiresAt: timestamp("expires_at"), // Token expiration time
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

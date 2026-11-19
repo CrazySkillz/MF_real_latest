@@ -377,6 +377,20 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     );
   });
 
+  it("preserves KPI and Benchmark metric parity for an annual saved import", async () => {
+    const start = "2025-08-01";
+    const annual = { ...connection, lookbackDays: 365, importStartDate: start };
+    storageMock.getGA4Connection.mockResolvedValue(annual); storageMock.getGA4Connections.mockResolvedValue([annual]);
+    const saved = await storageMock.getGA4OverviewSnapshot(); saved.windowStart = start;
+    Object.assign(saved.campaignBreakdown.meta.distinctUsers, { startDate: start, sessionTotalsVersion: 1,
+      sessions: 100, engagedSessions: 60, engagementRate: 0.6, sessionKeyEventRate: 0.05 });
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: dailyRow.date, suppressAlerts: true });
+    expect(result.campaignsProcessed).toBe(1); expect(result.kpiIdsFailed).toEqual([]);
+    for (const row of kpiRows) expect(Number(row.currentValue)).toBe(Number(expectedByMetric[row.metric]));
+    for (const row of benchmarkRows.filter(row => row.metric in expectedByMetric)) expect(Number(row.currentValue)).toBe(Number(expectedByMetric[row.metric]));
+  });
+
   it.each([undefined, "draft", "inactive"])("skips a %s campaign before KPI/Benchmark reads or writes", async (status) => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, status });
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, suppressAlerts: true });

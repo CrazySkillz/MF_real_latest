@@ -14,6 +14,10 @@ pending hosted activation are documented in
 For the current route, navigation, and user-visible section inventory, also use
 `docs/CURRENT_APP_SECTIONS.md`.
 
+The new-campaign `Last 365 days` option, fixed history boundary, downstream
+effects, and local validation limits are documented in
+[`docs/GA4_365_DAY_IMPORT.md`](../docs/GA4_365_DAY_IMPORT.md).
+
 Campaign-level KPI/Benchmark production-readiness tracking lives in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md`. GA4 is the first connected platform being validated against that campaign-level standard.
 
 Current GA4 tab production-readiness status:
@@ -228,7 +232,7 @@ These are now part of the GA4 template contract:
 - when GA4 exposes selected-campaign traffic through `pageLocation` `utm_campaign` but exposes conversions/native revenue through `campaignName`, the Overview import path supplements only missing `Conversions` and GA4-native `Revenue`; it must not overwrite sessions, users, pageviews, engagement, KPI/Benchmark math, imported revenue, spend, or alert behavior
 - Campaign Breakdown remains independent row detail, but the scheduler must publish it atomically with the daily facts; it must not replace or alter Summary values
 - Overview Summary cards should show a stable skeleton until the scheduler-backed daily response is available; later Campaign Breakdown loading cannot replace or change those values.
-- GA4 Overview `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` use a scheduler-persisted snapshot with the fixed initial-import boundary through the same latest completed day as Summary; the initial 30-day import must accumulate subsequent completed days rather than roll forward
+- GA4 Overview `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` use a scheduler-persisted snapshot with the fixed initial-import boundary through the same latest completed day as Summary; the selected initial import must accumulate subsequent completed days rather than roll forward
 - GA4 Overview `Landing Pages` creates rows only from session-scoped `landingPagePlusQueryString + sessionSource + sessionMedium` results. A conversion-prioritized, same-scope `pageLocation + sessionSource + sessionMedium` query may supplement only a missing Conversion value on an existing row through an exact landing-page/source/medium match; it cannot create Landing Pages rows or allocate campaign-level conversions or imported revenue
 - GA4 Overview `Conversion Events` first requests exact saved-campaign `sessionCampaignName` rows and then the scheduler-compatible exact `campaignName` scope. When the selected complete event result does not reconcile to the scheduler's per-date Conversion facts, it may use exact saved-UTM `pageLocation` scope for the whole window or a date-specific combination of `sessionCampaignName`, exact-UTM `pageLocation`, and `campaignName`, accepting only a result whose Conversion total exactly matches the scheduler. First-user attribution, maximum-value selection, unrelated property traffic, and cross-scope allocation remain forbidden. Only rows with `Conversions > 0` are displayed
 - GA4 Overview `Landing Pages` and `Conversion Events` are native row-level GA4 payloads captured by the daily scheduler, not reconstructions from aggregate daily rows and not separate browser-live queries; zero row-level conversions remain valid for Landing Pages, while zero-conversion event rows are intentionally excluded from Conversion Events

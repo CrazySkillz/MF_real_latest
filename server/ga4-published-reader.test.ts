@@ -98,6 +98,37 @@ describe("published GA4 readers", () => {
     expect(res.code).toBe(200); expect(res.body.totals).toMatchObject({ revenue: 100.01, conversions: 5 });
     expect(res.body.revenueMetric).toBe("totalRevenue"); expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
+
+  it("propagates an annual saved publication to Overview and Diagnostics without broadening financial dates or fetching GA4", async () => {
+    const start = "2025-10-17", end = "2026-10-16";
+    const annual = { ...connection, lookbackDays: 365, importStartDate: start };
+    storage.getGA4Connection.mockResolvedValue(annual); storage.getGA4Connections.mockResolvedValue([annual]);
+    const saved: any = overview(); saved.windowStart = start;
+    saved.campaignBreakdown.totals = { sessions: 3120, users: 9999, conversions: 624, revenue: 10000.01 };
+    saved.campaignBreakdown.meta.propertyId = connection.propertyId;
+    saved.campaignBreakdown.meta.distinctUsers = { version: 1, metric: "totalUsers", propertyId: connection.propertyId,
+      startDate: start, endDate: end, total: 5, sessionTotalsVersion: 1, sessions: 3120, engagedSessions: 2184,
+      engagementRate: 0.7, sessionKeyEventRate: 0.096, campaigns: [], daily: [], windows: [] };
+    const financial: any = published();
+    financial.metrics.financialDaily.currentValueWindow.startDate = start;
+    financial.metrics.financialDaily.inputs.revenue.value = "10030.01";
+    financial.metrics.financialDaily.inputs.conversions.value = 624;
+    storage.getGA4OverviewSnapshot.mockResolvedValue(saved); storage.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+    bindings.getCampaignMetricTotals.mockResolvedValue({ ga4FinancialSource: "persisted_overview", revenueAvailable: true, spendAvailable: true,
+      revenue: 10030.01, ga4Revenue: 10000.01, spend: 20, financialConversions: 624, sessions: 3120, users: 5 });
+    storage.getGA4DailyMetrics.mockResolvedValue(Array.from({ length: 365 }, (_, i) => ({ campaignId: campaign.id, propertyId: connection.propertyId,
+      date: new Date(Date.parse(start) + i * 86400000).toISOString().slice(0, 10), sessions: i === 364 ? 3120 : 0,
+      users: i === 364 ? 9999 : 0, conversions: i === 364 ? 624 : 0, revenue: i === 364 ? 10000.01 : 0, engagedSessions: i === 364 ? 2184 : 0 })));
+    const overviewResponse = response(); await route("/api/campaigns/:id/ga4-to-date", bindings)(req(), overviewResponse);
+    expect(overviewResponse.code).toBe(200); expect(overviewResponse.body.totals).toMatchObject({ revenue: 10000.01, conversions: 624 });
+    const outcome = response(); await route("/api/campaigns/:id/outcome-totals", bindings)(req(), outcome);
+    expect(outcome.code, JSON.stringify(outcome.body)).toBe(200);
+    expect(outcome.body.ga4).toMatchObject({ users: 5, sessions: 3120, conversions: 624, revenue: 10000.01 });
+    expect(outcome.body.financials).toMatchObject({ totalRevenue: 10030.01, spend: 20, conversions: 624 });
+    expect(outcome.body.performanceSummary.currentValueWindow).toMatchObject({ startDate: start, endDate: end });
+    expect(outcome.body.performanceSummary.totals.users).toMatchObject({ value: 5, available: true });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled(); expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
   it.each(["missing", "wrong property", "wrong campaign", "old date", "currency"])("withholds a current read with %s saved data", async (kind) => {
     const saved = overview();
     if (kind === "wrong property") saved.propertyId = "other";

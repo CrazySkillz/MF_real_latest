@@ -81,6 +81,29 @@ describe("GA4 correction windows and full-history repair", () => {
     expect(summarizeGA4TrafficRows(stored)).toMatchObject({ sessions: 30, conversions: 6 });
   });
 
+  it("imports a new 365-day draft without truncation and preserves its boundary on subsequent refreshes", async () => {
+    connection.importStartDate = "2025-10-18"; connection.lookbackDays = 365; campaign.status = "draft";
+    facts = [row(connection.importStartDate), row(recent), row(end)];
+    expect((await run("2026-10-18T06:00:00Z", { includeTargetDraft: true })).campaignIdsFailed).toEqual([]);
+    expect(stored).toHaveLength(365);
+    expect(stored[0].date).toBe("2025-10-18"); expect(stored.at(-1)?.date).toBe(end);
+    expect(stored.filter(r => r.sessions === 0)).toHaveLength(362);
+    for (const method of ["getTimeSeriesData", "getAcquisitionBreakdown", "getLandingPagesReport", "getConversionEventsReport"] as const)
+      expect(mocks.provider[method].mock.lastCall?.[2]).toBe(connection.importStartDate);
+    expect(snapshot.campaignBreakdown.totals).toEqual({ sessions: 30, conversions: 6, revenue: 60 });
+    campaign.status = "active";
+    expect((await run()).campaignIdsFailed).toEqual([]);
+    expect(stored).toHaveLength(365);
+    expect(connection.importStartDate).toBe("2025-10-18");
+    expect(mocks.provider.getTimeSeriesData.mock.lastCall?.[2]).toBe(recent);
+    expect(mocks.storage.getCampaigns).not.toHaveBeenCalled();
+    expect(mocks.storage.replaceGA4DailyMetricsWindow.mock.calls.every(args => args[0] === campaign.id && args[1] === connection.propertyId)).toBe(true);
+    const saved = structuredClone({ stored, snapshot });
+    mocks.provider.getLandingPagesReport.mockRejectedValueOnce(new Error("annual report unavailable"));
+    expect((await run()).campaignIdsFailed).toEqual([campaign.id]);
+    expect({ stored, snapshot }).toEqual(saved);
+  });
+
   it("imports today's available GA4 rows at each slot, replaces them on rerun, and advances on day two", async () => {
     vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
     facts.push(row("2026-10-18", 5));

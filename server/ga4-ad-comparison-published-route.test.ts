@@ -63,6 +63,17 @@ describe("Ad Comparison reads the synchronized native campaign breakdown", () =>
     expect(ads.body.rows).toEqual(overview.body.rows); expect(ads.body.totals).toEqual(overview.body.totals);
     expect(ads.body.totals.revenue).toBe(7653.96);
   });
+
+  it("uses the complete annual imported window for both Overview and Ad Comparison", async () => {
+    snapshot.windowStart = "2025-10-27";
+    storage.getGA4Connection.mockResolvedValue({ campaignId: "a", propertyId: "123", importStartDate: snapshot.windowStart, lookbackDays: 365, isActive: true });
+    for (const query of [{}, { adComparisonCampaignBreakdown: "0", overviewCampaignBreakdown: "1" }]) {
+      const res = await request(query);
+      expect(res.code).toBe(200);
+      expect(res.body).toMatchObject({ startDate: "2025-10-27", endDate: "2026-10-26", rows: snapshot.campaignBreakdown.rows, totals: snapshot.campaignBreakdown.totals });
+    }
+    expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
   it("preserves explicit limit, debug metadata, read-only flag and unrounded fractional credits", async () => {
     const res = await request({ limit: "1", debug: "1", readOnly: "1" });
     expect(res.code).toBe(200); expect(res.body.rows).toEqual([snapshot.campaignBreakdown.rows[0]]);

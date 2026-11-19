@@ -174,6 +174,13 @@ describe("automatic GA4 connection request boundaries", () => {
     expect(f.effects).toEqual(["legacy-grant", "legacy-token", "google-read", "update"]);
     expect(f.connections[0].serviceAccountBindingId).toBeUndefined();
   });
+
+  it("preserves an annual campaign's original boundary when service-account access is rechecked", async () => {
+    const f = fixture({ connections: [{ id: "old", method: "service_account", propertyId: "542352127", lookbackDays: 365, importStartDate: "2025-10-08" }] });
+    expect((await f.call("connect")).status).toBe(200);
+    expect(f.connections).toHaveLength(1);
+    expect(f.connections[0]).toMatchObject({ id: "old", lookbackDays: 365, importStartDate: "2025-10-08" });
+  });
   it("does not provision when disabled or with malformed input", async () => {
     const f = fixture({ selfService: false }); expect((await f.call("prepare")).status).toBe(503); expect(f.effects).toEqual([]);
     const g = fixture(); expect((await g.call("prepare", { propertyId: "1/2" })).status).toBe(400); expect(g.effects).toEqual([]);

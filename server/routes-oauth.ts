@@ -1059,6 +1059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (v === "30days") return "30daysAgo";
     if (v === "60days") return "60daysAgo";
     if (v === "90days") return "90daysAgo";
+    if (v === "365days") return "365daysAgo";
     return fallback;
   };
 
@@ -13065,6 +13066,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ connected: true, propertyId: pending ? '' : connection.propertyId,
         pendingConnectionId: pending?.id, pending: !!pending, properties,
+        lookbackDays: (pending ? connections.find(c => c.isPrimary) || connections[0] : connection)?.lookbackDays,
+        importStartDate: (pending ? connections.find(c => c.isPrimary) || connections[0] : connection)?.importStartDate,
         isRealOAuth: connection.method !== GA4_SERVICE_ACCOUNT_METHOD,
         dataSource: connection.method === GA4_SERVICE_ACCOUNT_METHOD ? 'Temporary Service Account' : 'Database Connection' });
     } catch (error) {
@@ -13093,15 +13096,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const campaign = await ensureCampaignAccess(req, res, campaignId);
       if (!campaign) return;
-      if (Number(lookbackDays) !== 30) {
-        return res.status(400).json({ success: false, error: "UNSUPPORTED_GA4_LOOKBACK", message: "This release supports only a 30-day GA4 lookback." });
+      if (![30, 365].includes(Number(lookbackDays))) {
+        return res.status(400).json({ success: false, error: "UNSUPPORTED_GA4_LOOKBACK", message: "Choose Last 30 days or Last 365 days." });
       }
+      const connections = await storage.getGA4Connections(campaignId, { resolveRuntimeCredentials: false, migrateLegacyTokens: false });
+      const active = connections.find(c => c.propertyId === propertyId) || connections.find(c => c.isPrimary) || connections[0];
+      const changingHistory = Number(lookbackDays) === 365 && (Number(active?.lookbackDays) !== 365 || active?.propertyId !== propertyId)
+        || Number(active?.lookbackDays) === 365 && (Number(lookbackDays) !== 365 || active?.propertyId !== propertyId);
+      if (changingHistory && (campaign.status !== "draft" || await storage.getGA4InitialImportWork(campaignId, campaign.ownerId))) {
+        return res.status(409).json({ success: false, error: "GA4_IMPORT_HISTORY_LOCKED", message: "Historical data can only be selected before creating a new campaign." });
+      }
+      const importStartDate = active?.propertyId === propertyId && Number(active.lookbackDays) === Number(lookbackDays) && active.importStartDate
+        ? active.importStartDate : getGA4HistoricalImportStartDate(new Date(), Number(lookbackDays), (campaign as any).reportingTimeZone);
+      if (!importStartDate) throw new Error('GA4_IMPORT_START_INVALID');
       let pending = await storage.getPendingGA4OAuthConnection(campaignId, pendingConnectionId || undefined);
       if (!pending && !pendingConnectionId) {
-        const connections = await storage.getGA4Connections(campaignId);
-        const active = connections.find(c => c.isPrimary) || connections[0];
         if (active?.method === GA4_SERVICE_ACCOUNT_METHOD && active.propertyId === propertyId) {
-          return res.json({ success: true, message: "Property set successfully", selectedProperty: { id: propertyId, name: active.propertyName } });
+          if (changingHistory) await storage.updateGA4Connection(active.id, { lookbackDays: Number(lookbackDays), importStartDate });
+          return res.json({ success: true, message: "Property set successfully", selectedProperty: { id: propertyId, name: active.propertyName }, lookbackDays: Number(lookbackDays), importStartDate });
         }
         if (active?.method === 'access_token') {
           const properties = await discoverStoredGA4Properties(active);
@@ -13117,14 +13129,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const properties = await realGA4Client.fetchPropertiesFromGoogle(String(pending.accessToken || ''));
       const selectedProperty = properties.find(p => p.id === propertyId);
       if (!selectedProperty) return res.status(403).json({ success: false, message: "This Google authorization cannot access that property" });
-      const importStartDate = getGA4HistoricalImportStartDate(new Date(), 30, (campaign as any).reportingTimeZone);
-      if (!importStartDate) throw new Error('GA4_IMPORT_START_INVALID');
-      await storage.commitGA4OAuthConnection(campaignId, pending.id, propertyId, selectedProperty.name, importStartDate);
+      await storage.commitGA4OAuthConnection(campaignId, pending.id, propertyId, selectedProperty.name, importStartDate, Number(lookbackDays));
       realGA4Client.disconnect(campaignId);
       (global as any).oauthConnections?.delete(campaignId);
       (global as any).realGA4Connections?.delete(campaignId);
-      res.json({ success: true, message: "Property set successfully", selectedProperty });
+      res.json({ success: true, message: "Property set successfully", selectedProperty, lookbackDays: Number(lookbackDays), importStartDate });
     } catch (error: any) {
+      if (error?.message === 'GA4_IMPORT_HISTORY_LOCKED') return res.status(409).json({ success: false, error: error.message, message: "Historical data can only be selected before creating a new campaign." });
       const expired = error?.message === 'GA4_OAUTH_PENDING_EXPIRED';
       res.status(expired ? 409 : 502).json({ success: false, message: expired ? "Google authorization expired. Please reconnect." : "Google Analytics could not confirm the property. Please retry." });
     }
@@ -13266,6 +13277,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let ga4DateRange = '30daysAgo';
       switch (dateRange) {
+        case '365days':
+          ga4DateRange = '365daysAgo';
+          break;
         case '7days':
           ga4DateRange = '7daysAgo';
           break;
@@ -14331,7 +14345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         String(connection?.propertyId || "").trim().length > 0
       );
       const usableGA4Connections = configuredGA4Connections.filter((connection: any) =>
-        Number(connection?.lookbackDays) === 30
+        [30, 365].includes(Number(connection?.lookbackDays))
       );
       const unsupportedLookbackConnectionCount = configuredGA4Connections.length - usableGA4Connections.length;
 
@@ -14355,7 +14369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isActive: conn.isActive,
             connectedAt: conn.connectedAt,
             method: conn.method,
-            lookbackDays: 30,
+            lookbackDays: conn.lookbackDays,
             hasRefreshCredential: Boolean(conn.refreshToken),
             tokenExpiresAt: conn.expiresAt || null
           })),
@@ -16035,10 +16049,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validationReadOnly = String(req.query.readOnly || "").trim() === "1";
       const connections = await storage.getGA4Connections(campaignId, { migrateLegacyTokens: !validationReadOnly, resolveRuntimeCredentials: !validationReadOnly });
       const usableConnections = connections.filter((connection: any) =>
-        String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) === 30
+        String(connection?.propertyId || "").trim().length > 0 && [30, 365].includes(Number(connection?.lookbackDays))
       );
       const unsupportedLookbackConnectionCount = connections.filter((connection: any) =>
-        String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) !== 30
+        String(connection?.propertyId || "").trim().length > 0 && ![30, 365].includes(Number(connection?.lookbackDays))
       ).length;
 
       res.json({
@@ -16055,7 +16069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: conn.isActive,
           connectedAt: conn.connectedAt,
           method: conn.method,
-          lookbackDays: 30
+          lookbackDays: conn.lookbackDays
         }))
       });
     } catch (error) {
@@ -16226,15 +16240,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (binding) await storage.completeGA4ClientServiceAccount(campaignId, propertyId, binding.id, binding.googleUniqueId!, getActorId(req), true);
 
       const propertyName = `Property ${propertyId}`;
-      const importStartDate = getGA4HistoricalImportStartDate(new Date(), 30, (campaign as any)?.reportingTimeZone);
       const existing = existingConnections[0] as any;
+      const lookbackDays = Number(existing?.lookbackDays) === 365 && existing?.propertyId === propertyId ? 365 : 30;
+      const importStartDate = lookbackDays === 365 ? existing.importStartDate
+        : getGA4HistoricalImportStartDate(new Date(), 30, (campaign as any)?.reportingTimeZone);
       const saved = existing
         ? await storage.updateGA4Connection(existing.id, {
             propertyId,
             propertyName,
             method: GA4_SERVICE_ACCOUNT_METHOD,
             ...(binding ? { serviceAccountBindingId: binding.id } : {}),
-            lookbackDays: 30,
+            lookbackDays,
             importStartDate,
             isPrimary: true,
             isActive: true,
@@ -16245,7 +16261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             propertyName,
             method: GA4_SERVICE_ACCOUNT_METHOD,
             ...(binding ? { serviceAccountBindingId: binding.id } : {}),
-            lookbackDays: 30,
+            lookbackDays,
             importStartDate,
             isPrimary: true,
             isActive: true,

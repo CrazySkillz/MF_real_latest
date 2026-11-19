@@ -261,7 +261,7 @@ export interface IStorage {
   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
   stageGA4OAuthConnection(connection: InsertGA4Connection): Promise<GA4Connection>;
   getPendingGA4OAuthConnection(campaignId: string, connectionId?: string): Promise<GA4Connection | undefined>;
-  commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string): Promise<GA4Connection>;
+  commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string, lookbackDays?: number): Promise<GA4Connection>;
   cancelGA4OAuthConnection(campaignId: string, connectionId: string): Promise<boolean>;
   updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
   updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options?: GA4RefreshConnectionWriteInput): Promise<GA4Connection | undefined>;
@@ -1393,7 +1393,7 @@ export class DatabaseStorage implements IStorage {
     return removed.length === 1;
   }
 
-  async commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string): Promise<GA4Connection> {
+  async commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string, lookbackDays = 30): Promise<GA4Connection> {
     return this.writeGA4RefreshInputChange(campaignId, async tx => {
       const [pending] = await tx.select().from(ga4Connections).where(and(eq(ga4Connections.id, connectionId),
         eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, false), eq(ga4Connections.propertyId, ''),
@@ -1403,12 +1403,21 @@ export class DatabaseStorage implements IStorage {
       const active = await tx.select().from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true))).for('update');
       const existing = active.find((row: any) => row.propertyId === propertyId) || active.find((row: any) => row.isPrimary) || active[0];
       const sameProperty = existing?.propertyId === propertyId;
+      if (![30, 365].includes(lookbackDays)) throw new Error('UNSUPPORTED_GA4_LOOKBACK');
+      const changingHistory = (lookbackDays === 365 || existing?.lookbackDays === 365)
+        && (!sameProperty || existing?.lookbackDays !== lookbackDays);
+      if (changingHistory) {
+        const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, campaignId));
+        const [accepted] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
+          .where(and(eq(ga4RefreshWork.campaignId, campaignId), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`)).limit(1);
+        if (campaign?.status !== 'draft' || accepted) throw new Error('GA4_IMPORT_HISTORY_LOCKED');
+      }
       const [saved] = await tx.update(ga4Connections).set({
         propertyId, propertyName, method: 'access_token', isActive: true, isPrimary: true,
         serviceAccountBindingId: null,
         encryptedTokens: pending.encryptedTokens, accessToken: null, refreshToken: null, clientSecret: null,
-        clientId: pending.clientId, expiresAt: pending.expiresAt, lookbackDays: 30,
-        importStartDate: sameProperty ? existing.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : importStartDate,
+        clientId: pending.clientId, expiresAt: pending.expiresAt, lookbackDays,
+        importStartDate: sameProperty && !changingHistory ? existing.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : importStartDate,
       }).where(eq(ga4Connections.id, existing?.id || pending.id)).returning();
       await tx.update(ga4Connections).set({ isPrimary: false }).where(and(eq(ga4Connections.campaignId, campaignId), sql`${ga4Connections.id} <> ${saved.id}`));
       if (existing) await tx.delete(ga4Connections).where(eq(ga4Connections.id, pending.id));
@@ -1444,6 +1453,12 @@ export class DatabaseStorage implements IStorage {
     };
 
     const ga4Connection = await this.writeGA4RefreshInputChange(connection.campaignId, async tx => {
+    if (Number(connection.lookbackDays) === 365) {
+      const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, connection.campaignId));
+      const [accepted] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
+        .where(and(eq(ga4RefreshWork.campaignId, connection.campaignId), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`)).limit(1);
+      if (campaign?.status !== 'draft' || accepted) throw new Error('GA4_IMPORT_HISTORY_LOCKED');
+    }
     const [saved] = await tx
       .insert(ga4Connections)
       .values(connectionData)
@@ -1459,6 +1474,16 @@ export class DatabaseStorage implements IStorage {
     const saved = await this.writeGA4RefreshInputChange(target.campaignId, async db => {
     const [existing] = await db.select().from(ga4Connections).where(and(eq(ga4Connections.id, connectionId), eq(ga4Connections.campaignId, target.campaignId))).for("update");
     if (!existing) return undefined;
+    const nextLookbackDays = Number(connection.lookbackDays ?? existing.lookbackDays);
+    if ((nextLookbackDays === 365 || existing.lookbackDays === 365)
+      && (nextLookbackDays !== existing.lookbackDays
+        || connection.importStartDate !== undefined && connection.importStartDate !== existing.importStartDate
+        || connection.propertyId !== undefined && connection.propertyId !== existing.propertyId)) {
+      const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, target.campaignId));
+      const [accepted] = await db.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
+        .where(and(eq(ga4RefreshWork.campaignId, target.campaignId), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`)).limit(1);
+      if (campaign?.status !== 'draft' || accepted) throw new Error('GA4_IMPORT_HISTORY_LOCKED');
+    }
     const nextMethod = String(connection.method ?? existing.method ?? "").trim().toLowerCase();
     if (nextMethod === GA4_SERVICE_ACCOUNT_METHOD) {
       await assertGA4ServiceAccountConnectionAccess({ ...existing, ...connection, campaignId: existing.campaignId });

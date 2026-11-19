@@ -1710,7 +1710,7 @@ export default function GA4Metrics() {
   const availableGA4Properties: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean; lookbackDays?: number }> =
     (ga4PropsFromCheck.length > 0 ? ga4PropsFromCheck : ga4PropsFromAll)
       .filter((property) => String(property?.propertyId || "").trim().length > 0)
-      .filter((property) => Number(property?.lookbackDays) === 30);
+      .filter((property) => [30, 365].includes(Number(property?.lookbackDays)));
   const ga4ConnectionUsable = !!ga4Connection?.connected && availableGA4Properties.length > 0;
   const primaryGA4PropertyId = String((availableGA4Properties.find((property) => property?.isPrimary) || availableGA4Properties[0])?.propertyId || "");
   const insightsAnalyticsHistoryMatchesSelectedProperty = isGA4InsightsAnalyticsHistoryInSelectedPropertyScope(

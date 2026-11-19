@@ -74,8 +74,8 @@ They are not hard-coded values and they are not manually maintained UI state.
 
 Important clarification:
 
-- during property setup, the system stores the GA4 property, campaign selection/filter, and the 30-day historical-import depth
-- Summary starts with those 30 completed historical days and appends later completed-day facts; it must not discard the oldest imported day merely because the calendar advances
+- during new-campaign property setup, the system stores the GA4 property, campaign selection/filter, and the selected 30- or 365-day historical-import depth; see [historical import behavior and validation](../docs/GA4_365_DAY_IMPORT.md)
+- Summary starts with the selected historical period and appends later reporting-day facts; it must not discard the oldest imported day merely because the calendar advances
 - the cards remain computed from current persisted facts for that fixed import boundary through the latest completed day; they are not frozen UI values
 - the GA4 daily scheduler is the only production publisher for Summary facts and the three Overview detail tables
 - after a deployment introduces or invalidates this snapshot contract, startup discovery runs the same campaign-scoped daily scheduler only for configured campaigns whose synchronized snapshot is missing or mismatched. It does not run a general refresh for campaigns that already have a valid snapshot, and browser requests remain read-only
@@ -418,7 +418,7 @@ Current code-path meaning:
 - for active real GA4 campaigns, mapped financial refresh runs before the atomic GA4 daily/Overview publication; KPI/Benchmark recompute, Campaign DeepDive history, Executive Summary history, alerts, and exact-date report readiness follow only after that campaign's preceding stages succeed
 - a failed obsolete or unrelated campaign does not block a successfully refreshed campaign from completing its own downstream publication; the overall run still reports the failure and skips the unsafe global alert sweep
 - numeric GA4 property IDs must not be classified as the Yesop simulator; Overview values for live or mock-live numeric properties should come from the GA4 live import/query path plus persisted selected-campaign daily facts, not a deterministic simulation baseline
-- all three Overview tables use the selected connection's fixed initial-import boundary through the latest completed day; the 30-day setting defines only the initial historical import and does not become a rolling display window
+- all three Overview tables use the selected connection's fixed initial-import boundary through the latest completed day; the historical-depth setting defines only the initial import and does not become a rolling display window
 - `Landing Pages` retains native session-scoped row-level GA4 payloads captured by the scheduler. Conversion Events likewise prefers one exact native event-row query; when no complete-window scope reconciles, it can derive the exact per-date scope selection from scheduler facts and then rerun one combined native event-row query for Event Count and Users. Neither table is fetched live by the browser
 - `Landing Pages` never creates traffic rows from `pageLocation`; `pageLocation` can only supplement Conversions on an existing session-scoped row through the exact row-level match above. Conversion Events retains its separately documented behavior and is not changed or certified by this Landing Pages rule
 

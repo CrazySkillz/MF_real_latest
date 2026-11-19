@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "0df0749e1fc49a38bee6703ff48f2fd45d9fe1fe",
+  "expectedCommit": "9fdbdcf6f0a0c6ab35e7bbb5d16e973cbead9032",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -64,7 +64,7 @@
     {
       "path": "server/analytics.ts",
       "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
-      "after": "9929978d5608b111f47dba5936ba111d01d4de6f3cb878433e89ae805d3f757e"
+      "after": "a94527ce60f3cdb633181705b2a5971e82ac04cbe9380b0aa1f806ead613b1f2"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -89,7 +89,7 @@
     {
       "path": "server/ga4-source-verification.ts",
       "before": "f4c8595935a15069f04921916ae4b9938aa8b1e3ce76f7885c5cf10a225eeba7",
-      "after": "11144e98b7e0e7ab8e2c7a51918c4382cbf3b8b095a88609e99bf4fd2ff4a343"
+      "after": "262ab9684b668b819c41dc9c9bd730dfeeebc08fc3c5264c877134008766a581"
     },
     {
       "path": "server/google-ads-scheduler.ts",

@@ -1,10 +1,45 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { transformSync } from "esbuild";
 import { insertCampaignSchema } from "@shared/schema";
 import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialBudgetPeriodSpend, resolveFinancialPacingCalendar, resolveFinancialPaidMediaEfficiencyCompatibility } from "../client/src/lib/financial-executive-actions";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
+  it("loads financial totals from saved data without a provider-backed GA4 query or loading dependency", () => {
+    const page = readFileSync(join(process.cwd(), "client/src/pages/financial-analysis.tsx"), "utf-8");
+    expect(page).not.toContain("ga4-metrics");
+    expect(page).not.toContain("ga4Loading");
+    expect(page).toContain("outcome-totals?dateRange=90days&persistedOnly=1");
+  });
+
+  it("preserves signed revenue provenance while keeping negative and unavailable spend excluded", () => {
+    const page = readFileSync(join(process.cwd(), "client/src/pages/financial-analysis.tsx"), "utf-8");
+    const code = page.slice(page.indexOf("  const parseSourceMetric ="), page.indexOf("  const budgetAllocationSources:"));
+    const run = new Function("performanceSources", "financialRevenueMetric", "financialSpendMetric", "outcomeTotals",
+      transformSync(code, { loader: "ts" }).code + "return {revenue: financialChildSourceBreakdowns, spend: financialSpendInputBreakdowns};");
+    const values = [100, -10, 0, null, undefined, "", NaN, Infinity].map((value, index) => ({ id: String(index), value }));
+    const result = run([], {}, {}, { financialInputs: { revenue: values, spend: values } });
+    expect(result.revenue.map((row: any) => row.revenue)).toEqual([100, -10, 0]);
+    expect(result.revenue.reduce((sum: number, row: any) => sum + row.revenue, 0)).toBe(90);
+    expect(result.spend.map((row: any) => row.spend)).toEqual([100, 0]);
+    const fallback = run([{ id: "refund", connected: true, category: "financial", includedMetrics: ["revenue"], metrics: { revenue: -10 } }], {}, {}, {});
+    expect(fallback.revenue[0].revenue).toBe(-10);
+  });
+
+  it("includes finite negative native GA4 revenue without weakening provider availability gates", () => {
+    const route = readFileSync(join(process.cwd(), "server/routes-oauth.ts"), "utf-8");
+    const start = route.indexOf("      const financialInputs = {");
+    const code = route.slice(start, route.indexOf("      const financialRevenueDecisionInputs", start));
+    const run = new Function("financialWebAnalytics", "onsiteRevenue", "financialRevenueInputs", "financialSpendInputs", "campaignId", "financialNativeRevenueStartDate", "currentValueWindow", "endDate", "campaignCurrency", "financialGa4Totals",
+      transformSync(code, { loader: "ts" }).code + "return financialInputs;");
+    const inputs = (value: number, provider = "ga4", available = true) => run({ provider, available }, value, [], [], "campaign-1", "2026-09-04", { endDate: "2026-11-18" }, "2026-11-18", "EUR", { source: "ga4_to_date" });
+    for (const value of [-10, 0, 100]) expect(inputs(value).revenue[0]).toMatchObject({ value, campaignId: "campaign-1", currency: "EUR", currencyVerified: true });
+    expect(inputs(NaN).revenue).toEqual([]);
+    expect(inputs(Infinity).revenue).toEqual([]);
+    expect(inputs(-10, "ga4", false).revenue).toEqual([]);
+    expect(inputs(-10, "custom_integration").revenue).toEqual([]);
+  });
   it("withholds paid-media efficiency when contributing source sets are incompatible", () => {
     const compatibility = resolveFinancialPaidMediaEfficiencyCompatibility([
       { id: "linkedin", label: "LinkedIn Ads", category: "paid_media", connected: true, includedMetrics: ["spend", "clicks", "impressions"] },
@@ -464,7 +499,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     const overviewEnd = page.indexOf('<TabsContent value="roi-roas"', overviewStart);
     const overview = page.slice(overviewStart, overviewEnd);
 
-    expect(page).toContain("const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading || outcomeTotalsLoading);");
+    expect(page).toContain("const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || outcomeTotalsLoading);");
     expect(page).toContain('const overviewSpendMetric = getOverviewMetric("spend", totalSpend);');
     expect(page).toContain('const overviewRevenueMetric = getOverviewMetric("revenue", estimatedRevenue);');
     expect(page).toContain('const overviewConversionsMetric = getOverviewMetric("conversions", totalConversions);');
@@ -586,8 +621,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const financialSpendInputs = Array.isArray(outcomeTotals?.financialInputs?.spend) ? outcomeTotals.financialInputs.spend : [];");
     const provenanceInputs = page.slice(page.indexOf("const aggregateRevenueInputBreakdowns"), page.indexOf("const budgetAllocationSources"));
     expect(provenanceInputs).toContain('sourceIncludesMetric(source, "revenue")');
-    expect(provenanceInputs.match(/\.filter\(hasNonNegativeInputValue\)/g)).toHaveLength(2);
-    expect(provenanceInputs).toContain("source.revenue >= 0");
+    expect(provenanceInputs).toContain(".filter(hasFiniteInputValue)");
+    expect(provenanceInputs).toContain("hasFiniteInputValue(source) && Number(source.value) >= 0");
+    expect(provenanceInputs).toContain("Number.isFinite(source.revenue)");
     expect(provenanceInputs).not.toContain("source.revenue > 0");
     expect(provenanceInputs).not.toContain("source.spend > 0");
 

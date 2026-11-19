@@ -15741,7 +15741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const financialInputs = {
         revenue: [
-          ...(financialWebAnalytics.provider === "ga4" && financialWebAnalytics.available === true && onsiteRevenue >= 0
+          ...(financialWebAnalytics.provider === "ga4" && financialWebAnalytics.available === true && Number.isFinite(onsiteRevenue)
             ? [{
                 id: "ga4_native_revenue",
                 label: "GA4 Revenue",

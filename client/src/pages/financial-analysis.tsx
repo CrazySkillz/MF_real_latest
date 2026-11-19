@@ -164,17 +164,6 @@ export default function FinancialAnalysis() {
     },
   });
 
-  // Get GA4 data for additional metrics
-  const { data: ga4Data, isLoading: ga4Loading } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
-    enabled: !!campaignId,
-    queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
-      if (!response.ok) return null;
-      return response.json();
-    },
-  });
-
   // Get Meta analytics data
   const { data: metaData, isLoading: metaLoading } = useQuery({
     queryKey: ["/api/meta", campaignId, "analytics"],
@@ -187,10 +176,10 @@ export default function FinancialAnalysis() {
   });
 
   const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError, isRefetchError: outcomeTotalsRefetchError } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live", "persistedOnly"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days&persistedOnly=1${demoMode ? "&demo=1" : ""}`;
       const response = await fetch(url, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to load aggregate financial totals");
       return response.json();
@@ -239,7 +228,7 @@ export default function FinancialAnalysis() {
   const effectiveLinkedIn: any = demoLinkedIn || linkedInData;
   const effectiveCI: any = demoCI || customIntegrationData;
   const effectiveSheets: any = demoSheets || sheetsData;
-  const effectiveGA4: any = demoGA4 || ga4Data;
+  const effectiveGA4: any = demoGA4;
   const effectiveMeta: any = demoMeta || metaData;
   const effectiveSnapshot: any = demoMode ? demoSnapshot : comparisonData?.previous;
 
@@ -295,7 +284,7 @@ export default function FinancialAnalysis() {
   }
 
   // Data loading state — prevent flash of stale/zero metrics on refresh
-  const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading || outcomeTotalsLoading);
+  const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || outcomeTotalsLoading);
   const performanceSummary = outcomeTotals?.performanceSummary;
   const currentValueWindow = performanceSummary?.currentValueWindow;
   const hasCampaignToDateWindow = performanceSummary?.version === "performance_summary_aggregate_v3"
@@ -587,10 +576,9 @@ export default function FinancialAnalysis() {
     const parsed = Number(source?.value);
     return Number.isFinite(parsed) ? parsed : 0;
   };
-  const hasNonNegativeInputValue = (source: any) => source?.value !== null
+  const hasFiniteInputValue = (source: any) => source?.value !== null
     && source?.value !== ""
-    && Number.isFinite(Number(source?.value))
-    && Number(source.value) >= 0;
+    && Number.isFinite(Number(source?.value));
   const sourceIncludesMetric = (source: any, metricName: string) =>
     Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
   const financialMainSources = performanceSources
@@ -626,10 +614,10 @@ export default function FinancialAnalysis() {
       sourceType: String(source.sourceType || ""),
       revenue: parseSourceMetric(source, "revenue"),
     }))
-    .filter((source: FinancialChildSourceBreakdown) => source.revenue >= 0);
+    .filter((source: FinancialChildSourceBreakdown) => Number.isFinite(source.revenue));
   const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs.length > 0
     ? financialRevenueInputs
-        .filter(hasNonNegativeInputValue)
+        .filter(hasFiniteInputValue)
         .map((source: any) => ({
           id: String(source?.id || source?.label || "revenue_input"),
           label: String(source?.label || "Revenue input"),
@@ -638,7 +626,7 @@ export default function FinancialAnalysis() {
         }))
     : aggregateRevenueInputBreakdowns;
   const financialSpendInputBreakdowns: FinancialSpendInputBreakdown[] = financialSpendInputs
-    .filter(hasNonNegativeInputValue)
+    .filter((source: any) => hasFiniteInputValue(source) && Number(source.value) >= 0)
     .map((source: any) => ({
       id: String(source?.id || source?.label || "spend_input"),
       label: String(source?.label || "Spend input"),

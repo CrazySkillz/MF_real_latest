@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "c0358fe4c573a17808e07b813f0c02a0ee3d6b7c",
+  "expectedCommit": "f5a101efca77f06973c2e641d1a3f4ce7f2360df",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -19,7 +19,7 @@
     {
       "path": "client/src/lib/trend-analysis-cumulative.ts",
       "before": "011daff1a987c394db00db4f5e9962af0d0a80f2019c7ea56d6254bd21c587f6",
-      "after": "f00491a45add66453be45b8a8f087b6562daff25e63527128fca2f2dd520aaf0"
+      "after": "9af4c9d2de4d78dcc226e6ea50051680b632351e7807b4ffc81dd3a7af51269c"
     },
     {
       "path": "client/src/pages/campaign-performance.tsx",
@@ -59,7 +59,7 @@
     {
       "path": "client/src/pages/trend-analysis.tsx",
       "before": "0c463465ae5a277d47902b8c29218e5fe640eb730be28fcef38943ea7bdfcdf9",
-      "after": "0be1fc50deb1a3019cd2b756f5cf9d0d015726b1ae7d0885a84cded0bac6d6bf"
+      "after": "806fd81b31de6f2299bc7203fbe406e2e1ba2f81e942c662b18929c3a2ae4a88"
     },
     {
       "path": "server/analytics.ts",

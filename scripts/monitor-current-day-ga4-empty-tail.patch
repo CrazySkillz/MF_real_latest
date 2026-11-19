@@ -7719,3 +7719,244 @@ index 78edb601..bd3ce8a3 100644
    const cpm = costSpendAvailable && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
    const roas = hasRevenue && hasSpend && spendValue > 0 ? Number(formatRoasRatio(revenueValue / spendValue)) : null;
    const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
+
+diff --git a/client/src/pages/trend-analysis.tsx b/client/src/pages/trend-analysis.tsx
+index 3872d28d..5b9273d8 100644
+--- a/client/src/pages/trend-analysis.tsx
++++ b/client/src/pages/trend-analysis.tsx
+@@ -1,6 +1,6 @@
+ import { useParams } from "wouter";
+ import { ga4ProvisionalNotice } from "@shared/ga4-financial-source";
+-import { getGA4DistinctUsers } from "@shared/ga4-traffic-window";
++import { getGA4DistinctUsers, getGA4PeriodTraffic } from "@shared/ga4-traffic-window";
+ import { useQuery, keepPreviousData } from "@tanstack/react-query";
+ import { TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare } from "lucide-react";
+ import Navigation from "@/components/layout/navigation";
+@@ -120,10 +120,10 @@ export default function TrendAnalysis() {
+   );
+ 
+   const { data: ga4Daily, isFetched: trendGA4DailyFetched, error: trendGA4DailyError } = useQuery<any>({
+-    queryKey: ["/api/campaigns", campaignId, "ga4-daily", TREND_GA4_DAILY_DAYS, trendGA4PropertyId, "trend-read-only"],
++    queryKey: ["/api/campaigns", campaignId, "ga4-daily", TREND_GA4_DAILY_DAYS, trendGA4PropertyId, "trend-read-only-history"],
+     enabled: !!campaignId && !!trendGA4PropertyId,
+     queryFn: async () => {
+-      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=${TREND_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(trendGA4PropertyId)}&readOnly=1`);
++      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=${TREND_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(trendGA4PropertyId)}&readOnly=1&includeTrendsHistory=1`);
+       const data = await resp.json().catch(() => null);
+       if (!resp.ok || !data || data?.success === false || data?.validationReadOnly !== true
+         || String(data?.propertyId || "") !== trendGA4PropertyId) {
+@@ -156,7 +156,7 @@ export default function TrendAnalysis() {
+     String(outcomeTotals?.performanceSummary?.currentValueWindow?.dataThroughDate || ""),
+     perfDays,
+   );
+-  const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`;
++  const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1`;
+   const { data: trendFinancialComparison, isFetched: trendFinancialComparisonFetched, error: trendFinancialComparisonError } = useQuery<any>({
+     queryKey: [trendFinancialComparisonUrl, "trend-exact-financial"],
+     enabled: !!campaignId && !!trendComparisonDate,
+@@ -437,13 +437,8 @@ export default function TrendAnalysis() {
+     date.setUTCDate(date.getUTCDate() + 1);
+     return date.toISOString().slice(0, 10);
+   })() : "";
+-  const requestedAnomalyTrendStartDate = resolveTrendComparisonDate(selectedTrendStartDate, 7);
+   const selectedTrendComparisonStartDate = resolveTrendComparisonDate(selectedTrendStartDate, perfDays);
+   const schedulerHistoryStartDate = String(ga4Daily?.overviewStartDate || "");
+-  const anomalyTrendStartDate = ISO_DATE_PATTERN.test(requestedAnomalyTrendStartDate)
+-    && ISO_DATE_PATTERN.test(schedulerHistoryStartDate) && schedulerHistoryStartDate > requestedAnomalyTrendStartDate
+-    ? schedulerHistoryStartDate
+-    : requestedAnomalyTrendStartDate;
+   // Campaign Performance Trend reads only the complete daily window materialized by the scheduler.
+   const verifiedTrendGA4DailyRows = usesCumulativeGA4Consumer ? resolveVerifiedTrendGA4DailyRows({
+     dailyResponse: ga4Daily,
+@@ -456,9 +451,9 @@ export default function TrendAnalysis() {
+     selectedStartDate: selectedTrendComparisonStartDate,
+   }) : null;
+   const verifiedTrendGA4AnomalyRows = usesCumulativeGA4Consumer ? resolveVerifiedTrendGA4DailyRows({
+-    dailyResponse: ga4Daily,
++    dailyResponse: { ...ga4Daily, startDate: schedulerHistoryStartDate, data: ga4Daily?.trendsData },
+     propertyId: trendGA4PropertyId,
+-    selectedStartDate: anomalyTrendStartDate,
++    selectedStartDate: schedulerHistoryStartDate,
+   }) : null;
+   const trendGA4DailyHistoryVerified = !usesCumulativeGA4Consumer || verifiedTrendGA4DailyRows !== null;
+   const trendGA4DailyHistoryPending = usesCumulativeGA4Consumer && !trendGA4DailyFetched;
+@@ -517,7 +512,8 @@ export default function TrendAnalysis() {
+     return {
+       users, sessions, conversions, engagedSessions,
+       engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : null,
+-      cvr: sessions > 0 ? (conversions / sessions) * 100 : null,
++      cvr: typeof totals.conversionRate === "number" && Number.isFinite(totals.conversionRate)
++        && totals.conversionRate >= 0 && totals.conversionRate <= 100 ? totals.conversionRate : null,
+     };
+   })();
+   const exactTrafficComparison = exactCumulativeTraffic;
+@@ -650,8 +646,8 @@ export default function TrendAnalysis() {
+   const overviewTrendData = useMemo<any>(() => {
+     if (trendConsumerMode === "pending" || trendConsumerMode === "unavailable") return null;
+     const aggregate = trendAggregate;
+-    const rows = usesCumulativeGA4Consumer && verifiedTrendGA4DailyRows
+-      ? verifiedTrendGA4DailyRows.map((row: any) => ({
++    const rows = usesCumulativeGA4Consumer
++      ? (verifiedTrendGA4DailyRows || []).map((row: any) => ({
+         date: row.date,
+         metrics: {
+           users: row.users,
+@@ -702,8 +698,8 @@ export default function TrendAnalysis() {
+       };
+     });
+     const series: any[] = mapSeries(rows);
+-    const comparisonSeries: any[] = usesCumulativeGA4Consumer && verifiedTrendGA4ComparisonRows
+-      ? mapSeries(verifiedTrendGA4ComparisonRows.map((row: any) => ({
++    const comparisonSeries: any[] = usesCumulativeGA4Consumer
++      ? mapSeries((verifiedTrendGA4ComparisonRows || []).map((row: any) => ({
+         date: row.date,
+         metrics: { users: row.users, sessions: row.sessions, conversions: row.conversions },
+       })))
+@@ -767,6 +763,11 @@ export default function TrendAnalysis() {
+     const current = usesCumulativeGA4Consumer ? authoritativeTrendCurrent : buildSummary(currentPeriod);
+     const previous = usesCumulativeGA4Consumer ? authoritativeTrendPrevious : buildSummary(previousPeriod);
+     if (!current) return null;
++    const exactPeriodTraffic = (period: any[]) => cumulativeGA4CurrentCompatible
++      && ga4TrendSource?.usersReport?.meta?.propertyId === trendGA4PropertyId
++      && ga4TrendSource?.usersReport?.meta?.distinctUsers?.endDate === currentValueWindow?.dataThroughDate
++      ? getGA4PeriodTraffic(ga4TrendSource.usersReport, String(period[0]?.date || ""), String(period.at(-1)?.date || ""))
++      : null;
+     const likeForLikeTrafficComparison = usesCumulativeGA4Consumer
+       && currentPeriod.length === perfDays && previousPeriod.length === perfDays
+       ? {
+@@ -774,8 +775,8 @@ export default function TrendAnalysis() {
+         currentEndDate: String(currentPeriod.at(-1)?.date || ""),
+         previousStartDate: String(previousPeriod[0]?.date || ""),
+         previousEndDate: String(previousPeriod.at(-1)?.date || ""),
+-        currentSessions: sum(currentPeriod, "sessions"),
+-        previousSessions: sum(previousPeriod, "sessions"),
++        currentSessions: exactPeriodTraffic(currentPeriod)?.sessions ?? null,
++        previousSessions: exactPeriodTraffic(previousPeriod)?.sessions ?? null,
+         currentConversions: sum(currentPeriod, "conversions"),
+         previousConversions: sum(previousPeriod, "conversions"),
+       }
+@@ -822,7 +823,7 @@ export default function TrendAnalysis() {
+         ? aggregate.sources.map((source: any) => String(source?.label || source?.id)).filter(Boolean)
+         : performanceMainSources.map((source: any) => String(source?.label || source?.id)).filter(Boolean),
+     };
+-  }, [trendAggregate, perfDays, trendConsumerMode, usesCumulativeGA4Consumer, verifiedTrendGA4DailyRows, verifiedTrendGA4ComparisonRows, verifiedTrendGA4AnomalyRows, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, selectedTrendComparisonStartDate, performanceMainSources]);
++  }, [trendAggregate, perfDays, trendConsumerMode, usesCumulativeGA4Consumer, verifiedTrendGA4DailyRows, verifiedTrendGA4ComparisonRows, verifiedTrendGA4AnomalyRows, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, selectedTrendComparisonStartDate, performanceMainSources, cumulativeGA4CurrentCompatible, ga4TrendSource, trendGA4PropertyId, currentValueWindow]);
+ 
+   const overviewVisibleSeries = useMemo(() => {
+     const keys = (overviewTrendData?.availableSeries || []).map((item: any) => item.key);
+@@ -841,8 +842,8 @@ export default function TrendAnalysis() {
+ 
+   const efficiencyTrendData = useMemo<any>(() => {
+     const aggregate = trendAggregate;
+-    const rows = usesCumulativeGA4Consumer && Array.isArray(verifiedTrendGA4DailyRows)
+-      ? verifiedTrendGA4DailyRows.map((row: any) => ({
++    const rows = usesCumulativeGA4Consumer
++      ? (verifiedTrendGA4DailyRows || []).map((row: any) => ({
+         date: row.date,
+         metrics: {
+           users: row.users,
+@@ -1099,7 +1100,8 @@ export default function TrendAnalysis() {
+       users: authoritativeTrendCurrent.users,
+       engagedSessions: authoritativeTrendCurrent.engagedSessions,
+       conversions: authoritativeTrendCurrent.conversions,
+-      webCvr: authoritativeTrendCurrent.cvr,
++      webCvr: authoritativeTrendCurrent.sessions > 0 && authoritativeTrendCurrent.conversions !== null
++        ? (authoritativeTrendCurrent.conversions / authoritativeTrendCurrent.sessions) * 100 : null,
+       engagementRate: authoritativeTrendCurrent.engagementRate,
+       impressions: null,
+       clicks: null,
+@@ -1262,6 +1264,8 @@ export default function TrendAnalysis() {
+       const conversionsDecreased = comparison.currentConversions < comparison.previousConversions;
+       const action = conversionsIncreased
+         ? "Identify the traffic sources and landing pages associated with the increase, then verify conversion-event integrity before considering budget reallocation."
++        : comparison.currentSessions === null || comparison.previousSessions === null
++          ? "Verify exact saved session totals for both periods before attributing the conversion change to traffic volume or conversion frequency."
+         : conversionsDecreased && comparison.currentSessions >= comparison.previousSessions
+           ? "Audit conversion-event tracking, source mix, and landing-page changes because conversions declined without a decline in sessions."
+           : conversionsDecreased
+@@ -1274,7 +1278,7 @@ export default function TrendAnalysis() {
+           : conversionsDecreased
+             ? "Conversions Decreased — Investigate the Drivers"
+             : "Conversion Volume Flat — Review the Target Gap",
+-        message: `${currentRange} recorded ${formatExactTrendCount(comparison.currentConversions)} conversions from ${formatExactTrendCount(comparison.currentSessions)} sessions${currentRate === null ? "" : ` (${currentRate.toFixed(1)} per 100 sessions)`}, versus ${formatExactTrendCount(comparison.previousConversions)} conversions from ${formatExactTrendCount(comparison.previousSessions)} sessions${previousRate === null ? "" : ` (${previousRate.toFixed(1)} per 100 sessions)`} during ${previousRange}. Next action: ${action}`,
++        message: `${currentRange} recorded ${formatExactTrendCount(comparison.currentConversions)} conversions${comparison.currentSessions === null ? " (exact session total unavailable)" : ` from ${formatExactTrendCount(comparison.currentSessions)} sessions`}${currentRate === null ? "" : ` (${currentRate.toFixed(1)} per 100 sessions)`}, versus ${formatExactTrendCount(comparison.previousConversions)} conversions${comparison.previousSessions === null ? " (exact session total unavailable)" : ` from ${formatExactTrendCount(comparison.previousSessions)} sessions`}${previousRate === null ? "" : ` (${previousRate.toFixed(1)} per 100 sessions)`} during ${previousRange}. Next action: ${action}`,
+       });
+     } else if (!usesCumulativeGA4Consumer && overviewTrendData?.hasPrevious) {
+       const revenueChange = overviewTrendData.comparison?.revenue;
+@@ -1863,7 +1867,7 @@ export default function TrendAnalysis() {
+                                             <p>Sessions: {formatExactTrendCount(Number(row.sessions || 0))}</p>
+                                             <p>Conversions: {formatExactTrendCount(Number(row.conversions || 0))}</p>
+                                             <p>Engaged Sessions: {row.engagedSessions === null || typeof row.engagedSessions === "undefined" ? "Unavailable" : formatExactTrendCount(Number(row.engagedSessions))}</p>
+-                                            {row.cvr !== null && typeof row.cvr !== "undefined" && <p className="mt-2 text-[#8b5cf6]">CVR: {formatPct(Number(row.cvr))}</p>}
++                                            {row.cvr !== null && typeof row.cvr !== "undefined" && <p className="mt-2 text-[#8b5cf6]">Conversions per 100 sessions: {Number(row.cvr).toFixed(1)}</p>}
+                                             {row.engagementRate !== null && typeof row.engagementRate !== "undefined" && <p className="text-[#10b981]">Engagement Rate: {formatPct(Number(row.engagementRate))}</p>}
+                                           </div>
+                                         );
+@@ -1873,7 +1877,7 @@ export default function TrendAnalysis() {
+                                     )}
+                                     <Legend />
+                                     {efficiencyTrendData.current.ctr !== null && <Line isAnimationActive={false} type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR" />}
+-                                    {efficiencyTrendData.current.cvr !== null && <Line isAnimationActive={false} type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={usesCumulativeGA4Consumer ? { r: 2 } : false} name="CVR" />}
++                                    {(usesCumulativeGA4Consumer || efficiencyTrendData.current.cvr !== null) && <Line isAnimationActive={false} type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={usesCumulativeGA4Consumer ? { r: 2 } : false} name={usesCumulativeGA4Consumer ? "Conversions per 100 sessions" : "CVR"} />}
+                                     {efficiencyTrendData.current.engagementRate !== null && <Line isAnimationActive={false} type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={usesCumulativeGA4Consumer ? { r: 2 } : false} name="Engagement Rate" />}
+                                     {usesCumulativeGA4Consumer && <Line isAnimationActive={false} type="linear" dataKey="noActivity" stroke="transparent" dot={{ r: 5, fill: '#f59e0b', stroke: '#ffffff', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#f59e0b', stroke: '#ffffff', strokeWidth: 2 }} legendType="none" name="No activity" />}
+                                   </LineChart>
+@@ -1887,6 +1891,8 @@ export default function TrendAnalysis() {
+                             <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                               {usesCumulativeGA4Consumer && trendWindowCalendar.length < perfDays && trendWindowStartLabel
+                                 ? <>{perfDays}-day efficiency trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available. Data begins {trendWindowStartLabel}.</>
++                                : usesCumulativeGA4Consumer && !trendGA4DailyHistoryVerified
++                                  ? <>Daily efficiency values are withheld because complete scheduler-stored GA4 history is unavailable.</>
+                                 : usesCumulativeGA4Consumer && trendWindowStartLabel && trendWindowEndLabel
+                                   ? <>No daily efficiency data for {trendWindowStartLabel}–{trendWindowEndLabel}.{latestTrendDailyDateLabel ? ` Latest recorded date: ${latestTrendDailyDateLabel}.` : ""}</>
+                                   : <>No daily efficiency data is available for this trend window.</>}
+
+diff --git a/client/src/lib/trend-analysis-cumulative.ts b/client/src/lib/trend-analysis-cumulative.ts
+index 959d24fd..d7311d1d 100644
+--- a/client/src/lib/trend-analysis-cumulative.ts
++++ b/client/src/lib/trend-analysis-cumulative.ts
+@@ -211,24 +211,35 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
+     }
+   }
+ 
+-  const previousPeriod = response?.usersComparisons?.find((window: any) => window.startDate === overviewStartDate && window.endDate === comparisonDate);
++  let completeRecentHistory = true;
++  for (const date = new Date(firstRecentDate); date.toISOString().slice(0, 10) <= dataThroughDate; date.setUTCDate(date.getUTCDate() + 1)) {
++    if (!seenDates.has(date.toISOString().slice(0, 10))) completeRecentHistory = false;
++  }
++  const previousPeriods = Array.isArray(response?.usersComparisons)
++    ? response.usersComparisons.filter((window: any) => window.startDate === overviewStartDate && window.endDate === comparisonDate)
++    : [];
++  const previousPeriod = previousPeriods.length === 1 ? previousPeriods[0] : null;
++  const exactCount = (value: any) => Number.isSafeInteger(value) && value >= 0 ? value : null;
++  const savedRate = (value: any, maximum: number) => typeof value === "number" && Number.isFinite(value)
++    && value >= 0 && value <= maximum ? value : null;
++  const previousConversionRate = savedRate(previousPeriod?.sessionKeyEventRate, 1);
+   const previous = {
+-    users: previousPeriod?.users ?? Number.NaN,
+-    sessions: previousPeriod?.sessions ?? current.sessions - recent.sessions,
+-    conversions: current.conversions - recent.conversions,
+-    engagedSessions: previousPeriod?.engagedSessions ?? current.engagedSessions - recent.engagedSessions,
++    users: exactCount(previousPeriod?.users),
++    sessions: exactCount(previousPeriod?.sessions),
++    conversions: completeRecentHistory && current.conversions >= recent.conversions ? current.conversions - recent.conversions : null,
++    engagedSessions: exactCount(previousPeriod?.engagedSessions),
+   };
+-  if ([previous.sessions, previous.conversions, previous.engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
+   return {
+     current: {
+       ...current,
+       engagementRate: current.sessions > 0 ? (current.engagedSessions / current.sessions) * 100 : null,
+-      cvr: currentRaw.conversionRate ?? null,
++      cvr: savedRate(currentRaw.conversionRate, 100),
+     },
+     previous: {
+       ...previous,
+-      engagementRate: previous.sessions > 0 ? (previous.engagedSessions / previous.sessions) * 100 : null,
+-      cvr: previousPeriod?.sessionKeyEventRate == null ? null : previousPeriod.sessionKeyEventRate * 100,
++      engagementRate: previous.sessions !== null && previous.sessions > 0 && previous.engagedSessions !== null
++        && previous.engagedSessions <= previous.sessions ? (previous.engagedSessions / previous.sessions) * 100 : null,
++      cvr: previousConversionRate === null ? null : previousConversionRate * 100,
+     },
+     comparisonDate,
+   };

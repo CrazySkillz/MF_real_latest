@@ -306,9 +306,9 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(movement).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
     expect(movement).toContain('const dataThroughDate = performanceGA4FinancialEndDate;');
     expect(movement).toContain('performanceGA4SummaryResponse?.data');
-    expect(movement).toContain('const baselineDate = resolveSpendComparisonEndDate(dataThroughDate, timeRange);');
+    expect(movement).toContain('const baselineDate = resolveSpendComparisonEndDate(performanceComparisonDate, timeRange);');
     expect(movement).toContain('new Date(`${baselineDate}T00:00:00.000Z`).getTime()');
-    expect(movement).toContain('if (!Number.isInteger(comparisonDays) || comparisonDays < 1) return null;');
+    expect(movement).toContain('if (!Number.isInteger(comparisonDays) || comparisonDays < 0) return null;');
     expect(movement).toContain('responseWindowCoversComparison');
     expect(movement).toContain('if (!responseWindowCoversComparison || performanceGA4SummaryResponse?.providerRefreshWarning) return null;');
     expect(movement).toContain('date < responseStartDate || date > responseEndDate');
@@ -341,8 +341,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     const routeEnd = routes.indexOf("const toISODateUTC", routeStart);
     const spendRoute = routes.slice(routeStart, routeEnd);
 
-    expect(page).toContain('resolveSpendComparisonEndDate(performanceGA4FinancialEndDate, timeRange)');
-    expect(page).toContain('resolveSpendComparisonEndDate(performanceGA4FinancialEndDate, selectedTimeRange)');
+    expect(page).toContain('resolveSpendComparisonEndDate(performanceComparisonDate, timeRange)');
+    expect(page).toContain('resolveSpendComparisonEndDate(performanceComparisonDate, selectedTimeRange)');
     expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(requestedSpendComparisonEndDate)}');
     expect(page).toContain('spend-sources?platformContext=ga4');
     expect(page).toContain('displayedHistoricalSpendResponse?.endDate === spendComparisonEndDate');

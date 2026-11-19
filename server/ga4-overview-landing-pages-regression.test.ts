@@ -184,6 +184,8 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     { dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-04' }] },
     { dataTruncationReasons: [{ dataTruncationType: 'UNKNOWN', dataTruncationDate: '2026-09-09' }] },
     { subjectToThresholding: true, dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-09' }] },
+    { subjectToThresholding: true, samplingMetadatas: [{ samplesReadCount: '10', samplingSpaceSize: '100' }], dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-09' }] },
+    { samplingMetadatas: [{ samplesReadCount: '10', samplingSpaceSize: '100' }], dataTruncationReasons: [{ dataTruncationType: 'UNKNOWN', dataTruncationDate: '2026-09-09' }] },
   ])("rejects incomplete native landing rows from the tagged campaign fallback: %j", async metadata => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const fallback = JSON.stringify(JSON.parse(init.body).dimensionFilter).includes('pageLocation');
@@ -199,13 +201,13 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it.each([false, true])("re-queries only the declared complete history window and rejects a still-partial retry (%s)", async stillPartial => {
+  it.each([[false, false], [true, false], [false, true], [true, true]])("re-queries only the declared complete history window and rejects a still-partial retry (%s, sampled=%s)", async (stillPartial, sampled) => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(init.body);
       const fallback = JSON.stringify(body.dimensionFilter).includes('pageLocation');
       const originalWindow = body.dateRanges[0].startDate === '2026-09-04';
       return { ok: true, json: async () => !fallback ? { rowCount: 0, rows: [] } : {
-        ...(originalWindow || stillPartial ? { metadata: { dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-09' }] } } : {}),
+        ...(originalWindow || stillPartial ? { metadata: { ...(sampled ? { samplingMetadatas: [{ samplesReadCount: '10', samplingSpaceSize: '100' }] } : {}), dataTruncationReasons: [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-09-09' }] } } : {}),
         rowCount: 1, rows: [{ dimensionValues: [{ value: '/landing' }, { value: '(not set)' }, { value: '(not set)' }],
           metricValues: [{ value: originalWindow ? '99999' : '3884' }, { value: '3916' }, { value: '394' }, { value: '0' }, { value: "0.1" }] }],
       } } as any;

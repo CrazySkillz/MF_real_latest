@@ -32495,12 +32495,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch KPI progress
       let kpiProgress: any[] = [];
+      const targetCoverage = {
+        kpis: { configured: null as number | null, evaluated: 0, unavailable: null as number | null, readFailed: false },
+        benchmarks: { configured: null as number | null, evaluated: 0, unavailable: null as number | null, readFailed: false },
+      };
       const recommendationTargetMetrics = new Set<string>();
       const executiveTargetSourceCache = new Map<string, Promise<any>>();
       try {
         const kpis = hasGA4Connection
           ? await storage.getPlatformKPIs("google_analytics", id)
           : await storage.getCampaignKPIs(id);
+        targetCoverage.kpis.configured = kpis.length;
         const evaluatedKpis = hasGA4Connection
           ? await Promise.all(kpis.map((kpi: any) => resolveAlertCurrentValueForDecision(kpi, executiveTargetSourceCache, {
               useSavedOverview: true,
@@ -32551,8 +32556,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } catch (err) {
+        targetCoverage.kpis.readFailed = true;
         console.log('No KPIs found for campaign', id);
       }
+      targetCoverage.kpis.evaluated = kpiProgress.length;
+      targetCoverage.kpis.unavailable = targetCoverage.kpis.configured === null ? null : targetCoverage.kpis.configured - kpiProgress.length;
 
       // Fetch benchmark comparison
       let benchmarkComparison: any[] = [];
@@ -32560,6 +32568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const benchmarks = hasGA4Connection
           ? await storage.getPlatformBenchmarks("google_analytics", id)
           : await storage.getCampaignBenchmarks(id);
+        targetCoverage.benchmarks.configured = benchmarks.length;
         const evaluatedBenchmarks = hasGA4Connection
           ? await Promise.all(benchmarks.map((benchmark: any) => resolveAlertCurrentValueForDecision(benchmark, executiveTargetSourceCache, {
               useSavedOverview: true,
@@ -32600,8 +32609,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } catch (err) {
+        targetCoverage.benchmarks.readFailed = true;
         console.log('No benchmarks found for campaign', id);
       }
+      targetCoverage.benchmarks.evaluated = benchmarkComparison.length;
+      targetCoverage.benchmarks.unavailable = targetCoverage.benchmarks.configured === null ? null : targetCoverage.benchmarks.configured - benchmarkComparison.length;
 
       // Fetch comparison data for trend analysis
       let comparisonData = null;
@@ -32860,6 +32872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recommendations,
         kpiProgress,
         benchmarkComparison,
+        targetCoverage,
         dataFreshness: {
           linkedinLastUpdate,
           metaLastUpdate,

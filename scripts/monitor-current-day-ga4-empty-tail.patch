@@ -8289,3 +8289,580 @@ index 287bc744..6b07cf37 100644
          dataFreshness: {
            linkedinLastUpdate,
            metaLastUpdate,
+
+diff --git a/client/src/components/GA4ConnectionFlow.tsx b/client/src/components/GA4ConnectionFlow.tsx
+index 00018e31..3369eacd 100644
+--- a/client/src/components/GA4ConnectionFlow.tsx
++++ b/client/src/components/GA4ConnectionFlow.tsx
+@@ -73,6 +73,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
+         const data = await resp.json();
+         console.log('[GA4Flow] Mount: ga4-connection-status =', JSON.stringify({ connected: data.connected, propertyId: data.propertyId, propertiesCount: (data.properties || []).length }));
+         if (!mounted) return;
++        if ([30, 365].includes(Number(data.lookbackDays))) setLookbackDays(Number(data.lookbackDays));
+         // Already authenticated but no property selected — jump to property selector
+         if (data.connected && !data.propertyId) {
+           setPendingConnectionId(data.pendingConnectionId || '');
+@@ -556,7 +557,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
+               <div className="space-y-1">
+                 <Label className="text-sm">Import historical data</Label>
+                 <div className="flex gap-2">
+-                  {[30].map((days) => (
++                  {[lookbackDays].map((days) => (
+                     <Button
+                       key={days}
+                       variant={lookbackDays === days ? "default" : "outline"}
+@@ -567,7 +568,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
+                     </Button>
+                   ))}
+                 </div>
+-                <p className="text-xs text-muted-foreground">This release imports the last 30 completed days.</p>
++                <p className="text-xs text-muted-foreground">{lookbackDays === 365 ? 'Keeps the saved 365-day import history.' : 'This release imports the last 30 completed days.'}</p>
+               </div>
+               <div className="flex gap-2">
+                 <Button
+
+diff --git a/client/src/pages/campaigns.tsx b/client/src/pages/campaigns.tsx
+index c03f6c08..51067566 100644
+--- a/client/src/pages/campaigns.tsx
++++ b/client/src/pages/campaigns.tsx
+@@ -246,6 +246,7 @@ export default function Campaigns() {
+   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
+   const [ga4ConfigSubStep, setGa4ConfigSubStep] = useState<'property' | 'campaigns'>('property');
+   const [wizardLookbackDays, setWizardLookbackDays] = useState<number>(30);
++  const [wizardImportStartDate, setWizardImportStartDate] = useState('');
+   const [instagramAdAccountId, setInstagramAdAccountId] = useState("act_instagram_test");
+   const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
+   const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1, ig_test_2, ig_test_3");
+@@ -311,6 +312,8 @@ export default function Campaigns() {
+       setPendingGA4ConnectionId(data.pendingConnectionId || '');
+       setGA4Properties(properties);
+       setSelectedGA4Property(properties[0]?.id || data.propertyId || "");
++      if ([30, 365].includes(Number(data.lookbackDays))) setWizardLookbackDays(Number(data.lookbackDays));
++      setWizardImportStartDate(data.importStartDate || '');
+     }).catch(() => { /* The existing Back action returns to Google connection setup. */ });
+     return () => { cancelled = true; };
+   }, [initialImportRequested, wizardStep, draftCampaignId, ga4Properties.length]);
+@@ -896,6 +899,7 @@ export default function Campaigns() {
+     setSelectedGA4CampaignValues([]);
+     setGa4ConfigSubStep('property');
+     setWizardLookbackDays(30);
++    setWizardImportStartDate('');
+     setInstagramAdAccountId("act_instagram_test");
+     setInstagramAdAccountName("Test Instagram Ad Account");
+     setInstagramSelectedCampaignIds("ig_test_1, ig_test_2, ig_test_3");
+@@ -970,6 +974,8 @@ export default function Campaigns() {
+         setPendingGA4ConnectionId(data.pendingConnectionId || '');
+         setGA4Properties(validProperties);
+         setSelectedGA4Property(validProperties[0]?.id || '');
++        if ([30, 365].includes(Number(data.lookbackDays))) setWizardLookbackDays(Number(data.lookbackDays));
++        setWizardImportStartDate(data.importStartDate || '');
+         setGa4ConfigSubStep('property');
+         setWizardStep(4);
+       } else if (data.connected && data.propertyId) {
+@@ -1155,6 +1161,7 @@ export default function Campaigns() {
+       });
+       const data = await response.json();
+       if (response.ok && data.success) {
++        setWizardImportStartDate(data.importStartDate || '');
+         setPendingGA4ConnectionId('');
+         setConnectedPlatformsInDialog(prev => prev.includes('google-analytics') ? prev : [...prev, 'google-analytics']);
+         setWizardPlatformConnected(true);
+@@ -1783,8 +1790,15 @@ export default function Campaigns() {
+                             </Select>
+                           </div>
+                           <div className="space-y-2">
+-                            <Label>Historical data</Label>
+-                            <p className="text-xs text-muted-foreground">Includes the last 30 completed days automatically.</p>
++                            <Label htmlFor="ga4-import-history">Historical data</Label>
++                            <Select value={String(wizardLookbackDays)} onValueChange={value => { setWizardLookbackDays(Number(value)); setWizardImportStartDate(''); }} disabled={isGA4PropertyLoading || initialImportRequested}>
++                              <SelectTrigger id="ga4-import-history"><SelectValue /></SelectTrigger>
++                              <SelectContent>
++                                <SelectItem value="30">Last 30 days</SelectItem>
++                                <SelectItem value="365">Last 365 days</SelectItem>
++                              </SelectContent>
++                            </Select>
++                            <p className="text-xs text-muted-foreground">Imports available history for the campaigns you select. Totals continue from this start date after creation.</p>
+                           </div>
+                           <div className="flex gap-2 pt-2">
+                             <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(3)}>
+@@ -1799,7 +1813,8 @@ export default function Campaigns() {
+                       {selectedWizardPlatform === 'google-analytics' && ga4ConfigSubStep === 'campaigns' && (
+                         <div className="space-y-4">
+                           <p className="text-sm text-muted-foreground">Select which GA4 campaigns (UTM campaign values) to track.</p>
+-                          <p className="text-sm font-medium">Campaigns found in the last 30 days</p>
++                          <p className="text-sm font-medium">Campaigns found in the last {wizardLookbackDays} days</p>
++                          {wizardImportStartDate && <p className="text-xs text-muted-foreground">History starts {wizardImportStartDate}. Missing history remains unavailable; recorded zero days are included.</p>}
+                           {isGA4CampaignLoading ? (
+                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                               <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
+@@ -1835,7 +1850,7 @@ export default function Campaigns() {
+                           {ga4CampaignDiscoveryError && <p role="alert" className="text-sm text-destructive">{ga4CampaignDiscoveryError}</p>}
+                             <div className="space-y-2">
+                               <Label htmlFor="wizard-ga4-campaign-name">Enter GA4 Campaign Name</Label>
+-                              <p id="wizard-ga4-campaign-name-help" className="text-xs text-muted-foreground">Enter additional campaign names below, including campaigns from before the last 30 days. Separate multiple names with commas.</p>
++                              <p id="wizard-ga4-campaign-name-help" className="text-xs text-muted-foreground">Enter additional campaign names below, including campaigns from before the last {wizardLookbackDays} days. Separate multiple names with commas.</p>
+                               <Input
+                                 id="wizard-ga4-campaign-name"
+                                 aria-describedby="wizard-ga4-campaign-name-help wizard-ga4-import-period-help"
+@@ -1848,7 +1863,7 @@ export default function Campaigns() {
+                                 )}
+                                 placeholder="e.g., brand_awareness, paid_social_q2"
+                               />
+-                              <p id="wizard-ga4-import-period-help" className="text-xs text-muted-foreground">Selecting older campaigns does not extend the 30-day import period.</p>
++                              <p id="wizard-ga4-import-period-help" className="text-xs text-muted-foreground">Selecting older campaigns does not extend the {wizardLookbackDays}-day import period.</p>
+                                 <div className="space-y-2">
+                                   <p className="text-sm font-medium">Selected campaigns</p>
+                                   <ul aria-label="Selected GA4 campaigns" className="flex h-16 flex-wrap content-start items-start gap-2 overflow-y-auto [scrollbar-gutter:stable]">
+@@ -1897,6 +1912,12 @@ export default function Campaigns() {
+                             </span>
+                           </div>
+                         )}
++                        {selectedWizardPlatform === 'google-analytics' && wizardImportStartDate && (
++                          <div className="text-sm">
++                            <span className="text-muted-foreground">GA4 history</span>
++                            <div className="font-medium mt-1">Last {wizardLookbackDays} days · starts {wizardImportStartDate}</div>
++                          </div>
++                        )}
+                         <div className="border-t pt-3">
+                           <div className="text-sm text-muted-foreground mb-2">Selected Platforms</div>
+                           {createCampaignConnectedPlatforms.length > 0 ? (
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 37cf255e..05837496 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -1710,7 +1710,7 @@ export default function GA4Metrics() {
+   const availableGA4Properties: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean; lookbackDays?: number }> =
+     (ga4PropsFromCheck.length > 0 ? ga4PropsFromCheck : ga4PropsFromAll)
+       .filter((property) => String(property?.propertyId || "").trim().length > 0)
+-      .filter((property) => Number(property?.lookbackDays) === 30);
++      .filter((property) => [30, 365].includes(Number(property?.lookbackDays)));
+   const ga4ConnectionUsable = !!ga4Connection?.connected && availableGA4Properties.length > 0;
+   const primaryGA4PropertyId = String((availableGA4Properties.find((property) => property?.isPrimary) || availableGA4Properties[0])?.propertyId || "");
+   const insightsAnalyticsHistoryMatchesSelectedProperty = isGA4InsightsAnalyticsHistoryInSelectedPropertyScope(
+
+diff --git a/server/ga4-scheduled-report-pdf.ts b/server/ga4-scheduled-report-pdf.ts
+index 1dd9a908..963d5989 100644
+--- a/server/ga4-scheduled-report-pdf.ts
++++ b/server/ga4-scheduled-report-pdf.ts
+@@ -570,7 +570,7 @@ async function buildGA4ReportPayload(report: any) {
+     throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Campaign Breakdown");
+   }
+   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+-  const lookbackDays = [30, 60, 90].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
++  const lookbackDays = [30, 60, 90, 365].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
+   const configuredImportStartDate = String((connection as any)?.importStartDate || "").trim();
+   if (!configuredImportStartDate && lookbackDays !== 30) {
+     throw new Error("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
+@@ -1242,7 +1242,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+   const { jsPDF } = await import("jspdf");
+   const doc = new jsPDF();
+   const payload = await buildGA4ReportPayload(report);
+-  const lookbackDays = [30, 60, 90].includes(Number(payload.connection?.lookbackDays))
++  const lookbackDays = [30, 60, 90, 365].includes(Number(payload.connection?.lookbackDays))
+     ? Number(payload.connection.lookbackDays)
+     : 90;
+   const reportType = String(report?.reportType || "overview").toLowerCase();
+
+diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
+index 6b07cf37..a4b93695 100644
+--- a/server/routes-oauth.ts
++++ b/server/routes-oauth.ts
+@@ -1059,6 +1059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+     if (v === "30days") return "30daysAgo";
+     if (v === "60days") return "60daysAgo";
+     if (v === "90days") return "90daysAgo";
++    if (v === "365days") return "365daysAgo";
+     return fallback;
+   };
+ 
+@@ -13065,6 +13066,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       }
+       res.json({ connected: true, propertyId: pending ? '' : connection.propertyId,
+         pendingConnectionId: pending?.id, pending: !!pending, properties,
++        lookbackDays: (pending ? connections.find(c => c.isPrimary) || connections[0] : connection)?.lookbackDays,
++        importStartDate: (pending ? connections.find(c => c.isPrimary) || connections[0] : connection)?.importStartDate,
+         isRealOAuth: connection.method !== GA4_SERVICE_ACCOUNT_METHOD,
+         dataSource: connection.method === GA4_SERVICE_ACCOUNT_METHOD ? 'Temporary Service Account' : 'Database Connection' });
+     } catch (error) {
+@@ -13093,15 +13096,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       }
+       const campaign = await ensureCampaignAccess(req, res, campaignId);
+       if (!campaign) return;
+-      if (Number(lookbackDays) !== 30) {
+-        return res.status(400).json({ success: false, error: "UNSUPPORTED_GA4_LOOKBACK", message: "This release supports only a 30-day GA4 lookback." });
+-      }
++      if (![30, 365].includes(Number(lookbackDays))) {
++        return res.status(400).json({ success: false, error: "UNSUPPORTED_GA4_LOOKBACK", message: "Choose Last 30 days or Last 365 days." });
++      }
++      const connections = await storage.getGA4Connections(campaignId, { resolveRuntimeCredentials: false, migrateLegacyTokens: false });
++      const active = connections.find(c => c.propertyId === propertyId) || connections.find(c => c.isPrimary) || connections[0];
++      const changingHistory = Number(lookbackDays) === 365 && (Number(active?.lookbackDays) !== 365 || active?.propertyId !== propertyId)
++        || Number(active?.lookbackDays) === 365 && (Number(lookbackDays) !== 365 || active?.propertyId !== propertyId);
++      if (changingHistory && (campaign.status !== "draft" || await storage.getGA4InitialImportWork(campaignId, campaign.ownerId))) {
++        return res.status(409).json({ success: false, error: "GA4_IMPORT_HISTORY_LOCKED", message: "Historical data can only be selected before creating a new campaign." });
++      }
++      const importStartDate = active?.propertyId === propertyId && Number(active.lookbackDays) === Number(lookbackDays) && active.importStartDate
++        ? active.importStartDate : getGA4HistoricalImportStartDate(new Date(), Number(lookbackDays), (campaign as any).reportingTimeZone);
++      if (!importStartDate) throw new Error('GA4_IMPORT_START_INVALID');
+       let pending = await storage.getPendingGA4OAuthConnection(campaignId, pendingConnectionId || undefined);
+       if (!pending && !pendingConnectionId) {
+-        const connections = await storage.getGA4Connections(campaignId);
+-        const active = connections.find(c => c.isPrimary) || connections[0];
+         if (active?.method === GA4_SERVICE_ACCOUNT_METHOD && active.propertyId === propertyId) {
+-          return res.json({ success: true, message: "Property set successfully", selectedProperty: { id: propertyId, name: active.propertyName } });
++          if (changingHistory) await storage.updateGA4Connection(active.id, { lookbackDays: Number(lookbackDays), importStartDate });
++          return res.json({ success: true, message: "Property set successfully", selectedProperty: { id: propertyId, name: active.propertyName }, lookbackDays: Number(lookbackDays), importStartDate });
+         }
+         if (active?.method === 'access_token') {
+           const properties = await discoverStoredGA4Properties(active);
+@@ -13117,14 +13129,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       const properties = await realGA4Client.fetchPropertiesFromGoogle(String(pending.accessToken || ''));
+       const selectedProperty = properties.find(p => p.id === propertyId);
+       if (!selectedProperty) return res.status(403).json({ success: false, message: "This Google authorization cannot access that property" });
+-      const importStartDate = getGA4HistoricalImportStartDate(new Date(), 30, (campaign as any).reportingTimeZone);
+-      if (!importStartDate) throw new Error('GA4_IMPORT_START_INVALID');
+-      await storage.commitGA4OAuthConnection(campaignId, pending.id, propertyId, selectedProperty.name, importStartDate);
++      await storage.commitGA4OAuthConnection(campaignId, pending.id, propertyId, selectedProperty.name, importStartDate, Number(lookbackDays));
+       realGA4Client.disconnect(campaignId);
+       (global as any).oauthConnections?.delete(campaignId);
+       (global as any).realGA4Connections?.delete(campaignId);
+-      res.json({ success: true, message: "Property set successfully", selectedProperty });
++      res.json({ success: true, message: "Property set successfully", selectedProperty, lookbackDays: Number(lookbackDays), importStartDate });
+     } catch (error: any) {
++      if (error?.message === 'GA4_IMPORT_HISTORY_LOCKED') return res.status(409).json({ success: false, error: error.message, message: "Historical data can only be selected before creating a new campaign." });
+       const expired = error?.message === 'GA4_OAUTH_PENDING_EXPIRED';
+       res.status(expired ? 409 : 502).json({ success: false, message: expired ? "Google authorization expired. Please reconnect." : "Google Analytics could not confirm the property. Please retry." });
+     }
+@@ -13266,6 +13277,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
+ 
+       let ga4DateRange = '30daysAgo';
+       switch (dateRange) {
++        case '365days':
++          ga4DateRange = '365daysAgo';
++          break;
+         case '7days':
+           ga4DateRange = '7daysAgo';
+           break;
+@@ -14331,7 +14345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         String(connection?.propertyId || "").trim().length > 0
+       );
+       const usableGA4Connections = configuredGA4Connections.filter((connection: any) =>
+-        Number(connection?.lookbackDays) === 30
++        [30, 365].includes(Number(connection?.lookbackDays))
+       );
+       const unsupportedLookbackConnectionCount = configuredGA4Connections.length - usableGA4Connections.length;
+ 
+@@ -14355,7 +14369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+             isActive: conn.isActive,
+             connectedAt: conn.connectedAt,
+             method: conn.method,
+-            lookbackDays: 30,
++            lookbackDays: conn.lookbackDays,
+             hasRefreshCredential: Boolean(conn.refreshToken),
+             tokenExpiresAt: conn.expiresAt || null
+           })),
+@@ -16035,10 +16049,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       const validationReadOnly = String(req.query.readOnly || "").trim() === "1";
+       const connections = await storage.getGA4Connections(campaignId, { migrateLegacyTokens: !validationReadOnly, resolveRuntimeCredentials: !validationReadOnly });
+       const usableConnections = connections.filter((connection: any) =>
+-        String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) === 30
++        String(connection?.propertyId || "").trim().length > 0 && [30, 365].includes(Number(connection?.lookbackDays))
+       );
+       const unsupportedLookbackConnectionCount = connections.filter((connection: any) =>
+-        String(connection?.propertyId || "").trim().length > 0 && Number(connection?.lookbackDays) !== 30
++        String(connection?.propertyId || "").trim().length > 0 && ![30, 365].includes(Number(connection?.lookbackDays))
+       ).length;
+ 
+       res.json({
+@@ -16055,7 +16069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           isActive: conn.isActive,
+           connectedAt: conn.connectedAt,
+           method: conn.method,
+-          lookbackDays: 30
++          lookbackDays: conn.lookbackDays
+         }))
+       });
+     } catch (error) {
+@@ -16226,15 +16240,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       if (binding) await storage.completeGA4ClientServiceAccount(campaignId, propertyId, binding.id, binding.googleUniqueId!, getActorId(req), true);
+ 
+       const propertyName = `Property ${propertyId}`;
+-      const importStartDate = getGA4HistoricalImportStartDate(new Date(), 30, (campaign as any)?.reportingTimeZone);
+       const existing = existingConnections[0] as any;
++      const lookbackDays = Number(existing?.lookbackDays) === 365 && existing?.propertyId === propertyId ? 365 : 30;
++      const importStartDate = lookbackDays === 365 ? existing.importStartDate
++        : getGA4HistoricalImportStartDate(new Date(), 30, (campaign as any)?.reportingTimeZone);
+       const saved = existing
+         ? await storage.updateGA4Connection(existing.id, {
+             propertyId,
+             propertyName,
+             method: GA4_SERVICE_ACCOUNT_METHOD,
+             ...(binding ? { serviceAccountBindingId: binding.id } : {}),
+-            lookbackDays: 30,
++            lookbackDays,
+             importStartDate,
+             isPrimary: true,
+             isActive: true,
+@@ -16245,7 +16261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+             propertyName,
+             method: GA4_SERVICE_ACCOUNT_METHOD,
+             ...(binding ? { serviceAccountBindingId: binding.id } : {}),
+-            lookbackDays: 30,
++            lookbackDays,
+             importStartDate,
+             isPrimary: true,
+             isActive: true,
+
+diff --git a/server/storage.ts b/server/storage.ts
+index 53df79ac..2b5b838a 100644
+--- a/server/storage.ts
++++ b/server/storage.ts
+@@ -20,7 +20,7 @@ import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccount
+ import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, getGoogleAdsServiceAccountLoginCustomerId, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
+ import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
+ import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
+-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, normalizeReportingTimeZone } from "./utils/reporting-timezone";
++import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4ReportingWindowMode, getLatestGA4ReportingDate as getLatestCompleteReportingDate, getReportingComparisonBoundary, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+ import { executiveSummaryDailySnapshotInputSchema, evaluateExecutiveSummaryTrajectory, type ExecutiveSummaryDailySnapshotInput, type ExecutiveSummaryRevenueHistory } from "./utils/executive-summary-daily-snapshot";
+ import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
+ import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+@@ -43,6 +43,7 @@ const devLog = (...args: any[]) => {
+ export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
+ export type SpendPlatformContext = RevenuePlatformContext;
+ export type GA4RevenuePublication = { version: 1; reportingDate: string; sources: Record<string, string>; pendingSourceIds: string[];
++  pipelineSources?: Record<string, string>;
+   display?: { nativeRevenue: number; sources: Array<{ sourceId: string; sourceType: string; displayName: string; revenue: number; mappingConfig: Record<string, any> }>;
+     spendSources?: Array<{ sourceId: string; sourceType: string; displayName: string; spend: number; mappingConfig: Record<string, any> }> } };
+ export type GA4RevenuePublicationStatus = Record<string, { status: "published" | "pending" | "failed"; hash: string }>;
+@@ -207,9 +208,6 @@ export type GA4RefreshConnectionWriteInput = GA4RefreshWriteInput & { expectedCo
+ export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { expectedSource?: { id: string; mappingConfig: string | null } };
+ 
+ export interface IStorage {
+-  getLiveNumberCheckSnapshot(campaignHash: string): Promise<{ campaign: Campaign; rows: Record<string, any[]> }>;
+-  getMonitorCampaigns(): Promise<Array<{ campaignIdHash: string; reportingTimeZone: string; monitorFrom: string }>>;
+-  getInitialImportVerificationFailures(): Promise<string[]>;
+   withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T>;
+   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
+   getGA4ClientServiceAccount(campaignId: string, propertyId: string, bindingId?: string): Promise<GA4ClientServiceAccount | undefined>;
+@@ -263,7 +261,7 @@ export interface IStorage {
+   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
+   stageGA4OAuthConnection(connection: InsertGA4Connection): Promise<GA4Connection>;
+   getPendingGA4OAuthConnection(campaignId: string, connectionId?: string): Promise<GA4Connection | undefined>;
+-  commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string): Promise<GA4Connection>;
++  commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string, lookbackDays?: number): Promise<GA4Connection>;
+   cancelGA4OAuthConnection(campaignId: string, connectionId: string): Promise<boolean>;
+   updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
+   updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options?: GA4RefreshConnectionWriteInput): Promise<GA4Connection | undefined>;
+@@ -719,64 +717,6 @@ export interface IStorage {
+ }
+ 
+ export class DatabaseStorage implements IStorage {
+-  async getInitialImportVerificationFailures(): Promise<string[]> {
+-    return db.transaction(async (tx: any) => {
+-      const rows = await tx.selectDistinct({ campaignIdHash: sql<string>`left(encode(sha256(${campaigns.id}::bytea), 'hex'), 12)` })
+-        .from(ga4RefreshWork).innerJoin(campaigns, eq(campaigns.id, ga4RefreshWork.campaignId))
+-        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+-        .where(and(eq(campaigns.status, 'draft'), ne(ga4RefreshWork.status, 'completed'),
+-          sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`, sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`,
+-          sql`${ga4RefreshWork.lastError} ~ '^GA4_INITIAL_VERIFICATION_(DIFFERENCE|UNVERIFIED|INPUT_CHANGED)$'`,
+-          sql`(NOT ${ga4RefreshWork.retryable} OR ${ga4RefreshWork.attemptCount} >= 3)`,
+-          sql`(${ga4RefreshWork.status} <> 'running' OR ${ga4RefreshWork.leaseExpiresAt} <= clock_timestamp())`)).limit(101);
+-      if (rows.length > 100) throw new Error('MONITOR_CAMPAIGN_LIMIT_EXCEEDED');
+-      return rows.map((row: any) => row.campaignIdHash).sort();
+-    }, { isolationLevel: 'repeatable read', readOnly: true });
+-  }
+-
+-  // Monitor-only discovery: no hydration, writes or dependency on successful refresh markers.
+-  async getMonitorCampaigns() {
+-    return db.transaction(async (tx: any) => {
+-      const rows = await tx.select({
+-        campaignIdHash: sql<string>`left(encode(sha256(${campaigns.id}::bytea), 'hex'), 12)`,
+-        reportingTimeZone: campaigns.reportingTimeZone, ownerId: campaigns.ownerId, clientOwnerId: clients.ownerId,
+-        monitorFrom: sql<string>`greatest(${campaigns.createdAt} at time zone 'UTC',
+-          (select max(w.completed_at) from ga4_refresh_work w where w.campaign_id = ${campaigns.id}
+-            and w.status = 'completed' and w.scope->>'kind' = 'initial_import'))`,
+-      }).from(campaigns).leftJoin(clients, eq(clients.id, campaigns.clientId))
+-        .where(and(sql`lower(trim(${campaigns.status})) = 'active'`, sql`${campaigns.clientId} is not null`)).limit(101);
+-      if (rows.length > 100) throw new Error("MONITOR_CAMPAIGN_LIMIT_EXCEEDED");
+-      if (rows.some((row: any) => !row.ownerId || row.ownerId !== row.clientOwnerId)) throw new Error("MONITOR_SCOPE_INVALID");
+-      return rows.map(({ campaignIdHash, reportingTimeZone, monitorFrom }: any) => ({ campaignIdHash, reportingTimeZone,
+-        monitorFrom: new Date(monitorFrom).toISOString() })).sort((a: any, b: any) => a.campaignIdHash.localeCompare(b.campaignIdHash));
+-    }, { isolationLevel: "repeatable read", readOnly: true });
+-  }
+-
+-  // Operator-only monitoring input. No credential hydration, lazy migration, refresh or writes.
+-  async getLiveNumberCheckSnapshot(campaignHash: string): Promise<{ campaign: Campaign; rows: Record<string, any[]> }> {
+-    if (!/^[a-f0-9]{12}$/.test(campaignHash)) throw new Error("MONITOR_SCOPE_INVALID");
+-    return db.transaction(async (tx: any) => {
+-      const matches = await tx.select({ campaign: campaigns }).from(campaigns)
+-        .innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId)))
+-        .where(and(ne(campaigns.status, "deleted"), sql`left(encode(sha256(${campaigns.id}::bytea), 'hex'), 12) = ${campaignHash}`)).limit(2);
+-      if (matches.length !== 1) throw new Error("MONITOR_CAMPAIGN_UNAVAILABLE");
+-      const campaign = matches[0].campaign;
+-      if (!campaign.ownerId || !campaign.clientId) throw new Error("MONITOR_SCOPE_INVALID");
+-      const rows: Record<string, any[]> = {};
+-      const tables = { ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, revenueSources, revenueRecords,
+-        spendSources, spendRecords, googleSheetsConnections, hubspotConnections, salesforceConnections,
+-        shopifyConnections, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics, kpis, benchmarks,
+-        metricSnapshots, linkedinReports, reportSnapshots, ga4RefreshWork, notifications, emailAlertEvents };
+-      for (const [name, table] of Object.entries(tables)) {
+-        rows[name] = await tx.select(name === "ga4Connections" || name === "ga4GoogleAdsSpendConnections" || name === "googleSheetsConnections" ? { ...getTableColumns(table),
+-          serviceAccountBindingId: sql<string | null>`to_jsonb(${table})->>'service_account_binding_id'` } : undefined).from(table as any).where(eq(table.campaignId, campaign.id)).limit(10001);
+-        if (rows[name].length > 10000) throw new Error("MONITOR_INPUT_LIMIT_EXCEEDED");
+-        rows[name].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+-      }
+-      return { campaign, rows };
+-    }, { isolationLevel: "repeatable read", readOnly: true });
+-  }
+-
+   async withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+     if (!pool || !/^\d+$/.test(propertyId)) throw new Error('GA4_PROPERTY_UNVERIFIED');
+     // Transaction locks bind all updated workers and pin transaction-pooled connections.
+@@ -1453,7 +1393,7 @@ export class DatabaseStorage implements IStorage {
+     return removed.length === 1;
+   }
+ 
+-  async commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string): Promise<GA4Connection> {
++  async commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string, lookbackDays = 30): Promise<GA4Connection> {
+     return this.writeGA4RefreshInputChange(campaignId, async tx => {
+       const [pending] = await tx.select().from(ga4Connections).where(and(eq(ga4Connections.id, connectionId),
+         eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, false), eq(ga4Connections.propertyId, ''),
+@@ -1463,12 +1403,21 @@ export class DatabaseStorage implements IStorage {
+       const active = await tx.select().from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true))).for('update');
+       const existing = active.find((row: any) => row.propertyId === propertyId) || active.find((row: any) => row.isPrimary) || active[0];
+       const sameProperty = existing?.propertyId === propertyId;
++      if (![30, 365].includes(lookbackDays)) throw new Error('UNSUPPORTED_GA4_LOOKBACK');
++      const changingHistory = (lookbackDays === 365 || existing?.lookbackDays === 365)
++        && (!sameProperty || existing?.lookbackDays !== lookbackDays);
++      if (changingHistory) {
++        const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, campaignId));
++        const [accepted] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
++          .where(and(eq(ga4RefreshWork.campaignId, campaignId), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`)).limit(1);
++        if (campaign?.status !== 'draft' || accepted) throw new Error('GA4_IMPORT_HISTORY_LOCKED');
++      }
+       const [saved] = await tx.update(ga4Connections).set({
+         propertyId, propertyName, method: 'access_token', isActive: true, isPrimary: true,
+         serviceAccountBindingId: null,
+         encryptedTokens: pending.encryptedTokens, accessToken: null, refreshToken: null, clientSecret: null,
+-        clientId: pending.clientId, expiresAt: pending.expiresAt, lookbackDays: 30,
+-        importStartDate: sameProperty ? existing.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : importStartDate,
++        clientId: pending.clientId, expiresAt: pending.expiresAt, lookbackDays,
++        importStartDate: sameProperty && !changingHistory ? existing.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : importStartDate,
+       }).where(eq(ga4Connections.id, existing?.id || pending.id)).returning();
+       await tx.update(ga4Connections).set({ isPrimary: false }).where(and(eq(ga4Connections.campaignId, campaignId), sql`${ga4Connections.id} <> ${saved.id}`));
+       if (existing) await tx.delete(ga4Connections).where(eq(ga4Connections.id, pending.id));
+@@ -1504,6 +1453,12 @@ export class DatabaseStorage implements IStorage {
+     };
+ 
+     const ga4Connection = await this.writeGA4RefreshInputChange(connection.campaignId, async tx => {
++    if (Number(connection.lookbackDays) === 365) {
++      const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, connection.campaignId));
++      const [accepted] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
++        .where(and(eq(ga4RefreshWork.campaignId, connection.campaignId), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`)).limit(1);
++      if (campaign?.status !== 'draft' || accepted) throw new Error('GA4_IMPORT_HISTORY_LOCKED');
++    }
+     const [saved] = await tx
+       .insert(ga4Connections)
+       .values(connectionData)
+@@ -1519,6 +1474,16 @@ export class DatabaseStorage implements IStorage {
+     const saved = await this.writeGA4RefreshInputChange(target.campaignId, async db => {
+     const [existing] = await db.select().from(ga4Connections).where(and(eq(ga4Connections.id, connectionId), eq(ga4Connections.campaignId, target.campaignId))).for("update");
+     if (!existing) return undefined;
++    const nextLookbackDays = Number(connection.lookbackDays ?? existing.lookbackDays);
++    if ((nextLookbackDays === 365 || existing.lookbackDays === 365)
++      && (nextLookbackDays !== existing.lookbackDays
++        || connection.importStartDate !== undefined && connection.importStartDate !== existing.importStartDate
++        || connection.propertyId !== undefined && connection.propertyId !== existing.propertyId)) {
++      const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, target.campaignId));
++      const [accepted] = await db.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
++        .where(and(eq(ga4RefreshWork.campaignId, target.campaignId), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`)).limit(1);
++      if (campaign?.status !== 'draft' || accepted) throw new Error('GA4_IMPORT_HISTORY_LOCKED');
++    }
+     const nextMethod = String(connection.method ?? existing.method ?? "").trim().toLowerCase();
+     if (nextMethod === GA4_SERVICE_ACCOUNT_METHOD) {
+       await assertGA4ServiceAccountConnectionAccess({ ...existing, ...connection, campaignId: existing.campaignId });
+@@ -2104,7 +2069,7 @@ export class DatabaseStorage implements IStorage {
+           || typeof totals?.conversions !== "number" || !Number.isFinite(totals.conversions) || totals.conversions < 0) return undefined;
+         const parsed = financialDailySnapshotInputSchema.safeParse({
+           version: "financial_daily_snapshot_v1", campaignId, reportingDate: work.reportingDate, currency,
+-          currentValueWindow: { mode: "initial_import_to_latest_completed_day", startDate: overview.windowStart,
++          currentValueWindow: { mode: getGA4ReportingWindowMode(), startDate: overview.windowStart,
+             endDate: work.reportingDate, dataThroughDate: work.reportingDate, reportingTimeZone: normalizeReportingTimeZone(scope.scope.campaign.reportingTimeZone) },
+           inputs: { revenue: { value: totals.revenue.toFixed(2), available: true, sources: ["ga4"] },
+             conversions: { value: totals.conversions, available: true, sources: ["ga4"] },
+@@ -2947,7 +2912,7 @@ export class DatabaseStorage implements IStorage {
+ 
+   // Revenue methods
+   private async readGA4RevenuePublication(tx: any, campaignId: string, reportingDate: string): Promise<GA4RevenuePublication> {
+-    const sources = await tx.select({ id: revenueSources.id, sourceType: revenueSources.sourceType, currency: revenueSources.currency })
++    const sources = await tx.select({ id: revenueSources.id, sourceType: revenueSources.sourceType, currency: revenueSources.currency, mappingConfig: revenueSources.mappingConfig })
+       .from(revenueSources).where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.isActive, true),
+         or(eq(revenueSources.platformContext, 'ga4'), isNull(revenueSources.platformContext)))).orderBy(revenueSources.id);
+     const rows = await tx.select({ sourceId: revenueRecords.revenueSourceId, date: revenueRecords.date,
+@@ -2968,7 +2933,12 @@ export class DatabaseStorage implements IStorage {
+     }
+     return { version: 1, reportingDate, sources: Object.fromEntries(sources.map((source: any) => [source.id,
+       createHash('sha256').update(JSON.stringify([source.sourceType, source.currency, (included.get(source.id) || []).sort()])).digest('hex'),
+-    ])), pendingSourceIds: Array.from(pending).sort() };
++    ])), pendingSourceIds: Array.from(pending).sort(),
++      ...(getGA4ReportingWindowMode() === "initial_import_to_latest_available_day" ? {
++        pipelineSources: Object.fromEntries(sources.filter((source: any) => ["hubspot", "salesforce"].includes(source.sourceType))
++          .map((source: any) => [source.id, createHash('sha256').update(String(source.mappingConfig || "{}")).digest('hex')])),
++      } : {}),
++    };
+   }
+ 
+   async getGA4RevenuePublication(campaignId: string, reportingDate: string): Promise<GA4RevenuePublication> {
+@@ -4719,10 +4689,14 @@ export class DatabaseStorage implements IStorage {
+ 
+   async updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<HubspotConnection | undefined> {
+     const guarded = "refreshScope" in options;
+-    const credentialsOnly = Object.keys(connection).length > 0 && Object.keys(connection).every(key => ["accessToken", "refreshToken", "clientSecret", "expiresAt"].includes(key));
++    let credentialsOnly = false;
+     const write = async (db: any) => {
+     const existingQuery = db.select().from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
+     const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
++    // Account-name hydration does not change imported facts or the source account.
++    credentialsOnly = Object.keys(connection).length > 0 && Object.keys(connection).every(key =>
++      ["accessToken", "refreshToken", "clientSecret", "expiresAt", "portalName"].includes(key)
++      || (key === "portalId" && connection.portalId === existing?.portalId));
+     if (guarded) {
+       const expected = options.expectedConnection;
+       if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
+@@ -7313,6 +7287,7 @@ export class DatabaseStorage implements IStorage {
+         if (revenuePublication.version !== 1 || revenuePublication.reportingDate !== reportingDate
+           || Object.keys(current.sources).length !== Object.keys(revenuePublication.sources || {}).length
+           || Object.entries(current.sources).some(([sourceId, hash]) => revenuePublication.sources[sourceId] !== hash)) throw new Error('GA4_REFRESH_PUBLICATION_CHANGED');
++        if (JSON.stringify(current.pipelineSources) !== JSON.stringify(revenuePublication.pipelineSources)) throw new Error('GA4_REFRESH_PUBLICATION_CHANGED');
+       }
+       const [snapshot] = await tx
+         .insert(metricSnapshots)
+
+diff --git a/server/utils/campaign-current-values.ts b/server/utils/campaign-current-values.ts
+index f455c1ca..359d0d7c 100644
+--- a/server/utils/campaign-current-values.ts
++++ b/server/utils/campaign-current-values.ts
+@@ -312,7 +312,7 @@ async function getCampaignMetricTotalsForEndDate(
+       ], {} as any);
+       if (!exactEndDate && !isGA4FinancialTotalsCandidate(earlierFinancialCandidate)) {
+         try {
+-          const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays))
++          const lookbackDays = [30, 60, 90, 365].includes(Number((primary as any)?.lookbackDays))
+             ? Number((primary as any).lookbackDays)
+             : 90;
+           const breakdown = await ga4Service.getAcquisitionBreakdown(
+
+diff --git a/shared/schema.ts b/shared/schema.ts
+index bbbd4593..d9f63030 100644
+--- a/shared/schema.ts
++++ b/shared/schema.ts
+@@ -161,7 +161,7 @@ export const ga4Connections = pgTable("ga4_connections", {
+   // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
+   importStartDate: text("import_start_date"), // Fixed start of the initial historical import used by Overview Summary
+   encryptedTokens: jsonb("encrypted_tokens"),
+-  lookbackDays: integer("lookback_days").notNull().default(90), // How many days of historical data to import (30, 60, or 90)
++  lookbackDays: integer("lookback_days").notNull().default(90), // Initial import depth: new campaigns select 30 or 365; retain the legacy database default.
+   expiresAt: timestamp("expires_at"), // Token expiration time
+   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

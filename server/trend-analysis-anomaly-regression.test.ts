@@ -37,3 +37,14 @@ describe("Trend Analysis anomaly detection", () => {
     expect(detectTrendAnomalies(conversionSeries([5, 5, 5, 5, 5, 5, 5, 20]), ["conversions"])).toEqual([]);
   });
 });
+
+it("retains the prior activity context across a zero stretch before the selected window", () => {
+  const series = conversionSeries([10, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 14]);
+  const expected = detectTrendAnomalies(series, ["conversions"]).filter(row => row.date === "2026-09-14");
+  expect(expected).toMatchObject([{ value: 14, expected: 2, severity: "warning" }]);
+  expect(detectTrendAnomalies(series.slice(6), ["conversions"])).toEqual([]);
+  const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+  expect(page).toContain("includeTrendsHistory=1");
+  expect(page).toContain("startDate: schedulerHistoryStartDate, data: ga4Daily?.trendsData");
+  expect(page).toContain("currentPeriodDates.has(anomaly.date)");
+});

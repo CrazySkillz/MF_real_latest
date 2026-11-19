@@ -211,24 +211,35 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
     }
   }
 
-  const previousPeriod = response?.usersComparisons?.find((window: any) => window.startDate === overviewStartDate && window.endDate === comparisonDate);
+  let completeRecentHistory = true;
+  for (const date = new Date(firstRecentDate); date.toISOString().slice(0, 10) <= dataThroughDate; date.setUTCDate(date.getUTCDate() + 1)) {
+    if (!seenDates.has(date.toISOString().slice(0, 10))) completeRecentHistory = false;
+  }
+  const previousPeriods = Array.isArray(response?.usersComparisons)
+    ? response.usersComparisons.filter((window: any) => window.startDate === overviewStartDate && window.endDate === comparisonDate)
+    : [];
+  const previousPeriod = previousPeriods.length === 1 ? previousPeriods[0] : null;
+  const exactCount = (value: any) => Number.isSafeInteger(value) && value >= 0 ? value : null;
+  const savedRate = (value: any, maximum: number) => typeof value === "number" && Number.isFinite(value)
+    && value >= 0 && value <= maximum ? value : null;
+  const previousConversionRate = savedRate(previousPeriod?.sessionKeyEventRate, 1);
   const previous = {
-    users: previousPeriod?.users ?? Number.NaN,
-    sessions: previousPeriod?.sessions ?? current.sessions - recent.sessions,
-    conversions: current.conversions - recent.conversions,
-    engagedSessions: previousPeriod?.engagedSessions ?? current.engagedSessions - recent.engagedSessions,
+    users: exactCount(previousPeriod?.users),
+    sessions: exactCount(previousPeriod?.sessions),
+    conversions: completeRecentHistory && current.conversions >= recent.conversions ? current.conversions - recent.conversions : null,
+    engagedSessions: exactCount(previousPeriod?.engagedSessions),
   };
-  if ([previous.sessions, previous.conversions, previous.engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
   return {
     current: {
       ...current,
       engagementRate: current.sessions > 0 ? (current.engagedSessions / current.sessions) * 100 : null,
-      cvr: currentRaw.conversionRate ?? null,
+      cvr: savedRate(currentRaw.conversionRate, 100),
     },
     previous: {
       ...previous,
-      engagementRate: previous.sessions > 0 ? (previous.engagedSessions / previous.sessions) * 100 : null,
-      cvr: previousPeriod?.sessionKeyEventRate == null ? null : previousPeriod.sessionKeyEventRate * 100,
+      engagementRate: previous.sessions !== null && previous.sessions > 0 && previous.engagedSessions !== null
+        && previous.engagedSessions <= previous.sessions ? (previous.engagedSessions / previous.sessions) * 100 : null,
+      cvr: previousConversionRate === null ? null : previousConversionRate * 100,
     },
     comparisonDate,
   };

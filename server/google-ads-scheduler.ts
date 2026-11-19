@@ -4,6 +4,7 @@
  * Follows the meta-scheduler.ts pattern
  */
 import { isDeepStrictEqual } from "node:util";
+import { startAnchoredInterval } from "./utils/anchored-interval";
 import { storage, type GA4RefreshWriteInput, type GA4RefreshGoogleAdsWriteInput } from "./storage";
 import { db } from "./db";
 import { googleAdsConnections, googleAdsDailyMetrics, ga4GoogleAdsSpendConnections } from "../shared/schema";
@@ -423,8 +424,8 @@ export function startGoogleAdsScheduler(): void {
 
   console.log(`[Google Ads Scheduler] Refresh interval: ${refreshIntervalHours} hours`);
 
-  (global as any).googleAdsSchedulerInterval = setInterval(() => {
-    void refreshAllGoogleAdsMetrics().catch((error: any) => {
+  (global as any).googleAdsSchedulerInterval = startAnchoredInterval("Google Ads Scheduler", () => {
+    return refreshAllGoogleAdsMetrics().catch((error: any) => {
       console.error("[Google Ads Scheduler] Scheduled refresh failed:", error?.message || error);
     });
   }, refreshIntervalMs);
@@ -434,7 +435,7 @@ export function startGoogleAdsScheduler(): void {
 
 export function stopGoogleAdsScheduler(): void {
   if ((global as any).googleAdsSchedulerInterval) {
-    clearInterval((global as any).googleAdsSchedulerInterval);
+    (global as any).googleAdsSchedulerInterval.stop();
     (global as any).googleAdsSchedulerInterval = null;
   }
 }

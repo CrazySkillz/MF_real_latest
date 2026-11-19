@@ -1,4 +1,5 @@
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
+import { startAnchoredInterval, type AnchoredInterval } from "./utils/anchored-interval";
 import { storage, type GA4RefreshWriteInput } from "./storage";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
@@ -49,17 +50,23 @@ export async function captureExecutiveSummarySnapshots(baseUrl: string): Promise
 }
 
 export class ExecutiveSummarySnapshotScheduler {
-  private intervalId: NodeJS.Timeout | null = null;
+  private intervalId: AnchoredInterval | null = null;
+  private startupTimeout: NodeJS.Timeout | null = null;
 
   start(port: number): void {
     if (this.intervalId) return;
     const baseUrl = `http://127.0.0.1:${port}`;
-    setTimeout(() => void captureExecutiveSummarySnapshots(baseUrl), 60_000);
-    this.intervalId = setInterval(() => void captureExecutiveSummarySnapshots(baseUrl), DAY_MS);
+    this.intervalId = startAnchoredInterval("Executive Summary Snapshot Scheduler", () => captureExecutiveSummarySnapshots(baseUrl), DAY_MS);
+    this.startupTimeout = setTimeout(() => {
+      this.startupTimeout = null;
+      void captureExecutiveSummarySnapshots(baseUrl);
+    }, 60_000);
   }
 
   stop(): void {
-    if (this.intervalId) clearInterval(this.intervalId);
+    if (this.startupTimeout) clearTimeout(this.startupTimeout);
+    this.startupTimeout = null;
+    this.intervalId?.stop();
     this.intervalId = null;
   }
 }

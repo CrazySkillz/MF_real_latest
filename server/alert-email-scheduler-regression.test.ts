@@ -33,7 +33,7 @@ describe("alert email scheduler regression guard", () => {
     expect(scheduler).toContain("Previous run still in progress; skipping overlap");
     expect(scheduler).toContain('const { alertMonitoringService } = await import("./services/alert-monitoring.js");');
     expect(scheduler).toContain("const results = await alertMonitoringService.runAlertChecks();");
-    expect(scheduler).toContain("setInterval(() => {");
+    expect(scheduler).toContain('startAnchoredInterval("Alert Email Scheduler", () => {');
     expect(scheduler).toContain("}, config.intervalMs);");
   });
 
@@ -42,7 +42,7 @@ describe("alert email scheduler regression guard", () => {
     const alertScheduler = source("server/alert-email-scheduler.ts");
 
     expect(kpiScheduler).not.toContain("alertMonitoringService.runAlertChecks()");
-    expect(alertScheduler).toContain("setInterval(() => {");
+    expect(alertScheduler).toContain('startAnchoredInterval("Alert Email Scheduler", () => {');
     expect(alertScheduler).toContain("config.intervalMs");
   });
 

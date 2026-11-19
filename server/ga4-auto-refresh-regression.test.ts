@@ -221,7 +221,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(refreshFunction).not.toContain("reprocessHubSpot");
     expect(refreshFunction).not.toContain("reprocessLinkedInSpend");
     expect(refreshFunction).not.toContain('sourceType || "") === "csv"');
-    expect(scheduler).toContain("setInterval(runGoogleSheetsFinancialRefresh, googleSheetsSpendIntervalMs)");
+    expect(scheduler).toContain('startAnchoredInterval("Google Sheets Financial Scheduler", runGoogleSheetsFinancialRefresh, googleSheetsSpendIntervalMs)');
     expect(refreshFunction).toContain("__autoRefreshInProgress || (global as any).__googleSheetsSpendRefreshInProgress");
     expect(scheduler).toContain("while ((global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress)");
     expect(scheduler).toContain("Waiting for an interval financial refresh to finish");

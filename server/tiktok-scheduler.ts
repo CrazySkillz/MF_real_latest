@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { startAnchoredInterval } from "./utils/anchored-interval";
 import { storage } from "./storage";
 import { tiktokConnections } from "../shared/schema";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
@@ -141,8 +142,8 @@ export function startTikTokScheduler(): void {
 
   console.log(`[TikTok Scheduler] Refresh interval: ${refreshIntervalHours} hours`);
 
-  setInterval(() => {
-    refreshAllTikTokMetrics();
+  startAnchoredInterval("TikTok Scheduler", () => {
+    return refreshAllTikTokMetrics();
   }, refreshIntervalMs);
 
   console.log("[TikTok Scheduler] Started successfully");

@@ -668,7 +668,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
           expectNoProviderRefresh();
         } finally {
           for (const key of ["__autoRefreshSchedulerInterval", "__salesforcePipelineRefreshSchedulerInterval"]) {
-            clearInterval((global as any)[key]); (global as any)[key] = null;
+            (global as any)[key]?.stop(); (global as any)[key] = null;
           }
         }
       });

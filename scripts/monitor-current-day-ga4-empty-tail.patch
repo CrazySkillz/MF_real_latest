@@ -7104,3 +7104,79 @@ index b550f47a..fc6e51b2 100644
                        </SelectContent>
                        </Select>
                      </div>
+
+diff --git a/client/src/pages/campaign-performance.tsx b/client/src/pages/campaign-performance.tsx
+index fc6e51b2..73b482fb 100644
+--- a/client/src/pages/campaign-performance.tsx
++++ b/client/src/pages/campaign-performance.tsx
+@@ -46,7 +46,7 @@ type PerformanceInsight = {
+ };
+ 
+ const PERFORMANCE_SUMMARY_REFRESH_MS = 30000;
+-const PERFORMANCE_GA4_DAILY_DAYS = 31;
++const PERFORMANCE_GA4_DAILY_DAYS = 32; // A 31-day comparison plus the pre-refresh midnight boundary.
+ const resolveSpendComparisonEndDate = (dataThroughDate: string, timeRange: '24h' | '7d' | '30d') => {
+   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataThroughDate)) return "";
+   const completedDate = new Date(`${dataThroughDate}T00:00:00.000Z`);
+@@ -175,7 +175,9 @@ export default function CampaignPerformanceSummary() {
+     refetchIntervalInBackground: false,
+     refetchOnWindowFocus: true,
+   });
+-  const performanceGA4FinancialEndDate = performanceGA4SummaryPlaceholder ? "" : String(performanceGA4SummaryResponse?.dataThroughDate || "");
++  // The calendar cutoff can advance before the next scheduled publication.
++  // Keep every Summary input and comparison anchored to the saved daily history.
++  const performanceGA4FinancialEndDate = performanceGA4SummaryPlaceholder ? "" : String(performanceGA4SummaryResponse?.latestStoredDailyDate || "");
+   const { data: performanceGA4RevenueResponse, isLoading: performanceGA4RevenueLoading, isError: performanceGA4RevenueError, isPlaceholderData: performanceGA4RevenuePlaceholder } = useQuery<any>({
+     queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue", performanceGA4PropertyId, performanceGA4FinancialEndDate, campaign?.currency, "performance-summary-read-only"],
+     enabled: !!campaignId && campaign?.id === campaignId && !!campaign.currency && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
+@@ -233,10 +235,10 @@ export default function CampaignPerformanceSummary() {
+   // Derive API params from unified time range
+   const comparisonType = selectedTimeRange === '24h' ? 'yesterday' : selectedTimeRange === '7d' ? 'last_week' : 'last_month';
+   const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
+-  const spendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
+-  const revenueComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
+-  const requestedRevenueComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), selectedTimeRange);
+-  const requestedSpendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), selectedTimeRange);
++  const spendComparisonEndDate = resolveSpendComparisonEndDate(performanceGA4FinancialEndDate, timeRange);
++  const revenueComparisonEndDate = resolveSpendComparisonEndDate(performanceGA4FinancialEndDate, timeRange);
++  const requestedRevenueComparisonEndDate = resolveSpendComparisonEndDate(performanceGA4FinancialEndDate, selectedTimeRange);
++  const requestedSpendComparisonEndDate = resolveSpendComparisonEndDate(performanceGA4FinancialEndDate, selectedTimeRange);
+   const { data: historicalRevenueResponse, isError: historicalRevenueError, isPlaceholderData: historicalRevenuePlaceholder, isFetching: historicalRevenueFetching } = useQuery<any>({
+     queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue-comparison", performanceGA4PropertyId, requestedRevenueComparisonEndDate],
+     enabled: !!campaignId && !!performanceGA4PropertyId && !!requestedRevenueComparisonEndDate && !demoMode,
+@@ -1142,7 +1144,7 @@ export default function CampaignPerformanceSummary() {
+ 
+   const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);
+   const getGA4MovementComparison = (metricName: string) => {
+-    const dataThroughDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
++    const dataThroughDate = performanceGA4FinancialEndDate;
+     const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[metricName]);
+     const dailyRows = Array.isArray(performanceGA4SummaryResponse?.data) ? performanceGA4SummaryResponse.data : [];
+     if (performanceGA4SummaryResponse?.overviewTotals?.[metricName] == null || !Number.isFinite(current) || current < 0 || !/^\d{4}-\d{2}-\d{2}$/.test(dataThroughDate)) return null;
+@@ -1255,7 +1257,7 @@ export default function CampaignPerformanceSummary() {
+     const currentSpend = Number(performanceSummary?.totals?.spend?.value);
+     if (!demoMode && performanceGA4PropertyId && !outcomeTotalsError && trafficInputState === "ready" && spendInputState === "ready"
+       && !performanceGA4SummaryResponse?.refreshIsStale && !performanceGA4SummaryResponse?.providerRefreshWarning
+-      && performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4SummaryResponse?.dataThroughDate
++      && performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4FinancialEndDate
+       && aggregateSnapshotMetricAvailable(performanceSummary, "spend")
+       && Number.isFinite(currentSpend) && currentSpend >= 0 && currentSpend === scoringSpendToDate
+       && !ga4Changes.some((change) => change.metric === "Spend")) {
+@@ -1271,7 +1273,7 @@ export default function CampaignPerformanceSummary() {
+     const currentRevenue = revenueResponseTotal(performanceGA4RevenueResponse);
+     const historicalRevenue = revenueResponseTotal(displayedHistoricalRevenueResponse);
+     const activeRevenueSourceIds = datedFinancialSourceIds(performanceGA4RevenueSourcesResponse, "revenue", String(performanceGA4RevenueResponse?.imported?.currency || "").toUpperCase());
+-    const currentRevenueDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
++    const currentRevenueDate = performanceGA4FinancialEndDate;
+     const currentRevenueDatesMatch = performanceGA4RevenueResponse?.native?.endDate === currentRevenueDate
+       && performanceGA4RevenueResponse?.imported?.endDate === currentRevenueDate;
+     const historicalRevenueDatesMatch = displayedHistoricalRevenueResponse?.native?.endDate === revenueComparisonEndDate
+@@ -1376,7 +1378,7 @@ export default function CampaignPerformanceSummary() {
+       }
+       if (trafficInputState !== "ready" || spendInputState !== "ready" || outcomeTotalsError
+         || !performanceSummary?.currentValueWindow?.dataThroughDate
+-        || performanceSummary.currentValueWindow.dataThroughDate !== performanceGA4SummaryResponse?.dataThroughDate
++        || performanceSummary.currentValueWindow.dataThroughDate !== performanceGA4FinancialEndDate
+         || metric?.available !== true || typeof metric.value !== "number"
+         || !Number.isFinite(metric.value) || metric.value !== scoringSpendToDate) {
+         return { available: false, value: null, sources: [], unavailableReasons: ["Campaign spend is currently unavailable"] };

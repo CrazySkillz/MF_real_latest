@@ -1523,12 +1523,11 @@ export class GoogleAnalytics4Service {
       ] } } };
     };
     let fullScope = scopeFor(names);
-    const readScope = () => Promise.all([run(fullScope, startDate, endDate), run(fullScope, startDate, endDate, true)]);
-    let aggregate: Awaited<ReturnType<typeof run>>, dailyRows: Awaited<ReturnType<typeof run>>;
-    try { [aggregate, dailyRows] = await readScope(); }
-    catch (error: any) {
+    let emptyTailProof: Promise<void> | undefined;
+    const verifyEmptyTail = (error: any) => {
       if (error?.code !== 'GA4_DATA_QUALITY_UNAVAILABLE' || JSON.stringify(error.reasons) !== '["sampling"]'
         || !/^\d{4}-\d{2}-\d{2}$/.test(throughDate) || throughDate < startDate || throughDate >= endDate) throw error;
+      return emptyTailProof ??= (async () => {
       // Remove a branch only after GA4 proves its exact scope has no events.
       // The aggregate still comes from one unsampled provider query, never daily sums.
       const tailStart = new Date(Date.parse(throughDate) + 86400000).toISOString().slice(0, 10);
@@ -1544,10 +1543,27 @@ export class GoogleAnalytics4Service {
         && (rows.length === 0 ? (header || (proof?.kind === 'analyticsData#runReport' && proof.metricHeaders === undefined))
           : (header && rows[0]?.metricValues?.length === 1 && /^0(?:\.0+)?$/.test(String(rows[0].metricValues[0]?.value))));
       if (!empty) throw error;
+      })();
+    };
+    const readScope = () => Promise.all([run(fullScope, startDate, endDate), run(fullScope, startDate, endDate, true)]);
+    let aggregate: Awaited<ReturnType<typeof run>>, dailyRows: Awaited<ReturnType<typeof run>>;
+    try { [aggregate, dailyRows] = await readScope(); }
+    catch (error: any) {
+      await verifyEmptyTail(error);
       verifiedEmptyTailAfter = throughDate;
       fullScope = scopeFor(names);
       [aggregate, dailyRows] = await readScope();
     }
+    const recoverComparison = async (error: any, from: string, to: string) => {
+      // Preserve successful totals and windows; recover only the failed query.
+      if (verifiedEmptyTailAfter) throw error;
+      await verifyEmptyTail(error);
+      return from > throughDate ? [] : run(this.buildCampaignDimensionFilter(names, 'sessionCampaignName'), from, to > throughDate ? throughDate : to);
+    };
+    const runComparison = async (from: string, to: string) => {
+      try { return await run(fullScope, from, to); }
+      catch (error: any) { return recoverComparison(error, from, to); }
+    };
     const byDate = new Map(dailyRows.map(row => [row.date, row.users]));
     if (byDate.size !== dailyRows.length || dailyRows.some(row => !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < startDate || row.date > endDate)) {
       throw new Error('GA4_DISTINCT_USERS_INCOMPLETE');
@@ -1570,7 +1586,7 @@ export class GoogleAnalytics4Service {
         windows.push({ startDate: from, endDate: to, users: 0 });
       }
     }
-    for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { Object.assign(window, period(await run(fullScope, window.startDate, window.endDate))); }));
+    for (let i = 0; i < windows.length; i += 4) await Promise.all(windows.slice(i, i + 4).map(async window => { Object.assign(window, period(await runComparison(window.startDate, window.endDate))); }));
     if (rollingUsersStartDate) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(rollingUsersStartDate) || rollingUsersStartDate > endDate) throw new Error('GA4_DISTINCT_USERS_SCOPE_UNVERIFIED');
       const earliest = [startDate, rollingUsersStartDate].sort().at(-1)!;
@@ -1595,11 +1611,17 @@ export class GoogleAnalytics4Service {
       // Named date ranges let GA4 deduplicate each window independently (four per request).
       for (let i = 0; i < rolling.length; i += 4) {
         const batch = rolling.slice(i, i + 4);
-        const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        let response: Response;
+        try { response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ dateRanges: batch.map((window, index) => ({ startDate: window.startDate, endDate: window.endDate, name: `window_${index}` })),
             ...fullScope, metrics: [{ name: 'totalUsers' }], metricAggregations: ['TOTAL'], keepEmptyRows: true, limit: 100 }),
-        });
+        }); } catch (error: any) {
+          const values = await Promise.all(batch.map(window => recoverComparison(error, window.startDate, window.endDate)));
+          batch.forEach((window, index) => { window.users = values[index][0]?.users ?? 0; });
+          windows.push(...batch);
+          continue;
+        }
         if (!response.ok) throw new Error(`GA4 rolling users API error: ${await response.text()}`);
         const data = await response.json(), rangeIndex = data.dimensionHeaders?.findIndex((header: any) => header.name === 'dateRange') ?? -1;
         const totals = Array.isArray(data.totals) ? data.totals : [];

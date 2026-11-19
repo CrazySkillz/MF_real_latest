@@ -1,0 +1,5429 @@
+{
+  "scope": {
+    "campaignId": "0dd4770a-1610-4c12-983a-cd51d61ddffc",
+    "propertyId": "425831989",
+    "from": "2026-10-14",
+    "through": "2026-11-19",
+    "filter": [
+      "coffee_bags",
+      "served_here"
+    ],
+    "currency": "EUR",
+    "commit": "f5a101efca77f06973c2e641d1a3f4ce7f2360df"
+  },
+  "primaryScope": {
+    "propertyId": "425831989",
+    "startDate": "2026-10-14",
+    "endDate": "2026-11-19",
+    "campaigns": [
+      "coffee_bags",
+      "served_here"
+    ],
+    "throughDate": "2026-11-18"
+  },
+  "result": {
+    "version": 1,
+    "metric": "totalUsers",
+    "propertyId": "425831989",
+    "startDate": "2026-10-14",
+    "endDate": "2026-11-19",
+    "total": 9,
+    "campaigns": [
+      {
+        "name": "coffee_bags",
+        "users": 4,
+        "sessions": 18,
+        "engagedSessions": 14,
+        "engagementRate": 0.7777777777777778,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "name": "served_here",
+        "users": 6,
+        "sessions": 20,
+        "engagedSessions": 11,
+        "engagementRate": 0.55,
+        "sessionKeyEventRate": 0
+      }
+    ],
+    "daily": [
+      {
+        "date": "2026-10-14",
+        "users": 0
+      },
+      {
+        "date": "2026-10-15",
+        "users": 2
+      },
+      {
+        "date": "2026-10-16",
+        "users": 0
+      },
+      {
+        "date": "2026-10-17",
+        "users": 0
+      },
+      {
+        "date": "2026-10-18",
+        "users": 0
+      },
+      {
+        "date": "2026-10-19",
+        "users": 1
+      },
+      {
+        "date": "2026-10-20",
+        "users": 0
+      },
+      {
+        "date": "2026-10-21",
+        "users": 1
+      },
+      {
+        "date": "2026-10-22",
+        "users": 0
+      },
+      {
+        "date": "2026-10-23",
+        "users": 0
+      },
+      {
+        "date": "2026-10-24",
+        "users": 0
+      },
+      {
+        "date": "2026-10-25",
+        "users": 0
+      },
+      {
+        "date": "2026-10-26",
+        "users": 0
+      },
+      {
+        "date": "2026-10-27",
+        "users": 0
+      },
+      {
+        "date": "2026-10-28",
+        "users": 1
+      },
+      {
+        "date": "2026-10-29",
+        "users": 1
+      },
+      {
+        "date": "2026-10-30",
+        "users": 0
+      },
+      {
+        "date": "2026-10-31",
+        "users": 0
+      },
+      {
+        "date": "2026-11-01",
+        "users": 0
+      },
+      {
+        "date": "2026-11-02",
+        "users": 2
+      },
+      {
+        "date": "2026-11-03",
+        "users": 0
+      },
+      {
+        "date": "2026-11-04",
+        "users": 2
+      },
+      {
+        "date": "2026-11-05",
+        "users": 0
+      },
+      {
+        "date": "2026-11-06",
+        "users": 0
+      },
+      {
+        "date": "2026-11-07",
+        "users": 0
+      },
+      {
+        "date": "2026-11-08",
+        "users": 0
+      },
+      {
+        "date": "2026-11-09",
+        "users": 0
+      },
+      {
+        "date": "2026-11-10",
+        "users": 2
+      },
+      {
+        "date": "2026-11-11",
+        "users": 1
+      },
+      {
+        "date": "2026-11-12",
+        "users": 1
+      },
+      {
+        "date": "2026-11-13",
+        "users": 1
+      },
+      {
+        "date": "2026-11-14",
+        "users": 1
+      },
+      {
+        "date": "2026-11-15",
+        "users": 1
+      },
+      {
+        "date": "2026-11-16",
+        "users": 5
+      },
+      {
+        "date": "2026-11-17",
+        "users": 2
+      },
+      {
+        "date": "2026-11-18",
+        "users": 1
+      },
+      {
+        "date": "2026-11-19",
+        "users": 0
+      }
+    ],
+    "windows": [
+      {
+        "startDate": "2026-10-14",
+        "endDate": "2026-11-12",
+        "users": 4,
+        "sessions": 22,
+        "engagedSessions": 15,
+        "engagementRate": 0.6818181818181818,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-11-13",
+        "endDate": "2026-11-19",
+        "users": 5,
+        "sessions": 16,
+        "engagedSessions": 10,
+        "engagementRate": 0.625,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-10-14",
+        "endDate": "2026-11-05",
+        "users": 3,
+        "sessions": 15,
+        "engagedSessions": 11,
+        "engagementRate": 0.7333333333333333,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-11-06",
+        "endDate": "2026-11-19",
+        "users": 6,
+        "sessions": 23,
+        "engagedSessions": 14,
+        "engagementRate": 0.6086956521739131,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-10-14",
+        "endDate": "2026-10-20",
+        "users": 2,
+        "sessions": 3,
+        "engagedSessions": 2,
+        "engagementRate": 0.6666666666666666,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-10-21",
+        "endDate": "2026-11-19",
+        "users": 9,
+        "sessions": 35,
+        "engagedSessions": 23,
+        "engagementRate": 0.6571428571428571,
+        "sessionKeyEventRate": 0
+      },
+      {
+        "startDate": "2026-10-15",
+        "endDate": "2026-10-21",
+        "users": 2
+      },
+      {
+        "startDate": "2026-10-16",
+        "endDate": "2026-10-22",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-17",
+        "endDate": "2026-10-23",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-18",
+        "endDate": "2026-10-24",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-19",
+        "endDate": "2026-10-25",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-20",
+        "endDate": "2026-10-26",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-21",
+        "endDate": "2026-10-27",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-22",
+        "endDate": "2026-10-28",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-23",
+        "endDate": "2026-10-29",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-24",
+        "endDate": "2026-10-30",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-25",
+        "endDate": "2026-10-31",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-26",
+        "endDate": "2026-11-01",
+        "users": 1
+      },
+      {
+        "startDate": "2026-10-27",
+        "endDate": "2026-11-02",
+        "users": 2
+      },
+      {
+        "startDate": "2026-10-28",
+        "endDate": "2026-11-03",
+        "users": 2
+      },
+      {
+        "startDate": "2026-10-29",
+        "endDate": "2026-11-04",
+        "users": 3
+      },
+      {
+        "startDate": "2026-10-30",
+        "endDate": "2026-11-05",
+        "users": 3
+      },
+      {
+        "startDate": "2026-10-31",
+        "endDate": "2026-11-06",
+        "users": 3
+      },
+      {
+        "startDate": "2026-11-01",
+        "endDate": "2026-11-07",
+        "users": 3
+      },
+      {
+        "startDate": "2026-11-02",
+        "endDate": "2026-11-08",
+        "users": 3
+      },
+      {
+        "startDate": "2026-11-03",
+        "endDate": "2026-11-09",
+        "users": 2
+      },
+      {
+        "startDate": "2026-11-04",
+        "endDate": "2026-11-10",
+        "users": 3
+      },
+      {
+        "startDate": "2026-11-05",
+        "endDate": "2026-11-11",
+        "users": 2
+      },
+      {
+        "startDate": "2026-11-06",
+        "endDate": "2026-11-12",
+        "users": 2
+      },
+      {
+        "startDate": "2026-11-07",
+        "endDate": "2026-11-13",
+        "users": 2
+      },
+      {
+        "startDate": "2026-11-08",
+        "endDate": "2026-11-14",
+        "users": 3
+      },
+      {
+        "startDate": "2026-11-09",
+        "endDate": "2026-11-15",
+        "users": 3
+      },
+      {
+        "startDate": "2026-11-10",
+        "endDate": "2026-11-16",
+        "users": 6
+      },
+      {
+        "startDate": "2026-11-11",
+        "endDate": "2026-11-17",
+        "users": 5
+      },
+      {
+        "startDate": "2026-11-12",
+        "endDate": "2026-11-18",
+        "users": 5
+      },
+      {
+        "startDate": "2026-10-15",
+        "endDate": "2026-11-13",
+        "users": 4
+      },
+      {
+        "startDate": "2026-10-16",
+        "endDate": "2026-11-14",
+        "users": 5
+      },
+      {
+        "startDate": "2026-10-17",
+        "endDate": "2026-11-15",
+        "users": 5
+      },
+      {
+        "startDate": "2026-10-18",
+        "endDate": "2026-11-16",
+        "users": 8
+      },
+      {
+        "startDate": "2026-10-19",
+        "endDate": "2026-11-17",
+        "users": 8
+      },
+      {
+        "startDate": "2026-10-20",
+        "endDate": "2026-11-18",
+        "users": 9
+      },
+      {
+        "startDate": "2026-10-14",
+        "endDate": "2026-10-31",
+        "users": 2
+      },
+      {
+        "startDate": "2026-11-01",
+        "endDate": "2026-11-19",
+        "users": 9
+      }
+    ],
+    "rollingUsersStartDate": "2026-10-14",
+    "sessionTotalsVersion": 1,
+    "users": 9,
+    "sessions": 38,
+    "engagedSessions": 25,
+    "engagementRate": 0.6578947368421053,
+    "sessionKeyEventRate": 0
+  },
+  "responses": [
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-19"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "9"
+              },
+              {
+                "value": "38"
+              },
+              {
+                "value": "25"
+              },
+              {
+                "value": "0.65789473684210531"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-19"
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "date"
+          }
+        ],
+        "orderBys": [
+          {
+            "dimension": {
+              "dimensionName": "date"
+            }
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "date"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "20261015"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261019"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261021"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261028"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261029"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261102"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261104"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261110"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261111"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261112"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261113"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261114"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261115"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261116"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "5"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261117"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "20261118"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "rowCount": 16,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-19"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "filter": {
+                        "fieldName": "sessionCampaignName",
+                        "stringFilter": {
+                          "matchType": "EXACT",
+                          "value": "coffee_bags",
+                          "caseSensitive": false
+                        }
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "filter": {
+                        "fieldName": "pageLocation",
+                        "stringFilter": {
+                          "matchType": "FULL_REGEXP",
+                          "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                          "caseSensitive": false
+                        }
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "4"
+              },
+              {
+                "value": "18"
+              },
+              {
+                "value": "14"
+              },
+              {
+                "value": "0.77777777777777779"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-19"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "filter": {
+                        "fieldName": "sessionCampaignName",
+                        "stringFilter": {
+                          "matchType": "EXACT",
+                          "value": "served_here",
+                          "caseSensitive": false
+                        }
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "filter": {
+                        "fieldName": "pageLocation",
+                        "stringFilter": {
+                          "matchType": "FULL_REGEXP",
+                          "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                          "caseSensitive": false
+                        }
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "6"
+              },
+              {
+                "value": "20"
+              },
+              {
+                "value": "11"
+              },
+              {
+                "value": "0.55"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-12"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "4"
+              },
+              {
+                "value": "22"
+              },
+              {
+                "value": "15"
+              },
+              {
+                "value": "0.68181818181818177"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-06",
+            "endDate": "2026-11-19"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "7"
+              },
+              {
+                "value": "23"
+              },
+              {
+                "value": "14"
+              },
+              {
+                "value": "0.60869565217391308"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin",
+          "samplingMetadatas": [
+            {
+              "samplesReadCount": "5562",
+              "samplingSpaceSize": "5569"
+            }
+          ]
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-11-05"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "3"
+              },
+              {
+                "value": "15"
+              },
+              {
+                "value": "11"
+              },
+              {
+                "value": "0.73333333333333328"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-19",
+            "endDate": "2026-11-19"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "pageLocation",
+                  "stringFilter": {
+                    "matchType": "FULL_REGEXP",
+                    "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "eventCount"
+          }
+        ],
+        "limit": 1,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-13",
+            "endDate": "2026-11-19"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "6"
+              },
+              {
+                "value": "16"
+              },
+              {
+                "value": "10"
+              },
+              {
+                "value": "0.625"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin",
+          "samplingMetadatas": [
+            {
+              "samplesReadCount": "3198",
+              "samplingSpaceSize": "3220"
+            }
+          ]
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-06",
+            "endDate": "2026-11-18"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "6"
+              },
+              {
+                "value": "23"
+              },
+              {
+                "value": "14"
+              },
+              {
+                "value": "0.60869565217391308"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-13",
+            "endDate": "2026-11-18"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "5"
+              },
+              {
+                "value": "16"
+              },
+              {
+                "value": "10"
+              },
+              {
+                "value": "0.625"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-10-20"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "2"
+              },
+              {
+                "value": "3"
+              },
+              {
+                "value": "2"
+              },
+              {
+                "value": "0.66666666666666663"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-21",
+            "endDate": "2026-11-19"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "9"
+              },
+              {
+                "value": "35"
+              },
+              {
+                "value": "23"
+              },
+              {
+                "value": "0.65714285714285714"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-15",
+            "endDate": "2026-10-21",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-10-16",
+            "endDate": "2026-10-22",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-10-17",
+            "endDate": "2026-10-23",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-10-18",
+            "endDate": "2026-10-24",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-19",
+            "endDate": "2026-10-25",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-10-20",
+            "endDate": "2026-10-26",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-10-21",
+            "endDate": "2026-10-27",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-10-22",
+            "endDate": "2026-10-28",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-23",
+            "endDate": "2026-10-29",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-10-24",
+            "endDate": "2026-10-30",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-10-25",
+            "endDate": "2026-10-31",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-10-26",
+            "endDate": "2026-11-01",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "1"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-27",
+            "endDate": "2026-11-02",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-10-28",
+            "endDate": "2026-11-03",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-10-29",
+            "endDate": "2026-11-04",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-10-30",
+            "endDate": "2026-11-05",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-31",
+            "endDate": "2026-11-06",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-11-01",
+            "endDate": "2026-11-07",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-11-02",
+            "endDate": "2026-11-08",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-11-03",
+            "endDate": "2026-11-09",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-04",
+            "endDate": "2026-11-10",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-11-05",
+            "endDate": "2026-11-11",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-11-06",
+            "endDate": "2026-11-12",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-11-07",
+            "endDate": "2026-11-13",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-08",
+            "endDate": "2026-11-14",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-11-09",
+            "endDate": "2026-11-15",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-11-10",
+            "endDate": "2026-11-16",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-11-11",
+            "endDate": "2026-11-17",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "6"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "5"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "6"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "5"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-12",
+            "endDate": "2026-11-18",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-10-15",
+            "endDate": "2026-11-13",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-10-16",
+            "endDate": "2026-11-14",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-10-17",
+            "endDate": "2026-11-15",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "6"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "5"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "5"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "4"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "6"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "4"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "5"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "5"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin",
+          "samplingMetadatas": [
+            {
+              "samplesReadCount": "3699",
+              "samplingSpaceSize": "3706"
+            },
+            {
+              "samplesReadCount": "10931",
+              "samplingSpaceSize": "10931"
+            },
+            {
+              "samplesReadCount": "10820",
+              "samplingSpaceSize": "10820"
+            },
+            {
+              "samplesReadCount": "10827",
+              "samplingSpaceSize": "10827"
+            }
+          ]
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-15",
+            "endDate": "2026-11-13"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "4"
+              },
+              {
+                "value": "24"
+              },
+              {
+                "value": "16"
+              },
+              {
+                "value": "0.66666666666666663"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-12",
+            "endDate": "2026-11-18"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "5"
+              },
+              {
+                "value": "18"
+              },
+              {
+                "value": "12"
+              },
+              {
+                "value": "0.66666666666666663"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-16",
+            "endDate": "2026-11-14"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "5"
+              },
+              {
+                "value": "23"
+              },
+              {
+                "value": "16"
+              },
+              {
+                "value": "0.69565217391304346"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-17",
+            "endDate": "2026-11-15"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "coffee_bags",
+                    "caseSensitive": false
+                  }
+                }
+              },
+              {
+                "filter": {
+                  "fieldName": "sessionCampaignName",
+                  "stringFilter": {
+                    "matchType": "EXACT",
+                    "value": "served_here",
+                    "caseSensitive": false
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          },
+          {
+            "name": "sessions"
+          },
+          {
+            "name": "engagedSessions"
+          },
+          {
+            "name": "engagementRate"
+          },
+          {
+            "name": "sessionKeyEventRate"
+          }
+        ],
+        "limit": 100000,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "sessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagedSessions",
+            "type": "TYPE_INTEGER"
+          },
+          {
+            "name": "engagementRate",
+            "type": "TYPE_FLOAT"
+          },
+          {
+            "name": "sessionKeyEventRate",
+            "type": "TYPE_FLOAT"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "5"
+              },
+              {
+                "value": "24"
+              },
+              {
+                "value": "17"
+              },
+              {
+                "value": "0.70833333333333337"
+              },
+              {
+                "value": "0"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-10-18",
+            "endDate": "2026-11-16",
+            "name": "window_0"
+          },
+          {
+            "startDate": "2026-10-19",
+            "endDate": "2026-11-17",
+            "name": "window_1"
+          },
+          {
+            "startDate": "2026-10-20",
+            "endDate": "2026-11-18",
+            "name": "window_2"
+          },
+          {
+            "startDate": "2026-10-14",
+            "endDate": "2026-10-31",
+            "name": "window_3"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "dimensionHeaders": [
+          {
+            "name": "dateRange"
+          }
+        ],
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "9"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "8"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "8"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "dimensionValues": [
+              {
+                "value": "window_0"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "8"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_1"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "8"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_2"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "9"
+              }
+            ]
+          },
+          {
+            "dimensionValues": [
+              {
+                "value": "window_3"
+              }
+            ],
+            "metricValues": [
+              {
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "rowCount": 4,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    },
+    {
+      "request": {
+        "dateRanges": [
+          {
+            "startDate": "2026-11-01",
+            "endDate": "2026-11-19",
+            "name": "window_0"
+          }
+        ],
+        "dimensionFilter": {
+          "orGroup": {
+            "expressions": [
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "coffee_bags",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "sessionCampaignName",
+                              "stringFilter": {
+                                "matchType": "EXACT",
+                                "value": "served_here",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "filter": {
+                        "fieldName": "date",
+                        "numericFilter": {
+                          "operation": "LESS_THAN_OR_EQUAL",
+                          "value": {
+                            "int64Value": "20261118"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "andGroup": {
+                  "expressions": [
+                    {
+                      "orGroup": {
+                        "expressions": [
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=coffee_bags(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          },
+                          {
+                            "filter": {
+                              "fieldName": "pageLocation",
+                              "stringFilter": {
+                                "matchType": "FULL_REGEXP",
+                                "value": ".*[?&]utm_campaign=served_here(?:[&#].*)?$",
+                                "caseSensitive": false
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "notExpression": {
+                        "filter": {
+                          "fieldName": "date",
+                          "numericFilter": {
+                            "operation": "LESS_THAN_OR_EQUAL",
+                            "value": {
+                              "int64Value": "20261118"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "name": "totalUsers"
+          }
+        ],
+        "metricAggregations": [
+          "TOTAL"
+        ],
+        "keepEmptyRows": true,
+        "limit": 100,
+        "returnPropertyQuota": true
+      },
+      "status": 200,
+      "data": {
+        "metricHeaders": [
+          {
+            "name": "totalUsers",
+            "type": "TYPE_INTEGER"
+          }
+        ],
+        "rows": [
+          {
+            "metricValues": [
+              {
+                "value": "9"
+              }
+            ]
+          }
+        ],
+        "totals": [
+          {
+            "metricValues": [
+              {
+                "value": "9"
+              }
+            ]
+          }
+        ],
+        "rowCount": 1,
+        "metadata": {
+          "currencyCode": "EUR",
+          "timeZone": "Europe/Dublin"
+        },
+        "kind": "analyticsData#runReport"
+      }
+    }
+  ]
+}

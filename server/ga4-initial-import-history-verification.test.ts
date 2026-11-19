@@ -4,11 +4,11 @@ import { verifyGA4InitialImport } from './ga4-source-verification';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-async function fixture(days: number) {
+async function fixture(days: number, activeFrom = 0) {
   vi.stubEnv('DATABASE_URL', '');
   const start = '2025-11-19', end = new Date(Date.parse(start) + (days - 1) * 86400000).toISOString().slice(0, 10);
   const daily = Array.from({ length: days }, (_, index) => {
-    const active = index % 7 !== 0;
+    const active = index >= activeFrom && index % 7 !== 0;
     return { campaignId: 'a', propertyId: '123', date: new Date(Date.parse(start) + index * 86400000).toISOString().slice(0, 10),
       sessions: active ? 10 : 0, users: active ? 1 : 0, pageviews: active ? 15 : 0, conversions: active ? 2 : 0,
       revenue: active ? '20.25' : '0', engagedSessions: active ? 7 : 0, engagementRate: active ? 0.7 : 0, isSimulated: false, person: index % 5 };
@@ -99,6 +99,30 @@ describe('real distinct-period queries through initial-import verification', () 
     expect(active).toBe(0);
     expect(JSON.stringify(f.publication)).toBe(before);
     expect(f.storage.recordGA4InitialImportVerification).toHaveBeenCalledOnce();
+  });
+  it('proves empty annual windows from native daily users and still rejects a changed zero', async () => {
+    const f = await fixture(365, 355);
+    await f.verify();
+    const rollingRequests = f.requests.filter(body => body.metricAggregations);
+    expect(rollingRequests.length).toBeLessThan(20);
+    for (const request of rollingRequests) for (const range of request.dateRanges) {
+      expect(f.daily.some(row => row.date >= range.startDate && row.date <= range.endDate && row.users > 0)).toBe(true);
+    }
+    const empty = f.publication.campaignBreakdown.meta.distinctUsers.windows.find(row => !Object.hasOwn(row, 'sessionKeyEventRate') && row.endDate < f.daily[355].date)!;
+    expect(empty.users).toBe(0);
+    empty.users = 1;
+    f.storage.recordGA4InitialImportVerification.mockClear();
+    await expect(f.verify()).rejects.toThrow('GA4_INITIAL_VERIFICATION_DIFFERENCE');
+    expect(f.storage.recordGA4InitialImportVerification).not.toHaveBeenCalled();
+  });
+  it('does not prove zero windows from restricted daily evidence', async () => {
+    const f = await fixture(365, 365), original = vi.mocked(fetch).getMockImplementation()!;
+    vi.stubGlobal('fetch', vi.fn(async (...args: Parameters<typeof fetch>) => {
+      if (JSON.parse(String(args[1]?.body)).dimensions) return new Response(JSON.stringify({ rows: [], rowCount: 0, metadata: { subjectToThresholding: true } }));
+      return original(...args);
+    }));
+    await expect(f.verify()).rejects.toThrow('GA4_INITIAL_VERIFICATION_UNVERIFIED');
+    expect(f.storage.recordGA4InitialImportVerification).not.toHaveBeenCalled();
   });
   it.each(['incomplete response', 'cancelled'])('does not certify a %s rolling batch', async failure => {
     const f = await fixture(30), original = vi.mocked(fetch).getMockImplementation()!, controller = new AbortController();

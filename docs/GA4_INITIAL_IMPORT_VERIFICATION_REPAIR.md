@@ -29,6 +29,11 @@ combined response before it could request the declared available period.
 - Independent rolling-user batches run four requests at a time, retaining four
   named date ranges per request and deterministic window order. Existing request
   limiting, cancellation, import ownership and publication safeguards remain.
+  Windows containing only zero users in a complete, unrestricted native daily
+  users response are proven zero without redundant period requests. Every window
+  with activity still uses exact GA4 deduplication; daily nonzero users are never
+  added to obtain a distinct period count. This keeps sparse annual verification
+  within its unchanged deadline.
 
 No schema, campaign configuration, calculation formula, schedule, startup refresh
 policy or other-campaign data is changed by this patch. Deployment and the explicit

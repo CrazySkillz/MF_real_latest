@@ -1611,9 +1611,12 @@ export class GoogleAnalytics4Service {
       }
       // Named date ranges let GA4 deduplicate each window independently (four per request).
       // Bound independent batches to four requests and preserve the saved window order.
-      for (let i = 0; i < rolling.length; i += 16) {
-        const batches = await Promise.all(Array.from({ length: Math.ceil(Math.min(16, rolling.length - i) / 4) }, async (_, group) => {
-        const batch = rolling.slice(i + group * 4, i + group * 4 + 4);
+      // An unrestricted, complete native daily-users report proves empty windows are zero.
+      // Nonzero daily users are never summed to derive a period's distinct users.
+      const pending = rolling.filter(window => daily.some(row => row.date >= window.startDate && row.date <= window.endDate && row.users > 0));
+      for (let i = 0; i < pending.length; i += 16) {
+        await Promise.all(Array.from({ length: Math.ceil(Math.min(16, pending.length - i) / 4) }, async (_, group) => {
+        const batch = pending.slice(i + group * 4, i + group * 4 + 4);
         let response: Response;
         try { response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -1637,8 +1640,8 @@ export class GoogleAnalytics4Service {
         }
         return batch;
         }));
-        windows.push(...batches.flat());
       }
+      windows.push(...rolling);
     }
     return { version: 1, metric: 'totalUsers', propertyId: normalizedPropertyId, startDate, endDate, total, campaigns, daily, windows,
       ...(rollingUsersStartDate ? { rollingUsersStartDate: [startDate, rollingUsersStartDate].sort().at(-1)! } : {}),

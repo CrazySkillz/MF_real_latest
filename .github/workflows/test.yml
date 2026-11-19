@@ -40,7 +40,7 @@ jobs:
         run: npm run check
       - name: Build application
         run: npm run build
-      - run: npx --no-install playwright install --with-deps chromium
+      - run: npx --no-install playwright install chromium
       - name: Create isolated notification fixture database
         run: |
           node --input-type=module <<'NODE'

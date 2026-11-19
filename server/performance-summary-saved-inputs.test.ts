@@ -4,25 +4,64 @@ import { describe, expect, it, vi } from "vitest";
 import { resolvePerformanceLiveMetricValue, buildPerformanceRecommendedActions } from "../client/src/lib/performance-recommended-actions";
 import { isGA4FinancialTotalsCandidate } from "../shared/ga4-financial-source";
 import { QueryClient, QueryObserver, keepPreviousData } from "@tanstack/react-query";
+import { getGA4ReportingDateWindow } from "./utils/reporting-timezone";
 
 const page = readFileSync("client/src/pages/campaign-performance.tsx", "utf8");
 const compile = (code: string, values: Record<string, any>) => new Function(...Object.keys(values),
   ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(values));
 const slice = (start: string, end: string) => page.slice(page.indexOf(start), page.indexOf(end, page.indexOf(start)));
-const baseline = (end: string, range: string) => {
-  const date = new Date(`${end}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() - (range === "24h" ? 1 : 7));
-  return date.toISOString().slice(0, 10);
-};
 const summary = () => ({
   startDate: "2026-10-19", endDate: "2026-11-18", dataThroughDate: "2026-11-18", overviewStartDate: "2026-09-04",
+  latestStoredDailyDate: "2026-11-18",
   overviewTotals: { sessions: 4472, users: 4496, conversions: 440 },
   usersComparisons: [{ startDate: "2026-09-04", endDate: "2026-11-11", sessions: 4329, users: 4374 }],
   data: Array.from({ length: 7 }, (_, index) => ({ date: `2026-11-${12 + index}`, sessions: index === 0 ? 122 : 0, conversions: index === 0 ? 13 : 0 })),
 });
+const savedEndDate = (response: any, placeholder = false) => compile(
+  slice("const performanceGA4FinancialEndDate =", "const { data: performanceGA4RevenueResponse") + "return performanceGA4FinancialEndDate;",
+  { performanceGA4SummaryResponse: response, performanceGA4SummaryPlaceholder: placeholder });
 const movement = (response: any, metric = "sessions", range = "7d") => compile(
   slice("const getGA4MovementComparison =", "// Calculate what's changed") + "return getGA4MovementComparison(metric);",
-  { performanceGA4SummaryResponse: response, timeRange: range, resolveSpendComparisonEndDate: baseline, metric });
+  { performanceGA4SummaryResponse: response, performanceGA4FinancialEndDate: savedEndDate(response), timeRange: range,
+    resolveSpendComparisonEndDate: compile(slice("const resolveSpendComparisonEndDate =", "const formatCompletedReportingDate =") + "return resolveSpendComparisonEndDate;", {}), metric });
+
+describe("Performance Summary saved publication boundary", () => {
+  it.each(["2026-11-18T22:59:59Z", "2026-11-18T23:00:00Z", "2026-11-19T06:59:59Z"])("preserves totals and comparisons across midnight before 08:00: %s", now => {
+    vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
+    try {
+      const days = Number(page.match(/const PERFORMANCE_GA4_DAILY_DAYS = (\d+)/)![1]);
+      const window = getGA4ReportingDateWindow(days, "Europe/Amsterdam", new Date(now));
+      const response = { ...summary(), ...window, data: Array.from({ length: 31 }, (_, index) => ({
+        date: new Date(Date.UTC(2026, 9, 19 + index)).toISOString().slice(0, 10), conversions: index === 24 ? 13 : 0,
+      })) };
+      expect(savedEndDate(response)).toBe("2026-11-18");
+      expect(movement(response)).toEqual({ current: 4472, previous: 4329, baselineDate: "2026-11-11" });
+      expect(movement(response, "conversions", "24h")).toEqual({ current: 440, previous: 440, baselineDate: "2026-11-17" });
+      expect(movement(response, "conversions", "30d")).toEqual({ current: 440, previous: 427, baselineDate: "2026-10-18" });
+    } finally { vi.unstubAllEnvs(); }
+  });
+
+  it.each([8, 14, 20])("uses the publication available at the %s:00 slot without advancing on a delayed or failed attempt", hour => {
+    const response = { ...summary(), dataThroughDate: "2026-11-19", refreshStatus: "failed", lastAttemptAt: `2026-11-19T${String(hour - 1).padStart(2, "0")}:00:00Z` };
+    expect(savedEndDate(response)).toBe("2026-11-18");
+    expect(savedEndDate({ ...response, latestStoredDailyDate: "2026-11-19", refreshStatus: "current" })).toBe("2026-11-19");
+  });
+
+  it("does not invent a date for absent history or a placeholder from another query", () => {
+    expect(savedEndDate({ ...summary(), latestStoredDailyDate: null })).toBe("");
+    expect(savedEndDate(summary(), true)).toBe("");
+  });
+
+  it("still requires the saved financial and traffic publication dates and timezones to agree", () => {
+    const aligned = (date: string, zone = "Europe/Amsterdam") => compile(
+      slice("const performanceDataThroughDate =", "// Helper function to safely parse numbers") + "return performanceDataThroughDate;",
+      { demoMode: false, performanceSummary: { currentValueWindow: { dataThroughDate: date, reportingTimeZone: zone } },
+        performanceGA4FinancialEndDate: "2026-11-18", performanceReportingTimeZone: "Europe/Amsterdam" });
+    expect(aligned("2026-11-18")).toBe("2026-11-18");
+    expect(aligned("2026-11-19")).toBe("");
+    expect(aligned("2026-11-18", "Europe/London")).toBe("");
+  });
+});
 
 describe("Performance Summary revenue loading order", () => {
   const native = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: "2026-11-18", totals: { revenue: 114314.62, conversions: 440 } };

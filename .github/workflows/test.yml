@@ -69,7 +69,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci --ignore-scripts
-      - run: npx --no-install playwright install --with-deps chromium
+      - run: npx --no-install playwright install chromium
       - name: Create isolated notification fixture database
         run: |
           node --input-type=module <<'NODE'

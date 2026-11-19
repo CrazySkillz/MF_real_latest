@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
     getRevenueSources: vi.fn(), getSpendSources: vi.fn(), getGA4DailyMetrics: vi.fn(),
     getGA4OverviewSnapshot: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
     getLatestGA4DailyMetric: vi.fn(), getFinancialDailyComparisonData: vi.fn(), getExecutiveSummaryDailyComparisonData: vi.fn(),
-    getCompletedGA4RefreshState: vi.fn(),
+    getCompletedGA4RefreshState: vi.fn(), getCompletedGA4InitialImportState: vi.fn(),
     getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), upsertFinancialDailySnapshot: vi.fn(), getGA4RevenuePublication: vi.fn(),
     getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
     markExecutiveSummaryDailySnapshotAligned: vi.fn(),
@@ -92,6 +92,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     vi.resetAllMocks();
     mocks.storage.getGA4PublicationVersion.mockResolvedValue(null);
     mocks.storage.getCompletedGA4RefreshState.mockResolvedValue(null);
+    mocks.storage.getCompletedGA4InitialImportState.mockResolvedValue(null);
     mocks.storage.getGA4RevenuePublication.mockImplementation(async (_campaignId, reportingDate) => ({ version: 1, reportingDate, sources: {}, pendingSourceIds: [] }));
     mocks.storage.writeWithGA4RefreshOwnership.mockResolvedValue(undefined);
     mocks.storage.isGA4NativeRecoveryEligible.mockResolvedValue(false);
@@ -1381,6 +1382,41 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       ]);
     } finally { finish(); await concurrent; await vi.advanceTimersByTimeAsync(1000); await recovery; }
   });
+
+  const completedImportStartup = async () => {
+    campaigns = [campaigns[0]];
+    await runGA4DailyRefreshPipelineForCampaignNow('campaign-a');
+    mocks.storage.getLatestGA4DailyMetric.mockImplementation(async id => daily.get(id)?.at(-1));
+    mocks.storage.getFinancialDailyComparisonData.mockImplementation(async id => ({ current: { metrics: { financialDaily: saved.get(id) } }, previous: null }));
+    markers.clear(); vi.clearAllMocks();
+    vi.setSystemTime(new Date('2026-10-16T06:01:00Z'));
+    mocks.storage.getCompletedGA4InitialImportState.mockResolvedValue({ reportingDate, completedAt: '2026-10-16T06:00:30Z' });
+  };
+  it('does not bootstrap a verified new import or manufacture report readiness after repeated restarts', async () => {
+    await completedImportStartup(); const run = vi.fn(async () => {});
+    const before = JSON.stringify([saved.get('campaign-a'), overviews.get('campaign-a'), daily.get('campaign-a')]);
+    expect(await backfillMissingGA4OverviewSnapshots(run)).toEqual([]);
+    expect(await backfillMissingGA4OverviewSnapshots(run)).toEqual([]);
+    expect(run).not.toHaveBeenCalled();
+    expect(mocks.provider.getTimeSeriesData).not.toHaveBeenCalled();
+    expect(await getGA4AlignedRefreshState('campaign-a', reportingDate)).toBeNull();
+    expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).not.toHaveBeenCalled();
+    expect(JSON.stringify([saved.get('campaign-a'), overviews.get('campaign-a'), daily.get('campaign-a')])).toBe(before);
+    vi.setSystemTime(new Date('2026-10-16T12:01:00Z'));
+    expect(await backfillMissingGA4OverviewSnapshots(run)).toEqual(['campaign-a']); // The next ordinary slot is still due.
+  });
+  it.each(['missing receipt', 'old completion', 'future completion', 'missing overview', 'missing financial inputs', 'read failure'])
+    ('keeps startup recovery fail-closed for %s', async change => {
+      await completedImportStartup(); const run = vi.fn(async () => {});
+      if (change === 'missing receipt') mocks.storage.getCompletedGA4InitialImportState.mockResolvedValue(null);
+      if (change === 'old completion') mocks.storage.getCompletedGA4InitialImportState.mockResolvedValue({ reportingDate, completedAt: '2026-10-16T05:00:00Z' });
+      if (change === 'future completion') mocks.storage.getCompletedGA4InitialImportState.mockResolvedValue({ reportingDate, completedAt: '2026-10-16T07:00:00Z' });
+      if (change === 'missing overview') overviews.delete('campaign-a');
+      if (change === 'missing financial inputs') saved.delete('campaign-a');
+      if (change === 'read failure') mocks.storage.getCompletedGA4InitialImportState.mockRejectedValue(new Error('receipt database unavailable'));
+      expect(await backfillMissingGA4OverviewSnapshots(run)).toEqual(change === 'read failure' ? [] : ['campaign-a']);
+      if (change === 'read failure') expect(getGA4DailySchedulerStatus().lastSnapshotBootstrapFailures).toEqual([{ campaignIdHash: expect.any(String), reason: 'discovery: receipt database unavailable' }]);
+    });
 
   it("does not refresh any source when durable readiness invalidation fails", async () => {
     mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment.mockRejectedValue(new Error("readiness storage unavailable"));

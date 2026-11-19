@@ -1280,6 +1280,12 @@ export async function backfillMissingGA4OverviewSnapshots(
           aligned = await getGA4AlignedRefreshState(campaignId, savedInputPublicationDate);
           completedAt = Date.parse(aligned?.completedAt || "");
         }
+        // Initial imports publish verified native inputs, but intentionally do not mark reports ready.
+        if (!needsBootstrap && !(completedAt >= latestDueAt.getTime() && completedAt <= now.getTime()) &&
+            latestPrimaryDate >= reportingDate && latestPrimaryDate <= scheduleDate) {
+          const imported = await storage.getCompletedGA4InitialImportState(campaignId, latestPrimaryDate);
+          completedAt = Date.parse(imported?.completedAt || "");
+        }
         if (!(completedAt >= latestDueAt.getTime() && completedAt <= now.getTime())) {
           needsBootstrap = true;
           financialBootstrapCampaignIds.add(campaignId);

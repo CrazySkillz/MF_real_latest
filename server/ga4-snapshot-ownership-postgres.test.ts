@@ -105,13 +105,81 @@ describe.skipIf(!testUrl)("GA4 aggregate, executive and completion ownership in 
   it.each(kinds)("preserves the ordinary %s path", async kind => {
     await write(kind);
   });
+  describe("completion survives Executive Summary reads and process restarts", () => {
+    async function completed() {
+      const scope = await claim();
+      await write("executive", scope); await write("mark", scope);
+      const work = (await storage.updateGA4RefreshWorkLease("a", "owner-a", scope.work.id, scope.work.leaseToken, "complete"))!;
+      expect(work.status).toBe("completed");
+      return work;
+    }
+    async function recapture() {
+      return storage.upsertExecutiveSummaryDailySnapshot({ ...executive(), publicationVersion: {
+        campaignId: "a", version: await storage.getGA4PublicationVersion("a"),
+      } });
+    }
+    it("preserves the completed marker on ordinary recapture and the other campaign", async () => {
+      await completed();
+      const before = await saved();
+      await recapture();
+      const after = await saved();
+      expect(after.find(row => row.campaign_id === "a").notes).toBe(before.find(row => row.campaign_id === "a").notes);
+      expect(after.filter(row => row.campaign_id === "b")).toEqual(before.filter(row => row.campaign_id === "b"));
+      expect(after.find(row => row.campaign_id === "a").metrics).toEqual(before.find(row => row.campaign_id === "a").metrics);
+    });
+    it("recognizes an erased marker from exact completed work without writing either record", async () => {
+      const work = await completed();
+      await pool.query("UPDATE metric_snapshots SET notes=NULL WHERE campaign_id='a'");
+      const before = await saved(), jobs = (await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows;
+      expect(await new DatabaseStorage().getCompletedGA4RefreshState("a", date)).toEqual({ reportingDate: date, completedAt: work.completedAt!.toISOString() });
+      expect(await saved()).toEqual(before);
+      expect((await pool.query("SELECT * FROM ga4_refresh_work ORDER BY id")).rows).toEqual(jobs);
+    });
+    it.each(["owner", "client", "paused", "deleted", "filter", "currency", "timezone", "property", "disabled connection", "import start",
+      "invalidated work", "suppressed alerts", "initial import", "new pending work", "new running work", "failed work", "missing snapshot", "invalid snapshot", "explicit invalidation", "wrong date", "other campaign", "future completion", "completion before start"])
+      ("does not reuse completed work for %s", async state => {
+        const work = await completed();
+        await pool.query("UPDATE metric_snapshots SET notes=NULL WHERE campaign_id='a'");
+        if (state === "owner") await pool.query("UPDATE campaigns SET owner_id='changed' WHERE id='a'");
+        if (state === "client") await pool.query("UPDATE campaigns SET client_id='changed' WHERE id='a'");
+        if (state === "paused") await pool.query("UPDATE campaigns SET status='paused' WHERE id='a'");
+        if (state === "deleted") await pool.query("DELETE FROM campaigns WHERE id='a'");
+        if (state === "filter") await pool.query("UPDATE campaigns SET ga4_campaign_filter='changed' WHERE id='a'");
+        if (state === "currency") await pool.query("UPDATE campaigns SET currency='USD' WHERE id='a'");
+        if (state === "timezone") await pool.query("UPDATE campaigns SET reporting_time_zone='UTC' WHERE id='a'");
+        if (state === "property") await pool.query("UPDATE ga4_connections SET property_id='changed' WHERE campaign_id='a'");
+        if (state === "disabled connection") await pool.query("UPDATE ga4_connections SET is_active=false WHERE campaign_id='a'");
+        if (state === "import start") await pool.query("UPDATE ga4_connections SET import_start_date='2026-09-05' WHERE campaign_id='a'");
+        if (state === "invalidated work") await pool.query("UPDATE ga4_refresh_work SET scope_hash='invalidated:'||id WHERE id=$1", [work.id]);
+        if (state === "suppressed alerts") await pool.query("UPDATE ga4_refresh_work SET suppress_alerts=true WHERE id=$1", [work.id]);
+        if (state === "initial import") await pool.query("UPDATE ga4_refresh_work SET scope=scope||'{\"kind\":\"initial_import\"}'::jsonb WHERE id=$1", [work.id]);
+        if (state === "future completion") await pool.query("UPDATE ga4_refresh_work SET completed_at=clock_timestamp()+interval '1 day' WHERE id=$1", [work.id]);
+        if (state === "completion before start") await pool.query("UPDATE ga4_refresh_work SET completed_at=started_at-interval '1 second' WHERE id=$1", [work.id]);
+        if (state === "failed work") await pool.query("UPDATE ga4_refresh_work SET status='pending',completed_at=NULL,retryable=false,last_error='failed' WHERE id=$1", [work.id]);
+        if (state === "new pending work") await storage.ensureGA4RefreshWork("a", "owner-a", new Date(), date);
+        if (state === "new running work") {
+          const next = (await storage.ensureGA4RefreshWork("a", "owner-a", new Date(), date))!;
+          await storage.claimGA4RefreshWork("a", "owner-a", next.id, 120_000);
+        }
+        if (state === "missing snapshot") await pool.query("DELETE FROM metric_snapshots WHERE campaign_id='a'");
+        if (state === "invalid snapshot") await pool.query("UPDATE metric_snapshots SET metrics='{}'::jsonb WHERE campaign_id='a'");
+        if (state === "explicit invalidation") {
+          await storage.invalidateExecutiveSummaryDailySnapshotAlignment("a", date, { publicationVersion: { campaignId: "a", version: await storage.getGA4PublicationVersion("a") } });
+          await recapture();
+          expect((await saved()).find(row => row.campaign_id === "a").notes).toBe(`ga4_refresh_invalidated_v1:${date}`);
+        }
+        const before = await saved();
+        expect(await storage.getCompletedGA4RefreshState(state === "other campaign" ? "b" : "a", state === "wrong date" ? "2026-10-16" : date)).toBeNull();
+        expect(await saved()).toEqual(before);
+      });
+  });
   it.each(kinds)("allows a current %s owner and preserves the other campaign", async kind => {
     const scope = await claim();
     if (kind === "mark") await write("executive", scope);
     const before = (await saved()).filter(row => row.campaign_id === "b");
     const result = await write(kind, scope);
     if (kind === "mark") expect(result).toBe(true);
-    if (kind === "invalidate") expect((await saved()).find(row => row.campaign_id === "a").notes).toBeNull();
+    if (kind === "invalidate") expect((await saved()).find(row => row.campaign_id === "a").notes).toBe(`ga4_refresh_invalidated_v1:${date}`);
     expect((await saved()).filter(row => row.campaign_id === "b")).toEqual(before);
     expect(JSON.stringify(await saved())).not.toContain(scope.work.leaseToken);
   });

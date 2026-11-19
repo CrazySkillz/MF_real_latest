@@ -409,7 +409,7 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     await restarted.invalidateExecutiveSummaryDailySnapshotAlignment("a", "2026-10-15");
     expect((await restarted.getExecutiveSummaryDailyComparisonData("a", date, date)).current?.notes).toBe(marker);
     await restarted.invalidateExecutiveSummaryDailySnapshotAlignment("a", date);
-    expect((await restarted.getExecutiveSummaryDailyComparisonData("a", date, date)).current?.notes).toBeNull();
+    expect((await restarted.getExecutiveSummaryDailyComparisonData("a", date, date)).current?.notes).toBe(`ga4_refresh_invalidated_v1:${date}`);
     expect((await restarted.getExecutiveSummaryDailyComparisonData("b", date, date)).current?.notes).toBe(marker);
     expect(await restarted.markExecutiveSummaryDailySnapshotAligned("a", date, "2026-10-17T18:05:00.000Z")).toBe(true);
     expect((await restarted.getExecutiveSummaryDailyComparisonData("a", date, date)).current?.notes).toContain("18:05:00.000Z");

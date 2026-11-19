@@ -590,6 +590,7 @@ export interface IStorage {
   upsertExecutiveSummaryDailySnapshot(snapshot: ExecutiveSummaryDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot>;
   markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string, options?: GA4RefreshWriteInput): Promise<boolean>;
   invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string, options?: GA4RefreshWriteInput): Promise<void>;
+  getCompletedGA4RefreshState(campaignId: string, reportingDate: string): Promise<{ reportingDate: string; completedAt: string } | null>;
   getExecutiveSummaryDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
@@ -1654,11 +1655,12 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  private async readGA4RefreshWorkScope(tx: any, campaignId: string, ownerId: string, options: { initialImport?: boolean; revenueChange?: boolean; workId?: string } = {}) {
+  private async readGA4RefreshWorkScope(tx: any, campaignId: string, ownerId: string, options: { initialImport?: boolean; revenueChange?: boolean; workId?: string; readOnly?: boolean } = {}) {
     if (!campaignId?.trim() || !ownerId?.trim()) return undefined;
-    const [campaign] = await tx.select().from(campaigns).where(and(
+    const campaignQuery = tx.select().from(campaigns).where(and(
       eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId),
-    )).for("update");
+    ));
+    const [campaign] = await (options.readOnly ? campaignQuery : campaignQuery.for("update"));
     let initialImport = options.initialImport === true;
     let revenueChange = options.revenueChange === true;
     if (options.workId) {
@@ -1668,12 +1670,13 @@ export class DatabaseStorage implements IStorage {
       revenueChange = work?.scope?.kind === "revenue_change";
     }
     if (!campaign || (initialImport ? campaign.status !== "draft" : !filterActiveSchedulerCampaigns([campaign]).length)) return undefined;
-    const connections = await tx.select({ id: ga4Connections.id, propertyId: ga4Connections.propertyId,
+    const connectionQuery = tx.select({ id: ga4Connections.id, propertyId: ga4Connections.propertyId,
       importStartDate: ga4Connections.importStartDate, isPrimary: ga4Connections.isPrimary,
       method: ga4Connections.method, lookbackDays: ga4Connections.lookbackDays, connectedAt: ga4Connections.connectedAt,
       serviceAccountBindingId: ga4Connections.serviceAccountBindingId,
     }).from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
-      .orderBy(ga4Connections.id).for("share");
+      .orderBy(ga4Connections.id);
+    const connections = await (options.readOnly ? connectionQuery : connectionQuery.for("share"));
     if (!connections.length || connections.some((connection: any) => !connection.propertyId.trim())) return undefined;
     if (initialImport) {
       if (!campaign.ga4CampaignFilter?.trim() || connections.some((connection: any) => !/^\d+$/.test(connection.propertyId)
@@ -7344,7 +7347,8 @@ export class DatabaseStorage implements IStorage {
             totalConversions: sql`EXCLUDED.total_conversions`,
             totalSpend: sql`EXCLUDED.total_spend`,
             metrics: sql`EXCLUDED.metrics`,
-            notes: receipt,
+            // Read-side recapture must not erase completion or explicit invalidation.
+            notes: guarded ? receipt : metricSnapshots.notes,
             recordedAt: sql`CURRENT_TIMESTAMP`,
           },
         })
@@ -7360,11 +7364,11 @@ export class DatabaseStorage implements IStorage {
       if (guarded && (campaignId !== options.refreshScope!.campaignId || reportingDate !== options.refreshScope!.reportingDate)) {
         throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       }
-      await tx.update(metricSnapshots).set({ notes: null }).where(and(
+      await tx.update(metricSnapshots).set({ notes: `ga4_refresh_invalidated_v1:${reportingDate}` }).where(and(
         eq(metricSnapshots.campaignId, campaignId),
         eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
         eq(metricSnapshots.reportingDate, reportingDate),
-        sql`split_part(${metricSnapshots.notes}, ':', 1) = 'ga4_aligned_refresh_v1'`,
+        or(isNull(metricSnapshots.notes), sql`split_part(${metricSnapshots.notes}, ':', 1) = 'ga4_aligned_refresh_v1'`),
       ));
     };
     return this.writeGA4DerivedChange(campaignId, options, save);
@@ -7398,6 +7402,31 @@ export class DatabaseStorage implements IStorage {
       return Boolean(updated);
     };
     return this.writeGA4DerivedChange(campaignId, options, save);
+  }
+
+  async getCompletedGA4RefreshState(campaignId: string, reportingDate: string): Promise<{ reportingDate: string; completedAt: string } | null> {
+    // Recover a read-side-erased marker from completed work, without rewriting history.
+    return db.transaction(async (tx: any) => {
+      const [work] = await tx.select().from(ga4RefreshWork).where(eq(ga4RefreshWork.campaignId, campaignId))
+        .orderBy(desc(ga4RefreshWork.dueAt), desc(ga4RefreshWork.updatedAt), desc(ga4RefreshWork.id)).limit(1);
+      if (!work || work.status !== 'completed' || work.reportingDate !== reportingDate || work.suppressAlerts
+        || work.scope?.kind === 'initial_import' || !work.completedAt || !work.startedAt
+        || work.completedAt < work.dueAt || work.completedAt < work.startedAt || work.completedAt.getTime() > Date.now()) return null;
+      const current = await this.readGA4RefreshWorkScope(tx, campaignId, String(work.scope?.campaign?.ownerId || ''), { workId: work.id, readOnly: true });
+      if (!current || current.scopeHash !== work.scopeHash) return null;
+      const [snapshot] = await tx.select().from(metricSnapshots).where(and(eq(metricSnapshots.campaignId, campaignId),
+        eq(metricSnapshots.snapshotType, 'executive_summary_daily'), eq(metricSnapshots.reportingDate, reportingDate))).limit(1);
+      if (!snapshot || snapshot.notes !== null) return null;
+      const parsed = executiveSummaryDailySnapshotInputSchema.safeParse({ ...snapshot.metrics?.executiveSummaryDaily, campaignId, reportingDate });
+      if (!parsed.success) return null;
+      const value = parsed.data, campaign = current.scope.campaign;
+      const connection = current.scope.connections.find((item: any) => item.propertyId === value.ga4PropertyId);
+      if (!connection || value.ga4CampaignFilter !== String(campaign.ga4CampaignFilter || '').trim()
+        || value.currency !== String(campaign.currency || 'USD').trim().toUpperCase()
+        || value.currentValueWindow.startDate !== (connection.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE)
+        || value.currentValueWindow.reportingTimeZone !== normalizeReportingTimeZone(campaign.reportingTimeZone)) return null;
+      return { reportingDate, completedAt: work.completedAt.toISOString() };
+    }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
   }
 
   async getExecutiveSummaryDailyComparisonData(

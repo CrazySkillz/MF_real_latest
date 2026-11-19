@@ -11,6 +11,7 @@ const schedulerSource = () => readFileSync(join(process.cwd(), "server", "ga4-da
 const aggregateSnapshotSchedulerSource = () => readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
 const kpiSchedulerSource = () => readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
 beforeEach(() => {
+  vi.spyOn(storage, "getCompletedGA4RefreshState").mockResolvedValue(null);
   vi.spyOn(storage, "getGA4PublicationVersion").mockResolvedValue(null);
   vi.spyOn(storage, "getCampaign").mockImplementation(async id => (await storage.getCampaigns()).find(campaign => campaign.id === id));
 });
@@ -45,6 +46,15 @@ describe("GA4 startup recovery after a missed scheduled slot", () => {
     vi.spyOn(storage, "getExecutiveSummaryDailyComparisonData").mockImplementation(async () => ({ current: { notes: marker }, previous: null } as any));
   });
   afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); });
+
+  it("skips provider recovery when a read erased the marker but matching completed work survives", async () => {
+    vi.setSystemTime(new Date("2026-10-17T17:59:59Z"));
+    marker = null;
+    vi.mocked(storage.getCompletedGA4RefreshState).mockResolvedValue({ reportingDate: "2026-10-16", completedAt: "2026-10-17T12:12:40Z" });
+    const runPipeline = vi.fn();
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual([]);
+    expect(runPipeline).not.toHaveBeenCalled();
+  });
 
   it("recovers an invalidated publication after a Spend source is added today", async () => {
     marker = null;

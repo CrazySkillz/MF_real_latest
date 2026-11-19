@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "2088bc5087925dfc2281d2dc583bf4fe22e80bf0",
+  "expectedCommit": "eab9147094098356e352034cdb6f898daa350cec",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -69,7 +69,7 @@
     {
       "path": "server/auto-refresh-scheduler.ts",
       "before": "d644502695607a4452247fdd7d30a98263a4d7c016a9de397f930b6d995ac7c9",
-      "after": "06925aa0039c1b18c70c2232ca6731cf226a4db7ca930cb18996783962878c7c"
+      "after": "8ae2e5e872cc067ae44ba7625454469436c338ba062719932f0b1d3ce08a718d"
     },
     {
       "path": "server/ga4-daily-scheduler.ts",
@@ -94,7 +94,7 @@
     {
       "path": "server/google-ads-scheduler.ts",
       "before": "35c05a0db4d0c21d23a4bc368c08c190c83ece57dd0ab98a151a9aa1d2b211e0",
-      "after": "3caef3bbe75ed81770d6e480c5df5909a00716d015f786236811a341fa211580"
+      "after": "93c4b7bcea60532c180da110a2c03dfcf9502061a6088b10e054c40ba443081f"
     },
     {
       "path": "server/report-scheduler.ts",
@@ -109,7 +109,7 @@
     {
       "path": "server/scheduler.ts",
       "before": "20dfb92f544d1ea4954ea3aef3f096204a52b29b6367c516b434bac4c41af256",
-      "after": "9882f1bae59795a4c8cfebb8b8201729db56ce8a53111d8d7f9aca1927f0d629"
+      "after": "aae2a0e9a5e28510557b104a3feae4e78292812cd388f140d5cc1b42be8905d3"
     },
     {
       "path": "server/utils/campaign-current-values.ts",
@@ -210,6 +210,41 @@
       "path": "client/src/lib/performance-recommended-actions.ts",
       "before": "9e6f2208a8c2c2f1b405b472ae9da80850bc040bd94d7938d9f87e841bfa87c4",
       "after": "e4686f7dcf3cba1e1e5aebd8daf4ab3d7d2dac916149ea22ab1e9f5dc9eaba55"
+    },
+    {
+      "path": "server/linkedin-scheduler.ts",
+      "before": "7676ddf4577295d04eb1c2f9bd3741f24d107a7eba5781f7dbf7d9a01a65648b",
+      "after": "f0c34a6c79531972accd3c8e885af892cf7402d15058a75838ee8d44112ee7a5"
+    },
+    {
+      "path": "server/meta-scheduler.ts",
+      "before": "0d1ddf02391eafb8e1c10cf5c5994228056cbeee5448f3f800875e18ce701460",
+      "after": "23246ce7ab368b6f23c8abf7d00c79d0146227eac69491f5cc38b88157726c0a"
+    },
+    {
+      "path": "server/instagram-scheduler.ts",
+      "before": "32f3b6cf70b1f75576be012a3bf3433f06bfb9528d5e1c0622a70b98060c142c",
+      "after": "5056434317b9d87f091cd5c4d015056358064063c37443916fd636f62128140f"
+    },
+    {
+      "path": "server/tiktok-scheduler.ts",
+      "before": "5fe34ed7d1e5ce28cbc516404d4ec8b5685b9cb6553dc257e17f71da09707720",
+      "after": "b53683df6921ed2ae10724062f56c77218f18b37f1b638a04fe4379f7babd659"
+    },
+    {
+      "path": "server/executive-summary-snapshot-scheduler.ts",
+      "before": "262c1e1ee85b3972f797db5c760535d83e3aeac50477908d7e993c712a049f38",
+      "after": "5abe29908dfd7ca897c1d3ac8dce7e8d75c5cd51b6ae87aeb60195bfebbcff63"
+    },
+    {
+      "path": "server/alert-email-scheduler.ts",
+      "before": "c50fd4a29441238a34929b2f88c5cbcb0032571af81f6a4cb0dbe9d71a4caa1b",
+      "after": "7888da6a93511f9e6af4e46ed280a59c0e70bf3fa9712017fea7124d65ecafad"
+    },
+    {
+      "path": "server/utils/anchored-interval.ts",
+      "before": "790c1ebe1626ab3ab5767a1e3a4ec4798c14f5abc0d2873bf1150ad6d0bae5ff",
+      "after": "790c1ebe1626ab3ab5767a1e3a4ec4798c14f5abc0d2873bf1150ad6d0bae5ff"
     }
   ],
   "equivalentCommits": []

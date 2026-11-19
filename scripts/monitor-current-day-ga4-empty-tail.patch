@@ -7303,3 +7303,300 @@ index 5bdc3d61..7c570af0 100644
    const spendComparisonEndDate = resolveSpendComparisonEndDate(performanceComparisonDate, timeRange);
    const revenueComparisonEndDate = resolveSpendComparisonEndDate(performanceComparisonDate, timeRange);
    const requestedRevenueComparisonEndDate = resolveSpendComparisonEndDate(performanceComparisonDate, selectedTimeRange);
+
+diff --git a/server/linkedin-scheduler.ts b/server/linkedin-scheduler.ts
+index 302440a6..63e66d21 100644
+--- a/server/linkedin-scheduler.ts
++++ b/server/linkedin-scheduler.ts
+@@ -5,6 +5,7 @@
+  */
+ 
+ import { storage } from "./storage";
++import { getNextIntervalRunAt, startAnchoredInterval } from "./utils/anchored-interval";
+ import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
+ import { checkPerformanceAlerts } from "./kpi-scheduler";
+ import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
+@@ -816,14 +817,14 @@ export function startLinkedInScheduler(): void {
+   const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
+ 
+   console.log(`[LinkedIn Scheduler] Refresh interval: ${refreshIntervalHours} hours (${24 / refreshIntervalHours}x daily)`);
+-  console.log(`[LinkedIn Scheduler] Next refresh: ${new Date(Date.now() + refreshIntervalMs).toLocaleString()}`);
++  console.log(`[LinkedIn Scheduler] Next refresh: ${getNextIntervalRunAt(refreshIntervalMs).toISOString()}`);
+ 
+   // Don't run immediately on startup - wait for first scheduled interval
+   // This prevents unnecessary API calls on server restart
+ 
+   // Schedule regular refreshes
+-  setInterval(() => {
+-    refreshAllLinkedInData();
++  startAnchoredInterval("LinkedIn Scheduler", () => {
++    return refreshAllLinkedInData();
+   }, refreshIntervalMs);
+ 
+   console.log('[LinkedIn Scheduler] ✅ LinkedIn scheduler started successfully');
+
+diff --git a/server/meta-scheduler.ts b/server/meta-scheduler.ts
+index 0209f40b..19556c94 100644
+--- a/server/meta-scheduler.ts
++++ b/server/meta-scheduler.ts
+@@ -5,6 +5,7 @@
+  */
+ 
+ import { storage } from "./storage";
++import { getNextIntervalRunAt, startAnchoredInterval } from "./utils/anchored-interval";
+ import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
+ import { checkPerformanceAlerts } from "./kpi-scheduler";
+ import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
+@@ -409,14 +410,14 @@ export function startMetaScheduler(): void {
+   const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
+ 
+   console.log(`[Meta Scheduler] Refresh interval: ${refreshIntervalHours} hours (${24 / refreshIntervalHours}x daily)`);
+-  console.log(`[Meta Scheduler] Next refresh: ${new Date(Date.now() + refreshIntervalMs).toLocaleString()}`);
++  console.log(`[Meta Scheduler] Next refresh: ${getNextIntervalRunAt(refreshIntervalMs).toISOString()}`);
+ 
+   // Don't run immediately on startup - wait for first scheduled interval
+   // This prevents unnecessary API calls on server restart
+ 
+   // Schedule regular refreshes
+-  setInterval(() => {
+-    refreshAllMetaData();
++  startAnchoredInterval("Meta Scheduler", () => {
++    return refreshAllMetaData();
+   }, refreshIntervalMs);
+ 
+   console.log('[Meta Scheduler] ✅ Meta scheduler started successfully');
+
+diff --git a/server/google-ads-scheduler.ts b/server/google-ads-scheduler.ts
+index db07631e..c2865fa4 100644
+--- a/server/google-ads-scheduler.ts
++++ b/server/google-ads-scheduler.ts
+@@ -4,6 +4,7 @@
+  * Follows the meta-scheduler.ts pattern
+  */
+ import { isDeepStrictEqual } from "node:util";
++import { startAnchoredInterval } from "./utils/anchored-interval";
+ import { storage, type GA4RefreshWriteInput, type GA4RefreshGoogleAdsWriteInput } from "./storage";
+ import { db } from "./db";
+ import { googleAdsConnections, googleAdsDailyMetrics, ga4GoogleAdsSpendConnections } from "../shared/schema";
+@@ -423,8 +424,8 @@ export function startGoogleAdsScheduler(): void {
+ 
+   console.log(`[Google Ads Scheduler] Refresh interval: ${refreshIntervalHours} hours`);
+ 
+-  (global as any).googleAdsSchedulerInterval = setInterval(() => {
+-    void refreshAllGoogleAdsMetrics().catch((error: any) => {
++  (global as any).googleAdsSchedulerInterval = startAnchoredInterval("Google Ads Scheduler", () => {
++    return refreshAllGoogleAdsMetrics().catch((error: any) => {
+       console.error("[Google Ads Scheduler] Scheduled refresh failed:", error?.message || error);
+     });
+   }, refreshIntervalMs);
+@@ -434,7 +435,7 @@ export function startGoogleAdsScheduler(): void {
+ 
+ export function stopGoogleAdsScheduler(): void {
+   if ((global as any).googleAdsSchedulerInterval) {
+-    clearInterval((global as any).googleAdsSchedulerInterval);
++    (global as any).googleAdsSchedulerInterval.stop();
+     (global as any).googleAdsSchedulerInterval = null;
+   }
+ }
+
+diff --git a/server/instagram-scheduler.ts b/server/instagram-scheduler.ts
+index b5fc09c9..2b23f920 100644
+--- a/server/instagram-scheduler.ts
++++ b/server/instagram-scheduler.ts
+@@ -1,4 +1,5 @@
+ import { db } from "./db";
++import { startAnchoredInterval } from "./utils/anchored-interval";
+ import { storage } from "./storage";
+ import { instagramConnections } from "../shared/schema";
+ import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
+@@ -110,8 +111,8 @@ export function startInstagramScheduler(): void {
+ 
+   console.log(`[Instagram Scheduler] Refresh interval: ${refreshIntervalHours} hours`);
+ 
+-  setInterval(() => {
+-    refreshAllInstagramMetrics();
++  startAnchoredInterval("Instagram Scheduler", () => {
++    return refreshAllInstagramMetrics();
+   }, refreshIntervalMs);
+ 
+   console.log("[Instagram Scheduler] Started successfully");
+
+diff --git a/server/tiktok-scheduler.ts b/server/tiktok-scheduler.ts
+index abac2b25..2d58e21e 100644
+--- a/server/tiktok-scheduler.ts
++++ b/server/tiktok-scheduler.ts
+@@ -1,4 +1,5 @@
+ import { db } from "./db";
++import { startAnchoredInterval } from "./utils/anchored-interval";
+ import { storage } from "./storage";
+ import { tiktokConnections } from "../shared/schema";
+ import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
+@@ -141,8 +142,8 @@ export function startTikTokScheduler(): void {
+ 
+   console.log(`[TikTok Scheduler] Refresh interval: ${refreshIntervalHours} hours`);
+ 
+-  setInterval(() => {
+-    refreshAllTikTokMetrics();
++  startAnchoredInterval("TikTok Scheduler", () => {
++    return refreshAllTikTokMetrics();
+   }, refreshIntervalMs);
+ 
+   console.log("[TikTok Scheduler] Started successfully");
+
+diff --git a/server/scheduler.ts b/server/scheduler.ts
+index 3125c1d8..dd6236d0 100644
+--- a/server/scheduler.ts
++++ b/server/scheduler.ts
+@@ -1,4 +1,5 @@
+ import { storage, type GA4RefreshWriteInput } from './storage';
++import { getNextIntervalRunAt, startAnchoredInterval, type AnchoredInterval } from './utils/anchored-interval';
+ import { buildPerformanceSummaryAggregate } from './utils/performance-summary-aggregate';
+ import { buildTrendAnalysisAggregate } from './utils/trend-analysis-aggregate';
+ import { buildGoogleSheetsPlatformSourceForAggregate } from './utils/google-sheets-aggregate-source';
+@@ -899,7 +900,7 @@ async function createSnapshotsForAllCampaigns() {
+ }
+ 
+ export class SnapshotScheduler {
+-  private intervalId: NodeJS.Timeout | null = null;
++  private intervalId: AnchoredInterval | null = null;
+   private startupTimeout: NodeJS.Timeout | null = null;
+   private frequency: 'hourly' | 'daily' | 'weekly' = 'daily';
+   
+@@ -928,7 +929,7 @@ export class SnapshotScheduler {
+     
+     console.log(`\n🕐 Snapshot Scheduler Started`);
+     console.log(`   Frequency: ${this.frequency}`);
+-    console.log(`   Next run: ${new Date(Date.now() + interval).toLocaleString()}\n`);
++    console.log(`   Next run: ${getNextIntervalRunAt(interval).toISOString()}\n`);
+     
+     // Delay first run to let the HTTP server respond to health checks first
+     this.startupTimeout = setTimeout(() => {
+@@ -937,8 +938,8 @@ export class SnapshotScheduler {
+     }, 30000);
+ 
+     // Then schedule regular runs
+-    this.intervalId = setInterval(() => {
+-      createSnapshotsForAllCampaigns();
++    this.intervalId = startAnchoredInterval("Snapshot Scheduler", () => {
++      return createSnapshotsForAllCampaigns();
+     }, interval);
+   }
+   
+@@ -948,7 +949,7 @@ export class SnapshotScheduler {
+       this.startupTimeout = null;
+     }
+     if (this.intervalId) {
+-      clearInterval(this.intervalId);
++      this.intervalId.stop();
+       this.intervalId = null;
+       console.log('Snapshot scheduler stopped');
+     }
+@@ -977,7 +978,7 @@ export class SnapshotScheduler {
+     return {
+       running: this.intervalId !== null,
+       frequency: this.frequency,
+-      nextRun: this.intervalId ? new Date(Date.now() + interval).toISOString() : null
++      nextRun: this.intervalId ? this.intervalId.nextRunAt().toISOString() : null
+     };
+   }
+ }
+
+diff --git a/server/executive-summary-snapshot-scheduler.ts b/server/executive-summary-snapshot-scheduler.ts
+index 50f8a0a5..a89f0038 100644
+--- a/server/executive-summary-snapshot-scheduler.ts
++++ b/server/executive-summary-snapshot-scheduler.ts
+@@ -1,4 +1,5 @@
+ import { getInternalAutoRefreshToken } from "./internal-request-auth";
++import { startAnchoredInterval, type AnchoredInterval } from "./utils/anchored-interval";
+ import { storage, type GA4RefreshWriteInput } from "./storage";
+ import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
+ 
+@@ -49,17 +50,23 @@ export async function captureExecutiveSummarySnapshots(baseUrl: string): Promise
+ }
+ 
+ export class ExecutiveSummarySnapshotScheduler {
+-  private intervalId: NodeJS.Timeout | null = null;
++  private intervalId: AnchoredInterval | null = null;
++  private startupTimeout: NodeJS.Timeout | null = null;
+ 
+   start(port: number): void {
+     if (this.intervalId) return;
+     const baseUrl = `http://127.0.0.1:${port}`;
+-    setTimeout(() => void captureExecutiveSummarySnapshots(baseUrl), 60_000);
+-    this.intervalId = setInterval(() => void captureExecutiveSummarySnapshots(baseUrl), DAY_MS);
++    this.intervalId = startAnchoredInterval("Executive Summary Snapshot Scheduler", () => captureExecutiveSummarySnapshots(baseUrl), DAY_MS);
++    this.startupTimeout = setTimeout(() => {
++      this.startupTimeout = null;
++      void captureExecutiveSummarySnapshots(baseUrl);
++    }, 60_000);
+   }
+ 
+   stop(): void {
+-    if (this.intervalId) clearInterval(this.intervalId);
++    if (this.startupTimeout) clearTimeout(this.startupTimeout);
++    this.startupTimeout = null;
++    this.intervalId?.stop();
+     this.intervalId = null;
+   }
+ }
+
+diff --git a/server/alert-email-scheduler.ts b/server/alert-email-scheduler.ts
+index d7b8888c..6b06e453 100644
+--- a/server/alert-email-scheduler.ts
++++ b/server/alert-email-scheduler.ts
+@@ -1,3 +1,5 @@
++import { startAnchoredInterval } from "./utils/anchored-interval";
++
+ type AlertEmailSchedulerConfig = {
+   enabled: boolean;
+   intervalMs: number;
+@@ -62,8 +64,8 @@ export function startAlertEmailScheduler(config: AlertEmailSchedulerConfig = get
+     return;
+   }
+ 
+-  (global as any).__alertEmailReminderSchedulerInterval = setInterval(() => {
+-    runAlertEmailReminderSchedulerOnce().catch((error: any) => {
++  (global as any).__alertEmailReminderSchedulerInterval = startAnchoredInterval("Alert Email Scheduler", () => {
++    return runAlertEmailReminderSchedulerOnce().catch((error: any) => {
+       console.warn("[Alert Email Scheduler] Reminder check failed:", error?.message || error);
+     });
+   }, config.intervalMs);
+@@ -73,7 +75,7 @@ export function startAlertEmailScheduler(config: AlertEmailSchedulerConfig = get
+ 
+ export function stopAlertEmailScheduler(): void {
+   if ((global as any).__alertEmailReminderSchedulerInterval) {
+-    clearInterval((global as any).__alertEmailReminderSchedulerInterval);
++    (global as any).__alertEmailReminderSchedulerInterval.stop();
+     (global as any).__alertEmailReminderSchedulerInterval = null;
+   }
+   (global as any).__alertEmailReminderSchedulerInProgress = false;
+
+diff --git a/server/auto-refresh-scheduler.ts b/server/auto-refresh-scheduler.ts
+index 3638f9aa..aad84e26 100644
+--- a/server/auto-refresh-scheduler.ts
++++ b/server/auto-refresh-scheduler.ts
+@@ -1,3 +1,5 @@
++import { startAnchoredInterval } from "./utils/anchored-interval";
++
+ /**
+  * Daily Auto-Refresh + Auto-Process Scheduler
+  *
+@@ -1574,15 +1576,15 @@ export function startDailyAutoRefreshScheduler(): void {
+       console.error("[Google Sheets Revenue Refresh] Interval run failed:", e?.message || e);
+     });
+   };
+-  (global as any).__autoRefreshSchedulerInterval = setInterval(runGoogleSheetsFinancialRefresh, googleSheetsSpendIntervalMs);
++  (global as any).__autoRefreshSchedulerInterval = startAnchoredInterval("Google Sheets Financial Scheduler", runGoogleSheetsFinancialRefresh, googleSheetsSpendIntervalMs);
+   const salesforcePipelineIntervalMs = config.salesforcePipelineIntervalMinutes * 60 * 1000;
+   const runSalesforcePipelineRefresh = () => {
+-    void runSalesforcePipelineAutoRefreshOnce()
++    return runSalesforcePipelineAutoRefreshOnce()
+       .catch((e: any) => console.error("[Salesforce Pipeline Refresh] Interval run failed:", e?.message || e))
+       .then(() => runHubSpotPipelineAutoRefreshOnce())
+       .catch((e: any) => console.error("[HubSpot Pipeline Refresh] Interval run failed:", e?.message || e));
+   };
+-  if (!ga4DailyPipelineOwnsRefresh) (global as any).__salesforcePipelineRefreshSchedulerInterval = setInterval(runSalesforcePipelineRefresh, salesforcePipelineIntervalMs);
++  if (!ga4DailyPipelineOwnsRefresh) (global as any).__salesforcePipelineRefreshSchedulerInterval = startAnchoredInterval("CRM Pipeline Scheduler", runSalesforcePipelineRefresh, salesforcePipelineIntervalMs);
+ 
+   const scheduleNextRun = () => {
+     const nextRun = getNextAutoRefreshRunAt(new Date(), config);

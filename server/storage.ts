@@ -591,6 +591,7 @@ export interface IStorage {
   markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string, options?: GA4RefreshWriteInput): Promise<boolean>;
   invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string, options?: GA4RefreshWriteInput): Promise<void>;
   getCompletedGA4RefreshState(campaignId: string, reportingDate: string): Promise<{ reportingDate: string; completedAt: string } | null>;
+  getCompletedGA4InitialImportState(campaignId: string, reportingDate: string): Promise<{ reportingDate: string; completedAt: string } | null>;
   getExecutiveSummaryDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
@@ -1669,7 +1670,8 @@ export class DatabaseStorage implements IStorage {
       initialImport = work?.scope?.kind === "initial_import";
       revenueChange = work?.scope?.kind === "revenue_change";
     }
-    if (!campaign || (initialImport ? campaign.status !== "draft" : !filterActiveSchedulerCampaigns([campaign]).length)) return undefined;
+    const completedInitialImport = initialImport && options.readOnly === true;
+    if (!campaign || (initialImport ? campaign.status !== (completedInitialImport ? "active" : "draft") : !filterActiveSchedulerCampaigns([campaign]).length)) return undefined;
     const connectionQuery = tx.select({ id: ga4Connections.id, propertyId: ga4Connections.propertyId,
       importStartDate: ga4Connections.importStartDate, isPrimary: ga4Connections.isPrimary,
       method: ga4Connections.method, lookbackDays: ga4Connections.lookbackDays, connectedAt: ga4Connections.connectedAt,
@@ -1694,7 +1696,7 @@ export class DatabaseStorage implements IStorage {
     for (const connection of connections) if (!connection.serviceAccountBindingId) delete (connection as any).serviceAccountBindingId;
     const scope = { version: 1, campaign: Object.fromEntries([
       "id", "createdAt", "ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone",
-    ].map(key => [key, campaign[key] ?? null])), connections, ...(initialImport ? { kind: "initial_import" } : revenueChange ? { kind: "revenue_change" } : {}) };
+    ].map(key => [key, completedInitialImport && key === "status" ? "draft" : campaign[key] ?? null])), connections, ...(initialImport ? { kind: "initial_import" } : revenueChange ? { kind: "revenue_change" } : {}) };
     return { scope, scopeHash: createHash("sha256").update(JSON.stringify(scope)).digest("hex") };
   }
 
@@ -7402,6 +7404,35 @@ export class DatabaseStorage implements IStorage {
       return Boolean(updated);
     };
     return this.writeGA4DerivedChange(campaignId, options, save);
+  }
+
+  // Startup-only receipt: an initial import is not a scheduled report publication.
+  async getCompletedGA4InitialImportState(campaignId: string, reportingDate: string): Promise<{ reportingDate: string; completedAt: string } | null> {
+    return db.transaction(async (tx: any) => {
+      const [work] = await tx.select().from(ga4RefreshWork).where(eq(ga4RefreshWork.campaignId, campaignId))
+        .orderBy(desc(ga4RefreshWork.dueAt), desc(ga4RefreshWork.updatedAt), desc(ga4RefreshWork.id)).limit(1);
+      if (!work || work.status !== 'completed' || work.scope?.kind !== 'initial_import' || work.reportingDate !== reportingDate
+        || !work.completedAt || !work.startedAt || work.completedAt < work.dueAt || work.completedAt < work.startedAt
+        || work.completedAt.getTime() > Date.now()) return null;
+      const current = await this.readGA4RefreshWorkScope(tx, campaignId, String(work.scope?.campaign?.ownerId || ''), { workId: work.id, readOnly: true });
+      if (!current || current.scopeHash !== work.scopeHash) return null;
+      const verification = work.scope.initialImportVerification;
+      if (verification?.version !== 1 || !/^[a-f0-9]{64}$/.test(verification.leaseReceipt || '')
+        || !Array.isArray(verification.properties) || verification.properties.length !== current.scope.connections.length
+        || new Set(verification.properties.map((r: any) => r.connectionId)).size !== verification.properties.length) return null;
+      for (const connection of current.scope.connections) {
+        const receipt = verification.properties.find((r: any) => r.connectionId === connection.id && r.propertyId === connection.propertyId);
+        if (!receipt || work.scope.initialImportPublications?.[connection.id] !== verification.leaseReceipt
+          || receipt.startDate !== connection.importStartDate || receipt.endDate !== reportingDate
+          || !/^[a-f0-9]{64}$/.test(receipt.inputHash || '') || !Number.isSafeInteger(receipt.comparedValues) || receipt.comparedValues <= 0
+          || !(Date.parse(receipt.checkedAt) >= work.startedAt.getTime() && Date.parse(receipt.checkedAt) <= work.completedAt.getTime())) return null;
+        const [overview] = await tx.select().from(ga4OverviewSnapshots).where(and(eq(ga4OverviewSnapshots.campaignId, campaignId), eq(ga4OverviewSnapshots.propertyId, connection.propertyId)));
+        const daily = await tx.select().from(ga4DailyMetrics).where(and(eq(ga4DailyMetrics.campaignId, campaignId), eq(ga4DailyMetrics.propertyId, connection.propertyId),
+          gte(ga4DailyMetrics.date, receipt.startDate), lte(ga4DailyMetrics.date, receipt.endDate))).orderBy(ga4DailyMetrics.date);
+        if (ga4VerificationInputHash(overview, daily) !== receipt.inputHash) return null;
+      }
+      return { reportingDate, completedAt: work.completedAt.toISOString() };
+    }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
   }
 
   async getCompletedGA4RefreshState(campaignId: string, reportingDate: string): Promise<{ reportingDate: string; completedAt: string } | null> {

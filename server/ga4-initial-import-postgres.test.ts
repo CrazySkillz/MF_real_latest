@@ -207,6 +207,56 @@ describe.skipIf(!testUrl)("durable initial imports with real PostgreSQL", () => 
       checkedAt: new Date().toISOString(), startDate: date, endDate: date, comparedValues: 20, unavailable: ['eventCount'] }];
   };
   const verificationScope = (work: any) => ({ campaignId: 'a', ownerId: 'owner-a', reportingDate: date, work: { id: work.id, leaseToken: work.leaseToken } });
+  const completedVerifiedImport = async () => {
+    vi.stubEnv('GA4_INITIAL_IMPORT_VERIFICATION_ENABLED', 'true');
+    const work = (await claim((await request())!.id))!; await publish(work);
+    await storage.recordGA4InitialImportVerification(verificationScope(work), await verification(work));
+    return (await finish(work))!;
+  };
+  it('recognizes a verified activated import after restart without writes or report readiness', async () => {
+    const work = await completedVerifiedImport();
+    const before = (await pool.query('SELECT row_to_json(w) AS data FROM ga4_refresh_work w ORDER BY id')).rows;
+    expect(await new DatabaseStorage().getCompletedGA4InitialImportState('a', date))
+      .toEqual({ reportingDate: date, completedAt: work.completedAt!.toISOString() });
+    expect(await storage.getCompletedGA4InitialImportState('b', date)).toBeNull();
+    expect(await storage.getCompletedGA4InitialImportState('a', '2000-01-01')).toBeNull();
+    expect(await storage.getCompletedGA4RefreshState('a', date)).toBeNull();
+    expect((await storage.getExecutiveSummaryDailyComparisonData('a', date, date)).current).toBeNull();
+    expect((await pool.query('SELECT row_to_json(w) AS data FROM ga4_refresh_work w ORDER BY id')).rows).toEqual(before);
+    expect(await finish(work)).toBeUndefined(); // Read-only recognition cannot reauthorize a completed worker.
+  });
+  it.each(['pending', 'invalidated', 'future completion', 'future verification', 'missing verification', 'missing property',
+    'wrong property', 'wrong receipt', 'changed daily', 'changed overview', 'owner', 'client', 'filter', 'currency',
+    'timezone', 'draft', 'paused', 'connection', 'inactive connection', 'external source', 'newer work'])
+    ('does not skip startup recovery for an invalid initial import: %s', async change => {
+      const work = await completedVerifiedImport();
+      const statements: Record<string, string> = {
+        pending: "UPDATE ga4_refresh_work SET status='pending',completed_at=NULL",
+        invalidated: "UPDATE ga4_refresh_work SET scope_hash='invalidated:'||id",
+        'future completion': "UPDATE ga4_refresh_work SET completed_at=clock_timestamp()+interval '1 hour'",
+        'future verification': "UPDATE ga4_refresh_work SET scope=jsonb_set(scope,'{initialImportVerification,properties,0,checkedAt}',to_jsonb((clock_timestamp()+interval '1 hour')::text))",
+        'missing verification': "UPDATE ga4_refresh_work SET scope=scope-'initialImportVerification'",
+        'missing property': "UPDATE ga4_refresh_work SET scope=jsonb_set(scope,'{initialImportVerification,properties}','[]')",
+        'wrong property': "UPDATE ga4_refresh_work SET scope=jsonb_set(scope,'{initialImportVerification,properties,0,propertyId}','\"456\"')",
+        'wrong receipt': "UPDATE ga4_refresh_work SET scope=jsonb_set(scope,'{initialImportVerification,leaseReceipt}','\"wrong\"')",
+        'changed daily': "UPDATE ga4_daily_metrics SET users=99 WHERE campaign_id='a'",
+        'changed overview': "UPDATE ga4_overview_snapshots SET campaign_breakdown=jsonb_set(campaign_breakdown,'{totals,sessions}','99') WHERE campaign_id='a'",
+        owner: "UPDATE campaigns SET owner_id='owner-b' WHERE id='a'",
+        client: "UPDATE campaigns SET client_id='client-b' WHERE id='a'",
+        filter: "UPDATE campaigns SET ga4_campaign_filter='other' WHERE id='a'",
+        currency: "UPDATE campaigns SET currency='USD' WHERE id='a'",
+        timezone: "UPDATE campaigns SET reporting_time_zone='UTC' WHERE id='a'",
+        draft: "UPDATE campaigns SET status='draft' WHERE id='a'",
+        paused: "UPDATE campaigns SET status='paused' WHERE id='a'",
+        connection: "UPDATE ga4_connections SET property_id='999' WHERE campaign_id='a'",
+        'inactive connection': "UPDATE ga4_connections SET is_active=false WHERE campaign_id='a'",
+      };
+      if (change === 'external source') await database.current.insert(schema.googleAdsConnections).values({ campaignId: 'a', customerId: '123', accessToken: 'fixture', method: 'oauth' });
+      else if (change === 'newer work') await storage.ensureGA4RefreshWork('a', 'owner-a', new Date(work.completedAt!.getTime() + 1), date);
+      else await pool.query(statements[change]);
+      expect(await storage.getCompletedGA4InitialImportState('a', date)).toBeNull();
+      expect((await storage.getCampaign('b'))?.status).toBe('draft');
+    });
   it('requires a verification receipt for the current lease and preserves the numeric inputs', async () => {
     vi.stubEnv('GA4_INITIAL_IMPORT_VERIFICATION_ENABLED', 'true');
     const work = (await claim((await request())!.id))!; await publish(work);

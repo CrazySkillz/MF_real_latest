@@ -12,6 +12,7 @@ const aggregateSnapshotSchedulerSource = () => readFileSync(join(process.cwd(), 
 const kpiSchedulerSource = () => readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
 beforeEach(() => {
   vi.spyOn(storage, "getCompletedGA4RefreshState").mockResolvedValue(null);
+  vi.spyOn(storage, "getCompletedGA4InitialImportState").mockResolvedValue(null);
   vi.spyOn(storage, "getGA4PublicationVersion").mockResolvedValue(null);
   vi.spyOn(storage, "getCampaign").mockImplementation(async id => (await storage.getCampaigns()).find(campaign => campaign.id === id));
 });

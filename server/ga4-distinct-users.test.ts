@@ -98,7 +98,7 @@ describe('GA4 distinct Users contract', () => {
       overviewTotals: current, usersComparisons: [{ startDate: start, endDate: '2026-10-03', users: 2 }],
       data: [{ date: end, users: 3, sessions: 4, conversions: 1, engagedSessions: 3 }],
     }, '2026-10-03');
-    expect(result?.previous).toMatchObject({ users: 2, sessions: 6, conversions: 3 });
+    expect(result?.previous).toMatchObject({ users: 2, sessions: null, conversions: null });
     expect(current.users).toBe(3);
   });
 });

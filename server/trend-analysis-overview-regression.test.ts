@@ -169,13 +169,13 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("ga4-daily?days=${TREND_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(trendGA4PropertyId)}&readOnly=1");
     expect(page).not.toContain("ga4-insights-trends-coverage");
     expect(page).toContain("resolveVerifiedTrendGA4DailyRows({");
-    expect(overviewModel).toContain("verifiedTrendGA4DailyRows.map");
+    expect(overviewModel).toContain("(verifiedTrendGA4DailyRows || []).map");
     expect(page).toContain("trendGA4DailyHistoryVerified && overviewTrendData.series.length > 0");
     expect(page).toContain("Campaign performance daily values are withheld because complete scheduler-stored GA4 history is unavailable.");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "persisted-only"]');
     expect(page).toContain("outcome-totals?dateRange=90days&persistedOnly=1");
-    expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`");
-    expect(page).not.toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1");
+    expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1`");
+    expect(page).not.toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`");
     expect(page).toContain("snapshot: trendFinancialComparison?.current");
     expect(page).toContain("expectedInputs: performanceSummary?.totals");
     expect(page).toContain('const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue")');
@@ -209,7 +209,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page.match(/usesCumulativeGA4Consumer \? resolveVerifiedTrendGA4DailyRows\(\{/g)).toHaveLength(3);
     expect(page).toContain("Scheduler daily values:");
     expect(page).toContain("complete scheduler-stored GA4 history is unavailable");
-    expect(page).toContain("usesCumulativeGA4Consumer && Array.isArray(verifiedTrendGA4DailyRows)");
+    expect(page).toContain("(verifiedTrendGA4DailyRows || []).map");
     const cumulativeQueryStart = page.indexOf("data: ga4Daily");
     const cumulativeQueryEnd = page.indexOf("const { data: linkedinDaily", cumulativeQueryStart);
     expect(page.slice(cumulativeQueryStart, cumulativeQueryEnd)).not.toContain("placeholderData: keepPreviousData");
@@ -235,13 +235,22 @@ describe("Trend Analysis Overview regression guard", () => {
       endDate: "2026-08-22",
       dataThroughDate: "2026-08-22",
       overviewTotals: { users: 1184, sessions: 1183, conversions: 152, engagedSessions: 809, conversionRate: 12.1 },
-      usersComparisons: [{ startDate: "2026-07-02", endDate: "2026-07-23", users: 867 }, { startDate: "2026-07-02", endDate: "2026-08-08", users: 975 }, { startDate: "2026-07-02", endDate: "2026-08-15", users: 1184 }],
+      usersComparisons: [{ startDate: "2026-07-02", endDate: "2026-07-23", users: 867, sessions: 866, engagedSessions: 592 }, { startDate: "2026-07-02", endDate: "2026-08-08", users: 975, sessions: 974, engagedSessions: 666 }, { startDate: "2026-07-02", endDate: "2026-08-15", users: 1184, sessions: 1183, engagedSessions: 809 }],
       data: [
         { date: "2026-08-08", users: 108, sessions: 108, conversions: 14, engagedSessions: 74 },
         { date: "2026-08-09", users: 106, sessions: 106, conversions: 14, engagedSessions: 72 },
         { date: "2026-08-10", users: 103, sessions: 103, conversions: 14, engagedSessions: 71 },
       ],
     };
+
+    // Every date, including zero activity, is required for additive conversion subtraction.
+    response.data = Array.from({ length: 30 }, (_, index) => {
+      const date = new Date("2026-07-24T00:00:00Z");
+      date.setUTCDate(date.getUTCDate() + index);
+      const key = date.toISOString().slice(0, 10);
+      return response.data.find(row => row.date === key)
+        || { date: key, users: 0, sessions: 0, conversions: 0, engagedSessions: 0 };
+    });
 
     expect(resolveTrendComparisonDate("2026-08-22", 7)).toBe("2026-08-15");
     expect(resolveTrendComparisonDate("2026-08-22", 30)).toBe("2026-07-23");
@@ -582,3 +591,40 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(route).toContain("if (row?.date && !simDates.has(String(row.date))) ga4Rows.push(row);");
   });
 });
+
+  describe("exact saved comparison inputs", () => {
+    const response = {
+      overviewStartDate: "2026-10-01", startDate: "2026-10-01", endDate: "2026-10-18", dataThroughDate: "2026-10-18",
+      overviewTotals: { users: 30, sessions: 40, conversions: 10.5, engagedSessions: 28, conversionRate: 20 },
+      usersComparisons: [{ startDate: "2026-10-01", endDate: "2026-10-16", users: 20, sessions: 25, engagedSessions: 18, sessionKeyEventRate: 0.16 }],
+      data: [
+        { date: "2026-10-17", users: 9, sessions: 10, engagedSessions: 7, conversions: 2.5 },
+        { date: "2026-10-18", users: 0, sessions: 0, engagedSessions: 0, conversions: 0 },
+      ],
+    };
+    it("uses exact sessions, preserves fractional conversions and recorded zeros", () => {
+      const result = deriveExactCumulativeGA4Traffic(response, "2026-10-16");
+      expect(result?.previous).toMatchObject({ sessions: 25, conversions: 8, engagedSessions: 18, cvr: 16 });
+      expect(result?.current.cvr).toBe(20);
+    });
+    it("withholds sessions and rates independently when exact baseline metadata is missing", () => {
+      const result = deriveExactCumulativeGA4Traffic({ ...response, usersComparisons: [] }, "2026-10-16");
+      expect(result?.previous).toMatchObject({ users: null, sessions: null, conversions: 8, engagedSessions: null, engagementRate: null, cvr: null });
+      expect(result?.current.sessions).toBe(40);
+    });
+    it("withholds conversion and CPA comparisons for a missing date, including a missing zero day", () => {
+      for (const removed of response.data) {
+        const result = deriveExactCumulativeGA4Traffic({ ...response, data: response.data.filter(row => row !== removed) }, "2026-10-16");
+        expect(result?.previous).toMatchObject({ sessions: 25, conversions: null, cvr: 16 });
+        expect(deriveTrendFinancialRatios({ spend: 100, revenue: 200, conversions: result!.previous.conversions }).cpa).toBeNull();
+      }
+    });
+    it("rejects invalid rates and ambiguous historical metadata", () => {
+      for (const value of [null, -1, 101, Infinity, "20"]) {
+        expect(deriveExactCumulativeGA4Traffic({ ...response, overviewTotals: { ...response.overviewTotals, conversionRate: value } }, "2026-10-16")?.current.cvr).toBeNull();
+      }
+      const result = deriveExactCumulativeGA4Traffic({ ...response, usersComparisons: [...response.usersComparisons, ...response.usersComparisons] }, "2026-10-16");
+      expect(result?.previous.sessions).toBeNull();
+      expect(result?.previous.conversions).toBe(8);
+    });
+  });

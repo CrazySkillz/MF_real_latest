@@ -71,7 +71,7 @@ describe("Batch 7 metric display and data-state boundaries", () => {
     const response = { success: true, propertyId: "p", startDate: "2026-10-17", endDate: "2026-10-18", dataThroughDate: "2026-10-18", overviewStartDate: "2026-10-01", overviewTotals: { users: sessions, sessions, conversions: 0, engagedSessions: 0, conversionRate: sessions ? 0 : null }, data: [daily("2026-10-17", 0), daily("2026-10-18", 0)].map(row => ({ ...row, conversions: 0 })) };
     const result = deriveExactCumulativeGA4Traffic(response, "2026-10-16");
     expect(result?.current.cvr).toBe(sessions ? 0 : null);
-    expect(result?.previous.engagementRate).toBe(sessions ? 0 : null);
+    expect(result?.previous.engagementRate).toBeNull(); // No exact saved comparison window.
     expect(result?.current.sessions).toBe(sessions);
   });
   it.each([true, false])("V1-099 CVR label follows its actual denominator (web %s)", web => {

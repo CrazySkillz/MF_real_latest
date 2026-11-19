@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     getRevenueSources: vi.fn(), getSpendSources: vi.fn(), getGA4DailyMetrics: vi.fn(),
     getGA4OverviewSnapshot: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
     getLatestGA4DailyMetric: vi.fn(), getFinancialDailyComparisonData: vi.fn(), getExecutiveSummaryDailyComparisonData: vi.fn(),
+    getCompletedGA4RefreshState: vi.fn(),
     getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), upsertFinancialDailySnapshot: vi.fn(), getGA4RevenuePublication: vi.fn(),
     getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
     markExecutiveSummaryDailySnapshotAligned: vi.fn(),
@@ -90,6 +91,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.storage.getGA4PublicationVersion.mockResolvedValue(null);
+    mocks.storage.getCompletedGA4RefreshState.mockResolvedValue(null);
     mocks.storage.getGA4RevenuePublication.mockImplementation(async (_campaignId, reportingDate) => ({ version: 1, reportingDate, sources: {}, pendingSourceIds: [] }));
     mocks.storage.writeWithGA4RefreshOwnership.mockResolvedValue(undefined);
     mocks.storage.isGA4NativeRecoveryEligible.mockResolvedValue(false);

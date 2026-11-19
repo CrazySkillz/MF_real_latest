@@ -7634,3 +7634,17 @@ index 73b482fb..5bdc3d61 100644
                  </CardHeader>
                  <CardContent>
                    {recentMovementChanges.length === 0 ? (
+
+diff --git a/client/src/pages/campaign-performance.tsx b/client/src/pages/campaign-performance.tsx
+index 5bdc3d61..7c570af0 100644
+--- a/client/src/pages/campaign-performance.tsx
++++ b/client/src/pages/campaign-performance.tsx
+@@ -243,7 +243,7 @@ export default function CampaignPerformanceSummary() {
+   // Derive API params from unified time range
+   const comparisonType = selectedTimeRange === '24h' ? 'yesterday' : selectedTimeRange === '7d' ? 'last_week' : 'last_month';
+   const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
+-  const performanceComparisonDate = getPerformanceCalendarDate(campaign?.id === campaignId ? String(campaign.reportingTimeZone || performanceGA4SummaryResponse?.reportingTimeZone || "") : "");
++  const performanceComparisonDate = getPerformanceCalendarDate(campaign && campaign.id === campaignId ? String(campaign.reportingTimeZone || performanceGA4SummaryResponse?.reportingTimeZone || "") : "");
+   const spendComparisonEndDate = resolveSpendComparisonEndDate(performanceComparisonDate, timeRange);
+   const revenueComparisonEndDate = resolveSpendComparisonEndDate(performanceComparisonDate, timeRange);
+   const requestedRevenueComparisonEndDate = resolveSpendComparisonEndDate(performanceComparisonDate, selectedTimeRange);

@@ -6,6 +6,36 @@ import {
 import { formatPct } from "../shared/metric-math";
 
 describe("Performance Summary aggregate contract", () => {
+  it.each([0, "0", "0.00"])("reports zero CPA for verified zero spend %s without defining zero-spend ROI/ROAS", (spend) => {
+    const aggregate = buildPerformanceSummaryAggregate({ campaignId: "zero-spend", dateRange: "90days",
+      ga4: { connected: true, revenue: 100 }, revenue: { totalRevenue: 100 },
+      webAnalytics: { connected: true, provider: "ga4", conversions: 10, sessions: 100, conversionRate: 9.6 },
+      spend: { available: true, unifiedSpend: spend, sourceIds: ["spend-1"] } });
+    expect(aggregate.totals.cpa).toMatchObject({ available: true, value: 0 });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 9.6 });
+    expect(aggregate.totals.roi.available).toBe(false);
+    expect(aggregate.totals.roas.available).toBe(false);
+  });
+
+  it.each([null, undefined, "", " ", "invalid", "0invalid", NaN, Infinity, false, -1])("does not turn unknown or invalid spend %s into zero CPA", (spend) => {
+    const aggregate = buildPerformanceSummaryAggregate({ campaignId: "unknown-spend", dateRange: "90days",
+      webAnalytics: { connected: true, provider: "ga4", conversions: 10 },
+      spend: { available: true, unifiedSpend: spend, sourceIds: ["spend-1"] } });
+    expect(aggregate.totals.cpa).toMatchObject({ available: false, value: null });
+  });
+
+  it.each([
+    { spend: { unifiedSpend: 0 }, conversions: 10, available: true },
+    { spend: { unifiedSpend: 0, available: false, sourceIds: ["spend-1"] }, conversions: 10, available: true },
+    { spend: { unifiedSpend: 0, sourceIds: ["spend-1"] }, conversions: 0, available: true },
+    { spend: { unifiedSpend: 0, sourceIds: ["spend-1"] }, conversions: 10, available: false },
+  ])("keeps CPA unavailable without both usable inputs: %j", ({ spend, conversions, available }) => {
+    const aggregate = buildPerformanceSummaryAggregate({ campaignId: "unavailable-cpa", dateRange: "90days", spend,
+      webAnalytics: { connected: true, provider: "ga4", conversions: 10 },
+      financialConversions: { value: conversions, available, sources: ["ga4"] } });
+    expect(aggregate.totals.cpa).toMatchObject({ available: false, value: null });
+  });
+
   it.each([[28501.50, 285.02], [25882.50, 258.83], [25882.49, 258.82]])("keeps ROAS decimal rounding consistent for revenue %s", (revenue, expected) => {
     const aggregate = buildPerformanceSummaryAggregate({ campaignId: "campaign-1", dateRange: "30days",
       ga4: { connected: true, revenue }, revenue: { totalRevenue: revenue },

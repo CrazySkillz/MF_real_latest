@@ -386,7 +386,9 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
     : totalImpressions;
   const costSpendAvailable = currentValueWindow ? costSources.length > 0 : hasSpend;
   const cpc = costSpendAvailable && costClicks > 0 ? round2(costSpendValue / costClicks) : null;
-  const cpa = spendValue > 0 && cpaConversions > 0 && cpaConversionsAvailable ? round2(spendValue / cpaConversions) : null;
+  const cpaSpendAvailable = hasSpend && ["number", "string"].includes(typeof input.spend?.unifiedSpend)
+    && String(input.spend.unifiedSpend).trim() !== "" && Number.isFinite(Number(input.spend.unifiedSpend));
+  const cpa = cpaSpendAvailable && spendValue >= 0 && cpaConversions > 0 && cpaConversionsAvailable ? round2(spendValue / cpaConversions) : null;
   const cpm = costSpendAvailable && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
   const roas = hasRevenue && hasSpend && spendValue > 0 ? Number(formatRoasRatio(revenueValue / spendValue)) : null;
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;

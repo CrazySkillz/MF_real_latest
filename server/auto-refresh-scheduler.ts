@@ -1,3 +1,5 @@
+import { startAnchoredInterval } from "./utils/anchored-interval";
+
 /**
  * Daily Auto-Refresh + Auto-Process Scheduler
  *
@@ -1574,15 +1576,15 @@ export function startDailyAutoRefreshScheduler(): void {
       console.error("[Google Sheets Revenue Refresh] Interval run failed:", e?.message || e);
     });
   };
-  (global as any).__autoRefreshSchedulerInterval = setInterval(runGoogleSheetsFinancialRefresh, googleSheetsSpendIntervalMs);
+  (global as any).__autoRefreshSchedulerInterval = startAnchoredInterval("Google Sheets Financial Scheduler", runGoogleSheetsFinancialRefresh, googleSheetsSpendIntervalMs);
   const salesforcePipelineIntervalMs = config.salesforcePipelineIntervalMinutes * 60 * 1000;
   const runSalesforcePipelineRefresh = () => {
-    void runSalesforcePipelineAutoRefreshOnce()
+    return runSalesforcePipelineAutoRefreshOnce()
       .catch((e: any) => console.error("[Salesforce Pipeline Refresh] Interval run failed:", e?.message || e))
       .then(() => runHubSpotPipelineAutoRefreshOnce())
       .catch((e: any) => console.error("[HubSpot Pipeline Refresh] Interval run failed:", e?.message || e));
   };
-  if (!ga4DailyPipelineOwnsRefresh) (global as any).__salesforcePipelineRefreshSchedulerInterval = setInterval(runSalesforcePipelineRefresh, salesforcePipelineIntervalMs);
+  if (!ga4DailyPipelineOwnsRefresh) (global as any).__salesforcePipelineRefreshSchedulerInterval = startAnchoredInterval("CRM Pipeline Scheduler", runSalesforcePipelineRefresh, salesforcePipelineIntervalMs);
 
   const scheduleNextRun = () => {
     const nextRun = getNextAutoRefreshRunAt(new Date(), config);

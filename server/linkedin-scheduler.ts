@@ -5,6 +5,7 @@
  */
 
 import { storage } from "./storage";
+import { getNextIntervalRunAt, startAnchoredInterval } from "./utils/anchored-interval";
 import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
@@ -816,14 +817,14 @@ export function startLinkedInScheduler(): void {
   const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
 
   console.log(`[LinkedIn Scheduler] Refresh interval: ${refreshIntervalHours} hours (${24 / refreshIntervalHours}x daily)`);
-  console.log(`[LinkedIn Scheduler] Next refresh: ${new Date(Date.now() + refreshIntervalMs).toLocaleString()}`);
+  console.log(`[LinkedIn Scheduler] Next refresh: ${getNextIntervalRunAt(refreshIntervalMs).toISOString()}`);
 
   // Don't run immediately on startup - wait for first scheduled interval
   // This prevents unnecessary API calls on server restart
 
   // Schedule regular refreshes
-  setInterval(() => {
-    refreshAllLinkedInData();
+  startAnchoredInterval("LinkedIn Scheduler", () => {
+    return refreshAllLinkedInData();
   }, refreshIntervalMs);
 
   console.log('[LinkedIn Scheduler] ✅ LinkedIn scheduler started successfully');

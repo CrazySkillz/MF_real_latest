@@ -1,4 +1,5 @@
 import { storage, type GA4RefreshWriteInput } from './storage';
+import { getNextIntervalRunAt, startAnchoredInterval, type AnchoredInterval } from './utils/anchored-interval';
 import { buildPerformanceSummaryAggregate } from './utils/performance-summary-aggregate';
 import { buildTrendAnalysisAggregate } from './utils/trend-analysis-aggregate';
 import { buildGoogleSheetsPlatformSourceForAggregate } from './utils/google-sheets-aggregate-source';
@@ -899,7 +900,7 @@ async function createSnapshotsForAllCampaigns() {
 }
 
 export class SnapshotScheduler {
-  private intervalId: NodeJS.Timeout | null = null;
+  private intervalId: AnchoredInterval | null = null;
   private startupTimeout: NodeJS.Timeout | null = null;
   private frequency: 'hourly' | 'daily' | 'weekly' = 'daily';
   
@@ -928,7 +929,7 @@ export class SnapshotScheduler {
     
     console.log(`\n🕐 Snapshot Scheduler Started`);
     console.log(`   Frequency: ${this.frequency}`);
-    console.log(`   Next run: ${new Date(Date.now() + interval).toLocaleString()}\n`);
+    console.log(`   Next run: ${getNextIntervalRunAt(interval).toISOString()}\n`);
     
     // Delay first run to let the HTTP server respond to health checks first
     this.startupTimeout = setTimeout(() => {
@@ -937,8 +938,8 @@ export class SnapshotScheduler {
     }, 30000);
 
     // Then schedule regular runs
-    this.intervalId = setInterval(() => {
-      createSnapshotsForAllCampaigns();
+    this.intervalId = startAnchoredInterval("Snapshot Scheduler", () => {
+      return createSnapshotsForAllCampaigns();
     }, interval);
   }
   
@@ -948,7 +949,7 @@ export class SnapshotScheduler {
       this.startupTimeout = null;
     }
     if (this.intervalId) {
-      clearInterval(this.intervalId);
+      this.intervalId.stop();
       this.intervalId = null;
       console.log('Snapshot scheduler stopped');
     }
@@ -977,7 +978,7 @@ export class SnapshotScheduler {
     return {
       running: this.intervalId !== null,
       frequency: this.frequency,
-      nextRun: this.intervalId ? new Date(Date.now() + interval).toISOString() : null
+      nextRun: this.intervalId ? this.intervalId.nextRunAt().toISOString() : null
     };
   }
 }

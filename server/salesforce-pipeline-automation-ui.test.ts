@@ -95,7 +95,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(refresh).toContain("reprocessSalesforce(campaignId, mappingConfig, String(source.id))");
     expect(refresh).not.toContain("reprocessHubSpot");
     expect(refresh).not.toContain("reprocessShopify");
-    expect(scheduler).toContain("setInterval(runSalesforcePipelineRefresh, salesforcePipelineIntervalMs)");
+    expect(scheduler).toContain('startAnchoredInterval("CRM Pipeline Scheduler", runSalesforcePipelineRefresh, salesforcePipelineIntervalMs)');
     expect(scheduler).toContain("|| (global as any).__salesforcePipelineRefreshSchedulerInterval");
     expect(scheduler).toContain("__salesforcePipelineRefreshInProgress");
     expect(scheduler).toContain("Waiting for an interval financial refresh to finish");

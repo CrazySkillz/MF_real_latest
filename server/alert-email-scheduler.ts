@@ -1,3 +1,5 @@
+import { startAnchoredInterval } from "./utils/anchored-interval";
+
 type AlertEmailSchedulerConfig = {
   enabled: boolean;
   intervalMs: number;
@@ -62,8 +64,8 @@ export function startAlertEmailScheduler(config: AlertEmailSchedulerConfig = get
     return;
   }
 
-  (global as any).__alertEmailReminderSchedulerInterval = setInterval(() => {
-    runAlertEmailReminderSchedulerOnce().catch((error: any) => {
+  (global as any).__alertEmailReminderSchedulerInterval = startAnchoredInterval("Alert Email Scheduler", () => {
+    return runAlertEmailReminderSchedulerOnce().catch((error: any) => {
       console.warn("[Alert Email Scheduler] Reminder check failed:", error?.message || error);
     });
   }, config.intervalMs);
@@ -73,7 +75,7 @@ export function startAlertEmailScheduler(config: AlertEmailSchedulerConfig = get
 
 export function stopAlertEmailScheduler(): void {
   if ((global as any).__alertEmailReminderSchedulerInterval) {
-    clearInterval((global as any).__alertEmailReminderSchedulerInterval);
+    (global as any).__alertEmailReminderSchedulerInterval.stop();
     (global as any).__alertEmailReminderSchedulerInterval = null;
   }
   (global as any).__alertEmailReminderSchedulerInProgress = false;

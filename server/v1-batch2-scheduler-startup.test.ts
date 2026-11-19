@@ -23,6 +23,11 @@ function fixture(family: 'ads' | 'sheets' | 'snapshot', configured?: string) {
     setTimeout(callback: () => void, ms: number) { const handle = {}; timers.set(handle, { kind: 'timeout', callback, ms }); return handle; },
     setInterval(callback: () => void, ms: number) { const handle = {}; timers.set(handle, { kind: 'interval', callback, ms }); return handle; },
     clearTimeout: (handle: object) => timers.delete(handle), clearInterval: (handle: object) => timers.delete(handle),
+    getNextIntervalRunAt: (ms: number) => new Date(Date.now() + ms),
+    startAnchoredInterval(_name: string, callback: () => void, ms: number) {
+      const handle = {}; timers.set(handle, { kind: 'interval', callback, ms });
+      return { stop: () => timers.delete(handle), nextRunAt: () => new Date(Date.now() + ms) };
+    },
     refreshAllGoogleAdsMetrics: job, refreshAllGoogleSheetsTokens: job, createSnapshotsForAllCampaigns: job,
   };
   const compiled = ts.transpileModule(declarations, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;

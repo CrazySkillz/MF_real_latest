@@ -85,7 +85,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(keyOutcomes).not.toContain("Preparing Overview");
     expect(keyOutcomes).not.toContain("Preparing aggregate metrics");
     expect(page).toContain('fetch(`/api/campaigns/${campaignId}/ga4-connections?readOnly=1`)');
-    expect(page).toContain('const PERFORMANCE_GA4_DAILY_DAYS = 31;');
+    expect(page).toContain('const PERFORMANCE_GA4_DAILY_DAYS = 32;');
     expect(page).toContain('ga4-daily?days=${PERFORMANCE_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(performanceGA4PropertyId)}&readOnly=1');
     expect(page).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
     expect(page).toContain('const overviewSessions = getGA4SummaryMetric("sessions", webSessions);');
@@ -304,7 +304,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     const movement = page.slice(start, end);
 
     expect(movement).toContain('performanceGA4SummaryResponse?.overviewTotals?.[metricName]');
-    expect(movement).toContain('performanceGA4SummaryResponse?.dataThroughDate');
+    expect(movement).toContain('const dataThroughDate = performanceGA4FinancialEndDate;');
     expect(movement).toContain('performanceGA4SummaryResponse?.data');
     expect(movement).toContain('const baselineDate = resolveSpendComparisonEndDate(dataThroughDate, timeRange);');
     expect(movement).toContain('new Date(`${baselineDate}T00:00:00.000Z`).getTime()');
@@ -341,8 +341,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     const routeEnd = routes.indexOf("const toISODateUTC", routeStart);
     const spendRoute = routes.slice(routeStart, routeEnd);
 
-    expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange)');
-    expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), selectedTimeRange)');
+    expect(page).toContain('resolveSpendComparisonEndDate(performanceGA4FinancialEndDate, timeRange)');
+    expect(page).toContain('resolveSpendComparisonEndDate(performanceGA4FinancialEndDate, selectedTimeRange)');
     expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(requestedSpendComparisonEndDate)}');
     expect(page).toContain('spend-sources?platformContext=ga4');
     expect(page).toContain('displayedHistoricalSpendResponse?.endDate === spendComparisonEndDate');

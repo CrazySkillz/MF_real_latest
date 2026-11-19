@@ -661,7 +661,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain("const kpiMonitorCount =");
     expect(page).toContain('const benchmarkMonitorCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "needs_attention").length;');
     expect(page).toContain("const hasMonitorConditions = benchmarkMonitorCount > 0;");
-    expect(page).toContain('const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk"');
+    expect(page).toContain('const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : !kpiCoverageComplete ? "Incomplete" : executiveKpiProgress.length > 0 ? "No Risk"');
     expect(page).toContain('const benchmarkRiskStatus = riskBenchmarkMissCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor"');
     expect(page).toContain("classified below target");
     expect(page).toContain("classified needs attention; none is classified behind");
@@ -676,7 +676,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const roiRoasRisk = (aggregateMetricAvailable(\"roi\") && aggregateMetricValue(\"roi\") < 0) || (aggregateMetricAvailable(\"roas\") && aggregateMetricValue(\"roas\") < 1);");
     expect(page).toContain('const trendRisk = executiveTrajectory === "declining" && trendPercentage < -15;');
     expect(page).toContain('const hasAuthoritativeGA4Window = (performanceSummary as any)?.version === "performance_summary_aggregate_v3"');
-    expect(page).toContain('const executiveTrajectory = hasAuthoritativeGA4Window');
+    expect(page).toContain('const executiveTrajectory = usesGA4ExecutiveHistory');
+    expect(page).toContain('hasAuthoritativeGA4Window && aggregateMetricAvailable("revenue")');
     expect(page).toContain('(executiveTrajectoryData as any)?.available === true ? (executiveTrajectoryData as any).trajectory : null');
     expect(page).toContain('.filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));');
     expect(page).toContain('GA4 outcome metrics cover through ${currentValueWindow.endDate}');

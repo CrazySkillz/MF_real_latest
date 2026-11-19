@@ -8038,3 +8038,254 @@ index c671a224..2586a5a4 100644
          if (!response.ok) throw new Error(`GA4 rolling users API error: ${await response.text()}`);
          const data = await response.json(), rangeIndex = data.dimensionHeaders?.findIndex((header: any) => header.name === 'dateRange') ?? -1;
          const totals = Array.isArray(data.totals) ? data.totals : [];
+
+diff --git a/client/src/pages/executive-summary.tsx b/client/src/pages/executive-summary.tsx
+index b32824fc..383d0553 100644
+--- a/client/src/pages/executive-summary.tsx
++++ b/client/src/pages/executive-summary.tsx
+@@ -50,7 +50,7 @@ export default function ExecutiveSummary() {
+   });
+ 
+   const executiveOutcomeDateRange = "90days";
+-  const { data: outcomeTotals, isLoading: outcomeTotalsLoading, error: outcomeTotalsError } = useQuery({
++  const { data: outcomeTotals, dataUpdatedAt: outcomeTotalsUpdatedAt, isLoading: outcomeTotalsLoading, error: outcomeTotalsError } = useQuery({
+     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, executiveOutcomeDateRange, "live", "executive-summary"],
+     enabled: !!campaignId,
+     queryFn: async () => {
+@@ -68,7 +68,7 @@ export default function ExecutiveSummary() {
+ 
+   const executiveTrajectoryReportingDate = String((outcomeTotals as any)?.performanceSummary?.currentValueWindow?.endDate || "");
+   const { data: executiveTrajectoryData, isLoading: executiveTrajectoryLoading, error: executiveTrajectoryError } = useQuery({
+-    queryKey: ["/api/campaigns", campaignId, "executive-summary", "trajectory", executiveTrajectoryReportingDate],
++    queryKey: ["/api/campaigns", campaignId, "executive-summary", "trajectory", executiveTrajectoryReportingDate, outcomeTotalsUpdatedAt],
+     enabled: !!campaignId && /^\d{4}-\d{2}-\d{2}$/.test(executiveTrajectoryReportingDate),
+     queryFn: async () => {
+       const resp = await fetch(`/api/campaigns/${campaignId}/executive-summary/trajectory?reportingDate=${encodeURIComponent(executiveTrajectoryReportingDate)}`, { credentials: "include" });
+@@ -77,6 +77,8 @@ export default function ExecutiveSummary() {
+     },
+     refetchOnMount: "always",
+     refetchOnWindowFocus: true,
++    placeholderData: (previousData, previousQuery) => previousQuery?.queryKey[1] === campaignId
++      && previousQuery?.queryKey[4] === executiveTrajectoryReportingDate ? previousData : undefined,
+     staleTime: 0,
+   });
+ 
+@@ -155,11 +157,13 @@ export default function ExecutiveSummary() {
+   const currentValueWindow = (performanceSummary as any)?.currentValueWindow;
+   const aggregateSources = Array.isArray((performanceSummary as any)?.sources) ? (performanceSummary as any).sources : [];
+   const ga4AggregateSource = aggregateSources.find((source: any) => source?.id === "ga4" && source?.connected === true);
++  const usesGA4ExecutiveHistory = Boolean(ga4AggregateSource) || (outcomeTotals as any)?.ga4?.connected === true;
+   const hasAuthoritativeGA4Window = (performanceSummary as any)?.version === "performance_summary_aggregate_v3"
+     && (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
+     && currentValueWindow?.dataThroughDate === currentValueWindow?.endDate
+-    && Array.isArray(ga4AggregateSource?.includedMetrics)
+-    && ["users", "sessions", "conversions", "revenue"].every((metricName) => ga4AggregateSource.includedMetrics.includes(metricName));
++    && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
++    && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
++    && currentValueWindow.startDate <= currentValueWindow.endDate && usesGA4ExecutiveHistory;
+   const executiveWindowDescription = (currentValueWindow?.mode === "initial_import_to_latest_completed_day" || currentValueWindow?.mode === "initial_import_to_latest_available_day")
+     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
+     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
+@@ -276,32 +280,37 @@ export default function ExecutiveSummary() {
+   const executiveMetricSummary = executiveMetricParts.length > 0
+     ? `${executiveWindowDescription}: ${executiveMetricParts.join(", ")}.`
+     : `${executiveWindowDescription}: ROI and ROAS are unavailable.`;
+-  const executiveTrajectory = hasAuthoritativeGA4Window
+-    ? (executiveTrajectoryData as any)?.available === true ? (executiveTrajectoryData as any).trajectory : null
++  const executiveTrajectory = usesGA4ExecutiveHistory
++    ? hasAuthoritativeGA4Window && aggregateMetricAvailable("revenue") && (executiveTrajectoryData as any)?.available === true ? (executiveTrajectoryData as any).trajectory : null
+     : (executiveSummary as any)?.health?.trajectory;
+-  const executiveTrajectoryPercentage = hasAuthoritativeGA4Window
++  const executiveTrajectoryPercentage = usesGA4ExecutiveHistory
+     ? (executiveTrajectoryData as any)?.trendPercentage
+     : (executiveSummary as any)?.health?.trendPercentage;
+   const executiveTrajectoryLabel = executiveTrajectory && typeof executiveTrajectoryPercentage === "number" && Number.isFinite(executiveTrajectoryPercentage)
+     ? `${executiveTrajectory} (${executiveTrajectoryPercentage.toFixed(1)}%)`
+     : executiveTrajectory;
+-  const executiveTrajectoryUnavailableReason = hasAuthoritativeGA4Window
+-    ? String((executiveTrajectoryData as any)?.reason || "")
++  const executiveTrajectoryUnavailableReason = usesGA4ExecutiveHistory
++    ? !hasAuthoritativeGA4Window ? "reporting_window_unavailable"
++      : !aggregateMetricAvailable("revenue") ? "revenue_history_unavailable" : String((executiveTrajectoryData as any)?.reason || "")
+     : "";
+   const executiveTrajectoryUnavailableLabel = executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
+     ? "Revenue history unavailable"
++    : executiveTrajectoryUnavailableReason === "reporting_window_unavailable"
++      ? "Reporting window unavailable"
+     : executiveTrajectoryUnavailableReason === "incompatible_history"
+       ? ""
+       : "Not enough history";
+-  const executiveTrajectoryUnavailableDetail = hasAuthoritativeGA4Window
+-    ? executiveTrajectoryUnavailableReason === "incompatible_history"
++  const executiveTrajectoryUnavailableDetail = usesGA4ExecutiveHistory
++    ? executiveTrajectoryUnavailableReason === "reporting_window_unavailable"
++      ? "The current GA4 reporting window could not be verified."
++      : executiveTrajectoryUnavailableReason === "incompatible_history"
+       ? "Earlier readings used different sources or reporting settings, so they cannot be compared safely."
+       : executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
+         ? "Revenue was unavailable in one of the two readings."
+         : "No matching Executive Summary reading exists for seven days earlier yet."
+     : "Based on compatible aggregate snapshots, not the removed date selector.";
+   const executiveTrajectoryDetail = executiveTrajectory
+-    ? hasAuthoritativeGA4Window
++    ? usesGA4ExecutiveHistory
+       ? (executiveTrajectoryData as any)?.source === "dated_revenue_history"
+         ? "Revenue compared at both dates using the current sources and their dated records."
+         : (executiveTrajectoryData as any)?.source === "financial_daily_fallback"
+@@ -313,7 +322,7 @@ export default function ExecutiveSummary() {
+     ? `7-day trend: ${executiveTrajectoryLabel}.`
+     : executiveTrajectoryUnavailableReason === "incompatible_history"
+       ? "The 7-day trend is not comparable yet."
+-      : executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
++      : ["revenue_history_unavailable", "reporting_window_unavailable"].includes(executiveTrajectoryUnavailableReason)
+         ? "The 7-day trend is unavailable."
+         : "The 7-day trend needs more history.";
+   const kpiMetricAliases: Record<string, string> = {
+@@ -427,6 +436,12 @@ export default function ExecutiveSummary() {
+   const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;
+   const benchmarkMonitorCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "needs_attention").length;
+   const hasMonitorConditions = benchmarkMonitorCount > 0;
++  const targetCoverage = (executiveSummary as any)?.targetCoverage;
++  const [kpiCoverageComplete, benchmarkCoverageComplete] = [[targetCoverage?.kpis, executiveKpiProgress.length], [targetCoverage?.benchmarks, executiveBenchmarkComparison.length]]
++    .map(([coverage, evaluated]) => coverage?.readFailed === false && Number.isInteger(coverage?.configured)
++      && coverage.configured >= 0 && coverage.configured === evaluated && coverage.evaluated === evaluated && coverage.unavailable === 0);
++  const targetCoverageComplete = kpiCoverageComplete && benchmarkCoverageComplete;
++  const targetCoverageWarning = "Some KPI or Benchmark checks are unavailable. The risk assessment is incomplete.";
+   const executiveFreshnessWarnings = Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [];
+   const riskFreshnessWarnings = executiveFreshnessWarnings
+     .filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));
+@@ -443,8 +458,8 @@ export default function ExecutiveSummary() {
+     return severityOrder || String(left?.source || "").localeCompare(String(right?.source || "")) || String(left?.message || "").localeCompare(String(right?.message || ""));
+   });
+   riskFreshnessWarnings.splice(0, riskFreshnessWarnings.length, ...orderedFreshnessWarnings);
+-  const trendPercentage = hasAuthoritativeGA4Window
+-    ? (executiveTrajectoryData as any)?.available === true ? Number((executiveTrajectoryData as any).trendPercentage) || 0 : 0
++  const trendPercentage = usesGA4ExecutiveHistory
++    ? executiveTrajectory ? Number((executiveTrajectoryData as any)?.trendPercentage) || 0 : 0
+     : Number((executiveSummary as any)?.health?.trendPercentage) || 0;
+   const paidRiskSources = aggregateSources.filter((source: any) =>
+     source?.connected === true &&
+@@ -470,30 +485,33 @@ export default function ExecutiveSummary() {
+   ];
+   const displayedRiskLevel = (aggregateMetricAvailable("roi") && aggregateMetricValue("roi") < 0) || riskFreshnessWarnings.some((warning: any) => warning.severity === "high")
+     ? "high"
+-    : displayedRiskFactors.length > 0 ? "medium" : "low";
+-  const displayedRiskExplanation = displayedRiskLevel === "low"
++    : displayedRiskFactors.length > 0 ? "medium" : targetCoverageComplete ? "low" : "incomplete";
++  const displayedRiskExplanation = (displayedRiskLevel === "low"
+     ? hasMonitorConditions
+       ? "No configured risk factor meets the risk threshold; lower-severity exceptions require monitoring."
+       : !aggregateMetricAvailable("roi") && !aggregateMetricAvailable("roas")
+         ? "Low based on available data; ROI and ROAS are unavailable."
+         : "No configured risk factors identified from available connected-source inputs."
+-    : `${displayedRiskFactors.map((factor) => factor.message).join(". ")}.`;
++    : displayedRiskFactors.length > 0 ? `${displayedRiskFactors.map((factor) => factor.message).join(". ")}.` : "")
++    + (targetCoverageComplete ? "" : ` ${targetCoverageWarning}`);
+   const executiveSummaryNarrative = `${executiveMetricSummary} Risk: ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
+   const executiveSummaryBullets = [
+     ...(executiveMetricParts.length > 0 ? executiveMetricParts.map((part) => `${part}.`) : ["ROI and ROAS are unavailable."]),
+     `Risk: ${displayedRiskLevel}.`,
+     executiveTrajectorySummary,
+   ];
+-  const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable";
+-  const kpiRiskDetail = riskKpiMissCount > 0
++  const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : !kpiCoverageComplete ? "Incomplete" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable";
++  const kpiRiskDetail = (riskKpiMissCount > 0
+     ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} classified below target`
+-    : executiveKpiProgress.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available";
+-  const benchmarkRiskStatus = riskBenchmarkMissCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkComparison.length > 0 ? "No Risk" : "Not Applicable";
+-  const benchmarkRiskDetail = riskBenchmarkMissCount > 0
++    : executiveKpiProgress.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available")
++    + (kpiCoverageComplete ? "" : ". Some configured KPI checks could not be evaluated.");
++  const benchmarkRiskStatus = riskBenchmarkMissCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : !benchmarkCoverageComplete ? "Incomplete" : executiveBenchmarkComparison.length > 0 ? "No Risk" : "Not Applicable";
++  const benchmarkRiskDetail = (riskBenchmarkMissCount > 0
+     ? `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention` : ""}`
+     : benchmarkMonitorCount > 0
+       ? `${benchmarkMonitorCount} benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention; none is classified behind`
+-      : executiveBenchmarkComparison.length > 0 ? "Mapped benchmarks are on track" : "No evaluable campaign benchmarks available";
++      : executiveBenchmarkComparison.length > 0 ? "Mapped benchmarks are on track" : "No evaluable campaign benchmarks available")
++    + (benchmarkCoverageComplete ? "" : ". Some configured Benchmark checks could not be evaluated.");
+   const riskInputRows = [
+     { label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail },
+     { label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail },
+@@ -557,7 +575,8 @@ export default function ExecutiveSummary() {
+                         <Badge className={
+                           displayedRiskLevel === 'low' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                           displayedRiskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+-                          'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
++                          displayedRiskLevel === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
++                          'bg-muted text-muted-foreground'
+                         }>
+                           {displayedRiskLevel.toUpperCase()}
+                         </Badge>
+@@ -766,6 +785,7 @@ export default function ExecutiveSummary() {
+               </div>
+ 
+               {/* KPI Exceptions */}
++              {!targetCoverageComplete && <p className="text-sm text-muted-foreground" role="status">{targetCoverageWarning}</p>}
+               {executiveKpiProgress.length === 0 && (
+                 <Card>
+                   <CardHeader>
+
+diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
+index 287bc744..6b07cf37 100644
+--- a/server/routes-oauth.ts
++++ b/server/routes-oauth.ts
+@@ -32495,12 +32495,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
+ 
+       // Fetch KPI progress
+       let kpiProgress: any[] = [];
++      const targetCoverage = {
++        kpis: { configured: null as number | null, evaluated: 0, unavailable: null as number | null, readFailed: false },
++        benchmarks: { configured: null as number | null, evaluated: 0, unavailable: null as number | null, readFailed: false },
++      };
+       const recommendationTargetMetrics = new Set<string>();
+       const executiveTargetSourceCache = new Map<string, Promise<any>>();
+       try {
+         const kpis = hasGA4Connection
+           ? await storage.getPlatformKPIs("google_analytics", id)
+           : await storage.getCampaignKPIs(id);
++        targetCoverage.kpis.configured = kpis.length;
+         const evaluatedKpis = hasGA4Connection
+           ? await Promise.all(kpis.map((kpi: any) => resolveAlertCurrentValueForDecision(kpi, executiveTargetSourceCache, {
+               useSavedOverview: true,
+@@ -32551,8 +32556,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           });
+         }
+       } catch (err) {
++        targetCoverage.kpis.readFailed = true;
+         console.log('No KPIs found for campaign', id);
+       }
++      targetCoverage.kpis.evaluated = kpiProgress.length;
++      targetCoverage.kpis.unavailable = targetCoverage.kpis.configured === null ? null : targetCoverage.kpis.configured - kpiProgress.length;
+ 
+       // Fetch benchmark comparison
+       let benchmarkComparison: any[] = [];
+@@ -32560,6 +32568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         const benchmarks = hasGA4Connection
+           ? await storage.getPlatformBenchmarks("google_analytics", id)
+           : await storage.getCampaignBenchmarks(id);
++        targetCoverage.benchmarks.configured = benchmarks.length;
+         const evaluatedBenchmarks = hasGA4Connection
+           ? await Promise.all(benchmarks.map((benchmark: any) => resolveAlertCurrentValueForDecision(benchmark, executiveTargetSourceCache, {
+               useSavedOverview: true,
+@@ -32600,8 +32609,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           });
+         }
+       } catch (err) {
++        targetCoverage.benchmarks.readFailed = true;
+         console.log('No benchmarks found for campaign', id);
+       }
++      targetCoverage.benchmarks.evaluated = benchmarkComparison.length;
++      targetCoverage.benchmarks.unavailable = targetCoverage.benchmarks.configured === null ? null : targetCoverage.benchmarks.configured - benchmarkComparison.length;
+ 
+       // Fetch comparison data for trend analysis
+       let comparisonData = null;
+@@ -32860,6 +32872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         recommendations,
+         kpiProgress,
+         benchmarkComparison,
++        targetCoverage,
+         dataFreshness: {
+           linkedinLastUpdate,
+           metaLastUpdate,

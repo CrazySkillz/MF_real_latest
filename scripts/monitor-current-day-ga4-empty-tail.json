@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "299df260c42b1439bc3a25b5d381b39e2bb6991f",
+  "expectedCommit": "69412945a467f8b73797fa7f5f9d8b118d76507b",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -34,7 +34,7 @@
     {
       "path": "client/src/pages/executive-summary.tsx",
       "before": "13f37b1505c2cd4df65278d461eb0e2db5c57b135a787a4a5e4abe2bbc06a710",
-      "after": "d4f4112e047db8780347ee0f1ee9053a47e35323d5de5275301c18f9f8946912"
+      "after": "c38953cce0534165035acb68dc859edde76ba226b03fd7a30140c6c35aff5aa7"
     },
     {
       "path": "client/src/pages/financial-analysis.tsx",
@@ -104,7 +104,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "986ac939336ca9171d90918f65b1bd78ee3578e66fdb9fff7f12680012e2db64"
+      "after": "2db1b54a956462437e78f62531e4f53353209549048f620724ee3c6a29257d0f"
     },
     {
       "path": "server/scheduler.ts",

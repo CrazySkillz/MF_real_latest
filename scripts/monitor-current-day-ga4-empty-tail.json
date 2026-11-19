@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "a9c2ba8da9b085b51aca5fcf372c35c108a6329e",
+  "expectedCommit": "f39dc1ad5957e4ad97b9f9c90f9bffda64fae6fb",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -39,7 +39,7 @@
     {
       "path": "client/src/pages/financial-analysis.tsx",
       "before": "b04f5cade091cf52d5b9ef022feb528337f7677ede67779fb272afa8d283d3b9",
-      "after": "8fb2d0ba3d14778b2800271305b8b6ce161c328fa1640c9822f367fc6cb2ec4a"
+      "after": "2a51cb39f3bc5b7c9680aa655f1b2d59b016f9ea5b8c0e537c599e6d44bcdf6a"
     },
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
@@ -104,7 +104,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "77e7f73e9db3237b3f9bd56f770589833b4082b344d042ec9ed382b8df5a7b9b"
+      "after": "986ac939336ca9171d90918f65b1bd78ee3578e66fdb9fff7f12680012e2db64"
     },
     {
       "path": "server/scheduler.ts",
@@ -144,7 +144,7 @@
     {
       "path": "server/utils/performance-summary-aggregate.ts",
       "before": "190ea4b3593846c7720444f73a773248a17d89872c2c1c322817a2aeec1e6a97",
-      "after": "fef8296307d189dc52a985932bc50c46021cec4a4d9825ff6845c1cf2b36dd5e"
+      "after": "5b29af7c40023e386f2a01cf231b042a870877ed3f770700f57e27c4aef9dd1a"
     },
     {
       "path": "server/utils/reporting-timezone.ts",

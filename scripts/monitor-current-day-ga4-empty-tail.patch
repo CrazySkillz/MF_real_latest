@@ -7600,3 +7600,122 @@ index 3638f9aa..aad84e26 100644
  
    const scheduleNextRun = () => {
      const nextRun = getNextAutoRefreshRunAt(new Date(), config);
+
+diff --git a/client/src/pages/financial-analysis.tsx b/client/src/pages/financial-analysis.tsx
+index 747c0f52..1e62d958 100644
+--- a/client/src/pages/financial-analysis.tsx
++++ b/client/src/pages/financial-analysis.tsx
+@@ -164,17 +164,6 @@ export default function FinancialAnalysis() {
+     },
+   });
+ 
+-  // Get GA4 data for additional metrics
+-  const { data: ga4Data, isLoading: ga4Loading } = useQuery({
+-    queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
+-    enabled: !!campaignId,
+-    queryFn: async () => {
+-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
+-      if (!response.ok) return null;
+-      return response.json();
+-    },
+-  });
+-
+   // Get Meta analytics data
+   const { data: metaData, isLoading: metaLoading } = useQuery({
+     queryKey: ["/api/meta", campaignId, "analytics"],
+@@ -187,10 +176,10 @@ export default function FinancialAnalysis() {
+   });
+ 
+   const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError, isRefetchError: outcomeTotalsRefetchError } = useQuery<any>({
+-    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
++    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live", "persistedOnly"],
+     enabled: !!campaignId,
+     queryFn: async () => {
+-      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
++      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days&persistedOnly=1${demoMode ? "&demo=1" : ""}`;
+       const response = await fetch(url, { credentials: "include" });
+       if (!response.ok) throw new Error("Failed to load aggregate financial totals");
+       return response.json();
+@@ -239,7 +228,7 @@ export default function FinancialAnalysis() {
+   const effectiveLinkedIn: any = demoLinkedIn || linkedInData;
+   const effectiveCI: any = demoCI || customIntegrationData;
+   const effectiveSheets: any = demoSheets || sheetsData;
+-  const effectiveGA4: any = demoGA4 || ga4Data;
++  const effectiveGA4: any = demoGA4;
+   const effectiveMeta: any = demoMeta || metaData;
+   const effectiveSnapshot: any = demoMode ? demoSnapshot : comparisonData?.previous;
+ 
+@@ -295,7 +284,7 @@ export default function FinancialAnalysis() {
+   }
+ 
+   // Data loading state — prevent flash of stale/zero metrics on refresh
+-  const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading || outcomeTotalsLoading);
++  const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || outcomeTotalsLoading);
+   const performanceSummary = outcomeTotals?.performanceSummary;
+   const currentValueWindow = performanceSummary?.currentValueWindow;
+   const hasCampaignToDateWindow = performanceSummary?.version === "performance_summary_aggregate_v3"
+@@ -587,10 +576,9 @@ export default function FinancialAnalysis() {
+     const parsed = Number(source?.value);
+     return Number.isFinite(parsed) ? parsed : 0;
+   };
+-  const hasNonNegativeInputValue = (source: any) => source?.value !== null
++  const hasFiniteInputValue = (source: any) => source?.value !== null
+     && source?.value !== ""
+-    && Number.isFinite(Number(source?.value))
+-    && Number(source.value) >= 0;
++    && Number.isFinite(Number(source?.value));
+   const sourceIncludesMetric = (source: any, metricName: string) =>
+     Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
+   const financialMainSources = performanceSources
+@@ -626,10 +614,10 @@ export default function FinancialAnalysis() {
+       sourceType: String(source.sourceType || ""),
+       revenue: parseSourceMetric(source, "revenue"),
+     }))
+-    .filter((source: FinancialChildSourceBreakdown) => source.revenue >= 0);
++    .filter((source: FinancialChildSourceBreakdown) => Number.isFinite(source.revenue));
+   const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs.length > 0
+     ? financialRevenueInputs
+-        .filter(hasNonNegativeInputValue)
++        .filter(hasFiniteInputValue)
+         .map((source: any) => ({
+           id: String(source?.id || source?.label || "revenue_input"),
+           label: String(source?.label || "Revenue input"),
+@@ -638,7 +626,7 @@ export default function FinancialAnalysis() {
+         }))
+     : aggregateRevenueInputBreakdowns;
+   const financialSpendInputBreakdowns: FinancialSpendInputBreakdown[] = financialSpendInputs
+-    .filter(hasNonNegativeInputValue)
++    .filter((source: any) => hasFiniteInputValue(source) && Number(source.value) >= 0)
+     .map((source: any) => ({
+       id: String(source?.id || source?.label || "spend_input"),
+       label: String(source?.label || "Spend input"),
+
+diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
+index be25246b..287bc744 100644
+--- a/server/routes-oauth.ts
++++ b/server/routes-oauth.ts
+@@ -15741,7 +15741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       };
+       const financialInputs = {
+         revenue: [
+-          ...(financialWebAnalytics.provider === "ga4" && financialWebAnalytics.available === true && onsiteRevenue >= 0
++          ...(financialWebAnalytics.provider === "ga4" && financialWebAnalytics.available === true && Number.isFinite(onsiteRevenue)
+             ? [{
+                 id: "ga4_native_revenue",
+                 label: "GA4 Revenue",
+
+diff --git a/server/utils/performance-summary-aggregate.ts b/server/utils/performance-summary-aggregate.ts
+index 78edb601..bd3ce8a3 100644
+--- a/server/utils/performance-summary-aggregate.ts
++++ b/server/utils/performance-summary-aggregate.ts
+@@ -386,7 +386,9 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
+     : totalImpressions;
+   const costSpendAvailable = currentValueWindow ? costSources.length > 0 : hasSpend;
+   const cpc = costSpendAvailable && costClicks > 0 ? round2(costSpendValue / costClicks) : null;
+-  const cpa = spendValue > 0 && cpaConversions > 0 && cpaConversionsAvailable ? round2(spendValue / cpaConversions) : null;
++  const cpaSpendAvailable = hasSpend && ["number", "string"].includes(typeof input.spend?.unifiedSpend)
++    && String(input.spend.unifiedSpend).trim() !== "" && Number.isFinite(Number(input.spend.unifiedSpend));
++  const cpa = cpaSpendAvailable && spendValue >= 0 && cpaConversions > 0 && cpaConversionsAvailable ? round2(spendValue / cpaConversions) : null;
+   const cpm = costSpendAvailable && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
+   const roas = hasRevenue && hasSpend && spendValue > 0 ? Number(formatRoasRatio(revenueValue / spendValue)) : null;
+   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;

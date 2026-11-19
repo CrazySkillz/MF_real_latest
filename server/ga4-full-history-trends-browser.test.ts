@@ -19,7 +19,7 @@ it('navigates every metric across the full imported GA4 history without writes o
   const context=await browser.newContext({viewport:{width:1400,height:1050},serviceWorkers:'block'});
   const page=await context.newPage(), errors:string[]=[];
   page.on('pageerror',error=>errors.push(error.message));
-  let windows: any[]=real.windows;
+  let windows: any[]=real.windows, importStart='2026-09-04', lookbackDays=30;
   let daily=real.daily.map(row=>({...row,engagementRate:Number(row.engagementRate.toFixed(4))})), cutoff=real.endDate;
   let summaryTotals:any={users:4496,sessions:4472,conversions:440,conversionRate:9.593023255813954};
   await page.clock.install({time:new Date('2026-11-17T09:00:00Z')});
@@ -29,10 +29,10 @@ it('navigates every metric across the full imported GA4 history without writes o
     if(url.pathname==='/fixture.js'){await route.fulfill({contentType:'application/javascript',body:bundle.outputFiles[0].text});return;}
     if(!url.pathname.startsWith('/api/')){await route.fulfill({contentType:'text/html',body:'<html><body><div id="root"></div><script src="/fixture.js"></script></body></html>'});return;}
     let data:any={success:true};
-    const property={propertyId:real.propertyId,propertyName:'Mock',isPrimary:true,lookbackDays:30};
+    const property={propertyId:real.propertyId,propertyName:'Mock',isPrimary:true,lookbackDays};
     if(url.pathname==='/api/campaigns/a') data={id:'a',name:'Isolated Promo',currency:'EUR',status:'active',reportingTimeZone:'Europe/Amsterdam',ga4CampaignFilter:'["yesop_brand_search","yesop_retargeting"]',createdAt:'2026-11-17T00:00:00Z'};
     else if(url.pathname.startsWith('/api/ga4/check-connection/') || url.pathname.endsWith('/ga4-connections')) data={success:true,connected:true,connections:[property]};
-    else if(url.pathname.endsWith('/ga4-daily')) data={success:true,propertyId:real.propertyId,startDate:real.startDate,overviewStartDate:'2026-09-04',endDate:cutoff,dataThroughDate:cutoff,historyDataThroughDate:cutoff,latestStoredDailyDate:cutoff,reportingTimeZone:'Europe/Amsterdam',refreshStatus:'current',refreshIsStale:false,overviewTotals:summaryTotals,data:daily.slice(-60),trendsData:daily,usersComparisons:windows};
+    else if(url.pathname.endsWith('/ga4-daily')) data={success:true,propertyId:real.propertyId,startDate:importStart,overviewStartDate:importStart,endDate:cutoff,dataThroughDate:cutoff,historyDataThroughDate:cutoff,latestStoredDailyDate:cutoff,reportingTimeZone:'Europe/Amsterdam',refreshStatus:'current',refreshIsStale:false,overviewTotals:summaryTotals,data:daily.slice(-60),trendsData:daily,usersComparisons:windows};
     else if(url.pathname.endsWith('/ga4-publication-status')) data={success:true,publicationToken:'real-saved-fixture',refreshStatus:'current'};
     else if(url.pathname.endsWith('/financial-daily-snapshot')) data={success:true,snapshot:null};
     else if(url.pathname.includes('/platforms/google_analytics/')) data=[];
@@ -257,6 +257,39 @@ it('navigates every metric across the full imported GA4 history without writes o
     expect((await findingIds()).some((f:any)=>f.id==='anomaly:not-enough-history')).toBe(true);
     daily=real.daily.map(r=>({...r,sessions:0,users:0,conversions:0,pageviews:0,revenue:0,engagedSessions:0,engagementRate:0}));await open();
     expect((await findingIds()).some((f:any)=>f.id.startsWith('anomaly:'))).toBe(false);
+    // A newly imported year crosses a year boundary and both partial calendar months.
+    importStart='2025-11-19';cutoff='2026-11-18';lookbackDays=365;
+    daily=Array.from({length:365},(_,i)=>({...real.daily[0],date:new Date(Date.parse(importStart)+i*86400000).toISOString().slice(0,10),
+      sessions:i%7?10:0,users:i%7?1:0,conversions:i%7?2:0,pageviews:i%7?20:0,revenue:i%7?30:0,engagedSessions:i%7?7:0,engagementRate:i%7?0.7:0}));
+    windows=[];
+    for(const days of [7,30]) for(let i=days-1;i<daily.length;i++) windows.push({startDate:daily[i-days+1].date,endDate:daily[i].date,users:5});
+    const months=[...new Set(daily.map(r=>r.date.slice(0,7)))];
+    for(const month of months){const rows=daily.filter(r=>r.date.startsWith(month));windows.push({startDate:rows[0].date,endDate:rows.at(-1)!.date,users:5});}
+    windows=[...new Map(windows.map(w=>[w.startDate+'/'+w.endDate,w])).values()];
+    summaryTotals={users:5,sessions:3120,conversions:624,conversionRate:9.6};
+    await open();visibleMonth='2026-11';
+    await ui(summary).toContainText('3,120');await ui(summary).toContainText('9.6%');
+    for(const selected of ['2026-11-18','2026-01-31','2025-11-30']){
+      await selectMonth(selected);
+      for(const mode of ['Daily','7d','30d','Monthly']){
+        await trends.getByRole('button',{name:mode,exact:true}).click();
+        for(const metric of metrics){
+          await page.getByTestId('insights-trend-metric').selectOption(metric);
+          const month=selected.slice(0,7),n=mode==='7d'?7:mode==='30d'?30:1;
+          const expected=mode==='Monthly'?months.filter(m=>m<=month).slice(-12).map(m=>{
+            const rows=daily.filter(r=>r.date.startsWith(m));const total=metric==='users'?5:value(rows,metric);
+            return {date:new Date(m+'-01T00:00:00Z').toLocaleString('en-US',{month:'short',timeZone:'UTC'})+" '"+m.slice(2,4),value:metric==='engagementRate'?total:Number(total.toFixed(2))};
+          }):daily.filter(r=>r.date.startsWith(month)).flatMap(r=>{
+            const start=new Date(Date.parse(r.date)-(n-1)*86400000).toISOString().slice(0,10),rows=daily.filter(d=>d.date>=start&&d.date<=r.date);
+            if(rows.length!==n)return [];
+            const total=metric==='users'&&mode!=='Daily'?5:value(rows,metric);
+            return [{date:r.date.slice(5),value:mode==='Daily'||metric==='engagementRate'?total:Number(total.toFixed(2))}];
+          });
+          const series=JSON.parse((await page.getByTestId('insights-trends-chart').getAttribute('data-chart-series'))!);
+          expect(series.map((p:any)=>({date:p.date,value:p.value})),`annual ${selected} ${mode} ${metric}`).toEqual(expected);
+        }
+      }
+    }
     expect(errors).toEqual([]);
   } finally {await browser.close();}
-},120000);
+},180000);

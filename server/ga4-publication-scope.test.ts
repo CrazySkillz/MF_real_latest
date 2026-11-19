@@ -55,7 +55,7 @@ describe("GA4 atomic publication scope", () => {
     const query = new PgDialect().sqlToQuery(mocks.state.invalidatedQuery);
     expect(query.params).toEqual(["c", "executive_summary_daily", "2026-10-16"]);
     expect(query.sql).toContain("split_part"); expect(query.sql).toContain("'ga4_aligned_refresh_v1'");
-    expect(mocks.state.invalidatedValue).toEqual({ notes: null });
+    expect(mocks.state.invalidatedValue).toEqual({ notes: "ga4_refresh_invalidated_v1:2026-10-16" });
   });
   it.each(["ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone"])("rejects an in-flight %s change before deleting any data", async (key) => {
     mocks.state.campaign[key] = "changed";

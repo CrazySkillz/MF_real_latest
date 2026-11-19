@@ -127,6 +127,37 @@ describe("Insights Trends zero-day coverage route", () => {
     expect(storageMock.getGA4DailyMetrics).not.toHaveBeenCalled();
   });
 
+  it("keeps all annual saved history for Trends while preserving the selected 60-day chart window", async () => {
+    const { addGA4InsightsDateDays } = await import("../shared/ga4-insights");
+    const start = "2025-11-19", cutoff = "2026-11-18";
+    vi.setSystemTime(new Date("2026-11-19T12:00:00Z"));
+    const rows = Array.from({ length: 365 }, (_, i) => ({ ...dailyRows[0], date: addGA4InsightsDateDays(start, i),
+      sessions: i % 7 ? 10 : 0, users: i % 7 ? 8 : 0, engagedSessions: i % 7 ? 7 : 0, engagementRate: i % 7 ? 0.7 : 0,
+      updatedAt: new Date("2026-11-19T00:00:00Z") }));
+    storageMock.getGA4Connection.mockResolvedValue({ ...connection, lookbackDays: 365, importStartDate: start });
+    storageMock.getGA4DailyMetrics.mockImplementation(async (id, property, from, to) => {
+      expect([id, property]).toEqual([campaign.id, connection.propertyId]);
+      return rows.filter(row => row.date! >= from && row.date! <= to);
+    });
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?propertyId=${connection.propertyId}&days=60&readOnly=1&includeTrendsHistory=1`);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data).toHaveLength(60); expect(body.trendsData).toHaveLength(365);
+    expect(body.trendsData.map((r: any) => r.date)).toEqual(rows.map(r => r.date));
+    const months = buildGA4InsightsMonthlySeries(body.trendsData, cutoff, "sessions");
+    expect(months).toHaveLength(13);
+    expect(months.filter(m => !m.partial)).toHaveLength(11);
+    expect(months.reduce((sum, month) => sum + (month.value || 0), 0)).toBe(3120);
+    for (const days of [7, 30]) {
+      const rollup = buildGA4InsightsCalendarRollup(body.trendsData, cutoff, days);
+      expect(rollup.complete).toBe(true);
+      expect(rollup.sessions).toBe(days === 7 ? 60 : 250);
+    }
+    expect(ga4ServiceMock.getDistinctUsersWithToken).not.toHaveBeenCalled();
+    expect(ga4ServiceMock.getTrendsDailyPresenceWithToken).not.toHaveBeenCalled();
+    expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+  });
+
   it("returns confirmed zero dates from stored-row parity without writing shared data", async () => {
     const response = await request();
     const body = await response.json();

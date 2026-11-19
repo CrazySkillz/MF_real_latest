@@ -120,9 +120,12 @@ export async function getGA4AlignedRefreshState(campaignId: string, reportingDat
       && !completedCampaignIds.has(normalizedCampaignId)) return null;
   if (!normalizedReportingDate) return cached;
   const snapshots = await storage.getExecutiveSummaryDailyComparisonData(normalizedCampaignId, normalizedReportingDate, normalizedReportingDate);
+  let persisted = parseGA4AlignedRefreshMarker(snapshots.current?.notes, normalizedReportingDate);
+  if (!persisted && snapshots.current?.notes === null) {
+    persisted = await storage.getCompletedGA4RefreshState(normalizedCampaignId, normalizedReportingDate);
+  }
   // A newer run may have invalidated the marker while this database read was pending.
   if (completedCampaignIds !== alignedCampaignIdsInCurrentRun) return null;
-  const persisted = parseGA4AlignedRefreshMarker(snapshots.current?.notes, normalizedReportingDate);
   if (persisted) alignedRefreshByCampaign.set(normalizedCampaignId, persisted);
   else alignedRefreshByCampaign.delete(normalizedCampaignId);
   return persisted;

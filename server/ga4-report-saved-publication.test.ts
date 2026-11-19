@@ -59,6 +59,24 @@ describe("GA4 report saved publication", () => {
   });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
+  it("renders the annual saved publication without shortening it to 90 days or fetching a provider", async () => {
+    const start = "2025-10-17";
+    const saved: any = overview(); saved.windowStart = start;
+    const financial: any = snapshot(); financial.metrics.financialDaily.currentValueWindow.startDate = start;
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved); storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+    storageMock.getGA4Connections.mockResolvedValue([{ campaignId, propertyId, isPrimary: true, isActive: true, method: "access_token", importStartDate: start, lookbackDays: 365 }]);
+    const existing = await storageMock.getGA4DailyMetrics();
+    const days = Array.from({ length: 365 }, (_, i) => {
+      const date = new Date(Date.parse(start) + i * 86400000).toISOString().slice(0, 10);
+      return existing.find((r: any) => r.date === date) || { campaignId, propertyId, date, sessions: 0, users: 0, conversions: 0, revenue: "0", engagedSessions: 0 };
+    });
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_c, _p, from, to) => days.filter(r => r.date >= from && r.date <= to));
+    expect((await build())?.length).toBeGreaterThan(100);
+    expect(printed.join(" ")).toContain("130.01"); expect(printed.join(" ")).toContain("20.00");
+    expect(storageMock.getGA4DailyMetrics.mock.calls.some(args => args[2] === start && args[3] === "2026-10-16")).toBe(true);
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
+
   it.each(["overview", "custom"])("renders current-day %s PDF from its saved inputs and labels it provisional", async type => {
     vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
     vi.setSystemTime(new Date("2026-10-16T19:05:00Z"));

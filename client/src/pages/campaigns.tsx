@@ -246,6 +246,7 @@ export default function Campaigns() {
   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
   const [ga4ConfigSubStep, setGa4ConfigSubStep] = useState<'property' | 'campaigns'>('property');
   const [wizardLookbackDays, setWizardLookbackDays] = useState<number>(30);
+  const [wizardImportStartDate, setWizardImportStartDate] = useState('');
   const [instagramAdAccountId, setInstagramAdAccountId] = useState("act_instagram_test");
   const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
   const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1, ig_test_2, ig_test_3");
@@ -311,6 +312,8 @@ export default function Campaigns() {
       setPendingGA4ConnectionId(data.pendingConnectionId || '');
       setGA4Properties(properties);
       setSelectedGA4Property(properties[0]?.id || data.propertyId || "");
+      if ([30, 365].includes(Number(data.lookbackDays))) setWizardLookbackDays(Number(data.lookbackDays));
+      setWizardImportStartDate(data.importStartDate || '');
     }).catch(() => { /* The existing Back action returns to Google connection setup. */ });
     return () => { cancelled = true; };
   }, [initialImportRequested, wizardStep, draftCampaignId, ga4Properties.length]);
@@ -896,6 +899,7 @@ export default function Campaigns() {
     setSelectedGA4CampaignValues([]);
     setGa4ConfigSubStep('property');
     setWizardLookbackDays(30);
+    setWizardImportStartDate('');
     setInstagramAdAccountId("act_instagram_test");
     setInstagramAdAccountName("Test Instagram Ad Account");
     setInstagramSelectedCampaignIds("ig_test_1, ig_test_2, ig_test_3");
@@ -970,6 +974,8 @@ export default function Campaigns() {
         setPendingGA4ConnectionId(data.pendingConnectionId || '');
         setGA4Properties(validProperties);
         setSelectedGA4Property(validProperties[0]?.id || '');
+        if ([30, 365].includes(Number(data.lookbackDays))) setWizardLookbackDays(Number(data.lookbackDays));
+        setWizardImportStartDate(data.importStartDate || '');
         setGa4ConfigSubStep('property');
         setWizardStep(4);
       } else if (data.connected && data.propertyId) {
@@ -1155,6 +1161,7 @@ export default function Campaigns() {
       });
       const data = await response.json();
       if (response.ok && data.success) {
+        setWizardImportStartDate(data.importStartDate || '');
         setPendingGA4ConnectionId('');
         setConnectedPlatformsInDialog(prev => prev.includes('google-analytics') ? prev : [...prev, 'google-analytics']);
         setWizardPlatformConnected(true);
@@ -1783,8 +1790,15 @@ export default function Campaigns() {
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label>Historical data</Label>
-                            <p className="text-xs text-muted-foreground">Includes the last 30 completed days automatically.</p>
+                            <Label htmlFor="ga4-import-history">Historical data</Label>
+                            <Select value={String(wizardLookbackDays)} onValueChange={value => { setWizardLookbackDays(Number(value)); setWizardImportStartDate(''); }} disabled={isGA4PropertyLoading || initialImportRequested}>
+                              <SelectTrigger id="ga4-import-history"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="30">Last 30 days</SelectItem>
+                                <SelectItem value="365">Last 365 days</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Imports available history for the campaigns you select. Totals continue from this start date after creation.</p>
                           </div>
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(3)}>
@@ -1799,7 +1813,8 @@ export default function Campaigns() {
                       {selectedWizardPlatform === 'google-analytics' && ga4ConfigSubStep === 'campaigns' && (
                         <div className="space-y-4">
                           <p className="text-sm text-muted-foreground">Select which GA4 campaigns (UTM campaign values) to track.</p>
-                          <p className="text-sm font-medium">Campaigns found in the last 30 days</p>
+                          <p className="text-sm font-medium">Campaigns found in the last {wizardLookbackDays} days</p>
+                          {wizardImportStartDate && <p className="text-xs text-muted-foreground">History starts {wizardImportStartDate}. Missing history remains unavailable; recorded zero days are included.</p>}
                           {isGA4CampaignLoading ? (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
@@ -1835,7 +1850,7 @@ export default function Campaigns() {
                           {ga4CampaignDiscoveryError && <p role="alert" className="text-sm text-destructive">{ga4CampaignDiscoveryError}</p>}
                             <div className="space-y-2">
                               <Label htmlFor="wizard-ga4-campaign-name">Enter GA4 Campaign Name</Label>
-                              <p id="wizard-ga4-campaign-name-help" className="text-xs text-muted-foreground">Enter additional campaign names below, including campaigns from before the last 30 days. Separate multiple names with commas.</p>
+                              <p id="wizard-ga4-campaign-name-help" className="text-xs text-muted-foreground">Enter additional campaign names below, including campaigns from before the last {wizardLookbackDays} days. Separate multiple names with commas.</p>
                               <Input
                                 id="wizard-ga4-campaign-name"
                                 aria-describedby="wizard-ga4-campaign-name-help wizard-ga4-import-period-help"
@@ -1848,7 +1863,7 @@ export default function Campaigns() {
                                 )}
                                 placeholder="e.g., brand_awareness, paid_social_q2"
                               />
-                              <p id="wizard-ga4-import-period-help" className="text-xs text-muted-foreground">Selecting older campaigns does not extend the 30-day import period.</p>
+                              <p id="wizard-ga4-import-period-help" className="text-xs text-muted-foreground">Selecting older campaigns does not extend the {wizardLookbackDays}-day import period.</p>
                                 <div className="space-y-2">
                                   <p className="text-sm font-medium">Selected campaigns</p>
                                   <ul aria-label="Selected GA4 campaigns" className="flex h-16 flex-wrap content-start items-start gap-2 overflow-y-auto [scrollbar-gutter:stable]">
@@ -1895,6 +1910,12 @@ export default function Campaigns() {
                             <span className="font-medium">
                               {campaignData?.startDate ? String(campaignData.startDate).slice(0, 10) : '—'} → {campaignData?.endDate ? String(campaignData.endDate).slice(0, 10) : '—'}
                             </span>
+                          </div>
+                        )}
+                        {selectedWizardPlatform === 'google-analytics' && wizardImportStartDate && (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">GA4 history</span>
+                            <div className="font-medium mt-1">Last {wizardLookbackDays} days · starts {wizardImportStartDate}</div>
                           </div>
                         )}
                         <div className="border-t pt-3">

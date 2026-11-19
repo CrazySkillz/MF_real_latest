@@ -118,6 +118,57 @@ describe.skipIf(!testUrl)("durable initial imports with real PostgreSQL", () => 
     expect((await storage.getCampaign("a"))?.status).toBe("draft");
     expect((await storage.getRecoverableGA4RefreshWork()).map(w => w.id)).toContain(requests[0]!.id);
   });
+
+  it("changes only an unaccepted draft's history and rolls back every write when history is locked", async () => {
+    const beforeOther = await pool.query("SELECT row_to_json(c) AS data FROM ga4_connections c WHERE campaign_id='b'");
+    await storage.updateGA4Connection("connection-a", { lookbackDays: 365, importStartDate: "2025-11-19" });
+    expect((await pool.query("SELECT lookback_days,import_start_date FROM ga4_connections WHERE id='connection-a'")).rows[0])
+      .toEqual({ lookback_days: 365, import_start_date: "2025-11-19" });
+    await request();
+    const before = await pool.query("SELECT row_to_json(c) AS data FROM ga4_connections c ORDER BY id");
+    const work = await pool.query("SELECT row_to_json(w) AS data FROM ga4_refresh_work w ORDER BY id");
+    for (const input of [{ lookbackDays: 30 }, { importStartDate: "2025-12-01" }, { propertyId: "999" }])
+      await expect(storage.updateGA4Connection("connection-a", input)).rejects.toThrow("GA4_IMPORT_HISTORY_LOCKED");
+    expect((await pool.query("SELECT row_to_json(c) AS data FROM ga4_connections c ORDER BY id")).rows).toEqual(before.rows);
+    expect((await pool.query("SELECT row_to_json(w) AS data FROM ga4_refresh_work w ORDER BY id")).rows).toEqual(work.rows);
+    expect((await pool.query("SELECT row_to_json(c) AS data FROM ga4_connections c WHERE campaign_id='b'")).rows).toEqual(beforeOther.rows);
+  });
+
+  it("prevents annual history changes on active campaigns and permits a same-boundary reconnect", async () => {
+    await storage.updateGA4Connection("connection-a", { lookbackDays: 365, importStartDate: "2025-11-19" });
+    await pool.query("UPDATE campaigns SET status='active' WHERE id IN ('a','b')");
+    await expect(storage.updateGA4Connection("connection-b", { lookbackDays: 365, importStartDate: "2025-11-19" })).rejects.toThrow("GA4_IMPORT_HISTORY_LOCKED");
+    await expect(storage.createGA4Connection({ campaignId: "b", propertyId: "789", method: "access_token", lookbackDays: 365, importStartDate: "2025-11-19" })).rejects.toThrow("GA4_IMPORT_HISTORY_LOCKED");
+    expect(await storage.updateGA4Connection("connection-a", { lookbackDays: 365, importStartDate: "2025-11-19", propertyName: "Reconnected" }))
+      .toMatchObject({ importStartDate: "2025-11-19", lookbackDays: 365, propertyName: "Reconnected" });
+    expect((await pool.query("SELECT count(*) FROM ga4_connections WHERE campaign_id='b'")).rows[0].count).toBe("1");
+  });
+
+  it("serializes Create versus a history change without altering the accepted import boundary", async () => {
+    const results = await Promise.allSettled([request(), storage.updateGA4Connection("connection-a", { lookbackDays: 365, importStartDate: "2025-11-19" })]);
+    expect(results[0].status).toBe("fulfilled");
+    const saved = (await pool.query("SELECT lookback_days,import_start_date FROM ga4_connections WHERE id='connection-a'")).rows[0];
+    if (results[1].status === "fulfilled") expect(saved).toEqual({ lookback_days: 365, import_start_date: "2025-11-19" });
+    else { expect(String(results[1].reason)).toContain("GA4_IMPORT_HISTORY_LOCKED"); expect(saved.import_start_date).toBe(date); }
+    await expect(storage.updateGA4Connection("connection-a", { lookbackDays: 365, importStartDate: "2020-01-01" })).rejects.toThrow("GA4_IMPORT_HISTORY_LOCKED");
+  });
+
+  it("commits an annual OAuth choice atomically and preserves pending authorization after a rejected change", async () => {
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", "annual-history-local-test-only");
+    const credentials = { campaignId: "a", propertyId: "", method: "access_token", accessToken: "fixture-access", refreshToken: "fixture-refresh" };
+    const pending = await storage.stageGA4OAuthConnection(credentials);
+    const saved = await storage.commitGA4OAuthConnection("a", pending.id, "123", "Annual", "2025-11-19", 365);
+    expect(saved).toMatchObject({ id: "connection-a", lookbackDays: 365, importStartDate: "2025-11-19" });
+    expect(await storage.getPendingGA4OAuthConnection("a", pending.id)).toBeUndefined();
+    await request();
+    const reconnect = await storage.stageGA4OAuthConnection(credentials);
+    await expect(storage.commitGA4OAuthConnection("a", reconnect.id, "123", "Changed", date, 30)).rejects.toThrow("GA4_IMPORT_HISTORY_LOCKED");
+    expect(await storage.getPendingGA4OAuthConnection("a", reconnect.id)).toMatchObject({ id: reconnect.id });
+    expect((await pool.query("SELECT lookback_days,import_start_date FROM ga4_connections WHERE id='connection-a'")).rows[0])
+      .toEqual({ lookback_days: 365, import_start_date: "2025-11-19" });
+    expect(await storage.commitGA4OAuthConnection("a", reconnect.id, "123", "Annual reconnect", date, 365))
+      .toMatchObject({ lookbackDays: 365, importStartDate: "2025-11-19" });
+  });
   it("excludes ordinary drafts from scheduled work", async () => {
     expect(await storage.ensureGA4RefreshWork("a", "owner-a", new Date(), date)).toBeUndefined();
     expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(false);

@@ -6,6 +6,14 @@ This file defines the daily auto-refresh and auto-process model for GA4.
 
 For the current Salesforce reference implementation, HubSpot parity gaps, and CRM lifecycle invariants, also read `GA4/CRM_REVENUE_SOURCE_PATTERN.md`.
 
+## Completion preservation on deployment — 2026-11-19
+
+Executive Summary read-side recapture previously replaced an existing aligned-completion marker with `null`. Startup then treated a successfully completed refresh as unfinished. The ordinary snapshot upsert now preserves existing notes; owned publication still writes its attempt receipt. Explicit alignment invalidation uses `ga4_refresh_invalidated_v1:<date>` so it cannot be confused with an accidentally erased marker.
+
+For existing null-note snapshots, `getGA4AlignedRefreshState` can read completion from the latest durable job in a read-only transaction. It requires completed, unsuppressed work for the exact reporting date, valid completion timestamps, the unchanged owner/campaign/connection scope hash, and a valid matching Executive Summary snapshot. Initial imports, unfinished or invalidated work, changed scopes, missing snapshots and explicit invalidations remain unavailable. No marker is rewritten and no provider is called by this recovery read. Existing scheduler cadence, pipeline recovery, ownership checks and report due-time rules remain in place.
+
+Validation covers ordinary recapture, restart recovery, scope changes, newer/failed work, explicit invalidation and existing publication ownership using isolated PostgreSQL tests. Release preflight executes the candidate startup discovery against saved live records under enforced read-only access with provider execution blocked. This is a focused completion-marker correction, not certification of all refresh failure modes.
+
 ## Current P5 Recovery Status — 2026-10-18
 
 P5 implementation and local acceptance are complete for the agreed Ptomo native-GA4 scope, on top of `e5b60bb8`. **Deployment of `6462b939` is confirmed; the live scheduler recorded Ptomo's October 18 scheduled refresh completing at 20:15:32 Amsterdam through October 17.** This status supersedes the historical P5 checkpoints below; it is not whole-platform production certification. The subsequent P4 cancellation review found that deletion left recovery rows behind; its localized correction and evidence are recorded in the backlog.

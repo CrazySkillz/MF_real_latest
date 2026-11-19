@@ -73,6 +73,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         const data = await resp.json();
         console.log('[GA4Flow] Mount: ga4-connection-status =', JSON.stringify({ connected: data.connected, propertyId: data.propertyId, propertiesCount: (data.properties || []).length }));
         if (!mounted) return;
+        if ([30, 365].includes(Number(data.lookbackDays))) setLookbackDays(Number(data.lookbackDays));
         // Already authenticated but no property selected — jump to property selector
         if (data.connected && !data.propertyId) {
           setPendingConnectionId(data.pendingConnectionId || '');
@@ -556,7 +557,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               <div className="space-y-1">
                 <Label className="text-sm">Import historical data</Label>
                 <div className="flex gap-2">
-                  {[30].map((days) => (
+                  {[lookbackDays].map((days) => (
                     <Button
                       key={days}
                       variant={lookbackDays === days ? "default" : "outline"}
@@ -567,7 +568,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                     </Button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">This release imports the last 30 completed days.</p>
+                <p className="text-xs text-muted-foreground">{lookbackDays === 365 ? 'Keeps the saved 365-day import history.' : 'This release imports the last 30 completed days.'}</p>
               </div>
               <div className="flex gap-2">
                 <Button

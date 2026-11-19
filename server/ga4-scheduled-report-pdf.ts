@@ -570,7 +570,7 @@ async function buildGA4ReportPayload(report: any) {
     throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Campaign Breakdown");
   }
   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
-  const lookbackDays = [30, 60, 90].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
+  const lookbackDays = [30, 60, 90, 365].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
   const configuredImportStartDate = String((connection as any)?.importStartDate || "").trim();
   if (!configuredImportStartDate && lookbackDays !== 30) {
     throw new Error("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
@@ -1242,7 +1242,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF();
   const payload = await buildGA4ReportPayload(report);
-  const lookbackDays = [30, 60, 90].includes(Number(payload.connection?.lookbackDays))
+  const lookbackDays = [30, 60, 90, 365].includes(Number(payload.connection?.lookbackDays))
     ? Number(payload.connection.lookbackDays)
     : 90;
   const reportType = String(report?.reportType || "overview").toLowerCase();

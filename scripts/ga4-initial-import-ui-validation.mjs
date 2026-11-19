@@ -10,18 +10,20 @@ const result = await build({
   stdin: { contents: `import React from "react";
     import { createRoot } from "react-dom/client";
     import { QueryClientProvider } from "@tanstack/react-query";
-    import { queryClient } from "@/lib/queryClient";
+    import { createAppQueryClient } from "@/lib/queryClient";
     import { ClientProvider } from "@/lib/clientContext";
     import Campaigns from "@/pages/campaigns";
-    createRoot(document.getElementById("root")).render(<QueryClientProvider client={queryClient}><ClientProvider><Campaigns /></ClientProvider></QueryClientProvider>);`,
+    createRoot(document.getElementById("root")).render(<QueryClientProvider client={createAppQueryClient()}><ClientProvider><Campaigns /></ClientProvider></QueryClientProvider>);`,
     resolveDir: process.cwd(), loader: "tsx" },
   bundle: true, write: false, format: "esm", jsx: "automatic", logLevel: "silent",
   alias: { "@": path.resolve("client/src"), "@shared": path.resolve("shared"), "@assets": path.resolve("attached_assets") },
   define: { "process.env.NODE_ENV": '"test"', "import.meta.env": "{}" },
   plugins: [{ name: "isolated-layout-and-oauth", setup(builder) {
+    builder.onResolve({ filter: /^@clerk\/clerk-react$/ }, () => ({ path: "clerk", namespace: "fixture" }));
     builder.onResolve({ filter: /^@\/components\/(layout\/(navigation|sidebar)|IntegratedGA4Auth)$/ }, args => ({ path: args.path, namespace: "fixture" }));
     builder.onLoad({ filter: /.*/, namespace: "fixture" }, args => ({ loader: "tsx", resolveDir: process.cwd(),
-      contents: args.path.endsWith("IntegratedGA4Auth")
+      contents: args.path === "clerk" ? 'export const useAuth = () => ({userId:"owner-a"});'
+        : args.path.endsWith("IntegratedGA4Auth")
         ? 'export function IntegratedGA4Auth({onSuccess}) { return <button onClick={onSuccess}>Use fixture Google connection</button>; }'
         : 'export default function Layout() { return null; }' }));
   } }],
@@ -40,9 +42,10 @@ try {
   const context = await browser.newContext();
   const page = await context.newPage();
   page.on("pageerror", error => errors.push(error.message));
-  let campaign, accepted, loseResponse, patches, deletions;
+  let campaign, accepted, loseResponse, patches, deletions, history, selections, discovery;
   const reset = (state = "running") => {
     accepted = Boolean(state); loseResponse = false; patches = 0; deletions = 0;
+    history = 30; selections = []; discovery = [];
     campaign = { id: "initial-a", ownerId: "owner-a", clientId: "client-a", name: "Initial import test", status: "draft",
       platform: "google-analytics", ga4CampaignFilter: "sale", currency: "EUR", budget: "100", reportingTimeZone: "Europe/Amsterdam",
       initialImport: state ? { state, canRetry: state === "failed", error: state === "failed" ? "daily_series:TOKEN_EXPIRED" : null, dataThroughDate: "2026-10-17" } : null };
@@ -57,8 +60,12 @@ try {
       if (request.method() === "POST") { campaign = { ...campaign, ...request.postDataJSON(), id: "initial-a" }; return respond(campaign, 201); }
       return respond(accepted ? [campaign] : []);
     }
-    if (url.pathname.endsWith("/ga4-connection-status")) return respond({ connected: true, properties: [{ id: "123", name: "Fixture property" }] });
-    if (url.pathname.endsWith("/ga4-campaign-values")) return respond({ campaigns: [{ name: "sale", users: 10 }] });
+    if (url.pathname.endsWith("/ga4-connection-status")) return respond({ connected: true, lookbackDays: history, importStartDate: history === 365 ? "2025-11-19" : "2026-10-20", properties: [{ id: "123", name: "Fixture property" }] });
+    if (url.pathname.endsWith("/ga4-property")) {
+      const body = request.postDataJSON(); selections.push(body); history = body.lookbackDays;
+      return respond({ success: true, lookbackDays: history, importStartDate: history === 365 ? "2025-11-19" : "2026-10-20" });
+    }
+    if (url.pathname.endsWith("/ga4-campaign-values")) { discovery.push(url.searchParams.get("dateRange")); return respond({ success: true, campaigns: [{ name: "sale", users: 10 }] }); }
     if (url.pathname.includes("/ga4/") || url.pathname.includes("ga4-select-property")) return respond({ success: true });
     if (url.pathname === "/api/campaigns/initial-a") {
       if (request.method() === "DELETE") { deletions++; accepted = false; return respond({ success: true }); }
@@ -97,6 +104,7 @@ try {
   await expect(dialog().getByText(/Google access expired/)).toBeVisible();
   await dialog().getByRole("button", { name: "Back", exact: true }).click();
   await expect(dialog().getByText("Historical data", { exact: true })).toBeVisible();
+  await expect(dialog().getByRole("combobox", { name: "Historical data" })).toBeDisabled();
   await expect(dialog().getByRole("button", { name: "Connect Property", exact: true })).toBeEnabled();
   await dialog().getByRole("button", { name: "Back", exact: true }).click();
   await expect(dialog().getByRole("button", { name: "Use fixture Google connection" })).toBeVisible();
@@ -120,22 +128,33 @@ try {
   expect(patches).toBe(1); expect(deletions).toBe(0);
   outcomes.push("Lost Create response recovers through status polling and reopening without duplicate import");
 
+  for (const days of [365, 30]) {
   reset(null); await page.goto(`${origin}/campaigns`);
   await page.getByRole("button", { name: "Create Campaign", exact: true }).first().click();
   await dialog().getByLabel("Campaign Name *", { exact: true }).fill("Initial import test");
   await dialog().getByRole("button", { name: /Next/ }).click();
   await dialog().getByRole("button", { name: /Google Analytics/ }).click();
   await dialog().getByRole("button", { name: "Use fixture Google connection" }).click();
+  const historyPicker = dialog().getByRole("combobox", { name: "Historical data" });
+  await expect(historyPicker).toHaveText("Last 30 days");
+  if (days === 365) {
+    await historyPicker.click();
+    await page.getByRole("option", { name: "Last 365 days", exact: true }).click();
+  }
   await dialog().getByRole("button", { name: "Connect Property", exact: true }).click();
+  await expect(dialog().getByText(`Campaigns found in the last ${days} days`)).toBeVisible();
+  expect(selections.at(-1).lookbackDays).toBe(days); expect(discovery.at(-1)).toBe(`${days}days`);
   await dialog().getByRole("checkbox").first().check();
   await dialog().getByRole("button", { name: "Save & Continue", exact: true }).click();
+  await expect(dialog().getByText(`Last ${days} days · starts ${days === 365 ? "2025-11-19" : "2026-10-20"}`)).toBeVisible();
   await dialog().getByRole("button", { name: "Create Campaign", exact: true }).click();
   await expect(dialog().getByRole("button", { name: "Import in progress" })).toBeDisabled();
   expect(patches).toBe(1); expect(campaign.status).toBe("draft"); expect(campaign.ga4CampaignFilter).toBe("sale");
-  outcomes.push("Fresh five-step setup submits the selected GA4 campaign and remains a draft during import");
+  outcomes.push(`Fresh ${days}-day setup uses the selected discovery range, confirms the fixed start and remains a draft during import`);
+  }
   expect(errors).toEqual([]);
   await mkdir("audit-temp", { recursive: true });
-  await writeFile("audit-temp/p4-initial-ui.json", JSON.stringify({ passed: outcomes, errors }, null, 2));
+  await writeFile("audit-temp/ga4-year-import/creation-ui.json", JSON.stringify({ passed: outcomes, errors }, null, 2));
   console.log(JSON.stringify({ passed: outcomes.length, scenarios: outcomes }));
 } finally {
   await browser.close();

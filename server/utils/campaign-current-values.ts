@@ -312,7 +312,7 @@ async function getCampaignMetricTotalsForEndDate(
       ], {} as any);
       if (!exactEndDate && !isGA4FinancialTotalsCandidate(earlierFinancialCandidate)) {
         try {
-          const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays))
+          const lookbackDays = [30, 60, 90, 365].includes(Number((primary as any)?.lookbackDays))
             ? Number((primary as any).lookbackDays)
             : 90;
           const breakdown = await ga4Service.getAcquisitionBreakdown(

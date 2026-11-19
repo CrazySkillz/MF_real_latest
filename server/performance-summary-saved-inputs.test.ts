@@ -20,13 +20,15 @@ const summary = () => ({
 const savedEndDate = (response: any, placeholder = false) => compile(
   slice("const performanceGA4FinancialEndDate =", "const { data: performanceGA4RevenueResponse") + "return performanceGA4FinancialEndDate;",
   { performanceGA4SummaryResponse: response, performanceGA4SummaryPlaceholder: placeholder });
-const movement = (response: any, metric = "sessions", range = "7d") => compile(
+const calendarDate = compile(slice("const getPerformanceCalendarDate =", "const resolveSpendComparisonEndDate =") + "return getPerformanceCalendarDate;", {});
+const comparisonDate = compile(slice("const resolveSpendComparisonEndDate =", "const formatCompletedReportingDate =") + "return resolveSpendComparisonEndDate;", {});
+const movement = (response: any, metric = "sessions", range = "7d", today = "2026-11-18") => compile(
   slice("const getGA4MovementComparison =", "// Calculate what's changed") + "return getGA4MovementComparison(metric);",
-  { performanceGA4SummaryResponse: response, performanceGA4FinancialEndDate: savedEndDate(response), timeRange: range,
+  { performanceGA4SummaryResponse: response, performanceGA4FinancialEndDate: savedEndDate(response), performanceComparisonDate: today, timeRange: range,
     resolveSpendComparisonEndDate: compile(slice("const resolveSpendComparisonEndDate =", "const formatCompletedReportingDate =") + "return resolveSpendComparisonEndDate;", {}), metric });
 
 describe("Performance Summary saved publication boundary", () => {
-  it.each(["2026-11-18T22:59:59Z", "2026-11-18T23:00:00Z", "2026-11-19T06:59:59Z"])("preserves totals and comparisons across midnight before 08:00: %s", now => {
+  it.each(["2026-11-18T22:59:59Z", "2026-11-18T23:00:00Z", "2026-11-19T06:59:59Z"])("preserves saved totals while calendar comparisons advance at campaign midnight: %s", now => {
     vi.stubEnv("GA4_INCLUDE_CURRENT_DAY", "true");
     try {
       const days = Number(page.match(/const PERFORMANCE_GA4_DAILY_DAYS = (\d+)/)![1]);
@@ -35,9 +37,11 @@ describe("Performance Summary saved publication boundary", () => {
         date: new Date(Date.UTC(2026, 9, 19 + index)).toISOString().slice(0, 10), conversions: index === 24 ? 13 : 0,
       })) };
       expect(savedEndDate(response)).toBe("2026-11-18");
-      expect(movement(response)).toEqual({ current: 4472, previous: 4329, baselineDate: "2026-11-11" });
-      expect(movement(response, "conversions", "24h")).toEqual({ current: 440, previous: 440, baselineDate: "2026-11-17" });
-      expect(movement(response, "conversions", "30d")).toEqual({ current: 440, previous: 427, baselineDate: "2026-10-18" });
+      const today = calendarDate("Europe/Amsterdam", new Date(now));
+      const afterMidnight = today === "2026-11-19";
+      expect(movement(response, "sessions", "7d", today)).toEqual(afterMidnight ? null : { current: 4472, previous: 4329, baselineDate: "2026-11-11" });
+      expect(movement(response, "conversions", "24h", today)).toEqual({ current: 440, previous: 440, baselineDate: afterMidnight ? "2026-11-18" : "2026-11-17" });
+      expect(movement(response, "conversions", "30d", today)).toEqual({ current: 440, previous: 427, baselineDate: afterMidnight ? "2026-10-19" : "2026-10-18" });
     } finally { vi.unstubAllEnvs(); }
   });
 
@@ -60,6 +64,36 @@ describe("Performance Summary saved publication boundary", () => {
     expect(aligned("2026-11-18")).toBe("2026-11-18");
     expect(aligned("2026-11-19")).toBe("");
     expect(aligned("2026-11-18", "Europe/London")).toBe("");
+  });
+});
+
+describe("Recent Movement calendar dates independent of saved publication", () => {
+  it.each([
+    ["Europe/Amsterdam", "2026-11-18T23:00:00Z", "2026-11-19", ["2026-11-18", "2026-11-12", "2026-10-19"]],
+    ["America/New_York", "2026-11-19T00:30:00Z", "2026-11-18", ["2026-11-17", "2026-11-11", "2026-10-18"]],
+    ["Asia/Tokyo", "2026-11-18T15:00:00Z", "2026-11-19", ["2026-11-18", "2026-11-12", "2026-10-19"]],
+    ["Europe/Amsterdam", "2028-03-31T10:00:00Z", "2028-03-31", ["2028-03-30", "2028-03-24", "2028-02-29"]],
+  ])("uses %s calendar at %s", (zone, now, today, expected) => {
+    expect(calendarDate(zone, new Date(now))).toBe(today);
+    expect(["24h", "7d", "30d"].map(range => comparisonDate(today, range))).toEqual(expected);
+  });
+  it("fails closed for missing or invalid campaign timezones", () => {
+    for (const zone of ["", "invalid/zone"]) expect(calendarDate(zone)).toBe("");
+  });
+  it.each(["sessions", "users", "conversions"])("compares the same exact saved cutoff for %s without inventing today's activity", metric => {
+    const response: any = summary();
+    expect(movement(response, metric, "24h", "2026-11-19")).toEqual({ current: response.overviewTotals[metric], previous: response.overviewTotals[metric], baselineDate: "2026-11-18" });
+    response.providerRefreshWarning = "incomplete";
+    expect(movement(response, metric, "24h", "2026-11-19")).toBeNull();
+  });
+  it("does not reverse a comparison when the saved publication is older than yesterday", () => {
+    for (const metric of ["sessions", "users", "conversions"]) expect(movement(summary(), metric, "24h", "2026-11-20")).toBeNull();
+  });
+  it("uses the new exact calendar period, not an adjacent saved period", () => {
+    const response = summary();
+    response.usersComparisons.push({ startDate: "2026-09-04", endDate: "2026-11-12", sessions: 4472, users: 4496 });
+    expect(movement(response, "sessions", "7d", "2026-11-19")?.previous).toBe(4472);
+    expect(movement(response, "conversions", "7d", "2026-11-19")?.previous).toBe(440);
   });
 });
 

@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { startAnchoredInterval } from "./utils/anchored-interval";
 import { storage } from "./storage";
 import { instagramConnections } from "../shared/schema";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
@@ -110,8 +111,8 @@ export function startInstagramScheduler(): void {
 
   console.log(`[Instagram Scheduler] Refresh interval: ${refreshIntervalHours} hours`);
 
-  setInterval(() => {
-    refreshAllInstagramMetrics();
+  startAnchoredInterval("Instagram Scheduler", () => {
+    return refreshAllInstagramMetrics();
   }, refreshIntervalMs);
 
   console.log("[Instagram Scheduler] Started successfully");

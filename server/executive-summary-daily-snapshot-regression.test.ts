@@ -49,7 +49,7 @@ describe("Executive Summary daily snapshot wiring", () => {
     expect(scheduler).toContain("getInternalAutoRefreshToken()");
     expect(scheduler).toContain('"x-internal-auto-refresh-token": token');
     expect(scheduler).toContain("dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date");
-    expect(scheduler).toContain("setInterval(() => void captureExecutiveSummarySnapshots(baseUrl), DAY_MS)");
+    expect(scheduler).toContain('startAnchoredInterval("Executive Summary Snapshot Scheduler", () => captureExecutiveSummarySnapshots(baseUrl), DAY_MS)');
     expect(index).toContain("executiveSummarySnapshotScheduler.start(port)");
   });
 

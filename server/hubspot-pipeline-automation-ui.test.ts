@@ -156,7 +156,7 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     expect(refresh).toContain('expectedSourceMappingConfig: String(source.mappingConfig)');
     expect(refresh).toContain('isSourceOutsideCampaign(source, campaignId)');
     expect(scheduler).toContain('.then(() => runHubSpotPipelineAutoRefreshOnce())');
-    expect(scheduler).toContain('setInterval(runSalesforcePipelineRefresh, salesforcePipelineIntervalMs)');
+    expect(scheduler).toContain('startAnchoredInterval("CRM Pipeline Scheduler", runSalesforcePipelineRefresh, salesforcePipelineIntervalMs)');
     expect(refresh).toContain('(global as any).__salesforcePipelineRefreshInProgress = true');
     expect(refresh).toContain('(global as any).__salesforcePipelineRefreshInProgress = false');
   });

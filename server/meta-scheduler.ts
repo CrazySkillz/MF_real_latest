@@ -5,6 +5,7 @@
  */
 
 import { storage } from "./storage";
+import { getNextIntervalRunAt, startAnchoredInterval } from "./utils/anchored-interval";
 import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
@@ -409,14 +410,14 @@ export function startMetaScheduler(): void {
   const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
 
   console.log(`[Meta Scheduler] Refresh interval: ${refreshIntervalHours} hours (${24 / refreshIntervalHours}x daily)`);
-  console.log(`[Meta Scheduler] Next refresh: ${new Date(Date.now() + refreshIntervalMs).toLocaleString()}`);
+  console.log(`[Meta Scheduler] Next refresh: ${getNextIntervalRunAt(refreshIntervalMs).toISOString()}`);
 
   // Don't run immediately on startup - wait for first scheduled interval
   // This prevents unnecessary API calls on server restart
 
   // Schedule regular refreshes
-  setInterval(() => {
-    refreshAllMetaData();
+  startAnchoredInterval("Meta Scheduler", () => {
+    return refreshAllMetaData();
   }, refreshIntervalMs);
 
   console.log('[Meta Scheduler] ✅ Meta scheduler started successfully');

@@ -25,6 +25,9 @@ function replay(mode = 'recorded') {
     }
     if (!match) throw new Error('Unrecorded request: ' + key(body));
     const data: any = structuredClone(match.data), proof = body.metrics[0].name === 'eventCount';
+    if (mode === 'property-retention' && data.metadata.samplingMetadatas) {
+      data.metadata.dataTruncationReasons = [{ dataTruncationType: 'DATA_TRUNCATION_TYPE_PROPERTY', dataTruncationDate: '2026-11-01' }];
+    }
     if (mode === 'unsampled' && body.metricAggregations && data.metadata.samplingMetadatas) {
       // Synthetic unsampled batch with the same independently verified windows.
       delete data.metadata.samplingMetadatas;
@@ -61,6 +64,11 @@ describe('sampling in later exact GA4 comparisons', () => {
   });
   it('recovers a sampled rolling batch even when the other comparisons succeed', async () => {
     const calls = replay('rolling-only');
+    expect(await run()).toEqual(evidence.result);
+    expect(calls.filter(body => body.metrics[0].name === 'eventCount')).toHaveLength(1);
+  });
+  it('retains exact recorded windows when later comparisons also carry property retention', async () => {
+    const calls = replay('property-retention');
     expect(await run()).toEqual(evidence.result);
     expect(calls.filter(body => body.metrics[0].name === 'eventCount')).toHaveLength(1);
   });

@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
     getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
     markExecutiveSummaryDailySnapshotAligned: vi.fn(),
     invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn(),
-    ensureGA4RefreshWork: vi.fn(), claimGA4RefreshWork: vi.fn(), updateGA4RefreshWorkLease: vi.fn(),
+    ensureGA4RefreshWork: vi.fn(), claimGA4RefreshWork: vi.fn(), updateGA4RefreshWorkLease: vi.fn(), hasUnfinishedGA4RefreshSince: vi.fn(),
     getGA4InitialImportWork: vi.fn(),
     getScheduledPlatformReports: vi.fn(),
     getPlatformKPIs: vi.fn(), getPlatformBenchmarks: vi.fn(), getCampaignKPIs: vi.fn(), getCampaignBenchmarks: vi.fn(),

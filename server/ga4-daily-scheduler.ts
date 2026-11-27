@@ -1292,6 +1292,9 @@ export async function backfillMissingGA4OverviewSnapshots(
           overdueCampaignIds.add(campaignId);
         }
       }
+      // Existing queued/failed work owns this slot and its retry policy. A restart must not create a fresh attempt.
+      if (needsBootstrap && latestDueAt && process.env.GA4_DURABLE_RECOVERY_ENABLED !== "false" &&
+          await storage.hasUnfinishedGA4RefreshSince(campaignId, campaign.ownerId || "", latestDueAt)) continue;
       if (needsBootstrap) campaignIds.push(campaignId);
       } catch (error: any) {
         ga4DailySchedulerStatus.lastSnapshotBootstrapFailures.push({

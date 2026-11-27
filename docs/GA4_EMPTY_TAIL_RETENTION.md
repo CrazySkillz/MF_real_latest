@@ -26,10 +26,22 @@ inside the fallback tail, nonzero or restricted proof, and restricted
 replacement reports still fail closed. Original publication dates, comparison
 windows, fields, calculations, and campaign filters are preserved.
 
-Only the existing recovery guard in `server/analytics.ts` changes at runtime.
-Schedulers, startup behavior, configuration, storage, and publication code do
-not change. No persisted data cleanup is needed: failed publication retained
-the last successful snapshot.
+The analytics correction changes the existing recovery guard in
+`server/analytics.ts`. No persisted data cleanup is needed: failed publication
+retained the last successful snapshot.
+
+## Deployment restart safeguard
+
+The 27 November read-only preflight found that restart would also retry an
+unrelated campaign with a non-retryable failure in its current scheduled slot.
+Bootstrap previously created new work at the restart time, bypassing the
+existing attempt's retry policy. The scheduler now checks for unfinished work
+at or after the latest due slot using the current owner and configuration scope.
+Matching work remains with the existing recovery dispatcher; failed or exhausted
+attempts wait for their next ordinary slot or an explicit retry. Older,
+completed, invalidated, differently scoped, or future work does not block repair.
+This adds a read-only storage lookup and a localized bootstrap guard. It does
+not change schedule times, interval anchors, calculations, or manual refreshes.
 
 ## Validation boundary
 

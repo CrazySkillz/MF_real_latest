@@ -63,6 +63,23 @@ describe("owned financial scheduler integration", () => {
     await expect(run()).rejects.toThrow(mode === "expired" ? "GA4_REFRESH_WORK_OWNERSHIP_LOST" : "financial refresh request failed");
     expect(fetch).toHaveBeenCalledTimes(1); expect((global as any).__autoRefreshInProgress).toBe(false);
   });
+  it.each([
+    ["shopify", 409, "SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED", "SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED"],
+    ["hubspot", 409, "SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED", "GA4_FINANCIAL_REFRESH_REJECTED"],
+    ["shopify", 409, "UNKNOWN_PROVIDER_ERROR", "GA4_FINANCIAL_REFRESH_REJECTED"],
+    ["shopify", 429, "SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED", "GA4_TRANSIENT_ERROR"],
+    ["shopify", 500, "SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED", "GA4_TRANSIENT_ERROR"],
+  ])("classifies %s %s (%s) without exposing response details", async (provider, status, code, expected) => {
+    vi.mocked(storage.getRevenueSources).mockResolvedValue([revenue(provider)] as any);
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ code, error: "private-provider-detail" }), { status }));
+    vi.stubGlobal("fetch", fetch);
+    const error = await run().catch(error => error);
+    expect(error).toMatchObject({ code: expected });
+    expect(error.message).not.toContain("private-provider-detail");
+    if (expected === code) expect(error.message).toContain("Shopify historical-order access is required");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect((global as any).__autoRefreshInProgress).toBe(false);
+  });
   it.each([{ campaignId: "other" }, { refreshScope: undefined }, { deferDownstream: false }, { financialSourcesOnly: false }, { onCampaignRefreshed: async () => {} }])("rejects unsafe options before touching providers (%j)", async extra => {
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
     await expect(run(extra)).rejects.toThrow(); expect(fetch).not.toHaveBeenCalled(); expect(storage.getRevenueSources).not.toHaveBeenCalled();

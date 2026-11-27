@@ -15,6 +15,7 @@ import { recordCampaignMetrics } from "./scheduler";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { getCampaignMetricTotals } from "./utils/campaign-current-values";
 import { verifyGA4InitialImport } from './ga4-source-verification';
+import { SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE } from './utils/shopify-provider';
 
 type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
@@ -1121,6 +1122,7 @@ const getGA4DailyFailureReason = (error: any) => {
   const stage = String(error?.ga4DailyStage || "unknown").replace(/[^a-z0-9_-]/gi, "_");
   const message = String(error?.message || error || "");
   if (error?.code === "GA4_TRANSIENT_ERROR") return `${stage}:GA4_TRANSIENT_ERROR`;
+  if (error?.code === SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE) return `${stage}:${SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE}`;
   const knownCode = [
     "TOKEN_EXPIRED", "NO_GA4_CONNECTION", "GA4_CURRENCY_UNVERIFIED",
     "GA4_DATA_QUALITY_UNAVAILABLE", "GA4_FINANCIAL_REFRESH_INCOMPLETE", "GA4_REFRESH_FINANCIAL_MAPPING_INCOMPLETE",

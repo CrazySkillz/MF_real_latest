@@ -112,7 +112,7 @@ export function requireShopifyCampaignOrderWindow(args: Parameters<typeof resolv
   const window = resolveShopifyCampaignOrderWindow(args);
   if (!window.eligible) {
     const error: any = new Error(
-      `Shopify OAuth currently provides recent-order access only. The required order window starts before ${window.cutoffAt.slice(0, 10)}, so revenue was not changed while read_all_orders approval is pending.`,
+      `Shopify OAuth currently provides recent-order access only. The required order window starts before ${window.cutoffAt.slice(0, 10)}. Enable historical-order access (read_all_orders) for the app, then reconnect this store. Saved revenue was not changed.`,
     );
     error.code = SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE;
     throw error;

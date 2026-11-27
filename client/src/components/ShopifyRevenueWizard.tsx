@@ -528,7 +528,7 @@ export function ShopifyRevenueWizard(props: {
       if (orderWindowBlocked) {
         toast({
           title: "Shopify historical access required",
-          description: `The required order window begins on ${orderWindow?.campaignStart}. Revenue remains unchanged while Shopify historical access is pending.`,
+          description: `The required order window begins on ${orderWindow?.campaignStart}. Enable historical-order access for the Shopify app, then reconnect this store. Saved revenue has not been changed.`,
           variant: "destructive",
         });
         return;
@@ -857,7 +857,7 @@ export function ShopifyRevenueWizard(props: {
                     : "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"}`} role="status">
                     {orderWindow.eligible
                       ? `Shopify currently provides recent-order access. Orders from ${orderWindow.campaignStart} are available. Historical access is needed to keep refreshing saved orders once they pass Shopify’s access limit.`
-                      : `Shopify currently provides recent-order access only. The saved revenue window begins on ${orderWindow.campaignStart}, before the accessible ${orderWindow.cutoff} boundary. Historical access is required; saved revenue has not been changed.`}
+                    : `Shopify currently provides recent-order access only. The saved revenue window begins on ${orderWindow.campaignStart}, before the accessible ${orderWindow.cutoff} boundary. Enable historical-order access for the Shopify app, then reconnect this store. Saved revenue has not been changed.`}
                   </div>
                 )}
 

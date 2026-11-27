@@ -30,6 +30,7 @@ import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snap
 import { randomUUID } from "crypto";
 import { isSupportedGoogleAdsSpendConnectionMethod } from "./utils/google-ads-service-account";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
+import { SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE } from "./utils/shopify-provider";
 
 type AnyRecord = Record<string, any>;
 type ReprocessResult = { success: boolean; status?: number; error?: string };
@@ -206,6 +207,11 @@ async function postJson(path: string, body: AnyRecord, refreshWriteInput: GA4Ref
   }
   if (refreshWriteInput.refreshScope) {
     await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
+    if (resp.status === 409 && path.endsWith("/shopify/save-mappings") && json?.code === SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE) {
+      throw Object.assign(new Error("Shopify historical-order access is required; saved revenue remains unchanged."), {
+        code: SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE,
+      });
+    }
     if (!resp.ok) throw Object.assign(new Error(`GA4 financial refresh request failed (${resp.status})`), {
       code: resp.status === 429 || resp.status >= 500 ? "GA4_TRANSIENT_ERROR" : "GA4_FINANCIAL_REFRESH_REJECTED",
     });

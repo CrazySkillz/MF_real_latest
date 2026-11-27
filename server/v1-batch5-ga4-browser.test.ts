@@ -81,7 +81,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
         const pending = deletionPending || publication === "pending";
         if (pending) pendingStatusChecks++;
         data = { success: true, campaignId: "a", propertyId: "123", publicationToken: receipt, refreshStatus: pending ? "running" : "current",
-          nextCheckAt: pending ? new Date(await page.evaluate(() => Date.now()) + 60_000).toISOString() : "2026-10-24T06:00:00Z" };
+          nextCheckAt: pending ? "2026-10-23T18:01:00Z" : "2026-10-24T06:00:00Z" };
       }
       else if (url.pathname.endsWith("/ga4-daily")) data = { success: true, propertyId: "123", startDate: "2026-09-04", overviewStartDate: "2026-09-04", endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8,14,20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };
       else if (url.pathname.endsWith("/financial-daily-snapshot")) data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt, metrics: {

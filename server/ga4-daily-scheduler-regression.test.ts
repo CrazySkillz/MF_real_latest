@@ -11,6 +11,7 @@ const schedulerSource = () => readFileSync(join(process.cwd(), "server", "ga4-da
 const aggregateSnapshotSchedulerSource = () => readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
 const kpiSchedulerSource = () => readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
 beforeEach(() => {
+  vi.spyOn(storage, "hasUnfinishedGA4RefreshSince").mockResolvedValue(false);
   vi.spyOn(storage, "getCompletedGA4RefreshState").mockResolvedValue(null);
   vi.spyOn(storage, "getCompletedGA4InitialImportState").mockResolvedValue(null);
   vi.spyOn(storage, "getGA4PublicationVersion").mockResolvedValue(null);
@@ -55,6 +56,21 @@ describe("GA4 startup recovery after a missed scheduled slot", () => {
     const runPipeline = vi.fn();
     await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual([]);
     expect(runPipeline).not.toHaveBeenCalled();
+  });
+
+  it("does not replace an unfinished current-slot attempt with a new bootstrap refresh", async () => {
+    vi.mocked(storage.hasUnfinishedGA4RefreshSince).mockResolvedValue(true);
+    const runPipeline = vi.fn();
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual([]);
+    expect(storage.hasUnfinishedGA4RefreshSince).toHaveBeenCalledWith("ptomo", "owner", new Date("2026-10-17T18:00:00Z"));
+    expect(runPipeline).not.toHaveBeenCalled();
+  });
+
+  it("still recovers a genuinely missed slot when no matching unfinished work exists", async () => {
+    const runPipeline = vi.fn();
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["ptomo"]);
+    expect(storage.hasUnfinishedGA4RefreshSince).toHaveBeenCalledWith("ptomo", "owner", new Date("2026-10-17T18:00:00Z"));
+    expect(runPipeline).toHaveBeenCalledOnce();
   });
 
   it("recovers an invalidated publication after a Spend source is added today", async () => {

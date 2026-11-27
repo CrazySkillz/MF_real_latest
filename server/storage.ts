@@ -223,6 +223,7 @@ export interface IStorage {
   getGA4PublicationVersion(campaignId: string): Promise<string | null>;
   isGA4NativeRecoveryEligible(campaignId: string, options?: { includeFinancialSources?: boolean; revenueChange?: boolean }): Promise<boolean>;
   getRecoverableGA4RefreshWork(): Promise<GA4RefreshWork[]>;
+  hasUnfinishedGA4RefreshSince(campaignId: string, ownerId: string, dueAt: Date): Promise<boolean>;
   requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry?: boolean): Promise<GA4RefreshWork | undefined>;
   getGA4InitialImportWork(campaignId: string, ownerId: string, workId?: string): Promise<GA4RefreshWork | undefined>;
   getGA4InitialImportStatus(campaignId: string, ownerId: string): Promise<GA4InitialImportStatus | null>;
@@ -1882,6 +1883,18 @@ export class DatabaseStorage implements IStorage {
       or(eq(ga4RefreshWork.status, 'pending'), and(eq(ga4RefreshWork.status, 'running'), sql`${ga4RefreshWork.leaseExpiresAt} <= clock_timestamp()`)),
       sql`(${ga4RefreshWork.nextAttemptAt} IS NULL OR ${ga4RefreshWork.nextAttemptAt} <= clock_timestamp())`,
     )).orderBy(desc(ga4RefreshWork.dueAt)));
+  }
+
+  async hasUnfinishedGA4RefreshSince(campaignId: string, ownerId: string, dueAt: Date): Promise<boolean> {
+    return this.withGA4RefreshTransaction(async tx => {
+      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId, { readOnly: true });
+      if (!scope) return false;
+      const [work] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
+        eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.scopeHash, scope.scopeHash),
+        ne(ga4RefreshWork.status, 'completed'), gte(ga4RefreshWork.dueAt, dueAt), sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`,
+      )).limit(1);
+      return Boolean(work);
+    });
   }
 
   async retireGA4RefreshWork(campaignId: string): Promise<void> {

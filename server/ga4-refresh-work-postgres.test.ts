@@ -101,6 +101,29 @@ describe.skipIf(!testUrl)("durable GA4 work with real PostgreSQL", () => {
     const columns = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name='ga4_refresh_work'", [schemaName]);
     expect(columns.rows.map(r => r.column_name).sort()).toEqual(Object.values(getTableColumns(schema.ga4RefreshWork)).map(c => c.name).sort());
   });
+
+  it.each(['pending', 'running', 'failed', 'exhausted'])("keeps %s work in its current slot across restarts without writing", async state => {
+    const work = (await ensure())!;
+    if (state === 'running') await claim(work.id);
+    if (state === 'failed') await pool.query("UPDATE ga4_refresh_work SET retryable=false,last_error='provider_failed' WHERE id=$1", [work.id]);
+    if (state === 'exhausted') await pool.query("UPDATE ga4_refresh_work SET attempt_count=3 WHERE id=$1", [work.id]);
+    const before = await saved(work.id); queries.length = 0;
+    expect(await storage.hasUnfinishedGA4RefreshSince('a', 'owner-a', dueAt)).toBe(true);
+    expect(queries.some(query => /\b(INSERT|UPDATE|DELETE)\b/i.test(query))).toBe(false);
+    expect(await saved(work.id)).toEqual(before);
+    expect(await storage.hasUnfinishedGA4RefreshSince('b', 'owner-b', dueAt)).toBe(false);
+    expect(await storage.hasUnfinishedGA4RefreshSince('a', 'owner-b', dueAt)).toBe(false);
+    expect(await storage.hasUnfinishedGA4RefreshSince('a', 'owner-a', new Date(dueAt.getTime() + 1))).toBe(false);
+  });
+
+  it.each(['completed', 'invalidated', 'edited scope', 'future'])("does not block recovery using %s work", async state => {
+    const work = (await ensure())!;
+    if (state === 'completed') await pool.query("UPDATE ga4_refresh_work SET status='completed',completed_at=clock_timestamp() WHERE id=$1", [work.id]);
+    if (state === 'invalidated') await pool.query("UPDATE ga4_refresh_work SET scope_hash='invalidated:'||id WHERE id=$1", [work.id]);
+    if (state === 'edited scope') await pool.query("UPDATE campaigns SET ga4_campaign_filter='different' WHERE id='a'");
+    if (state === 'future') await pool.query("UPDATE ga4_refresh_work SET due_at=clock_timestamp()+interval '1 hour' WHERE id=$1", [work.id]);
+    expect(await storage.hasUnfinishedGA4RefreshSince('a', 'owner-a', dueAt)).toBe(false);
+  });
   it("reports only a live campaign lease as publication activity, without allowing reads of unfinished output", async () => {
     const work = (await ensure())!;
     const busy = (publicationInProgress: boolean) => expect(storage.getGA4PublicationVersion("a")).rejects.toMatchObject({

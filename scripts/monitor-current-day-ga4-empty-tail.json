@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "866c30f18c62c6444191ba6fe99cb7b7d90eec61",
+  "expectedCommit": "f56b893c1d0d97af8cd0fe5783ad38a5c949b7c0",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -74,7 +74,7 @@
     {
       "path": "server/ga4-daily-scheduler.ts",
       "before": "48373a06062b31e6089d6d8ffdc1f6b77b0806a251543608751e1130da25d37c",
-      "after": "ea4b009c1c1494ee0873841653341fe35f8d1e0313d28a0e6d2082ec72b3b0f2"
+      "after": "c62654f94530c78dfba8b994f8e24a0bc3ef4630792dabfab19dd43ff73d6dc3"
     },
     {
       "path": "server/ga4-kpi-benchmark-jobs.ts",
@@ -249,7 +249,7 @@
     {
       "path": "server/storage.ts",
       "before": "37c95feaec64ffe933cad258c82b84e137646152f64a36ef3267cd5e45e3a4f1",
-      "after": "b5bbd9ae1c7a18385fe96b615ca8b7dac63fd4beaabac991f448b23e7f105afa"
+      "after": "d6ab10f992c883fa1b3bdd90af078d416d538811436aaf7d91091d634e1a5146"
     }
   ],
   "equivalentCommits": []

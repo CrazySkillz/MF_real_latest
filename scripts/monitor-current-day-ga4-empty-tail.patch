@@ -9209,3 +9209,50 @@ index 8583b9e2..1532febd 100644
        const response = await this.requestReport('https://analyticsdata.googleapis.com/v1beta/properties/' + normalizedPropertyId + ':runReport', {
          method: 'POST', headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
          body: JSON.stringify({ dateRanges: [{ startDate: tailStart, endDate }],
+
+diff --git a/server/storage.ts b/server/storage.ts
+index 0493668e..38288f65 100644
+--- a/server/storage.ts
++++ b/server/storage.ts
+@@ -223,6 +223,7 @@ export interface IStorage {
+   getGA4PublicationVersion(campaignId: string): Promise<string | null>;
+   isGA4NativeRecoveryEligible(campaignId: string, options?: { includeFinancialSources?: boolean; revenueChange?: boolean }): Promise<boolean>;
+   getRecoverableGA4RefreshWork(): Promise<GA4RefreshWork[]>;
++  hasUnfinishedGA4RefreshSince(campaignId: string, ownerId: string, dueAt: Date): Promise<boolean>;
+   requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry?: boolean): Promise<GA4RefreshWork | undefined>;
+   getGA4InitialImportWork(campaignId: string, ownerId: string, workId?: string): Promise<GA4RefreshWork | undefined>;
+   getGA4InitialImportStatus(campaignId: string, ownerId: string): Promise<GA4InitialImportStatus | null>;
+@@ -1884,6 +1885,18 @@ export class DatabaseStorage implements IStorage {
+     )).orderBy(desc(ga4RefreshWork.dueAt)));
+   }
+ 
++  async hasUnfinishedGA4RefreshSince(campaignId: string, ownerId: string, dueAt: Date): Promise<boolean> {
++    return this.withGA4RefreshTransaction(async tx => {
++      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId, { readOnly: true });
++      if (!scope) return false;
++      const [work] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
++        eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.scopeHash, scope.scopeHash),
++        ne(ga4RefreshWork.status, 'completed'), gte(ga4RefreshWork.dueAt, dueAt), sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`,
++      )).limit(1);
++      return Boolean(work);
++    });
++  }
++
+   async retireGA4RefreshWork(campaignId: string): Promise<void> {
+     await this.writeGA4RefreshInputChange(campaignId, async () => true, 0, false, false);
+   }
+
+diff --git a/server/ga4-daily-scheduler.ts b/server/ga4-daily-scheduler.ts
+index 1990066f..a46f6f5d 100644
+--- a/server/ga4-daily-scheduler.ts
++++ b/server/ga4-daily-scheduler.ts
+@@ -1292,6 +1292,9 @@ export async function backfillMissingGA4OverviewSnapshots(
+           overdueCampaignIds.add(campaignId);
+         }
+       }
++      // Existing queued/failed work owns this slot and its retry policy. A restart must not create a fresh attempt.
++      if (needsBootstrap && latestDueAt && process.env.GA4_DURABLE_RECOVERY_ENABLED !== "false" &&
++          await storage.hasUnfinishedGA4RefreshSince(campaignId, campaign.ownerId || "", latestDueAt)) continue;
+       if (needsBootstrap) campaignIds.push(campaignId);
+       } catch (error: any) {
+         ga4DailySchedulerStatus.lastSnapshotBootstrapFailures.push({

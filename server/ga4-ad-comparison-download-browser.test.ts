@@ -151,7 +151,7 @@ describe("Ad Comparison precision through the real Reports page", () => {
         if (contextKind === "publication-handoff" && statusRequests === 2) generation++;
         if (contextKind === "publication-gap" && statusRequests === 2) publicationGap = true;
         data = { success: true, campaignId: "a", propertyId: "123", publicationToken: publicationGap ? null : `p${generation}`, refreshStatus: publicationGap ? "running" : "current",
-          nextCheckAt: new Date(Date.now() + (publicationGap ? 60_000 : 6 * 60 * 60_000)).toISOString() };
+          nextCheckAt: new Date(Date.parse("2026-10-26T19:00:00Z") + (publicationGap ? 60_000 : 6 * 60 * 60_000)).toISOString() };
         if (failed === "status") { status = 503; data = { success: false, error: "fixture status failure" }; }
       } else if (url.pathname.endsWith("/ga4-daily")) {
         data = { success: true, propertyId: "123", startDate: start, overviewStartDate: start, endDate: day, dataThroughDate: day, latestStoredDailyDate: day, historyDataThroughDate: day, reportingTimeZone: "Europe/Amsterdam", lastUpdated: updatedAt, lastCompletedRefreshAt: updatedAt, refreshStatus: "current", refreshIsStale: false, overviewTotals: totals, data: [{ date: day, ...totals }], refreshScheduleHours: [8, 14, 20], refreshScheduleMinute: 0, refreshScheduleTimeZone: "Europe/Amsterdam" };

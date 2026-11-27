@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "f56b893c1d0d97af8cd0fe5783ad38a5c949b7c0",
+  "expectedCommit": "6070009a4f1187986464573f9e6f6cc03124b009",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -69,12 +69,12 @@
     {
       "path": "server/auto-refresh-scheduler.ts",
       "before": "d644502695607a4452247fdd7d30a98263a4d7c016a9de397f930b6d995ac7c9",
-      "after": "8ae2e5e872cc067ae44ba7625454469436c338ba062719932f0b1d3ce08a718d"
+      "after": "65607fd2e54ce8ea8006b49cbcae6f7e409235cb72df0ae72cdc4bb0c8150f07"
     },
     {
       "path": "server/ga4-daily-scheduler.ts",
       "before": "48373a06062b31e6089d6d8ffdc1f6b77b0806a251543608751e1130da25d37c",
-      "after": "c62654f94530c78dfba8b994f8e24a0bc3ef4630792dabfab19dd43ff73d6dc3"
+      "after": "993a9a04692eb16b8dea9f9affcbcfa80864c07bf6eaccdb35b36d241241f118"
     },
     {
       "path": "server/ga4-kpi-benchmark-jobs.ts",
@@ -194,7 +194,7 @@
     {
       "path": "client/src/components/ShopifyRevenueWizard.tsx",
       "before": "e2c5a150508416cbadb399604f738a7c8523c8845416024be6f02b0f7a9ccfe7",
-      "after": "74963479d861de1f6e5fafa7b3ab98c4aaf5b16f9139c0dfb3fa2e0aba010539"
+      "after": "8e23a0339edb52eb45b53c9f701c9f322a72d35c92a0977d126271ca795fe1d0"
     },
     {
       "path": "shared/ga4-ad-comparison-cards.ts",
@@ -250,6 +250,11 @@
       "path": "server/storage.ts",
       "before": "37c95feaec64ffe933cad258c82b84e137646152f64a36ef3267cd5e45e3a4f1",
       "after": "d6ab10f992c883fa1b3bdd90af078d416d538811436aaf7d91091d634e1a5146"
+    },
+    {
+      "path": "server/utils/shopify-provider.ts",
+      "before": "723d07fb6c27341f2c7532178cd769fe523640d4917683d291c4706a6bcd8117",
+      "after": "2ebb0ef93e17ba9df3b9dc02f0c50369e285fe630df1985c5ad03d092d6d63e2"
     }
   ],
   "equivalentCommits": []

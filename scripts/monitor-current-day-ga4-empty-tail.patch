@@ -9256,3 +9256,86 @@ index 1990066f..a46f6f5d 100644
        if (needsBootstrap) campaignIds.push(campaignId);
        } catch (error: any) {
          ga4DailySchedulerStatus.lastSnapshotBootstrapFailures.push({
+
+diff --git a/server/auto-refresh-scheduler.ts b/server/auto-refresh-scheduler.ts
+index aad84e26..2e953dd2 100644
+--- a/server/auto-refresh-scheduler.ts
++++ b/server/auto-refresh-scheduler.ts
+@@ -30,6 +30,7 @@ import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snap
+ import { randomUUID } from "crypto";
+ import { isSupportedGoogleAdsSpendConnectionMethod } from "./utils/google-ads-service-account";
+ import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
++import { SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE } from "./utils/shopify-provider";
+ 
+ type AnyRecord = Record<string, any>;
+ type ReprocessResult = { success: boolean; status?: number; error?: string };
+@@ -206,6 +207,11 @@ async function postJson(path: string, body: AnyRecord, refreshWriteInput: GA4Ref
+   }
+   if (refreshWriteInput.refreshScope) {
+     await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
++    if (resp.status === 409 && path.endsWith("/shopify/save-mappings") && json?.code === SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE) {
++      throw Object.assign(new Error("Shopify historical-order access is required; saved revenue remains unchanged."), {
++        code: SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE,
++      });
++    }
+     if (!resp.ok) throw Object.assign(new Error(`GA4 financial refresh request failed (${resp.status})`), {
+       code: resp.status === 429 || resp.status >= 500 ? "GA4_TRANSIENT_ERROR" : "GA4_FINANCIAL_REFRESH_REJECTED",
+     });
+
+diff --git a/server/ga4-daily-scheduler.ts b/server/ga4-daily-scheduler.ts
+index a46f6f5d..c3bc2707 100644
+--- a/server/ga4-daily-scheduler.ts
++++ b/server/ga4-daily-scheduler.ts
+@@ -15,6 +15,7 @@ import { recordCampaignMetrics } from "./scheduler";
+ import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
+ import { getCampaignMetricTotals } from "./utils/campaign-current-values";
+ import { verifyGA4InitialImport } from './ga4-source-verification';
++import { SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE } from './utils/shopify-provider';
+ 
+ type CampaignFilter = string | string[] | undefined;
+ type GA4DailySchedulerConfig = {
+@@ -1121,6 +1122,7 @@ const getGA4DailyFailureReason = (error: any) => {
+   const stage = String(error?.ga4DailyStage || "unknown").replace(/[^a-z0-9_-]/gi, "_");
+   const message = String(error?.message || error || "");
+   if (error?.code === "GA4_TRANSIENT_ERROR") return `${stage}:GA4_TRANSIENT_ERROR`;
++  if (error?.code === SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE) return `${stage}:${SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE}`;
+   const knownCode = [
+     "TOKEN_EXPIRED", "NO_GA4_CONNECTION", "GA4_CURRENCY_UNVERIFIED",
+     "GA4_DATA_QUALITY_UNAVAILABLE", "GA4_FINANCIAL_REFRESH_INCOMPLETE", "GA4_REFRESH_FINANCIAL_MAPPING_INCOMPLETE",
+
+diff --git a/server/utils/shopify-provider.ts b/server/utils/shopify-provider.ts
+index e78f0c6e..4ca90c66 100644
+--- a/server/utils/shopify-provider.ts
++++ b/server/utils/shopify-provider.ts
+@@ -112,7 +112,7 @@ export function requireShopifyCampaignOrderWindow(args: Parameters<typeof resolv
+   const window = resolveShopifyCampaignOrderWindow(args);
+   if (!window.eligible) {
+     const error: any = new Error(
+-      `Shopify OAuth currently provides recent-order access only. The required order window starts before ${window.cutoffAt.slice(0, 10)}, so revenue was not changed while read_all_orders approval is pending.`,
++      `Shopify OAuth currently provides recent-order access only. The required order window starts before ${window.cutoffAt.slice(0, 10)}. Enable historical-order access (read_all_orders) for the app, then reconnect this store. Saved revenue was not changed.`,
+     );
+     error.code = SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE;
+     throw error;
+
+diff --git a/client/src/components/ShopifyRevenueWizard.tsx b/client/src/components/ShopifyRevenueWizard.tsx
+index 81e797e2..2c591192 100644
+--- a/client/src/components/ShopifyRevenueWizard.tsx
++++ b/client/src/components/ShopifyRevenueWizard.tsx
+@@ -528,7 +528,7 @@ export function ShopifyRevenueWizard(props: {
+       if (orderWindowBlocked) {
+         toast({
+           title: "Shopify historical access required",
+-          description: `The required order window begins on ${orderWindow?.campaignStart}. Revenue remains unchanged while Shopify historical access is pending.`,
++          description: `The required order window begins on ${orderWindow?.campaignStart}. Enable historical-order access for the Shopify app, then reconnect this store. Saved revenue has not been changed.`,
+           variant: "destructive",
+         });
+         return;
+@@ -857,7 +857,7 @@ export function ShopifyRevenueWizard(props: {
+                     : "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"}`} role="status">
+                     {orderWindow.eligible
+                       ? `Shopify currently provides recent-order access. Orders from ${orderWindow.campaignStart} are available. Historical access is needed to keep refreshing saved orders once they pass Shopify’s access limit.`
+-                      : `Shopify currently provides recent-order access only. The saved revenue window begins on ${orderWindow.campaignStart}, before the accessible ${orderWindow.cutoff} boundary. Historical access is required; saved revenue has not been changed.`}
++                    : `Shopify currently provides recent-order access only. The saved revenue window begins on ${orderWindow.campaignStart}, before the accessible ${orderWindow.cutoff} boundary. Enable historical-order access for the Shopify app, then reconnect this store. Saved revenue has not been changed.`}
+                   </div>
+                 )}
+ 

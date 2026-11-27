@@ -132,6 +132,9 @@ describe('Shopify sale dates through real discovery, preview, save and scheduler
     for (const dryRun of [true, false]) {
       const result = await h.call(savePath, { sourceId: 'shopify-source', dryRun }, {}, !dryRun);
       expect(result.statusCode, JSON.stringify(result.payload)).toBe(409); expect(h.state.records).toEqual(before);
+      expect(result.payload.code).toBe('SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED');
+      expect(result.payload.error).toContain('Enable historical-order access (read_all_orders) for the app, then reconnect this store');
+      expect(result.payload.error).not.toContain('approval is pending');
     }
     expect((await h.call(statusPath, {}, { sourceId: 'shopify-source' })).payload.orderWindow.eligible).toBe(false);
     expect(h.queries).toHaveLength(1);

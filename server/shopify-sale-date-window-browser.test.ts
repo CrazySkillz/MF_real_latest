@@ -71,7 +71,7 @@ describe('Shopify order history wizard in Chromium with isolated HTTP', () => {
   it('blocks inaccessible history before submission and explains that saved revenue is retained', async () => {
     const f = await fixture(false, true);
     try {
-      await browserExpect(f.page.getByText('Historical access is required; saved revenue has not been changed.', { exact: false })).toBeVisible();
+      await browserExpect(f.page.getByText('Enable historical-order access for the Shopify app, then reconnect this store. Saved revenue has not been changed.', { exact: false })).toBeVisible();
       await browserExpect(f.page.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled(); expect(f.bodies).toEqual([]); expect(f.errors).toEqual([]);
     } finally { await f.close(); }
   });

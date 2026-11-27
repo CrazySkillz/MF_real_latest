@@ -397,6 +397,26 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.recompute).not.toHaveBeenCalled();
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === 'complete')).toBe(false);
     });
+    it('retains the Shopify history-permission reason without retrying or publishing partial values', async () => {
+      const code = 'SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED';
+      mocks.storage.getRevenueSources.mockResolvedValue([{ ...source('campaign-a', 'revenue'), sourceType: 'shopify',
+        mappingConfig: JSON.stringify({ platformContext: 'ga4', campaignField: 'tags', selectedValues: ['sale'], revenueMetric: 'current_total_price' }) }]);
+      const previous = structuredClone({ daily: [...daily], overviews: [...overviews], financial: [...saved] });
+      const fetch = vi.fn(async () => new Response(JSON.stringify({ code, error: 'private-provider-detail' }), { status: 409 }));
+      vi.stubGlobal('fetch', fetch);
+      await expect(runGA4DailyRefreshPipelineForTrigger('recovery', options())).rejects.toThrow();
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith('campaign-a', 'campaign-a-owner', 'work-a', 'owner-token',
+        'release', 120_000, undefined, { retryable: false, code: `owned_pipeline:${code}`, retryAfterMs: undefined });
+      expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === 'complete')).toBe(false);
+      expect(mocks.provider.getTimeSeriesData).not.toHaveBeenCalled();
+      expect(mocks.recompute).not.toHaveBeenCalled();
+      expect(mocks.aggregate).not.toHaveBeenCalled();
+      expect(mocks.executive).not.toHaveBeenCalled();
+      expect(mocks.kpiAlerts).not.toHaveBeenCalled();
+      expect(mocks.benchmarkAlerts).not.toHaveBeenCalled();
+      expect({ daily: [...daily], overviews: [...overviews], financial: [...saved] }).toEqual(previous);
+    });
     describe("accepted draft initial imports", () => {
       afterEach(() => vi.unstubAllEnvs());
       const initialOptions = () => ({ ...options(), initialImportWorkId: "work-a" });

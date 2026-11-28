@@ -237,19 +237,24 @@ Rules:
 
 ## Revenue Breakdown
 
-The `Revenue Breakdown` table shows source provenance, not row attribution.
+The `Revenue Breakdown` table shows source totals with indented native GA4 revenue for each selected campaign.
 
 Columns:
 
-- `Source`
+- `Source / Campaign`
 - `Amount`
 
 Rules:
 
-- `GA4 Revenue (imported to date)` sums the native comparison rows from the
-  selected GA4 property and saved campaign values, using the saved initial-import
-  boundary through the latest completed reporting day. It is not the Overview
-  native Revenue & Financials amount when that section uses a different window.
+- `GA4 Revenue` preserves the existing native comparison subtotal. Its campaign
+  detail uses the full saved Overview native rows for the displayed property imported dates.
+  Detail is shown only when both saved reports match the selected property, dates
+  and publication timestamp, native revenue is verified and numeric, and the
+  scoped unrounded campaign sum reconciles to that subtotal after rounding once.
+  Otherwise, detail is explicitly unavailable; existing source totals remain unchanged.
+- Campaign detail includes recorded zero and negative revenue, excludes imported
+  sources, and is not limited to the chart's top ten campaigns. Child rows are
+  explanatory and are never added again to `TOTAL`.
 - Compute that source total from raw selected campaign amounts and round once;
   keep existing individually rounded campaign display/ranking inputs separate.
   Do not redistribute a rounding cent between campaigns.

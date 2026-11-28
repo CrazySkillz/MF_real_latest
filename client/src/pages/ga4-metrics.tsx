@@ -6563,6 +6563,18 @@ export default function GA4Metrics() {
   const overviewGA4MetadataAvailable = ga4ConnectionUsable && !ga4DailyPlaceholder
     && String(ga4DailyResp?.propertyId || "") === selectedGA4PropertyId;
   const overviewGA4ReportingStartDate = overviewGA4MetadataAvailable ? String(ga4DailyResp?.overviewStartDate || "") : "";
+  const adComparisonNativeCampaignRevenueRows = useMemo(() => {
+    if (!ga4ConnectionUsable || breakdownPlaceholder || adComparisonBreakdownPlaceholder || !campaignBreakdownRevenueVerified
+      || !overviewGA4ReportingStartDate || !overviewGA4ReportingDate
+      || ![ga4Breakdown, adComparisonBreakdown].every(report => report?.propertyId === selectedGA4PropertyId
+        && report?.startDate === overviewGA4ReportingStartDate && report?.endDate === overviewGA4ReportingDate)
+      || !ga4Breakdown?.lastUpdated || ga4Breakdown.lastUpdated !== adComparisonBreakdown?.lastUpdated
+      || !campaignBreakdownNativeRows.every((row: any) => typeof row.revenue === "number" && Number.isFinite(row.revenue))
+      || Number(campaignBreakdownAgg.reduce((sum, row) => sum + row.unroundedRevenue, 0).toFixed(2)) !== adComparisonNativeRevenue) return undefined;
+    return campaignBreakdownAgg;
+  }, [ga4ConnectionUsable, breakdownPlaceholder, adComparisonBreakdownPlaceholder, campaignBreakdownRevenueVerified,
+    overviewGA4ReportingStartDate, overviewGA4ReportingDate, ga4Breakdown, adComparisonBreakdown, selectedGA4PropertyId,
+    campaignBreakdownNativeRows, campaignBreakdownAgg, adComparisonNativeRevenue]);
   const overviewGA4ReportingTimeZone = normalizeClientReportingTimeZone(ga4DailyResp?.reportingTimeZone);
   const overviewFinancialWindow = overviewFinancialSnapshot?.metrics?.financialDaily?.currentValueWindow;
   const overviewFinancialReportingTimeZone = normalizeClientReportingTimeZone(overviewFinancialWindow?.reportingTimeZone);
@@ -9576,6 +9588,7 @@ export default function GA4Metrics() {
                   <GA4AdComparison
                     campaignBreakdownAgg={adComparisonBreakdownAgg}
                     nativeRevenue={adComparisonNativeRevenue}
+                    nativeCampaignRevenueRows={adComparisonNativeCampaignRevenueRows}
                     chartCampaignRows={adComparisonChartRows}
                     unitsSoldRankings={selectGA4UnitsSoldCards(ga4Breakdown, { campaignId: campaignId || "", propertyId: selectedGA4PropertyId,
                       startDate: String(ga4Breakdown?.startDate || ""), endDate: String(ga4Breakdown?.endDate || ""), campaignNames: adComparisonChartRows.map(row => row.name) })}

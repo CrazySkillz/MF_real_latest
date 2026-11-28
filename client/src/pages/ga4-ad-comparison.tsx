@@ -28,6 +28,7 @@ interface CampaignAgg {
 interface GA4AdComparisonProps {
   campaignBreakdownAgg: CampaignAgg[];
   nativeRevenue?: number;
+  nativeCampaignRevenueRows?: Array<Pick<CampaignAgg, "name" | "revenue">>;
   chartCampaignRows: CampaignAgg[];
   unitsSoldRankings?: Array<{ title: string; units: number; names: string[] }>;
   chartRevenue?: number;
@@ -69,6 +70,7 @@ const METRIC_LABELS: Record<string, string> = {
 function GA4AdComparison({
   campaignBreakdownAgg,
   nativeRevenue,
+  nativeCampaignRevenueRows,
   chartCampaignRows,
   unitsSoldRankings = [],
   chartRevenue,
@@ -347,7 +349,7 @@ function GA4AdComparison({
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
             <CardDescription>
-              GA4 revenue uses the initial-import-to-latest-completed-day. Imported sources show confirmed values through the latest completed day.
+              GA4 revenue uses the property imported dates. Imported sources show confirmed values through the latest completed day.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -362,7 +364,7 @@ function GA4AdComparison({
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
           <CardDescription>
-            GA4 revenue uses the initial-import-to-latest-completed-day. Imported sources show confirmed values through the latest completed day.
+            {nativeCampaignRevenueRows ? `GA4 revenue by campaign: ${comparisonStartDate} → ${comparisonEndDate}.` : "GA4 revenue uses the property imported dates."} Imported sources show confirmed values through the latest completed day.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -370,7 +372,7 @@ function GA4AdComparison({
             <table className="w-full text-sm">
               <thead className="bg-muted border-b">
                 <tr>
-                  <th className="text-left font-medium px-3 py-2">Source</th>
+                  <th className="text-left font-medium px-3 py-2">Source / Campaign</th>
                   <th className="text-right font-medium px-3 py-2">Amount</th>
                 </tr>
               </thead>
@@ -379,6 +381,12 @@ function GA4AdComparison({
                   <td className="px-3 py-2 text-foreground">GA4 Revenue</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4RevenueForBreakdown)}</td>
                 </tr>
+                {nativeCampaignRevenueRows ? nativeCampaignRevenueRows.map((campaign) => (
+                  <tr key={campaign.name} className="border-b" data-testid="ga4-campaign-revenue-row">
+                    <td className="pl-7 pr-3 py-2 text-muted-foreground">{campaign.name}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(campaign.revenue)}</td>
+                  </tr>
+                )) : <tr><td colSpan={2} className="px-3 py-2 text-muted-foreground text-xs">Per-campaign GA4 revenue is unavailable for these imported dates.</td></tr>}
                 {(revenueState === 'ready' || revenueState === 'stale') && visibleRevenueDisplaySources.map((s) => (
                     <tr key={s.sourceId} className="border-b">
                       <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>

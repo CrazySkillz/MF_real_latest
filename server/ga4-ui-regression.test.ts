@@ -669,20 +669,21 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).not.toContain("â");
   });
 
-  it("keeps the GA4 Ad Comparison metric selector in the header before leader cards", () => {
+  it("keeps the GA4 Ad Comparison metric selector after leader cards and above the chart on the left", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const headerStart = adComparison.indexOf("{/* Header */}");
     const rankingsStart = adComparison.indexOf("{/* Performance Rankings */}", headerStart);
     const selectorStart = adComparison.indexOf("<Select value={selectedMetric}", headerStart);
-    const headerSection = adComparison.slice(headerStart, rankingsStart);
+    const unitsStart = adComparison.indexOf('data-testid="campaign-comparison-units"', rankingsStart);
+    const chartStart = adComparison.indexOf("{chartBreakdownStale", selectorStart);
 
     expect(headerStart).toBeGreaterThan(-1);
     expect(rankingsStart).toBeGreaterThan(headerStart);
-    expect(selectorStart).toBeGreaterThan(headerStart);
-    expect(selectorStart).toBeLessThan(rankingsStart);
-    expect(adComparison.indexOf("<Select value={selectedMetric}", rankingsStart)).toBe(-1);
-    expect(headerSection).toContain("md:grid md:grid-cols-3");
-    expect(headerSection).toContain("md:justify-self-end");
+    expect(unitsStart).toBeGreaterThan(rankingsStart);
+    expect(selectorStart).toBeGreaterThan(unitsStart);
+    expect(selectorStart).toBeLessThan(chartStart);
+    expect(adComparison.indexOf("<Select value={selectedMetric}", selectorStart + 1)).toBe(-1);
+    expect(adComparison.slice(selectorStart - 60, selectorStart)).toContain('className="w-full sm:max-w-[280px]"');
   });
 
   it("does not render or export previous-property placeholder rows in Ad Comparison", () => {

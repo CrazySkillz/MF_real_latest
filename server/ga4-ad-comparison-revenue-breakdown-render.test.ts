@@ -31,6 +31,55 @@ const nativeRows = [{
   revenue: 0, conversionRate: 0, revenuePerSession: 0,
 }];
 
+describe("saved native campaign revenue provenance", () => {
+  const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
+  const start = page.indexOf("const adComparisonNativeCampaignRevenueRows = useMemo(() => {");
+  const end = page.indexOf("const overviewGA4ReportingTimeZone", start);
+  const report = { propertyId: "425831989", startDate: "2025-11-20", endDate: "2026-11-28", lastUpdated: "2026-11-28T14:03:17.411Z" };
+  function resolve(overrides: Record<string, unknown> = {}) {
+    const bindings = { useMemo: (fn: () => unknown) => fn(), ga4ConnectionUsable: true, breakdownPlaceholder: false,
+      adComparisonBreakdownPlaceholder: false, campaignBreakdownRevenueVerified: true,
+      overviewGA4ReportingStartDate: report.startDate, overviewGA4ReportingDate: report.endDate,
+      ga4Breakdown: report, adComparisonBreakdown: report, selectedGA4PropertyId: report.propertyId,
+      campaignBreakdownNativeRows: [{ revenue: 40.5 }, { revenue: 0 }],
+      campaignBreakdownAgg: [{ name: "coffee_bags", revenue: 40.5, unroundedRevenue: 40.5 }, { name: "served_here", revenue: 0, unroundedRevenue: 0 }],
+      adComparisonNativeRevenue: 40.5, ...overrides };
+    expect(start).toBeGreaterThan(0); expect(end).toBeGreaterThan(start);
+    const before = JSON.stringify(bindings);
+    const result = new Function(...Object.keys(bindings), ts.transpileModule(page.slice(start, end) +
+      "return adComparisonNativeCampaignRevenueRows;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
+    expect(JSON.stringify(bindings)).toBe(before);
+    return result;
+  }
+  it("accepts the complete same-property annual saved publication and recorded zero", () => {
+    expect(resolve()).toEqual([{ name: "coffee_bags", revenue: 40.5, unroundedRevenue: 40.5 }, { name: "served_here", revenue: 0, unroundedRevenue: 0 }]);
+  });
+  it.each([
+    { ga4ConnectionUsable: false }, { breakdownPlaceholder: true }, { adComparisonBreakdownPlaceholder: true },
+    { campaignBreakdownRevenueVerified: false }, { overviewGA4ReportingStartDate: "" }, { overviewGA4ReportingDate: "" },
+    { selectedGA4PropertyId: "another-property" }, { adComparisonNativeRevenue: 39 },
+    { ga4Breakdown: undefined }, { adComparisonBreakdown: undefined },
+    ...["ga4Breakdown", "adComparisonBreakdown"].flatMap(key => [
+      { [key]: { ...report, propertyId: "another-property" } }, { [key]: { ...report, startDate: "2026-09-23" } },
+      { [key]: { ...report, endDate: "2026-11-27" } }, { [key]: { ...report, lastUpdated: "" } },
+      { [key]: { ...report, lastUpdated: "2026-11-28T14:00:00.000Z" } },
+    ]),
+    ...[null, undefined, "40.5", Number.NaN, Number.POSITIVE_INFINITY].map(revenue => ({ campaignBreakdownNativeRows: [{ revenue }] })),
+  ])("withholds detail for unverified, mismatched or malformed inputs %#", overrides => {
+    expect(resolve(overrides)).toBeUndefined();
+  });
+  it("uses full saved detail beyond 2000 rows and withholds it when the unchanged native subtotal is incomplete", () => {
+    const rows = Array.from({ length: 2001 }, (_, i) => ({ revenue: i === 2000 ? 40.5 : 0 }));
+    expect(resolve({ campaignBreakdownNativeRows: rows })).toHaveLength(2);
+    expect(resolve({ campaignBreakdownNativeRows: rows, adComparisonNativeRevenue: 0 })).toBeUndefined();
+  });
+  it("reconciles signed amounts before rounding without altering per-campaign display precision", () => {
+    const rows = [{ revenue: -1.006 }, { revenue: 0.006 }];
+    const agg = rows.map((row, i) => ({ name: String(i), revenue: Number(row.revenue.toFixed(2)), unroundedRevenue: row.revenue }));
+    expect(resolve({ campaignBreakdownNativeRows: rows, campaignBreakdownAgg: agg, adComparisonNativeRevenue: -1 })).toEqual(agg);
+  });
+});
+
 function renderRevenueBreakdown(
   revenueState: "loading" | "ready" | "stale" | "unavailable",
   revenueDisplaySources: Array<{
@@ -40,7 +89,7 @@ function renderRevenueBreakdown(
   chartCampaignRows = nativeRows,
   campaignBreakdownAgg = nativeRows,
   nativeRevenue?: number,
-  chartOptions: { selectedMetric?: string; chartRevenue?: number; chartConversionRate?: number } = {},
+  chartOptions: Partial<React.ComponentProps<typeof GA4AdComparison>> = {},
 ) {
   return renderToStaticMarkup(React.createElement(GA4AdComparison, {
     campaignBreakdownAgg,
@@ -61,6 +110,38 @@ function renderRevenueBreakdown(
 }
 
 describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
+  it("shows native campaign revenue for the imported dates without double-counting or including mapped source revenue", () => {
+    const rows = [{ ...nativeRows[0], name: "coffee_bags", revenue: 40.5 }, { ...nativeRows[0], name: "served_here" }];
+    const sources = [{ sourceId: "crm", displayName: "CRM", sourceType: "hubspot", revenue: 100 }];
+    const chart = rows.map(row => ({ ...row, revenue: row.revenue + 50 }));
+    const options = { nativeCampaignRevenueRows: rows, comparisonStartDate: "2025-11-20", comparisonEndDate: "2026-11-28" };
+    const original = JSON.stringify({ rows, sources, chart });
+    for (const state of ["ready", "stale", "loading", "unavailable"] as const) {
+      const html = renderRevenueBreakdown(state, sources, chart, rows, 40.5, options);
+      const detail = html.match(/<tr[^>]*data-testid="ga4-campaign-revenue-row"[^>]*>[\s\S]*?<\/tr>/g)!;
+      expect(detail).toHaveLength(2);
+      expect(detail[0]).toContain("coffee_bags</td>"); expect(detail[0]).toContain("$40.50</td>");
+      expect(detail[1]).toContain("served_here</td>"); expect(detail[1]).toContain("$0.00</td>");
+      expect(html).toContain("GA4 revenue by campaign: 2025-11-20 → 2026-11-28.");
+      expect(html).toMatch(/GA4 Revenue<\/td>\s*<td[^>]*>\$40\.50<\/td>/);
+      const total = html.slice(html.indexOf("TOTAL</td>"));
+      expect(total).toContain(state === "ready" || state === "stale" ? "$140.50" : "Unavailable");
+    }
+    expect(JSON.stringify({ rows, sources, chart })).toBe(original);
+  });
+  it("does not cap campaign detail at the chart limit and preserves signed revenue without allocating rounding cents", () => {
+    const rows = Array.from({ length: 31 }, (_, i) => ({ ...nativeRows[0], name: `campaign-${i}`, revenue: i === 30 ? -1.01 : 0 }));
+    const html = renderRevenueBreakdown("ready", [], rows, rows, -1, { nativeCampaignRevenueRows: rows });
+    expect(html.match(/data-testid="ga4-campaign-revenue-row"/g)).toHaveLength(31);
+    expect(html).toMatch(/campaign-30<\/td>\s*<td[^>]*>\$-1\.01<\/td>/);
+    expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>\$-1\.00<\/td>/);
+  });
+  it("keeps existing source totals while explicitly withholding unverified campaign detail", () => {
+    const html = renderRevenueBreakdown("ready", [], nativeRows, nativeRows, 40.5);
+    expect(html).not.toContain('data-testid="ga4-campaign-revenue-row"');
+    expect(html).toContain("Per-campaign GA4 revenue is unavailable for these imported dates.");
+    expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>\$40\.50<\/td>/);
+  });
   it("adds quantity cards below the four rankings only when verified quantities were supplied", () => {
     const rows = [{ ...nativeRows[0], name: "coffee_bags", sessions: 109, revenue: 40.5, conversionRate: 0.92 }, { ...nativeRows[0], name: "served_here", sessions: 24 }];
     const base = { campaignBreakdownAgg: rows, chartCampaignRows: rows, breakdownLoading: false, chartBreakdownLoading: false,

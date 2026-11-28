@@ -281,7 +281,8 @@ export class GoogleAnalytics4Service {
     limit: number = 50,
     campaignFilter?: CampaignFilter,
     endDate = 'yesterday',
-    validationReadOnly = false
+    validationReadOnly = false,
+    expectedDailyConversions?: Record<string, number>,
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
@@ -508,6 +509,14 @@ export class GoogleAnalytics4Service {
 
     const supplementFromConversionFallback = async (accessToken: string, base: any) => {
       if (!hasMissingConversionTrafficRows(base)) return base;
+      // Complete, independently verified daily credits can prove no supplement is needed.
+      // Keep the native full-period rows instead of shortening them for a redundant event query.
+      const expected = Object.entries(expectedDailyConversions || {});
+      const dayCount = (Date.parse(endDate) - Date.parse(dateRange)) / 86400000 + 1;
+      if (expected.length === dayCount && expected.every(([date, value]) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date &&
+        date >= dateRange && date <= endDate && typeof value === 'number' && Number.isFinite(value) && value >= 0
+      ) && conversionCreditsMatch(base.totals.conversions, expected.reduce((sum, [, value]) => sum + value, 0), Math.max(1, expected.length + base.rows.length))) return base;
       let conversionRes;
       try { conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions', true); }
       catch (error: any) {

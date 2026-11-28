@@ -17,6 +17,46 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("full-period landing conversions verified by daily history", () => {
+  const from = "2025-11-20", to = "2026-11-28";
+  const history = () => Object.fromEntries(Array.from({ length: 374 }, (_, i) => [
+    new Date(Date.parse(from) + i * 86400000).toISOString().slice(0, 10), i === 373 ? 1 : 0,
+  ]));
+  const connection = { getGA4Connection: async () => ({ id: "saved", propertyId: "123", accessToken: "fixture" }) };
+  function provider() {
+    const calls: any[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(init.body); calls.push(body);
+      if (body.dimensions[0].name === "pageLocation") throw new Error("SUPPLEMENT_REQUIRED");
+      return new Response(JSON.stringify({ rowCount: 2, rows: [
+        { dimensionValues: [{ value: "/older" }, { value: "qr" }, { value: "packaging" }], metricValues: ["100", "8", "0", "0", "0"].map(value => ({ value })) },
+        { dimensionValues: [{ value: "/purchase" }, { value: "qr" }, { value: "packaging" }], metricValues: ["33", "4", "1", "40.50", "0.03"].map(value => ({ value })) },
+      ] }));
+    }));
+    return calls;
+  }
+  it("preserves the entire annual window when all independently verified conversion credits are already present", async () => {
+    const calls = provider();
+    const result = await ga4Service.getLandingPagesReport("campaign", connection, from, "123", 50, ["saved-a"], to, true, history());
+    expect(calls).toHaveLength(1);
+    expect(calls[0].dateRanges).toEqual([{ startDate: from, endDate: to }]);
+    expect(result.totals).toMatchObject({ sessions: 133, conversions: 1, revenue: 40.5 });
+    expect(result.rows[0].landingPage).toBe("/older");
+    expect(result.meta.historyLimited).toBeUndefined();
+  });
+  it.each(["missing day", "extra day", "negative", "nonfinite", "malformed date", "different credits", "absent"])("does not skip supplementation using %s evidence", async kind => {
+    const calls = provider(), expected = history();
+    if (kind === "missing day") delete expected[from];
+    if (kind === "extra day") expected["2025-11-19"] = 0;
+    if (kind === "negative") expected[from] = -1;
+    if (kind === "nonfinite") expected[from] = NaN;
+    if (kind === "malformed date") { delete expected[from]; expected["2025-99-20"] = 0; }
+    if (kind === "different credits") expected[to] = 2;
+    await expect(ga4Service.getLandingPagesReport("campaign", connection, from, "123", 50, ["saved-a"], to, true, kind === "absent" ? undefined : expected)).rejects.toThrow("SUPPLEMENT_REQUIRED");
+    expect(calls.some(body => body.dimensions[0].name === "pageLocation")).toBe(true);
+  });
+});
+
 describe("GA4 Overview Landing Pages certification boundary", () => {
   it("keeps the exact six-column contract without a Revenue column in UI or PDFs", () => {
     const client = read("client/src/pages/ga4-metrics.tsx");

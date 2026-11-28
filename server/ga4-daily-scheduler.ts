@@ -480,6 +480,11 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
 
           let overviewSnapshot: any = undefined;
           if (hasCampaignFilter) {
+            const expectedDailyConversions = Object.fromEntries([
+              ...(Array.isArray(existingOverviewRows) ? existingOverviewRows : []).filter((row: any) => String(row.date) < storageStartDate),
+              ...completeRows,
+            ].filter((row: any) => String(row.date) >= overviewStartDate && String(row.date) <= reportingWindow.endDate)
+              .map((row: any) => [String(row.date), Number(row?.conversions || 0)]));
             const [campaignBreakdown, landingPages] = await Promise.all([
               withGA4DailyStage("overview_campaign_breakdown", provider.getAcquisitionBreakdown(
                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 10000, campaignFilter,
@@ -487,7 +492,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
                 { ...overviewDailyTraffic, campaignId: currentCampaignId, rollingUsersStartDate: overviewStartDate },
               )),
               withGA4DailyStage("overview_landing_pages", provider.getLandingPagesReport(
-                currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
+                currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate, false, expectedDailyConversions,
               )),
             ]);
             const distinctDaily = new Map(campaignBreakdown.meta.distinctUsers?.daily.map(row => [row.date, row.users]));
@@ -510,9 +515,6 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
               conversions: totals.conversions + Number(row?.conversions || 0),
               revenue: totals.revenue + Number(row?.revenue || 0),
             }), { sessions: 0, conversions: 0, revenue: 0 });
-            const expectedDailyConversions = Object.fromEntries(overviewRows.map((row: any) => [
-              String(row.date), Number(row?.conversions || 0),
-            ]));
             const conversionEvents = await withGA4DailyStage("overview_conversion_events", provider.getConversionEventsReport(
               currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter,
               reportingWindow.endDate, false, expectedDailyConversions,

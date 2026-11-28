@@ -307,9 +307,10 @@ describe("Ad Comparison precision through the real Reports page", () => {
         await page.getByRole("option", { name: "Revenue (High to Low)", exact: true }).click();
         await browserExpect(page.getByText("Campaign Breakdown Revenue", { exact: true }).locator("..")).toContainText("€7,653.96");
         for (const [label, campaign, detail] of [
-          ["Most Key Events", "yesop_paid_social", "21 Key Events"],
+          ["Highest Revenue", "yesop_paid_social", "€4,253.52"],
           ["Highest Conversion Rate", "yesop_paid_social", "8.14%"],
-          ["Needs Attention", "yesop_prospecting", "4.62%"],
+          ["Lowest Revenue", "yesop_prospecting", "€3,400.44"],
+          ["Lowest Conversion Rate", "yesop_prospecting", "4.62%"],
         ]) {
           const card = page.getByText(label, { exact: true }).locator("../..");
           await browserExpect(card).toContainText(campaign);

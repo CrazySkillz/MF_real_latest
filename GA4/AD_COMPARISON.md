@@ -101,7 +101,7 @@ The current tab contains:
 
 - top leader-card row when at least two comparison rows exist
 - metric dropdown in the header
-- Most Key Events, conversion-rate leader and attention cards,
+- Highest Revenue, Highest Conversion Rate, Lowest Revenue and Lowest Conversion Rate cards,
   plus metric-based chart and selected-metric summary
 - comparison chart limited to the top 10 rows for the selected metric
 - selected-metric total and `Campaigns Compared` summary cards
@@ -181,8 +181,7 @@ Campaign Breakdown table: traffic uses its saved import window, and Revenue adds
 uniquely mapped imported revenue to its native campaign-start revenue. Imported
 revenue remains separate from native comparison values.
 
-Imported revenue cannot determine Most Key Events, which ranks by observed
-GA4 key events. The Highest Conversion Rate card displays Overview row revenue.
+Revenue rankings use the chart's existing Overview campaign revenue, including exact campaign-mapped imported revenue. Conversion-rate rankings use the supplied saved rate without recalculation.
 
 ## Leader Cards
 
@@ -193,52 +192,16 @@ Shared selector:
 
 - `selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric)` in `shared/ga4-ad-comparison-cards.ts`
 
-### Most Key Events
+### Four explicit rankings
 
-Meaning:
-
-- campaign row with the most observed GA4 key events
-
-Rules:
-
-- does not change when the dropdown metric changes
-- has no winner when all rows have zero key events
-- cannot be created by imported-only revenue
-- must show the key event count and exact card conversion rate to two decimals
-- must not add suffixes such as `(matched external included)` to the campaign label
-
-### Highest Conversion Rate
-
-Meaning:
-
-- campaign row with the highest conversion rate among rows with sessions and a
-  positive conversion rate; this is not a spend-efficiency claim
-
-Rules:
-
-- does not change when the selected metric changes
-- excludes zero-session and zero-rate rows; has no winner when all rates are zero
-- uses the Overview Campaign Breakdown revenue in the detail line
-- shows exact card conversion rate to two decimals so close-rate decisions are explainable
-
-### Needs Attention
-
-Meaning:
-
-- campaign row with the lowest conversion rate among meaningful-volume rows
-
-Meaningful-volume rule:
-
-- rows must have sessions
-- prefer rows at or above `max(25 sessions, 10% of the largest campaign row's sessions)`
-- if no row meets that floor, fall back to all rows with sessions
-- when the lowest-rate row is also `Most Key Events` and another eligible row
-  has the same lowest exact rate, use the other tied row for `Needs Attention`
-
-Display rule:
-
-- show exact card conversion rate to two decimals and sessions from the Overview campaign row
-- never use stale, previous-property, or unverified row values
+- Order: Highest Revenue, Highest Conversion Rate, Lowest Revenue, Lowest Conversion Rate.
+- Use the same saved campaign rows and imported dates as the chart. The dropdown changes only the chart metric.
+- Revenue uses the existing campaign revenue, including recorded zero or negative values. Missing/nonfinite revenue makes both revenue rankings unavailable.
+- Conversion rate uses the existing supplied rate, with no event-count division or recalculation. Include recorded 0% rates and all campaigns with sessions; the former 25-session attention threshold does not apply.
+- Require at least two comparable rows for each metric. Zero-session rows cannot enter rate comparisons; unknown rates on eligible rows make both rate rankings unavailable.
+- Show all exact ties in the UI campaign label; PDFs identify the first campaign and the count of other tied campaigns. Never choose an arbitrary sole winner from tied zero values.
+- Preserve source scope, calculations, chart, dropdown, totals and query behavior. These are metric rankings, not claims about profitability or statistical significance.
+- The same four rankings appear in browser and scheduled PDFs. Existing saved report subsection keys remain compatible; report schedules are unchanged.
 
 ### Validation Rule
 

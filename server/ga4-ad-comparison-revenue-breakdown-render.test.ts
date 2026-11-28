@@ -190,7 +190,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
       { ...nativeRows[0], name: "campaign-b", sessions: 20, conversions: 0, conversionRate: 0 },
     ]);
 
-    expect(html).toContain("Most Key Events");
+    for (const title of ["Highest Revenue", "Highest Conversion Rate", "Lowest Revenue", "Lowest Conversion Rate"]) expect(html).toContain(title);
     expect(html).toContain("Top Campaigns by Sessions");
     expect(html).toContain("Campaigns Compared");
     expect(html).toContain("Revenue Breakdown");

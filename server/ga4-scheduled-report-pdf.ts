@@ -1652,25 +1652,25 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         })()
       : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
     const leaderMetric = selectedMetric;
-    const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, leaderMetric);
+    const { rankings } = selectGA4AdComparisonLeaderCards(chartSummaryRows, leaderMetric);
     if (includeBestWorst && chartSummaryRows.length > 1) {
-      y += 4;
-      checkPage(28);
-      const colW = (CW - 8) / 3;
-      const rankCards = [
-        { title: "MOST KEY EVENTS", name: String(bestPerforming?.name || "No key event leader"), detail: bestPerforming ? `${formatMetricValue("conversions", bestPerforming.conversions)} Key Events - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No key events recorded", color: COLORS.success, x: MX },
-        { title: "HIGHEST CONVERSION RATE", name: String(mostEfficient?.name || "No rate leader"), detail: mostEfficient ? `${formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR - ${formatMoney(Number(mostEfficient.revenue || 0))} revenue` : "No conversions recorded", color: COLORS.info, x: MX + colW + 4 },
-        { title: "NEEDS ATTENTION", name: String(needsAttention?.name || ""), detail: `${formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)} CR - ${formatNumber(Number(needsAttention?.sessions || 0))} sessions`, color: COLORS.danger, x: MX + (colW + 4) * 2 },
-      ];
-      rankCards.forEach((card) => {
-        doc.setFillColor(...COLORS.white); doc.setDrawColor(...card.color);
-        doc.setLineWidth(0.6); doc.roundedRect(card.x, y, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
-        doc.setFillColor(...card.color); doc.circle(card.x + 8, y + 9, 2, "F");
-        doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...card.color); doc.text(card.title, card.x + 13, y + 7);
-        doc.setFontSize(8); doc.setTextColor(...COLORS.text); doc.text(card.name.slice(0, 22), card.x + 13, y + 14);
-        doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textSec); doc.text(card.detail.slice(0, 32), card.x + 13, y + 20);
+      y += 4; checkPage(58);
+      const colW = (CW - 4) / 2;
+      rankings.forEach((ranking, index) => {
+        const leader = ranking.leaders[0];
+        const name = leader ? leader.name.slice(0, 22) + (ranking.leaders.length > 1 ? " + " + (ranking.leaders.length - 1) + " tied" : "") : ranking.unavailableReason;
+        const detail = leader ? ranking.metric === "revenue" ? formatMoney(Number(leader.revenue)) + " revenue"
+          : formatGA4AdComparisonCardPct(leader.conversionRate) + (ranking.leaders.length === 1 ? " - " + formatNumber(leader.sessions) + " sessions" : " conversion rate") : "Comparison unavailable";
+        const color = index === 0 ? COLORS.success : index === 1 ? COLORS.info : COLORS.warning;
+        const x = MX + (index % 2) * (colW + 4), cardY = y + Math.floor(index / 2) * 28;
+        doc.setFillColor(...COLORS.white); doc.setDrawColor(...color);
+        doc.setLineWidth(0.6); doc.roundedRect(x, cardY, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
+        doc.setFillColor(...color); doc.circle(x + 8, cardY + 9, 2, "F");
+        doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...color); doc.text(ranking.title.toUpperCase(), x + 13, cardY + 7);
+        doc.setFontSize(8); doc.setTextColor(...COLORS.text); doc.text(name, x + 13, cardY + 14);
+        doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textSec); doc.text(detail, x + 13, cardY + 20);
       });
-      y += 30;
+      y += 60;
     }
     if (includeTopCampaigns && sortedByMetric.length > 0) {
       if (selectedMetric === "users" && sortedByMetric.some(row => row.users == null || !Number.isFinite(row.users))) throw new Error("Distinct GA4 Users are unavailable for this report window");

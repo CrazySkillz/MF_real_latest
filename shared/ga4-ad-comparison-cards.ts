@@ -17,7 +17,23 @@ export function selectGA4AdComparisonLeaderCards<T extends GA4AdComparisonCardRo
 
   const needsAttention = selectGA4AdComparisonNeedsAttention(comparisonRows, bestPerforming);
 
-  return { bestPerforming, mostEfficient, needsAttention };
+  const rankings = ([
+    { title: "Highest Revenue", metric: "revenue", ascending: false },
+    { title: "Highest Conversion Rate", metric: "conversionRate", ascending: false },
+    { title: "Lowest Revenue", metric: "revenue", ascending: true },
+    { title: "Lowest Conversion Rate", metric: "conversionRate", ascending: true },
+  ] as const).map(({ title, metric, ascending }) => {
+    const eligible = metric === "conversionRate" ? comparisonRows.filter(row => row.sessions > 0) : comparisonRows;
+    const unavailable = eligible.some(row => !Number.isFinite(row[metric]))
+      || (metric === "conversionRate" && comparisonRows.some(row => !Number.isFinite(row.sessions)));
+    const sorted = unavailable ? [] : [...eligible].sort((a, b) =>
+      (ascending ? Number(a[metric]) - Number(b[metric]) : Number(b[metric]) - Number(a[metric]))
+      || a.name.localeCompare(b.name));
+    const leaders = sorted.length < 2 ? [] : sorted.filter(row => row[metric] === sorted[0][metric]);
+    return { title, metric, leaders, unavailableReason: unavailable ? "Data unavailable" : "Not enough comparable data" };
+  });
+
+  return { bestPerforming, mostEfficient, needsAttention, rankings };
 }
 
 export function formatGA4AdComparisonCardPct(value: number): string {

@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "3a00d68cd8ebcf2d1e36195630648d33776115a8",
+  "expectedCommit": "75bc0241f68f2eac3aa2449a9ce1a315da376e9c",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -44,7 +44,7 @@
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
       "before": "d7ddacff87f5f2496891cb14dea26d42586d4a9597b855cf0be0690cb05a6159",
-      "after": "401316534cd6c1943f51f1492116087d4609a4782e2daf2a90a24ff22b1326f8"
+      "after": "f19c6dec078edbd0857858909d2593f96ff1dc26204552a8fabd8a9003235d95"
     },
     {
       "path": "client/src/pages/ga4-metrics.tsx",

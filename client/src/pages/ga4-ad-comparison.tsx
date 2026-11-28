@@ -152,7 +152,8 @@ function GA4AdComparison({
   }, [chartRows, selectedMetric]);
 
   const { rankings } = useMemo(() => {
-    return selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric);
+    const cards = selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric);
+    return { rankings: [cards.rankings[0], cards.rankings[2], cards.rankings[1], cards.rankings[3]] };
   }, [chartSummaryRows, selectedMetric]);
 
   const fmtMetricValue = (metric: string, value: number) => {
@@ -250,8 +251,8 @@ function GA4AdComparison({
             const names = ranking.leaders.map(row => row.name).join(", ");
             const label = names ? names + (ranking.leaders.length > 1 ? " (tie)" : "") : ranking.unavailableReason;
             const leader = ranking.leaders[0];
-            const Icon = index === 0 ? Trophy : index === 1 ? Zap : ArrowDown;
-            const color = index === 0 ? "text-emerald-700 dark:text-emerald-300" : index === 1 ? "text-blue-700 dark:text-blue-300" : "text-amber-700 dark:text-amber-300";
+            const Icon = index === 0 ? Trophy : index === 2 ? Zap : ArrowDown;
+            const color = index === 0 ? "text-emerald-700 dark:text-emerald-300" : index === 2 ? "text-blue-700 dark:text-blue-300" : "text-amber-700 dark:text-amber-300";
             return (
               <Card key={ranking.title} data-testid="comparison-ranking-card">
                 <CardContent className="p-5">

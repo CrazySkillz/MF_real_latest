@@ -9825,3 +9825,59 @@ index 1a6d3b75..3e6b1516 100644
      }
      if (includeTopCampaigns && sortedByMetric.length > 0) {
        if (selectedMetric === "users" && sortedByMetric.some(row => row.users == null || !Number.isFinite(row.users))) throw new Error("Distinct GA4 Users are unavailable for this report window");
+
+diff --git a/client/src/pages/ga4-ad-comparison.tsx b/client/src/pages/ga4-ad-comparison.tsx
+index a03b5689..0fde4da8 100644
+--- a/client/src/pages/ga4-ad-comparison.tsx
++++ b/client/src/pages/ga4-ad-comparison.tsx
+@@ -314,36 +314,6 @@ function GA4AdComparison({
+         </CardContent>
+       </Card>
+ 
+-      {/* Summary cards */}
+-      <div className="grid gap-4 md:grid-cols-2">
+-        <Card>
+-          <CardContent className="p-5">
+-            <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70">
+-              {summaryMetricLabel}
+-              {selectedMetric === "users" && (
+-                <UITooltip>
+-                  <TooltipTrigger asChild>
+-                    <Info className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+-                  </TooltipTrigger>
+-                  <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+-                    <p className="text-xs">Distinct GA4 users for each campaign during the displayed dates. A user can visit several campaigns, so campaign counts must not be added to calculate total users.</p>
+-                  </TooltipContent>
+-                </UITooltip>
+-              )}
+-            </div>
+-            <div className="text-2xl font-bold text-foreground mt-1">
+-              {fmtMetricValue(selectedMetric, totalMetric)}
+-            </div>
+-            <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
+-          </CardContent>
+-        </Card>
+-        <Card>
+-          <CardContent className="p-5">
+-            <div className="text-sm font-medium text-muted-foreground/70">Campaigns Compared</div>
+-            <div className="text-2xl font-bold text-foreground mt-1">{chartSummaryRows.length}</div>
+-          </CardContent>
+-        </Card>
+-      </div>
+       </>}
+ 
+       {breakdownUnavailable ? (
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 4b938b68..a62f37af 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -7042,7 +7042,7 @@ export default function GA4Metrics() {
+                   </div>
+                 )}
+ 
+-                {activeTab !== "overview" && ga4ProvisionalNotice(ga4DailyResp?.reportingMode) && <p className="text-sm text-muted-foreground" data-testid="ga4-provisional-notice">{ga4ProvisionalNotice(ga4DailyResp?.reportingMode)}</p>}
++                {activeTab !== "overview" && activeTab !== "campaigns" && ga4ProvisionalNotice(ga4DailyResp?.reportingMode) && <p className="text-sm text-muted-foreground" data-testid="ga4-provisional-notice">{ga4ProvisionalNotice(ga4DailyResp?.reportingMode)}</p>}
+                 <TabsContent value="overview" className="fade-in">
+                   <div className="space-y-8">
+                     <div className="text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">

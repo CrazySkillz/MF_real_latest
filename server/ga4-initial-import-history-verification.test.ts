@@ -63,6 +63,8 @@ describe('real distinct-period queries through initial-import verification', () 
     const f = await fixture(days), before = JSON.stringify([f.publication, f.daily]);
     await f.verify();
     expect(f.storage.recordGA4InitialImportVerification).toHaveBeenCalledOnce();
+    expect(vi.mocked(GoogleAnalytics4Service.prototype.getLandingPagesReport).mock.calls.at(-1)?.[8])
+      .toEqual(Object.fromEntries(f.daily.map(row => [row.date, row.conversions])));
     expect(JSON.stringify([f.publication, f.daily])).toBe(before);
     const queried = new Set(f.requests.filter(body => body.metricAggregations).flatMap(body => body.dateRanges.map((range: any) => `${range.startDate}/${range.endDate}`)));
     for (const width of [7, 30]) for (let index = width - 1; index < days; index++) {
@@ -71,6 +73,13 @@ describe('real distinct-period queries through initial-import verification', () 
       expect(window).toBeDefined();
       if (!Object.hasOwn(window!, 'sessionKeyEventRate')) expect(queried.has(`${from}/${to}`)).toBe(true);
     }
+  });
+  it('keeps existing explicitly limited publications comparable until their scheduled update', async () => {
+    const f = await fixture(365);
+    (f.publication.landingPages as any).meta = { historyLimited: true, requestedStartDate: f.start, startDate: '2026-09-01', endDate: f.end };
+    await f.verify();
+    expect(vi.mocked(GoogleAnalytics4Service.prototype.getLandingPagesReport).mock.calls.at(-1)?.[8]).toBeUndefined();
+    expect(f.storage.recordGA4InitialImportVerification).toHaveBeenCalledOnce();
   });
   it.each(['rolling value', 'missing rolling window', 'extra rolling window', 'period rate', 'missing period rate', 'rolling boundary'])('still rejects %s damage', async damage => {
     const f = await fixture(30), users = f.publication.campaignBreakdown.meta.distinctUsers;

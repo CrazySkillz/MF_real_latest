@@ -185,7 +185,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(componentScope).toContain('chartConversionRate ?? Number.NaN');
     expect(componentScope).toContain('Campaign Breakdown Revenue');
     expect(componentScope).toContain('Overall Conversion Rate');
-    expect(componentScope).toContain('{chartSummaryRows.length}');
+    expect(componentScope).not.toContain('Campaigns Compared');
     expect(componentScope).toContain('const chartSummaryRows = useMemo');
     expect(component).not.toContain('{comparisonRows.map((c, idx) => {');
     expect(adAggregateScope).toContain('byName.get(name)');

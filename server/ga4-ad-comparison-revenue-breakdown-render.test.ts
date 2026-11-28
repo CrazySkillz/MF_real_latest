@@ -64,7 +64,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
   it("matches Overview's unavailable overall rate when no sessions exist", () => {
     const rows = [{ ...nativeRows[0], sessions: 0 }];
     const html = renderRevenueBreakdown("ready", [], rows, rows, 0, { selectedMetric: "conversionRate" });
-    expect(html).toMatch(/Overall Conversion Rate<\/div><div[^>]*>Unavailable<\/div>/);
+    expect(html).not.toContain("Overall Conversion Rate");
   });
   it.each([0, 0.125, 2])("matches Overview conversion counts and rates, including fractional and repeated conversions (factor %s)", factor => {
     const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
@@ -87,9 +87,9 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     expect(aggregate.map((row: any) => row.conversionRate)).toEqual([10, 0]);
     expect(aggregate.reduce((sum: number, row: any) => sum + row.conversions, 0)).toBe(60 * factor);
     const html = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversionRate", chartConversionRate: 10 });
-    expect(html).toMatch(new RegExp(`Overall Conversion Rate</div><div[^>]*>10%</div>`));
+    expect(html).not.toContain("Overall Conversion Rate");
     const countHtml = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversions" });
-    expect(countHtml).toMatch(new RegExp(`Total Conversions</div><div[^>]*>${60 * factor}</div>`));
+    expect(countHtml).not.toContain("Total Conversions");
     expect(html).not.toContain("unselected");
     expect(JSON.stringify(rows)).toBe(before);
   });
@@ -116,7 +116,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     expect(Number(aggregate.rows.reduce((sum: number, row: any) => sum + row.revenue, 0).toFixed(2))).toBe(80433.85);
     const html = renderRevenueBreakdown("ready", sources, aggregate.rows, aggregate.rows, aggregate.native,
       { selectedMetric: "revenue", chartRevenue: aggregate.subtotal });
-    expect(html).toMatch(/Campaign Breakdown Revenue<\/div><div[^>]*>\$80433\.85<\/div>/);
+    expect(html).not.toContain("Campaign Breakdown Revenue");
     expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>\$80683\.85<\/td>/);
     expect(JSON.stringify({ rows, sources })).toBe(before);
   });
@@ -147,7 +147,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     const expected = Number((7653.956333 * sign + (mapped ? 250 : 0)).toFixed(2));
     expect(Number(aggregate.subtotal.toFixed(2))).toBe(expected);
     const html = renderRevenueBreakdown("ready", sources, aggregate.rows, nativeRows, 999, { selectedMetric: "revenue", chartRevenue: aggregate.subtotal });
-    expect(html).toMatch(new RegExp(`Campaign Breakdown Revenue</div><div[^>]*>\\$${expected.toFixed(2).replace(".", "\\.")}</div>`));
+    expect(html).not.toContain("Campaign Breakdown Revenue");
     expect(aggregate.rows.map((row: any) => row.revenue)).toEqual([3400.44 * sign + (mapped ? 250 : 0), 4253.52 * sign]);
     expect(JSON.stringify({ rows, sources })).toBe(before);
   });
@@ -192,7 +192,8 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
 
     for (const title of ["Highest Revenue", "Highest Conversion Rate", "Lowest Revenue", "Lowest Conversion Rate"]) expect(html).toContain(title);
     expect(html).toContain("Top Campaigns by Sessions");
-    expect(html).toContain("Campaigns Compared");
+    expect(html).not.toContain("Campaigns Compared");
+    expect(html).not.toContain("Total Sessions");
     expect(html).toContain("Revenue Breakdown");
     expect(html).not.toContain("All Campaigns");
   });

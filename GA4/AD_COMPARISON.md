@@ -102,9 +102,9 @@ The current tab contains:
 - top leader-card row when at least two comparison rows exist
 - metric dropdown in the header
 - Highest Revenue, Highest Conversion Rate, Lowest Revenue and Lowest Conversion Rate cards,
-  plus metric-based chart and selected-metric summary
+  plus the metric-based chart
 - comparison chart limited to the top 10 rows for the selected metric
-- selected-metric total and `Campaigns Compared` summary cards
+- no selected-metric total or `Campaigns Compared` summary cards in the live tab
 - `Revenue Breakdown` table
 
 Supported dropdown metrics:
@@ -220,9 +220,9 @@ Example:
 - GA4 session key event rates of `0.1245` and `0.1250` display as `12.45%` and `12.50%`
 - with selected metric `Sessions`, the first row can be both `Most Key Events` and `Needs Attention`, while the second row can have the highest conversion rate
 
-## Summary Cards
+## Report Summary Cards
 
-The first summary card follows the selected dropdown metric.
+The live tab omits the selected-metric total and `Campaigns Compared` cards, and the provisional-data notice. Other tabs retain their existing notices. Browser and scheduled reports are unchanged; their first summary card follows the selected report metric.
 
 Rules:
 

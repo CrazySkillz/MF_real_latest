@@ -314,36 +314,6 @@ function GA4AdComparison({
         </CardContent>
       </Card>
 
-      {/* Summary cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70">
-              {summaryMetricLabel}
-              {selectedMetric === "users" && (
-                <UITooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="w-3.5 h-3.5 text-amber-500 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                    <p className="text-xs">Distinct GA4 users for each campaign during the displayed dates. A user can visit several campaigns, so campaign counts must not be added to calculate total users.</p>
-                  </TooltipContent>
-                </UITooltip>
-              )}
-            </div>
-            <div className="text-2xl font-bold text-foreground mt-1">
-              {fmtMetricValue(selectedMetric, totalMetric)}
-            </div>
-            <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm font-medium text-muted-foreground/70">Campaigns Compared</div>
-            <div className="text-2xl font-bold text-foreground mt-1">{chartSummaryRows.length}</div>
-          </CardContent>
-        </Card>
-      </div>
       </>}
 
       {breakdownUnavailable ? (

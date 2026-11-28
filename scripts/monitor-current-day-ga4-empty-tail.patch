@@ -10143,3 +10143,96 @@ index 04f1e862..eaf182fe 100644
              return (
                <Card key={ranking.title} data-testid="comparison-ranking-card">
                  <CardContent className="p-5">
+
+diff --git a/client/src/pages/ga4-ad-comparison.tsx b/client/src/pages/ga4-ad-comparison.tsx
+index eaf182fe..b33e8766 100644
+--- a/client/src/pages/ga4-ad-comparison.tsx
++++ b/client/src/pages/ga4-ad-comparison.tsx
+@@ -28,6 +28,7 @@ interface CampaignAgg {
+ interface GA4AdComparisonProps {
+   campaignBreakdownAgg: CampaignAgg[];
+   nativeRevenue?: number;
++  nativeCampaignRevenueRows?: Array<Pick<CampaignAgg, "name" | "revenue">>;
+   chartCampaignRows: CampaignAgg[];
+   unitsSoldRankings?: Array<{ title: string; units: number; names: string[] }>;
+   chartRevenue?: number;
+@@ -69,6 +70,7 @@ const METRIC_LABELS: Record<string, string> = {
+ function GA4AdComparison({
+   campaignBreakdownAgg,
+   nativeRevenue,
++  nativeCampaignRevenueRows,
+   chartCampaignRows,
+   unitsSoldRankings = [],
+   chartRevenue,
+@@ -347,7 +349,7 @@ function GA4AdComparison({
+           <CardHeader className="pb-2">
+             <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
+             <CardDescription>
+-              GA4 revenue uses the initial-import-to-latest-completed-day. Imported sources show confirmed values through the latest completed day.
++              GA4 revenue uses the property imported dates. Imported sources show confirmed values through the latest completed day.
+             </CardDescription>
+           </CardHeader>
+           <CardContent>
+@@ -362,7 +364,7 @@ function GA4AdComparison({
+         <CardHeader className="pb-2">
+           <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
+           <CardDescription>
+-            GA4 revenue uses the initial-import-to-latest-completed-day. Imported sources show confirmed values through the latest completed day.
++            {nativeCampaignRevenueRows ? `GA4 revenue by campaign: ${comparisonStartDate} → ${comparisonEndDate}.` : "GA4 revenue uses the property imported dates."} Imported sources show confirmed values through the latest completed day.
+           </CardDescription>
+         </CardHeader>
+         <CardContent>
+@@ -370,7 +372,7 @@ function GA4AdComparison({
+             <table className="w-full text-sm">
+               <thead className="bg-muted border-b">
+                 <tr>
+-                  <th className="text-left font-medium px-3 py-2">Source</th>
++                  <th className="text-left font-medium px-3 py-2">Source / Campaign</th>
+                   <th className="text-right font-medium px-3 py-2">Amount</th>
+                 </tr>
+               </thead>
+@@ -379,6 +381,12 @@ function GA4AdComparison({
+                   <td className="px-3 py-2 text-foreground">GA4 Revenue</td>
+                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4RevenueForBreakdown)}</td>
+                 </tr>
++                {nativeCampaignRevenueRows ? nativeCampaignRevenueRows.map((campaign) => (
++                  <tr key={campaign.name} className="border-b" data-testid="ga4-campaign-revenue-row">
++                    <td className="pl-7 pr-3 py-2 text-muted-foreground">{campaign.name}</td>
++                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(campaign.revenue)}</td>
++                  </tr>
++                )) : <tr><td colSpan={2} className="px-3 py-2 text-muted-foreground text-xs">Per-campaign GA4 revenue is unavailable for these imported dates.</td></tr>}
+                 {(revenueState === 'ready' || revenueState === 'stale') && visibleRevenueDisplaySources.map((s) => (
+                     <tr key={s.sourceId} className="border-b">
+                       <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index bc0a162b..7f5c1ec4 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -6563,6 +6563,18 @@ export default function GA4Metrics() {
+   const overviewGA4MetadataAvailable = ga4ConnectionUsable && !ga4DailyPlaceholder
+     && String(ga4DailyResp?.propertyId || "") === selectedGA4PropertyId;
+   const overviewGA4ReportingStartDate = overviewGA4MetadataAvailable ? String(ga4DailyResp?.overviewStartDate || "") : "";
++  const adComparisonNativeCampaignRevenueRows = useMemo(() => {
++    if (!ga4ConnectionUsable || breakdownPlaceholder || adComparisonBreakdownPlaceholder || !campaignBreakdownRevenueVerified
++      || !overviewGA4ReportingStartDate || !overviewGA4ReportingDate
++      || ![ga4Breakdown, adComparisonBreakdown].every(report => report?.propertyId === selectedGA4PropertyId
++        && report?.startDate === overviewGA4ReportingStartDate && report?.endDate === overviewGA4ReportingDate)
++      || !ga4Breakdown?.lastUpdated || ga4Breakdown.lastUpdated !== adComparisonBreakdown?.lastUpdated
++      || !campaignBreakdownNativeRows.every((row: any) => typeof row.revenue === "number" && Number.isFinite(row.revenue))
++      || Number(campaignBreakdownAgg.reduce((sum, row) => sum + row.unroundedRevenue, 0).toFixed(2)) !== adComparisonNativeRevenue) return undefined;
++    return campaignBreakdownAgg;
++  }, [ga4ConnectionUsable, breakdownPlaceholder, adComparisonBreakdownPlaceholder, campaignBreakdownRevenueVerified,
++    overviewGA4ReportingStartDate, overviewGA4ReportingDate, ga4Breakdown, adComparisonBreakdown, selectedGA4PropertyId,
++    campaignBreakdownNativeRows, campaignBreakdownAgg, adComparisonNativeRevenue]);
+   const overviewGA4ReportingTimeZone = normalizeClientReportingTimeZone(ga4DailyResp?.reportingTimeZone);
+   const overviewFinancialWindow = overviewFinancialSnapshot?.metrics?.financialDaily?.currentValueWindow;
+   const overviewFinancialReportingTimeZone = normalizeClientReportingTimeZone(overviewFinancialWindow?.reportingTimeZone);
+@@ -9576,6 +9588,7 @@ export default function GA4Metrics() {
+                   <GA4AdComparison
+                     campaignBreakdownAgg={adComparisonBreakdownAgg}
+                     nativeRevenue={adComparisonNativeRevenue}
++                nativeCampaignRevenueRows={adComparisonNativeCampaignRevenueRows}
+                     chartCampaignRows={adComparisonChartRows}
+                     unitsSoldRankings={selectGA4UnitsSoldCards(ga4Breakdown, { campaignId: campaignId || "", propertyId: selectedGA4PropertyId,
+                       startDate: String(ga4Breakdown?.startDate || ""), endDate: String(ga4Breakdown?.endDate || ""), campaignNames: adComparisonChartRows.map(row => row.name) })}

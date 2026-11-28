@@ -557,7 +557,7 @@ describe("Browser Overview reports without a Spend source", () => {
     expect(metric("Profit")).toBe(spend ? "EUR 64,659.50" : "EUR 65,659.50");
     expect(metric("ROAS")).toBe(spend ? "65.66x" : "—");
     expect(metric("ROI")).toBe(spend ? formatPct(6465.95) : "—");
-    expect(metric("CPA")).toBe(spend ? "EUR 3.82" : "—");
+    expect(metric("CPA")).toBe(spend ? "EUR 3.82" : "EUR 0.00");
   });
 
   it("downloads a ready publication containing past spend imported today", async () => {

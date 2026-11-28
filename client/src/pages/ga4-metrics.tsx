@@ -6857,6 +6857,9 @@ export default function GA4Metrics() {
                 <div data-testid="insights-scope-campaign"><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
                 <div data-testid="insights-scope-property"><span className="font-medium text-foreground">GA4 Property ID:</span> {ga4ConnectionUsable ? (provenancePropertyId || provenanceProperty) : "Unavailable"}</div>
                 <div data-testid="insights-scope-filter"><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
+                <div data-testid="ga4-imported-dates"><span className="font-medium text-foreground">GA4 imported dates:</span> {overviewGA4ReportingStartDate && overviewGA4ReportingDate
+                  ? `${formatReportingDateLabel(overviewGA4ReportingStartDate)} – ${formatReportingDateLabel(overviewGA4ReportingDate)}`
+                  : "Not available yet"}</div>
               </CardContent>
             </Card>
             {!ga4ConnectionUsable && (

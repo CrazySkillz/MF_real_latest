@@ -140,6 +140,15 @@ These cards are derived from fetched or recomputed inputs:
 - `ROI = (Revenue - Spend) / Spend`
 - `CPA = Spend / Conversions`
 
+November 28, 2026 correction: verified zero spend with positive conversions produces
+CPA of zero; missing spend remains unavailable. Overview Campaign Breakdown reads
+the complete saved detail before aggregation, so a response limit cannot discard
+conversion credits. Landing Pages retains the native imported-period report when
+its conversion credits reconcile with complete, independently verified daily
+history. A redundant event-detail query must not shorten that verified report.
+Provider-restricted history that cannot be verified still requires an explicit
+coverage limitation; missing history must never be invented or relabelled as complete.
+
 Previous-day revenue and spend cards are intentionally not rendered in this app version.
 Daily records and endpoints may still exist for source validation, refresh, and possible future versions, but the GA4 Overview UI exposes only to-date financial totals plus derived performance metrics.
 

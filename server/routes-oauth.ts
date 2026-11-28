@@ -13722,7 +13722,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate: snapshot.windowStart,
           endDate: snapshot.windowEnd,
           totals: result?.totals,
-          rows: (Array.isArray(result?.rows) ? result.rows : []).slice(0, limit),
+          // Overview aggregates these raw rows; truncation here would lose conversion credits.
+          rows: overviewCampaignBreakdown ? (Array.isArray(result?.rows) ? result.rows : []) : (Array.isArray(result?.rows) ? result.rows : []).slice(0, limit),
           revenueWindow: {
             source: 'ga4',
             startDate: snapshot.windowStart,

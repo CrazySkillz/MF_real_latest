@@ -288,6 +288,10 @@ describe("GA4 report saved publication", () => {
       expect(metric("Profit")).toBe("Unavailable");
       for (const label of ["ROAS", "ROI", "CPA"]) expect(metric(label)).toBe("—");
     }
+    if (spend === 0) {
+      expect(metric("CPA")).toBe("EUR 0.00");
+      for (const label of ["ROAS", "ROI"]) expect(metric(label)).toBe("—");
+    }
     if (spend === 20) {
       expect(metric("Profit")).toBe("EUR -20.00");
       expect(metric("ROAS")).toBe("0.00x");

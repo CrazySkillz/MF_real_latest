@@ -81,6 +81,18 @@ describe("Ad Comparison reads the synchronized native campaign breakdown", () =>
     expect(res.body.totals.revenue).toBe(7653.96);
     expect(res.body.meta).toEqual(snapshot.campaignBreakdown.meta); expect(res.body.validationReadOnly).toBe(true);
   });
+  it("returns all saved Overview rows before aggregation, preserving conversions after row 2000", async () => {
+    snapshot.campaignBreakdown.rows = Array.from({ length: 2001 }, (_, index) => ({
+      campaign: "sale", source: `source-${index}`, sessions: 1, users: 1, conversions: index === 2000 ? 0.75 : 0, revenue: 0,
+    }));
+    snapshot.campaignBreakdown.totals = { sessions: 2001, users: 7, conversions: 0.75, revenue: 0 };
+    const res = await request({ adComparisonCampaignBreakdown: "0", overviewCampaignBreakdown: "1", limit: "1", readOnly: "1" });
+    expect(res.code).toBe(200);
+    expect(res.body.rows).toHaveLength(2001);
+    expect(res.body.rows.reduce((sum: number, row: any) => sum + row.conversions, 0)).toBe(0.75);
+    expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+    expect(storage.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
   it("preserves a verified empty window as zero", async () => {
     snapshot.campaignBreakdown.rows = []; snapshot.campaignBreakdown.totals = { sessions: 0, users: 0, conversions: 0, revenue: 0 };
     const res = await request(); expect(res.code).toBe(200); expect(res.body.rows).toEqual([]); expect(res.body.totals.revenue).toBe(0);

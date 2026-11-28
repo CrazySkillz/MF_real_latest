@@ -160,7 +160,8 @@ export async function checkGA4SourceNumbers(scope: { campaignId: string; connect
   }
   for (const part of ["landingPages", "conversionEvents"] as const) {
     try {
-      const result = part === "landingPages" ? await service.getLandingPagesReport(campaignId, facade, scope.startDate, connection.propertyId, 50, scope.filter, scope.endDate, true)
+      const result = part === "landingPages" ? await service.getLandingPagesReport(campaignId, facade, scope.startDate, connection.propertyId, 50, scope.filter, scope.endDate, true,
+        scope.publication.landingPages?.meta?.historyLimited ? undefined : Object.fromEntries(expectedDaily.map(row => [row.date, row.conversions])))
         : await service.getConversionEventsReport(campaignId, facade, scope.startDate, connection.propertyId, 50, scope.filter, scope.endDate, true,
           Object.fromEntries(expectedDaily.map(row => [row.date, row.conversions])));
       const stored = scope.publication[part];

@@ -4064,7 +4064,7 @@ export default function GA4Metrics() {
         ["Profit", financialSpendAvailable ? fC(rev - spend) : "Unavailable"],
         ["ROAS", !financialSpendAvailable ? "Unavailable" : spend > 0 ? `${Number(financialROAS || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"],
         ["ROI", !financialSpendAvailable ? "Unavailable" : spend > 0 ? fP(roi) : "—"],
-        ["CPA", !financialSpendAvailable ? "Unavailable" : spend > 0 && convTot > 0 ? fC(cpa) : "—"],
+        ["CPA", !financialSpendAvailable ? "Unavailable" : spend >= 0 && convTot > 0 ? fC(cpa) : "—"],
       ], 4);
       y += 2;
       }
@@ -7275,11 +7275,11 @@ export default function GA4Metrics() {
                               {renderFinancialValue(
                                 financialDailySnapshotLoading,
                                 overviewFinancialSpendAvailable && overviewFinancialConversionsAvailable,
-                                overviewFinancialSpend > 0 && overviewFinancialConversions > 0 ? formatMoney(overviewFinancialCPA) : "—"
+                                overviewFinancialSpend >= 0 && overviewFinancialConversions > 0 ? formatMoney(overviewFinancialCPA) : "—"
                               )}
                             </p>
                             <p className="text-xs text-muted-foreground/70 mt-1">
-                              Spend ÷ Conversions{overviewFinancialSpend <= 0 ? " (needs spend)" : overviewFinancialConversions <= 0 ? " (needs conversions > 0)" : ""}
+                              Spend ÷ Conversions{!overviewFinancialSpendAvailable ? " (needs spend)" : overviewFinancialConversions <= 0 ? " (needs conversions > 0)" : ""}
                             </p>
                           </CardContent>
                         </Card>

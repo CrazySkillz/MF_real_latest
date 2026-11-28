@@ -9883,7 +9883,7 @@ index 4b938b68..a62f37af 100644
                      <div className="text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">
 
 diff --git a/server/analytics.ts b/server/analytics.ts
-index cf262799..efed82d7 100644
+index cf262799..e74cbe93 100644
 --- a/server/analytics.ts
 +++ b/server/analytics.ts
 @@ -1472,6 +1472,42 @@ export class GoogleAnalytics4Service {
@@ -9941,7 +9941,7 @@ index cf262799..efed82d7 100644
      const distinctUsers = preferOverviewCampaignTotals && this.normalizeCampaignFilter(campaignFilter).length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && endDate
        ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope, true, overviewDailyTraffic?.rollingUsersStartDate)
        : undefined;
-+    const unitsSold = preferOverviewCampaignTotals && capturedTraffic && endDate
++    const unitsSold = preferOverviewCampaignTotals && overviewDailyTraffic?.campaignId === campaignId && endDate
 +      ? await this.getCampaignUnitsSoldWithToken(campaignId, normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter)
 +      : undefined;
      return {

@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "99648fb64d0a144e92700baeb562211774d71ab3",
+  "expectedCommit": "3a00d68cd8ebcf2d1e36195630648d33776115a8",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -64,7 +64,7 @@
     {
       "path": "server/analytics.ts",
       "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
-      "after": "335f911cc7efbbf19146dbb1b97086635afc1ce081b3b7dd4a33713ee56efcb6"
+      "after": "7ff0cb941ae82287c76be849f14e6adb5221e7c8326665a767a913c2a755f382"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",

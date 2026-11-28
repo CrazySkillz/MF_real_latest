@@ -233,16 +233,6 @@ function GA4AdComparison({
               : "Compare performance across your GA4 campaigns"}
           </p>
         </div>
-        <div className="min-w-[220px] sm:max-w-[280px] md:w-full md:justify-self-end">
-          <Select value={selectedMetric} onValueChange={onMetricChange}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Sort by metric" /></SelectTrigger>
-            <SelectContent data-ga4-ad-comparison-metric-select>
-              {METRIC_OPTIONS.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label} (High to Low)</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {breakdownStale && (
@@ -299,6 +289,17 @@ function GA4AdComparison({
           })}
         </div>
       )}
+
+      <div className="w-full sm:max-w-[280px]">
+        <Select value={selectedMetric} onValueChange={onMetricChange}>
+          <SelectTrigger className="h-9"><SelectValue placeholder="Sort by metric" /></SelectTrigger>
+          <SelectContent data-ga4-ad-comparison-metric-select>
+            {METRIC_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label} (High to Low)</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {chartBreakdownStale && !chartBreakdownUnavailable && (
         <p className="text-sm text-amber-700">Showing the last verified GA4 Overview Campaign Breakdown values.</p>

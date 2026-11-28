@@ -49,7 +49,7 @@ it('navigates every metric across the full imported GA4 history without writes o
   };
   try {
     const trends=await open();
-    await ui(page.getByTestId('ga4-imported-dates')).toHaveText('GA4 imported dates: Sep 4, 2026 – Nov 17, 2026');
+    await ui(page.getByTestId('ga4-imported-dates')).toHaveText('Property imported dates: Sep 4, 2026 – Nov 17, 2026');
     const navigation=page.getByTestId('insights-trends-navigation');
     await ui(navigation.getByRole('button')).toHaveText(['Previous month','Next month']);
     await ui(navigation.locator('input')).toHaveCount(0);
@@ -269,7 +269,7 @@ it('navigates every metric across the full imported GA4 history without writes o
     windows=[...new Map(windows.map(w=>[w.startDate+'/'+w.endDate,w])).values()];
     summaryTotals={users:5,sessions:3120,conversions:624,conversionRate:9.6};
     await open();visibleMonth='2026-11';
-    await ui(page.getByTestId('ga4-imported-dates')).toHaveText('GA4 imported dates: Nov 19, 2025 – Nov 18, 2026');
+    await ui(page.getByTestId('ga4-imported-dates')).toHaveText('Property imported dates: Nov 19, 2025 – Nov 18, 2026');
     await ui(summary).toContainText('3,120');await ui(summary).toContainText('9.6%');
     for(const selected of ['2026-11-18','2026-01-31','2025-11-30']){
       await selectMonth(selected);
@@ -292,9 +292,9 @@ it('navigates every metric across the full imported GA4 history without writes o
         }
       }
     }
-    await ui(page.getByTestId('ga4-imported-dates')).toHaveText('GA4 imported dates: Nov 19, 2025 – Nov 18, 2026');
+    await ui(page.getByTestId('ga4-imported-dates')).toHaveText('Property imported dates: Nov 19, 2025 – Nov 18, 2026');
     importStart='';await open();
-    await ui(page.getByTestId('ga4-imported-dates')).toHaveText('GA4 imported dates: Not available yet');
+    await ui(page.getByTestId('ga4-imported-dates')).toHaveText('Property imported dates: Not available yet');
     expect(errors).toEqual([]);
   } finally {await browser.close();}
 },180000);

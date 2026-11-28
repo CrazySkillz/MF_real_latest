@@ -361,6 +361,8 @@ Historical deployed candidate evidence captured on `2026-08-13`:
 
 `Landing Pages` is a cumulative view from the fixed initial-import boundary through the latest completed day for the GA4 property and campaign selection configured for this app campaign.
 
+The table paginates its available saved rows in the browser, 20 per page, with a dynamic visible range and Previous/Next controls. Changing pages does not fetch GA4 data or change row order, calculations, provider limits, or PDF output. Campaign/property/import-window changes reset to the first page; fewer rows clamp the page to the last available page.
+
 November 10 correction: the user requested real GA4 Landing Pages values, superseding the October 28 Promo presentation exception. The corrected Overview renders only saved provider rows; it does not allocate Summary traffic or conversions to invented pages. Deployment and direct-provider evidence are tracked in `docs/fixes/ga4-landing-pages-native-data.md`.
 
 Columns:

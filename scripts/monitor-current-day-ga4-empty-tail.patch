@@ -9553,3 +9553,275 @@ index 6f7e0e91..74333426 100644
                              </div>
                            ) : (
                              <div className="text-sm text-muted-foreground/70">
+
+diff --git a/shared/ga4-ad-comparison-cards.ts b/shared/ga4-ad-comparison-cards.ts
+index 205ea869..c593582b 100644
+--- a/shared/ga4-ad-comparison-cards.ts
++++ b/shared/ga4-ad-comparison-cards.ts
+@@ -17,7 +17,23 @@ export function selectGA4AdComparisonLeaderCards<T extends GA4AdComparisonCardRo
+ 
+   const needsAttention = selectGA4AdComparisonNeedsAttention(comparisonRows, bestPerforming);
+ 
+-  return { bestPerforming, mostEfficient, needsAttention };
++  const rankings = ([
++    { title: "Highest Revenue", metric: "revenue", ascending: false },
++    { title: "Highest Conversion Rate", metric: "conversionRate", ascending: false },
++    { title: "Lowest Revenue", metric: "revenue", ascending: true },
++    { title: "Lowest Conversion Rate", metric: "conversionRate", ascending: true },
++  ] as const).map(({ title, metric, ascending }) => {
++    const eligible = metric === "conversionRate" ? comparisonRows.filter(row => row.sessions > 0) : comparisonRows;
++    const unavailable = eligible.some(row => !Number.isFinite(row[metric]))
++      || (metric === "conversionRate" && comparisonRows.some(row => !Number.isFinite(row.sessions)));
++    const sorted = unavailable ? [] : [...eligible].sort((a, b) =>
++      (ascending ? Number(a[metric]) - Number(b[metric]) : Number(b[metric]) - Number(a[metric]))
++      || a.name.localeCompare(b.name));
++    const leaders = sorted.length < 2 ? [] : sorted.filter(row => row[metric] === sorted[0][metric]);
++    return { title, metric, leaders, unavailableReason: unavailable ? "Data unavailable" : "Not enough comparable data" };
++  });
++
++  return { bestPerforming, mostEfficient, needsAttention, rankings };
+ }
+ 
+ export function formatGA4AdComparisonCardPct(value: number): string {
+
+diff --git a/client/src/pages/ga4-ad-comparison.tsx b/client/src/pages/ga4-ad-comparison.tsx
+index 062866b6..a03b5689 100644
+--- a/client/src/pages/ga4-ad-comparison.tsx
++++ b/client/src/pages/ga4-ad-comparison.tsx
+@@ -7,7 +7,7 @@ import { formatConversionCredit } from "@shared/metric-math";
+ import { memo, useMemo } from "react";
+ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+-import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
++import { Trophy, Zap, ArrowDown, Info } from "lucide-react";
+ import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+ import { formatPct } from "@shared/metric-math";
+ import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
+@@ -149,7 +149,7 @@ function GA4AdComparison({
+     }));
+   }, [chartRows, selectedMetric]);
+ 
+-  const { bestPerforming, mostEfficient, needsAttention } = useMemo(() => {
++  const { rankings } = useMemo(() => {
+     return selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric);
+   }, [chartSummaryRows, selectedMetric]);
+ 
+@@ -253,55 +253,28 @@ function GA4AdComparison({
+ 
+       {/* Performance Rankings */}
+       {!chartBreakdownUnavailable && chartSummaryRows.length >= 2 && (
+-        <div className="grid gap-4 md:grid-cols-3">
+-          <Card className="border-emerald-200 dark:border-emerald-800">
+-            <CardContent className="p-5">
+-              <div className="flex items-center gap-2 mb-2">
+-                <Trophy className="w-5 h-5 text-emerald-600" />
+-                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Most Key Events</span>
+-              </div>
+-              <div className="font-semibold text-foreground truncate" title={bestPerforming?.name || "No key event leader"}>
+-                {bestPerforming?.name || "No key event leader"}
+-              </div>
+-              <div className="text-sm text-muted-foreground/70 mt-1">
+-                {bestPerforming
+-                  ? <>{fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR</>
+-                  : "No key events recorded"}
+-              </div>
+-            </CardContent>
+-          </Card>
+-          <Card className="border-blue-200 dark:border-blue-800">
+-            <CardContent className="p-5">
+-              <div className="flex items-center gap-2 mb-2">
+-                <Zap className="w-5 h-5 text-blue-600" />
+-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Highest Conversion Rate</span>
+-              </div>
+-              <div className="font-semibold text-foreground truncate" title={mostEfficient?.name || "No rate leader"}>
+-                {mostEfficient?.name || "No rate leader"}
+-              </div>
+-              <div className="text-sm text-muted-foreground/70 mt-1">
+-                {mostEfficient
+-                  ? <>{formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR &middot; {formatMoney(mostEfficient.revenue)} revenue</>
+-                  : "No positive conversion rate recorded"}
+-              </div>
+-            </CardContent>
+-          </Card>
+-          <Card className="border-amber-200 dark:border-amber-800">
+-            <CardContent className="p-5">
+-              <div className="flex items-center gap-2 mb-2">
+-                <AlertTriangle className="w-5 h-5 text-amber-600" />
+-                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Needs Attention</span>
+-              </div>
+-              <div className="font-semibold text-foreground truncate" title={needsAttention?.name || "No attention candidate"}>
+-                {needsAttention?.name || "No attention candidate"}
+-              </div>
+-              <div className="text-sm text-muted-foreground/70 mt-1">
+-                {needsAttention
+-                  ? <>{formatGA4AdComparisonCardPct(needsAttention.conversionRate)} CR &middot; {formatNumber(needsAttention.sessions)} sessions</>
+-                  : "No session data recorded"}
+-              </div>
+-            </CardContent>
+-          </Card>
++        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-testid="campaign-comparison-rankings">
++          {rankings.map((ranking, index) => {
++            const names = ranking.leaders.map(row => row.name).join(", ");
++            const label = names ? names + (ranking.leaders.length > 1 ? " (tie)" : "") : ranking.unavailableReason;
++            const leader = ranking.leaders[0];
++            const Icon = index === 0 ? Trophy : index === 1 ? Zap : ArrowDown;
++            const color = index === 0 ? "text-emerald-700 dark:text-emerald-300" : index === 1 ? "text-blue-700 dark:text-blue-300" : "text-amber-700 dark:text-amber-300";
++            return (
++              <Card key={ranking.title} data-testid="comparison-ranking-card">
++                <CardContent className="p-5">
++                  <div className={"flex items-center gap-2 mb-2 " + color}>
++                    <Icon className="w-5 h-5 shrink-0" />
++                    <span className="text-sm font-medium">{ranking.title}</span>
++                  </div>
++                  <div className="font-semibold text-foreground truncate" title={label}>{label}</div>
++                  <div className="text-sm text-muted-foreground/70 mt-1">
++                    {leader ? <>{fmtCardMetricValue(ranking.metric, Number(leader[ranking.metric]))}{ranking.metric === "revenue" ? " revenue" : ranking.leaders.length === 1 ? " · " + formatNumber(leader.sessions) + " sessions" : " conversion rate"}</> : "Comparison unavailable"}
++                  </div>
++                </CardContent>
++              </Card>
++            );
++          })}
+         </div>
+       )}
+ 
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 74333426..4b938b68 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -4180,7 +4180,7 @@ export default function GA4Metrics() {
+         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
+         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
+         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
+-      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
++      const { rankings } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
+       const totalMetric = selectedMetric === "sessions" ? overviewSummaryTotals.sessions : selectedMetric === "users" ? overviewSummaryTotals.users ?? Number.NaN : selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
+         ? (() => {
+             return overviewSummaryTotals.conversionRate ?? Number.NaN;
+@@ -4194,44 +4194,23 @@ export default function GA4Metrics() {
+ 
+         // Performance rankings
+         if (includeAdsBestWorst && chartSummaryRows.length > 1) {
+-          y += 4; checkPage(28);
+-          const colW = (CW - 8) / 3;
+-
+-          const rankCards = [
+-            {
+-              title: "MOST KEY EVENTS",
+-              name: String(bestPerforming?.name || "No key event leader"),
+-              detail: bestPerforming ? `${fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No key events recorded",
+-              color: C.success,
+-              x: MX,
+-            },
+-            {
+-              title: "HIGHEST CONVERSION RATE",
+-              name: String(mostEfficient?.name || "No rate leader"),
+-              detail: mostEfficient ? `${formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR - ${fC(Number(mostEfficient.revenue || 0))} revenue` : "No conversions recorded",
+-              color: C.info,
+-              x: MX + colW + 4,
+-            },
+-            {
+-              title: "NEEDS ATTENTION",
+-              name: String(needsAttention?.name || needsAttention?.campaign || ""),
+-              detail: `${formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)} CR - ${fN(Number(needsAttention?.sessions || 0))} sessions`,
+-              color: C.danger,
+-              x: MX + (colW + 4) * 2,
+-            },
+-          ];
+-          rankCards.forEach((card) => {
+-            doc.setFillColor(...C.white); doc.setDrawColor(...card.color);
+-            doc.setLineWidth(0.6); doc.roundedRect(card.x, y, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
+-            doc.setFillColor(...card.color); doc.circle(card.x + 8, y + 9, 2, "F");
+-            doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...card.color);
+-            doc.text(card.title, card.x + 13, y + 7);
+-            doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+-            doc.text(trunc(card.name, 22), card.x + 13, y + 14);
+-            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+-            doc.text(trunc(card.detail, 32), card.x + 13, y + 20);
++          y += 4; checkPage(58);
++          const colW = (CW - 4) / 2;
++          rankings.forEach((ranking, index) => {
++            const leader = ranking.leaders[0];
++            const name = leader ? leader.name.slice(0, 22) + (ranking.leaders.length > 1 ? " + " + (ranking.leaders.length - 1) + " tied" : "") : ranking.unavailableReason;
++            const detail = leader ? ranking.metric === "revenue" ? fC(Number(leader.revenue)) + " revenue"
++              : formatGA4AdComparisonCardPct(leader.conversionRate) + (ranking.leaders.length === 1 ? " - " + fN(leader.sessions) + " sessions" : " conversion rate") : "Comparison unavailable";
++            const color = index === 0 ? C.success : index === 1 ? C.info : C.warning;
++            const x = MX + (index % 2) * (colW + 4), cardY = y + Math.floor(index / 2) * 28;
++            doc.setFillColor(...C.white); doc.setDrawColor(...color);
++            doc.setLineWidth(0.6); doc.roundedRect(x, cardY, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
++            doc.setFillColor(...color); doc.circle(x + 8, cardY + 9, 2, "F");
++            doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...color); doc.text(ranking.title.toUpperCase(), x + 13, cardY + 7);
++            doc.setFontSize(8); doc.setTextColor(...C.text); doc.text(name, x + 13, cardY + 14);
++            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec); doc.text(detail, x + 13, cardY + 20);
+           });
+-          y += 30;
++          y += 60;
+         }
+ 
+         if (includeAdsTopCampaigns) {
+@@ -11296,7 +11275,7 @@ export default function GA4Metrics() {
+                       { key: "kpis", label: "KPIs", subsections: [] as Array<[string, string]> },
+                       { key: "benchmarks", label: "Benchmarks", subsections: [] as Array<[string, string]> },
+                       { key: "ads", label: "Ad Comparison", subsections: [
+-                        ["bestWorst", "Most Key Events / Highest Conversion Rate / Needs Attention"],
++                        ["bestWorst", "Highest/Lowest Revenue and Conversion Rate"],
+                         ["topCampaigns", "Top Campaigns"],
+                         ["revenueBreakdown", "Revenue Breakdown"],
+                       ] as Array<[string, string]> },
+@@ -11330,7 +11309,7 @@ export default function GA4Metrics() {
+                                     ]
+                                   : (s.key === "ads")
+                                     ? [
+-                                        [["bestWorst", "Most Key Events / Highest Conversion Rate / Needs Attention"], ["topCampaigns", "Top Campaigns"]],
++                                        [["bestWorst", "Highest/Lowest Revenue and Conversion Rate"], ["topCampaigns", "Top Campaigns"]],
+                                         [["revenueBreakdown", "Revenue Breakdown"]],
+                                       ]
+                                     : (s.key === "insights")
+
+diff --git a/server/ga4-scheduled-report-pdf.ts b/server/ga4-scheduled-report-pdf.ts
+index 1a6d3b75..3e6b1516 100644
+--- a/server/ga4-scheduled-report-pdf.ts
++++ b/server/ga4-scheduled-report-pdf.ts
+@@ -1652,25 +1652,25 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+         })()
+       : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
+     const leaderMetric = selectedMetric;
+-    const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, leaderMetric);
++    const { rankings } = selectGA4AdComparisonLeaderCards(chartSummaryRows, leaderMetric);
+     if (includeBestWorst && chartSummaryRows.length > 1) {
+-      y += 4;
+-      checkPage(28);
+-      const colW = (CW - 8) / 3;
+-      const rankCards = [
+-        { title: "MOST KEY EVENTS", name: String(bestPerforming?.name || "No key event leader"), detail: bestPerforming ? `${formatMetricValue("conversions", bestPerforming.conversions)} Key Events - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No key events recorded", color: COLORS.success, x: MX },
+-        { title: "HIGHEST CONVERSION RATE", name: String(mostEfficient?.name || "No rate leader"), detail: mostEfficient ? `${formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR - ${formatMoney(Number(mostEfficient.revenue || 0))} revenue` : "No conversions recorded", color: COLORS.info, x: MX + colW + 4 },
+-        { title: "NEEDS ATTENTION", name: String(needsAttention?.name || ""), detail: `${formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)} CR - ${formatNumber(Number(needsAttention?.sessions || 0))} sessions`, color: COLORS.danger, x: MX + (colW + 4) * 2 },
+-      ];
+-      rankCards.forEach((card) => {
+-        doc.setFillColor(...COLORS.white); doc.setDrawColor(...card.color);
+-        doc.setLineWidth(0.6); doc.roundedRect(card.x, y, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
+-        doc.setFillColor(...card.color); doc.circle(card.x + 8, y + 9, 2, "F");
+-        doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...card.color); doc.text(card.title, card.x + 13, y + 7);
+-        doc.setFontSize(8); doc.setTextColor(...COLORS.text); doc.text(card.name.slice(0, 22), card.x + 13, y + 14);
+-        doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textSec); doc.text(card.detail.slice(0, 32), card.x + 13, y + 20);
++      y += 4; checkPage(58);
++      const colW = (CW - 4) / 2;
++      rankings.forEach((ranking, index) => {
++        const leader = ranking.leaders[0];
++        const name = leader ? leader.name.slice(0, 22) + (ranking.leaders.length > 1 ? " + " + (ranking.leaders.length - 1) + " tied" : "") : ranking.unavailableReason;
++        const detail = leader ? ranking.metric === "revenue" ? formatMoney(Number(leader.revenue)) + " revenue"
++          : formatGA4AdComparisonCardPct(leader.conversionRate) + (ranking.leaders.length === 1 ? " - " + formatNumber(leader.sessions) + " sessions" : " conversion rate") : "Comparison unavailable";
++        const color = index === 0 ? COLORS.success : index === 1 ? COLORS.info : COLORS.warning;
++        const x = MX + (index % 2) * (colW + 4), cardY = y + Math.floor(index / 2) * 28;
++        doc.setFillColor(...COLORS.white); doc.setDrawColor(...color);
++        doc.setLineWidth(0.6); doc.roundedRect(x, cardY, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
++        doc.setFillColor(...color); doc.circle(x + 8, cardY + 9, 2, "F");
++        doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...color); doc.text(ranking.title.toUpperCase(), x + 13, cardY + 7);
++        doc.setFontSize(8); doc.setTextColor(...COLORS.text); doc.text(name, x + 13, cardY + 14);
++        doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textSec); doc.text(detail, x + 13, cardY + 20);
+       });
+-      y += 30;
++      y += 60;
+     }
+     if (includeTopCampaigns && sortedByMetric.length > 0) {
+       if (selectedMetric === "users" && sortedByMetric.some(row => row.users == null || !Number.isFinite(row.users))) throw new Error("Distinct GA4 Users are unavailable for this report window");

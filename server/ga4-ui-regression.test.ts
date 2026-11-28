@@ -655,7 +655,7 @@ describe("GA4 UI regression guard", () => {
     expect(scheduledPdf).toContain('if (includeAllCampaigns)');
   });
 
-  it("keeps GA4 Ad Comparison summary labels and tooltips readable", () => {
+  it("keeps GA4 Ad Comparison summary cards removed without changing formatting", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const summaryStart = adComparison.indexOf("const summaryMetricLabel =");
     const summarySection = adComparison.slice(summaryStart, adComparison.indexOf("if (breakdownLoading)", summaryStart));
@@ -663,7 +663,8 @@ describe("GA4 UI regression guard", () => {
     expect(summaryStart).toBeGreaterThan(-1);
     expect(summarySection).toContain("Overall Conversion Rate");
     expect(summarySection).not.toContain("Total Conversion Rate");
-    expect(adComparison).toContain("Distinct GA4 users for each campaign during the displayed dates. A user can visit several campaigns");
+    expect(adComparison).not.toContain("Campaigns Compared");
+    expect(adComparison).not.toContain("{summaryMetricLabel}");
     expect(adComparison).not.toContain("Ã");
     expect(adComparison).not.toContain("â");
   });

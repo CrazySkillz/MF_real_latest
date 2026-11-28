@@ -295,17 +295,20 @@ describe("Ad Comparison precision through the real Reports page", () => {
       }
       await page.getByRole("tab", { name: "Campaign Comparison", exact: true }).click();
       await browserExpect(page.getByRole("heading", { name: "Campaign Comparison", exact: true })).toBeVisible();
+      await browserExpect(page.getByTestId("ga4-provisional-notice")).toHaveCount(0);
+      await browserExpect(page.getByText("Campaigns Compared", { exact: true })).toHaveCount(0);
+      await browserExpect(page.getByText("Total Sessions", { exact: true })).toHaveCount(0);
       await browserExpect(page.getByRole("row").filter({ hasText: "TOTAL" }).last()).toContainText(`€${totalLabel}`);
       if (promo) {
         await page.getByRole("combobox").click();
         await page.getByRole("option", { name: "Revenue (High to Low)", exact: true }).click();
-        await browserExpect(page.getByText("Campaign Breakdown Revenue", { exact: true }).locator("..")).toContainText("€80,433.85");
+        await browserExpect(page.getByText("Campaign Breakdown Revenue", { exact: true })).toHaveCount(0);
         await browserExpect(page.getByText("€66,625.34", { exact: false }).first()).toBeVisible();
       }
       if (pipelineJourney) {
         await page.getByRole("combobox").click();
         await page.getByRole("option", { name: "Revenue (High to Low)", exact: true }).click();
-        await browserExpect(page.getByText("Campaign Breakdown Revenue", { exact: true }).locator("..")).toContainText("€7,653.96");
+        await browserExpect(page.getByText("Campaign Breakdown Revenue", { exact: true })).toHaveCount(0);
         for (const [label, campaign, detail] of [
           ["Highest Revenue", "yesop_paid_social", "€4,253.52"],
           ["Highest Conversion Rate", "yesop_paid_social", "8.14%"],
@@ -319,10 +322,10 @@ describe("Ad Comparison precision through the real Reports page", () => {
         await browserExpect(page.getByText("€3,200.00", { exact: true })).toHaveCount(0);
         await page.getByRole("combobox").click();
         await page.getByRole("option", { name: "Conversions (High to Low)", exact: true }).click();
-        await browserExpect(page.getByText("Total Conversions", { exact: true }).locator("..")).toContainText("40");
+        await browserExpect(page.getByText("Total Conversions", { exact: true })).toHaveCount(0);
         await page.getByRole("combobox").click();
         await page.getByRole("option", { name: "Conversion Rate (High to Low)", exact: true }).click();
-        await browserExpect(page.getByText("Overall Conversion Rate", { exact: true }).locator("..")).toContainText("8%");
+        await browserExpect(page.getByText("Overall Conversion Rate", { exact: true })).toHaveCount(0);
         await page.getByRole("tab", { name: "Overview", exact: true }).click();
         await browserExpect(page.getByText("Conv. Rate", { exact: true }).first().locator("..")).toContainText("8%");
       }

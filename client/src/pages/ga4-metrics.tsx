@@ -3256,6 +3256,16 @@ export default function GA4Metrics() {
     (adComparisonBreakdownError && adComparisonBreakdown === undefined);
   const landingPagesUnavailable = !ga4ConnectionUsable || (landingPagesError && ga4LandingPages === undefined);
   const overviewLandingPageRows = Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : [];
+  const [landingPagesPage, setLandingPagesPage] = useState(0);
+  const landingPagesPageCount = Math.max(1, Math.ceil(overviewLandingPageRows.length / 20));
+  const landingPagesCurrentPage = Math.min(landingPagesPage, landingPagesPageCount - 1);
+  const landingPagesRowStart = landingPagesCurrentPage * 20;
+  useEffect(() => {
+    setLandingPagesPage(0);
+  }, [campaignId, selectedGA4PropertyId, ga4LandingPages?.startDate, ga4LandingPages?.endDate]);
+  useEffect(() => {
+    setLandingPagesPage(page => Math.min(page, landingPagesPageCount - 1));
+  }, [landingPagesPageCount]);
   const conversionEventsUnavailable = !ga4ConnectionUsable || (conversionEventsError && ga4ConversionEvents === undefined);
   const revenueSourcesUnavailable = revenueSourcesError && revenueSourcesResp === undefined;
   const spendSourcesUnavailable = spendSourcesError && spendSourcesResp === undefined;
@@ -7481,7 +7491,7 @@ export default function GA4Metrics() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {overviewLandingPageRows.slice(0, 20).map((r: any, idx: number) => {
+                                  {overviewLandingPageRows.slice(landingPagesRowStart, landingPagesRowStart + 20).map((r: any, idx: number) => {
                                     const sessions = Number(r?.sessions || 0);
                                     const conversions = Number(r?.conversions || 0);
                                     const cr = r?.sessionKeyEventRate == null ? Number.NaN : r.sessionKeyEventRate * 100;
@@ -7506,6 +7516,15 @@ export default function GA4Metrics() {
                                   })}
                                 </tbody>
                               </table>
+                              <nav aria-label="Landing Pages pagination" className="flex flex-wrap items-center justify-between gap-3 border-t p-3">
+                                <span role="status" className="text-sm text-muted-foreground/70">
+                                  Showing {landingPagesRowStart + 1}–{Math.min(landingPagesRowStart + 20, overviewLandingPageRows.length)} of {overviewLandingPageRows.length} rows
+                                </span>
+                                <div className="flex gap-2">
+                                  <Button type="button" variant="outline" size="sm" disabled={landingPagesCurrentPage === 0} onClick={() => setLandingPagesPage(landingPagesCurrentPage - 1)}>Previous</Button>
+                                  <Button type="button" variant="outline" size="sm" disabled={landingPagesCurrentPage >= landingPagesPageCount - 1} onClick={() => setLandingPagesPage(landingPagesCurrentPage + 1)}>Next</Button>
+                                </div>
+                              </nav>
                             </div>
                           ) : (
                             <div className="text-sm text-muted-foreground/70">

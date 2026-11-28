@@ -76,13 +76,14 @@ describe('verified GA4 item quantities', () => {
     const storage = { getGA4Connection: async () => ({ propertyId: '123', accessToken: 'fixture' }) };
     const capture = { campaignId: scope.campaignId, captured: { propertyId: '123', startDate: scope.startDate, endDate: scope.endDate,
       currencyCode: 'EUR', campaigns: scope.campaignNames.map(name => ({ name, rows: [] })) } };
-    const run = (captured = false) => ga4Service.getAcquisitionBreakdown(scope.campaignId, storage, scope.startDate, '123', 2000,
-      scope.campaignNames, scope.endDate, true, false, 'EUR', true, captured ? capture : undefined);
+    const run = (mode = 'reader') => ga4Service.getAcquisitionBreakdown(scope.campaignId, storage, scope.startDate, '123', 2000,
+      scope.campaignNames, scope.endDate, true, false, 'EUR', true, mode === 'fallback' ? capture : mode === 'import' ? { campaignId: scope.campaignId } : undefined);
     const baseline = await run(); expect(requests).toHaveLength(0); expect(baseline.meta.unitsSold).toBeUndefined();
-    const enriched = await run(true); expect(enriched.meta.unitsSold?.campaigns[0].units).toBe(6);
+    const enriched = await run('fallback'); expect(enriched.meta.unitsSold?.campaigns[0].units).toBe(6);
+    expect(await run('import')).toEqual(enriched);
     const { unitsSold, ...meta } = enriched.meta; expect({ ...enriched, meta }).toEqual(baseline);
     data.metadata = { subjectToThresholding: true };
-    expect(await run(true)).toEqual(baseline);
+    expect(await run('import')).toEqual(baseline);
   });
 });
 

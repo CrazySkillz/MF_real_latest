@@ -2915,7 +2915,7 @@ export class GoogleAnalytics4Service {
     const distinctUsers = preferOverviewCampaignTotals && this.normalizeCampaignFilter(campaignFilter).length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && endDate
       ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope, true, overviewDailyTraffic?.rollingUsersStartDate)
       : undefined;
-    const unitsSold = preferOverviewCampaignTotals && capturedTraffic && endDate
+    const unitsSold = preferOverviewCampaignTotals && overviewDailyTraffic?.campaignId === campaignId && endDate
       ? await this.getCampaignUnitsSoldWithToken(campaignId, normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter)
       : undefined;
     return {

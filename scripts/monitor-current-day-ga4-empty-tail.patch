@@ -10206,7 +10206,7 @@ index eaf182fe..b33e8766 100644
                        <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>
 
 diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
-index bc0a162b..7f5c1ec4 100644
+index bc0a162b..f3938aec 100644
 --- a/client/src/pages/ga4-metrics.tsx
 +++ b/client/src/pages/ga4-metrics.tsx
 @@ -6563,6 +6563,18 @@ export default function GA4Metrics() {
@@ -10232,7 +10232,7 @@ index bc0a162b..7f5c1ec4 100644
                    <GA4AdComparison
                      campaignBreakdownAgg={adComparisonBreakdownAgg}
                      nativeRevenue={adComparisonNativeRevenue}
-+                nativeCampaignRevenueRows={adComparisonNativeCampaignRevenueRows}
++                    nativeCampaignRevenueRows={adComparisonNativeCampaignRevenueRows}
                      chartCampaignRows={adComparisonChartRows}
                      unitsSoldRankings={selectGA4UnitsSoldCards(ga4Breakdown, { campaignId: campaignId || "", propertyId: selectedGA4PropertyId,
                        startDate: String(ga4Breakdown?.startDate || ""), endDate: String(ga4Breakdown?.endDate || ""), campaignNames: adComparisonChartRows.map(row => row.name) })}

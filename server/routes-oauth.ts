@@ -13731,7 +13731,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             revenueMetric: String(result?.meta?.revenueMetric || ''),
           },
           ...(validationReadOnly ? { validationReadOnly: true } : {}),
-          meta: debug ? result?.meta : { propertyId: resolvedPropertyId, distinctUsers: result?.meta?.distinctUsers },
+          meta: debug ? result?.meta : { propertyId: resolvedPropertyId, distinctUsers: result?.meta?.distinctUsers,
+            ...(result?.meta?.unitsSold ? { unitsSold: result.meta.unitsSold } : {}) },
           lastUpdated: snapshot.updatedAt,
         });
       }

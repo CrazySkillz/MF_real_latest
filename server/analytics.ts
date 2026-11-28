@@ -1472,6 +1472,42 @@ export class GoogleAnalytics4Service {
     }
   }
 
+  // Optional ecommerce enrichment, used only by normal saved-history imports.
+  // Missing rows are unavailable, never inferred zero quantities or conversion counts.
+  async getCampaignUnitsSoldWithToken(campaignId: string, propertyId: string, accessToken: string, startDate: string, endDate: string, campaignFilter: CampaignFilter) {
+    const names = this.normalizeCampaignFilter(campaignFilter);
+    if (names.length < 2 || !/^\d+$/.test(propertyId) || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) return;
+    try {
+      const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+        method: 'POST', signal: AbortSignal.timeout(5000),
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: 'sessionCampaignName' }], metrics: [{ name: 'itemsPurchased' }],
+          ...this.buildCampaignDimensionFilter(names, 'sessionCampaignName'), keepEmptyRows: true, limit: 10000 }),
+      });
+      if (!response.ok) return;
+      const data = await response.json(), rows = data?.rows;
+      if (data?.metricHeaders?.length !== 1 || data.metricHeaders[0]?.name !== 'itemsPurchased' ||
+          data?.dimensionHeaders?.length !== 1 || data.dimensionHeaders[0]?.name !== 'sessionCampaignName' ||
+          !Array.isArray(rows) || Number(data.rowCount) !== rows.length || rows.length !== names.length) return;
+      const quantities = new Map<string, number>();
+      for (const row of rows) {
+        const name = String(row.dimensionValues?.[0]?.value || '').toLowerCase();
+        const raw = row.metricValues?.[0]?.value;
+        if (row.dimensionValues?.length !== 1 || row.metricValues?.length !== 1 ||
+            typeof raw !== 'string' || !/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)) || quantities.has(name)) return;
+        quantities.set(name, Number(raw));
+      }
+      if (names.some(name => !quantities.has(name.toLowerCase()))) return;
+      return { version: 1, metric: 'itemsPurchased', attribution: 'sessionCampaignName', campaignId, propertyId, startDate, endDate,
+        campaigns: names.map(name => ({ name, units: quantities.get(name.toLowerCase())! })) };
+    } catch {
+      this.requestSignal?.throwIfAborted();
+      // An unavailable optional metric must not fail the existing GA4 publication.
+      return;
+    }
+  }
+
   // No date/campaign/device dimensions on aggregate requests: GA4 performs
   // deduplication across the entire selected scope, including fallback dates.
   async getDistinctUsersWithToken(
@@ -2063,6 +2099,7 @@ export class GoogleAnalytics4Service {
       insightsLandingCoverage?: Record<string, string | number | boolean>;
       distinctUsers?: Awaited<ReturnType<GoogleAnalytics4Service['getDistinctUsersWithToken']>>;
       dailySessions?: number;
+      unitsSold?: Awaited<ReturnType<GoogleAnalytics4Service['getCampaignUnitsSoldWithToken']>>;
     };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
@@ -2878,6 +2915,9 @@ export class GoogleAnalytics4Service {
     const distinctUsers = preferOverviewCampaignTotals && this.normalizeCampaignFilter(campaignFilter).length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && endDate
       ? await this.getDistinctUsersWithToken(normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter, overviewDailyTraffic?.primaryScope, true, overviewDailyTraffic?.rollingUsersStartDate)
       : undefined;
+    const unitsSold = preferOverviewCampaignTotals && overviewDailyTraffic?.campaignId === campaignId && endDate
+      ? await this.getCampaignUnitsSoldWithToken(campaignId, normalizedPropertyId, accessToken, dateRange, endDate, campaignFilter)
+      : undefined;
     return {
       rows,
       totals: {
@@ -2899,6 +2939,7 @@ export class GoogleAnalytics4Service {
         ...(overviewCampaignAttribution ? { overviewCampaignAttribution } : {}),
         ...(insightsLandingCoverage ? { insightsLandingCoverage } : {}),
         ...(distinctUsers ? { distinctUsers, dailySessions: totalSessions } : {}),
+        ...(unitsSold ? { unitsSold } : {}),
       },
     };
   }

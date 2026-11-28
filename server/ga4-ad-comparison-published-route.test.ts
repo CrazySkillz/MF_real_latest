@@ -97,6 +97,18 @@ describe("Ad Comparison reads the synchronized native campaign breakdown", () =>
     snapshot.campaignBreakdown.rows = []; snapshot.campaignBreakdown.totals = { sessions: 0, users: 0, conversions: 0, revenue: 0 };
     const res = await request(); expect(res.code).toBe(200); expect(res.body.rows).toEqual([]); expect(res.body.totals.revenue).toBe(0);
   });
+  it("passes saved item quantities through both read-only detail routes without fetching or changing totals", async () => {
+    const unitsSold = { version: 1, metric: "itemsPurchased", attribution: "sessionCampaignName", campaignId: "a", propertyId: "123",
+      startDate: snapshot.windowStart, endDate: snapshot.windowEnd, campaigns: [{ name: "sale", units: 6 }, { name: "sale2", units: 0 }] };
+    snapshot.campaignBreakdown.meta.unitsSold = unitsSold;
+    for (const query of [{}, { adComparisonCampaignBreakdown: "0", overviewCampaignBreakdown: "1" }]) {
+      const res = await request({ ...query, readOnly: "1" });
+      expect(res.code).toBe(200); expect(res.body.meta.unitsSold).toEqual(unitsSold);
+      expect(res.body.totals).toEqual(snapshot.campaignBreakdown.totals);
+    }
+    expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+    expect(storage.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
   it.each(["missing snapshot", "missing daily", "different start", "different daily end", "requested cutoff"])("fails closed with %s and never falls back to live data", async kind => {
     if (kind === "missing snapshot") storage.getGA4OverviewSnapshot.mockResolvedValue(undefined);
     if (kind === "missing daily") storage.getLatestGA4DailyMetric.mockResolvedValue(undefined);

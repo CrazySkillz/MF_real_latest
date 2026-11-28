@@ -61,6 +61,22 @@ function renderRevenueBreakdown(
 }
 
 describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
+  it("adds quantity cards below the four rankings only when verified quantities were supplied", () => {
+    const rows = [{ ...nativeRows[0], name: "coffee_bags", sessions: 109, revenue: 40.5, conversionRate: 0.92 }, { ...nativeRows[0], name: "served_here", sessions: 24 }];
+    const base = { campaignBreakdownAgg: rows, chartCampaignRows: rows, breakdownLoading: false, chartBreakdownLoading: false,
+      chartBreakdownUnavailable: false, chartBreakdownStale: false, selectedMetric: "sessions", onMetricChange: () => {}, formatNumber: String, formatMoney: String };
+    const original = renderToStaticMarkup(React.createElement(GA4AdComparison, base));
+    expect(original).not.toContain("Highest Units Sold"); expect(original).not.toContain("Fewest Units Sold");
+    const html = renderToStaticMarkup(React.createElement(GA4AdComparison, { ...base, unitsSoldRankings: [
+      { title: "Highest Units Sold", units: 6, names: ["coffee_bags"] }, { title: "Fewest Units Sold", units: 0, names: ["served_here"] },
+    ] }));
+    expect(html).toContain("6 units sold"); expect(html).toContain("0 units sold");
+    expect(html.indexOf("Highest Units Sold")).toBeGreaterThan(html.indexOf("Lowest Conversion Rate"));
+    expect(html.slice(html.indexOf("Top Campaigns by"))).toBe(original.slice(original.indexOf("Top Campaigns by")));
+    for (const title of ["Highest Revenue", "Highest Conversion Rate", "Lowest Revenue", "Lowest Conversion Rate"]) {
+      expect(html).toContain(title); expect(original).toContain(title);
+    }
+  });
   it("matches Overview's unavailable overall rate when no sessions exist", () => {
     const rows = [{ ...nativeRows[0], sessions: 0 }];
     const html = renderRevenueBreakdown("ready", [], rows, rows, 0, { selectedMetric: "conversionRate" });

@@ -321,6 +321,12 @@ Do not add a separate Ad Comparison scheduler unless the product design explicit
 
 ## Production-Readiness Reference
 
+### Optional units-sold cards
+
+The live Campaign Comparison tab shows **Highest Units Sold** and **Fewest Units Sold** below the four revenue/rate cards only when every compared campaign has a verified `itemsPurchased` quantity for the same property and imported dates. Quantities use GA4 `sessionCampaignName` attribution; they are not conversion counts, order counts, or quantities inferred from revenue. Explicit zero quantities and ties are preserved. Missing, partial, malformed, sampled, thresholded, restricted, or truncated data hides both cards.
+
+Normal saved-history imports may make one optional, five-second-bounded quantity request using exact selected campaign filters. Failure omits quantity metadata without blocking existing metric publication. Existing snapshots are not backfilled by page loads or deployments. The saved packet travels with Campaign Breakdown's existing atomic publication and read-only API; no new scheduler or schedule is introduced. Existing cards, charts, financial calculations and Reports remain unchanged. Provider availability for an individual property is only proven when a normal import successfully saves this optional packet.
+
 The current readiness state, blockers, smallest safe fix queue, validation evidence, and future-platform template are maintained in:
 
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`

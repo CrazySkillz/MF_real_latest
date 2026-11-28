@@ -80,6 +80,21 @@ describe("GA4 correction windows and full-history repair", () => {
     expect(stored.find(r => r.date === "2026-06-02")).toMatchObject({ sessions: 0, conversions: 0 });
     expect(summarizeGA4TrafficRows(stored)).toMatchObject({ sessions: 30, conversions: 6 });
   });
+  it("publishes optional quantities with the existing snapshot and drops them when the next import cannot verify them", async () => {
+    const original = mocks.provider.getAcquisitionBreakdown.getMockImplementation()!;
+    const unitsSold = { version: 1, metric: "itemsPurchased", attribution: "sessionCampaignName", campaignId: campaign.id,
+      propertyId: connection.propertyId, startDate: start, endDate: end, campaigns: [{ name: "sale", units: 6 }] };
+    mocks.provider.getAcquisitionBreakdown.mockImplementation(async (...args) => {
+      const report = await original(...args); return { ...report, meta: { ...report.meta, unitsSold } };
+    });
+    await prime();
+    expect(snapshot.campaignBreakdown.meta.unitsSold).toEqual(unitsSold);
+    const before = structuredClone(stored), totals = structuredClone(snapshot.campaignBreakdown.totals);
+    mocks.provider.getAcquisitionBreakdown.mockImplementation(original);
+    expect((await run()).campaignIdsFailed).toEqual([]);
+    expect(snapshot.campaignBreakdown.meta.unitsSold).toBeUndefined();
+    expect(snapshot.campaignBreakdown.totals).toEqual(totals); expect(stored).toEqual(before);
+  });
 
   it("imports a new 365-day draft without truncation and preserves its boundary on subsequent refreshes", async () => {
     connection.importStartDate = "2025-10-18"; connection.lookbackDays = 365; campaign.status = "draft";

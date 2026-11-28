@@ -37,7 +37,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct, formatConversionCredit } from "@shared/metric-math";
-import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
+import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards, selectGA4UnitsSoldCards } from "@shared/ga4-ad-comparison-cards";
 import { ga4ProvisionalNotice, publishedGA4PipelineData, normalizeGA4CampaignAllocationKey, resolveGA4OverviewFinancialRefreshWarning, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { resolveExactGA4CampaignBreakdownRevenue, roundGA4CampaignRevenueForDisplay } from "@shared/ga4-campaign-breakdown";
 import { resolveGA4InsightsExecutiveFinancials } from "@/lib/ga4-insights-executive-financials";
@@ -9577,6 +9577,8 @@ export default function GA4Metrics() {
                     campaignBreakdownAgg={adComparisonBreakdownAgg}
                     nativeRevenue={adComparisonNativeRevenue}
                     chartCampaignRows={adComparisonChartRows}
+                    unitsSoldRankings={selectGA4UnitsSoldCards(ga4Breakdown, { campaignId: campaignId || "", propertyId: selectedGA4PropertyId,
+                      startDate: String(ga4Breakdown?.startDate || ""), endDate: String(ga4Breakdown?.endDate || ""), campaignNames: adComparisonChartRows.map(row => row.name) })}
                     chartRevenue={adComparisonChartRevenue}
                               chartUsers={overviewSummaryTotals.users}
                     chartSessions={overviewSummaryTotals.sessions}

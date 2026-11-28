@@ -13,6 +13,53 @@ const row = (name: string, sessions: number, users: number, conversions: number,
 });
 
 describe("GA4 Ad Comparison leader-card logic", () => {
+  it("shows four explicit rankings, including a zero-rate campaign below 25 sessions", () => {
+    const rows = [row("coffee_bags", 109, 7, 1, 40.5), row("served_here", 24, 5, 0, 0)];
+    const before = structuredClone(rows);
+    for (const metric of ["sessions", "users", "conversions", "revenue", "conversionRate"]) {
+      const cards = selectGA4AdComparisonLeaderCards(rows, metric).rankings;
+      expect(cards.map(card => card.title)).toEqual(["Highest Revenue", "Highest Conversion Rate", "Lowest Revenue", "Lowest Conversion Rate"]);
+      expect(cards.map(card => card.leaders.map(leader => leader.name))).toEqual([["coffee_bags"], ["coffee_bags"], ["served_here"], ["served_here"]]);
+    }
+    expect(rows).toEqual(before);
+  });
+
+  it("uses supplied conversion rates rather than recomputing them from event counts", () => {
+    const cards = selectGA4AdComparisonLeaderCards([
+      { ...row("more events", 100, 50, 40, 10), conversionRate: 5 },
+      { ...row("more converting sessions", 100, 50, 20, 20), conversionRate: 10 },
+    ], "sessions").rankings;
+    expect(cards[1].leaders[0].name).toBe("more converting sessions");
+    expect(cards[3].leaders[0].conversionRate).toBe(5);
+  });
+
+  it("includes recorded zeros and reports every exact tie deterministically", () => {
+    const cards = selectGA4AdComparisonLeaderCards([row("B", 24, 5, 0, 0), row("A", 109, 7, 0, 0)], "revenue").rankings;
+    for (const card of cards) expect(card.leaders.map(leader => leader.name)).toEqual(["A", "B"]);
+  });
+
+  it("ranks mapped revenue without sessions but excludes that row from rate comparisons", () => {
+    const cards = selectGA4AdComparisonLeaderCards([row("mapped", 0, 0, 0, 300), row("A", 100, 90, 10, 50), row("B", 2, 1, 0, -10)], "sessions").rankings;
+    expect(cards.map(card => card.leaders[0].name)).toEqual(["mapped", "A", "B", "B"]);
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, null, undefined])("does not rank incomplete revenue as zero (%s)", revenue => {
+    const cards = selectGA4AdComparisonLeaderCards([row("A", 100, 90, 10, 50), { ...row("B", 24, 5, 0, 0), revenue } as any], "revenue").rankings;
+    expect(cards[0].leaders).toEqual([]); expect(cards[2].leaders).toEqual([]);
+    expect(cards[0].unavailableReason).toBe("Data unavailable");
+    expect(cards[1].leaders[0].name).toBe("A");
+  });
+
+  it("does not fabricate rate leaders from missing rates or insufficient session data", () => {
+    for (const second of [{ ...row("B", 24, 5, 0, 0), conversionRate: Number.NaN }, row("B", 0, 0, 0, 0)]) {
+      const cards = selectGA4AdComparisonLeaderCards([row("A", 100, 90, 10, 50), second], "sessions").rankings;
+      expect(cards[1].leaders).toEqual([]); expect(cards[3].leaders).toEqual([]);
+      expect(cards[0].leaders[0].name).toBe("A");
+    }
+    for (const rows of [[], [row("A", 1, 1, 0, 0)]]) {
+      expect(selectGA4AdComparisonLeaderCards(rows, "sessions").rankings.every(card => card.leaders.length === 0)).toBe(true);
+    }
+  });
   it("ranks conversions per session consistently with Overview", () => {
     const merged = mergeGA4OverviewCampaignRevenueRows([
       { campaign: "high event count", sessions: 76, conversions: 76, sessionKeyEventRate: 0.25 },

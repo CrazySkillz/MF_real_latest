@@ -4180,7 +4180,7 @@ export default function GA4Metrics() {
         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
-      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
+      const { rankings } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
       const totalMetric = selectedMetric === "sessions" ? overviewSummaryTotals.sessions : selectedMetric === "users" ? overviewSummaryTotals.users ?? Number.NaN : selectedMetric === "revenue" ? adComparisonChartRevenue : selectedMetric === "conversionRate"
         ? (() => {
             return overviewSummaryTotals.conversionRate ?? Number.NaN;
@@ -4194,44 +4194,23 @@ export default function GA4Metrics() {
 
         // Performance rankings
         if (includeAdsBestWorst && chartSummaryRows.length > 1) {
-          y += 4; checkPage(28);
-          const colW = (CW - 8) / 3;
-
-          const rankCards = [
-            {
-              title: "MOST KEY EVENTS",
-              name: String(bestPerforming?.name || "No key event leader"),
-              detail: bestPerforming ? `${fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No key events recorded",
-              color: C.success,
-              x: MX,
-            },
-            {
-              title: "HIGHEST CONVERSION RATE",
-              name: String(mostEfficient?.name || "No rate leader"),
-              detail: mostEfficient ? `${formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR - ${fC(Number(mostEfficient.revenue || 0))} revenue` : "No conversions recorded",
-              color: C.info,
-              x: MX + colW + 4,
-            },
-            {
-              title: "NEEDS ATTENTION",
-              name: String(needsAttention?.name || needsAttention?.campaign || ""),
-              detail: `${formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)} CR - ${fN(Number(needsAttention?.sessions || 0))} sessions`,
-              color: C.danger,
-              x: MX + (colW + 4) * 2,
-            },
-          ];
-          rankCards.forEach((card) => {
-            doc.setFillColor(...C.white); doc.setDrawColor(...card.color);
-            doc.setLineWidth(0.6); doc.roundedRect(card.x, y, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
-            doc.setFillColor(...card.color); doc.circle(card.x + 8, y + 9, 2, "F");
-            doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...card.color);
-            doc.text(card.title, card.x + 13, y + 7);
-            doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-            doc.text(trunc(card.name, 22), card.x + 13, y + 14);
-            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
-            doc.text(trunc(card.detail, 32), card.x + 13, y + 20);
+          y += 4; checkPage(58);
+          const colW = (CW - 4) / 2;
+          rankings.forEach((ranking, index) => {
+            const leader = ranking.leaders[0];
+            const name = leader ? leader.name.slice(0, 22) + (ranking.leaders.length > 1 ? " + " + (ranking.leaders.length - 1) + " tied" : "") : ranking.unavailableReason;
+            const detail = leader ? ranking.metric === "revenue" ? fC(Number(leader.revenue)) + " revenue"
+              : formatGA4AdComparisonCardPct(leader.conversionRate) + (ranking.leaders.length === 1 ? " - " + fN(leader.sessions) + " sessions" : " conversion rate") : "Comparison unavailable";
+            const color = index === 0 ? C.success : index === 1 ? C.info : C.warning;
+            const x = MX + (index % 2) * (colW + 4), cardY = y + Math.floor(index / 2) * 28;
+            doc.setFillColor(...C.white); doc.setDrawColor(...color);
+            doc.setLineWidth(0.6); doc.roundedRect(x, cardY, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
+            doc.setFillColor(...color); doc.circle(x + 8, cardY + 9, 2, "F");
+            doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...color); doc.text(ranking.title.toUpperCase(), x + 13, cardY + 7);
+            doc.setFontSize(8); doc.setTextColor(...C.text); doc.text(name, x + 13, cardY + 14);
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec); doc.text(detail, x + 13, cardY + 20);
           });
-          y += 30;
+          y += 60;
         }
 
         if (includeAdsTopCampaigns) {
@@ -11296,7 +11275,7 @@ export default function GA4Metrics() {
                       { key: "kpis", label: "KPIs", subsections: [] as Array<[string, string]> },
                       { key: "benchmarks", label: "Benchmarks", subsections: [] as Array<[string, string]> },
                       { key: "ads", label: "Ad Comparison", subsections: [
-                        ["bestWorst", "Most Key Events / Highest Conversion Rate / Needs Attention"],
+                        ["bestWorst", "Highest/Lowest Revenue and Conversion Rate"],
                         ["topCampaigns", "Top Campaigns"],
                         ["revenueBreakdown", "Revenue Breakdown"],
                       ] as Array<[string, string]> },
@@ -11330,7 +11309,7 @@ export default function GA4Metrics() {
                                     ]
                                   : (s.key === "ads")
                                     ? [
-                                        [["bestWorst", "Most Key Events / Highest Conversion Rate / Needs Attention"], ["topCampaigns", "Top Campaigns"]],
+                                        [["bestWorst", "Highest/Lowest Revenue and Conversion Rate"], ["topCampaigns", "Top Campaigns"]],
                                         [["revenueBreakdown", "Revenue Breakdown"]],
                                       ]
                                     : (s.key === "insights")

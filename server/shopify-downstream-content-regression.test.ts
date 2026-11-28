@@ -368,9 +368,9 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(pdfTextCalls.slice(pdfTextCalls.indexOf("Top Campaigns by Sessions"), pdfTextCalls.indexOf("All Campaigns"))).toContain("7");
     expect(text).toContain("USD 30,839.00");
     expect(text).toContain("GA4 Revenue (Imported to Date)");
-    expect(text).toContain("MOST KEY EVENTS");
+    expect(text).toContain("HIGHEST REVENUE");
     expect(text).toContain("HIGHEST CONVERSION RATE");
-    expect(text).toContain("NEEDS ATTENTION");
+    expect(text).toContain("LOWEST CONVERSION RATE");
     expect(text).toContain("Top Campaigns by Sessions");
     expect(text).toContain("TOTAL SESSIONS");
     expect(text).toContain("CAMPAIGNS COMPARED");
@@ -573,9 +573,9 @@ describe("Shopify downstream value/content regression guard", () => {
 
     expect(pdfTextCalls).toContain("CAMPAIGN BREAKDOWN REVENUE");
     expect(pdfTextCalls).toContain("USD 305.00");
-    expect(pdfTextCalls[pdfTextCalls.indexOf("MOST KEY EVENTS") + 1]).toBe("Beta");
+    expect(pdfTextCalls[pdfTextCalls.indexOf("HIGHEST REVENUE") + 1]).toBe("Alpha");
     expect(pdfTextCalls[pdfTextCalls.indexOf("HIGHEST CONVERSION RATE") + 1]).toBe("Beta");
-    expect(pdfTextCalls).toContain("25.00% CR - USD 100.00 revenue");
+    expect(pdfTextCalls).toContain("25.00% - 20 sessions");
     const nativeRows = pdfTextCalls.slice(pdfTextCalls.indexOf("All Campaigns"));
     expect(nativeRows).toEqual(expect.arrayContaining(["USD 5.00", "USD 100.00"]));
     expect(nativeRows).not.toContain("USD 205.00");
@@ -597,7 +597,7 @@ describe("Shopify downstream value/content regression guard", () => {
 
     expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(2);
     expect(storageMock.getLatestFinancialDailySnapshot).not.toHaveBeenCalled();
-    expect(pdfTextCalls).toEqual(expect.arrayContaining(["MOST KEY EVENTS", "HIGHEST CONVERSION RATE", "NEEDS ATTENTION"]));
+    expect(pdfTextCalls).toEqual(expect.arrayContaining(["HIGHEST REVENUE", "HIGHEST CONVERSION RATE", "LOWEST REVENUE", "LOWEST CONVERSION RATE"]));
     expect(pdfTextCalls).not.toContain("All Campaigns");
   });
 

@@ -7,7 +7,7 @@ import { formatConversionCredit } from "@shared/metric-math";
 import { memo, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
+import { Trophy, Zap, ArrowDown, Info } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
@@ -149,7 +149,7 @@ function GA4AdComparison({
     }));
   }, [chartRows, selectedMetric]);
 
-  const { bestPerforming, mostEfficient, needsAttention } = useMemo(() => {
+  const { rankings } = useMemo(() => {
     return selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric);
   }, [chartSummaryRows, selectedMetric]);
 
@@ -253,55 +253,28 @@ function GA4AdComparison({
 
       {/* Performance Rankings */}
       {!chartBreakdownUnavailable && chartSummaryRows.length >= 2 && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-emerald-200 dark:border-emerald-800">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="w-5 h-5 text-emerald-600" />
-                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Most Key Events</span>
-              </div>
-              <div className="font-semibold text-foreground truncate" title={bestPerforming?.name || "No key event leader"}>
-                {bestPerforming?.name || "No key event leader"}
-              </div>
-              <div className="text-sm text-muted-foreground/70 mt-1">
-                {bestPerforming
-                  ? <>{fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR</>
-                  : "No key events recorded"}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-blue-200 dark:border-blue-800">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Highest Conversion Rate</span>
-              </div>
-              <div className="font-semibold text-foreground truncate" title={mostEfficient?.name || "No rate leader"}>
-                {mostEfficient?.name || "No rate leader"}
-              </div>
-              <div className="text-sm text-muted-foreground/70 mt-1">
-                {mostEfficient
-                  ? <>{formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR &middot; {formatMoney(mostEfficient.revenue)} revenue</>
-                  : "No positive conversion rate recorded"}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-amber-200 dark:border-amber-800">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-5 h-5 text-amber-600" />
-                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Needs Attention</span>
-              </div>
-              <div className="font-semibold text-foreground truncate" title={needsAttention?.name || "No attention candidate"}>
-                {needsAttention?.name || "No attention candidate"}
-              </div>
-              <div className="text-sm text-muted-foreground/70 mt-1">
-                {needsAttention
-                  ? <>{formatGA4AdComparisonCardPct(needsAttention.conversionRate)} CR &middot; {formatNumber(needsAttention.sessions)} sessions</>
-                  : "No session data recorded"}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-testid="campaign-comparison-rankings">
+          {rankings.map((ranking, index) => {
+            const names = ranking.leaders.map(row => row.name).join(", ");
+            const label = names ? names + (ranking.leaders.length > 1 ? " (tie)" : "") : ranking.unavailableReason;
+            const leader = ranking.leaders[0];
+            const Icon = index === 0 ? Trophy : index === 1 ? Zap : ArrowDown;
+            const color = index === 0 ? "text-emerald-700 dark:text-emerald-300" : index === 1 ? "text-blue-700 dark:text-blue-300" : "text-amber-700 dark:text-amber-300";
+            return (
+              <Card key={ranking.title} data-testid="comparison-ranking-card">
+                <CardContent className="p-5">
+                  <div className={"flex items-center gap-2 mb-2 " + color}>
+                    <Icon className="w-5 h-5 shrink-0" />
+                    <span className="text-sm font-medium">{ranking.title}</span>
+                  </div>
+                  <div className="font-semibold text-foreground truncate" title={label}>{label}</div>
+                  <div className="text-sm text-muted-foreground/70 mt-1">
+                    {leader ? <>{fmtCardMetricValue(ranking.metric, Number(leader[ranking.metric]))}{ranking.metric === "revenue" ? " revenue" : ranking.leaders.length === 1 ? " · " + formatNumber(leader.sessions) + " sessions" : " conversion rate"}</> : "Comparison unavailable"}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

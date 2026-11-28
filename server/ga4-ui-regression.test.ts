@@ -600,31 +600,15 @@ describe("GA4 UI regression guard", () => {
     expect(scheduledPdf).toContain("selectGA4AdComparisonLeaderCards(chartSummaryRows, leaderMetric)");
     expect(scheduledPdf).toContain('["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(rawCfg?.adComparisonMetric || ""))');
     expect(scheduledPdf).toContain(': "sessions";');
-    expect(adComparison).toContain("formatGA4AdComparisonCardPct(bestPerforming.conversionRate)");
-    expect(adComparison).toContain(">Most Key Events</span>");
-    expect(adComparison).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
-    expect(adComparison).toContain("formatGA4AdComparisonCardPct(needsAttention.conversionRate)");
-    expect(adComparison).toContain('fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events');
-    expect(ga4Metrics).toContain('${fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events');
-    expect(ga4Metrics).toContain('title: "MOST KEY EVENTS"');
-    expect(scheduledPdf).toContain('${formatMetricValue("conversions", bestPerforming.conversions)} Key Events');
-    expect(scheduledPdf).toContain('title: "MOST KEY EVENTS"');
-    expect(adComparison).toContain("Highest Conversion Rate");
-    expect(adComparison).toContain('bestPerforming?.name || "No key event leader"');
-    expect(adComparison).toContain('mostEfficient?.name || "No rate leader"');
-    expect(adComparison).toContain('needsAttention?.name || "No attention candidate"');
-    expect(adComparison).toContain("No positive conversion rate recorded");
-    expect(adComparison).not.toContain("{bestPerforming && (");
-    expect(adComparison).not.toContain("{mostEfficient && (");
-    expect(adComparison).not.toContain("{needsAttention && (");
-    expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
-    expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)");
-    expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
-    expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(needsAttention?.conversionRate ?? Number.NaN)");
-    expect(adComparison).not.toContain("needsAttention.name !== mostEfficient?.name");
-    expect(ga4Metrics).not.toContain(".find((r: any) => String(r?.name || \"\") !== String(bestPerforming?.name || \"\"))");
-    expect(scheduledPdf).not.toContain("const lowest = [...rows].sort((a: any, b: any) => Number(a?.sessions || 0) - Number(b?.sessions || 0))[0];");
-    expect(adComparison).not.toContain("[...campaignBreakdownAgg]");
+    for (const source of [adComparison, ga4Metrics, scheduledPdf]) {
+      expect(source).toContain("const { rankings } =");
+      expect(source).toMatch(/rankings\.(map|forEach)/);
+      expect(source).not.toContain('title: "MOST KEY EVENTS"');
+    }
+    expect(adComparison).toContain('data-testid="campaign-comparison-rankings"');
+    expect(adComparison).toContain('ranking.leaders.length > 1 ? " (tie)"');
+    expect(ga4Metrics).toContain('Highest/Lowest Revenue and Conversion Rate');
+    expect(scheduledPdf).toContain('ranking.title.toUpperCase()');
   });
 
   it("keeps external imported revenue out of native Ad Comparison values", () => {

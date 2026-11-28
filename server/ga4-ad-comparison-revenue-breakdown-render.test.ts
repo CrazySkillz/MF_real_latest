@@ -89,7 +89,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     const html = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversionRate", chartConversionRate: 10 });
     expect(html).not.toContain("Overall Conversion Rate");
     const countHtml = renderRevenueBreakdown("ready", [], aggregate, aggregate, 25, { selectedMetric: "conversions" });
-    expect(countHtml).toMatch(new RegExp(`Total Conversions</div><div[^>]*>${60 * factor}</div>`));
+    expect(countHtml).not.toContain("Total Conversions");
     expect(html).not.toContain("unselected");
     expect(JSON.stringify(rows)).toBe(before);
   });

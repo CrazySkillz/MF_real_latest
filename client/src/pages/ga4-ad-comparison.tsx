@@ -29,6 +29,7 @@ interface GA4AdComparisonProps {
   campaignBreakdownAgg: CampaignAgg[];
   nativeRevenue?: number;
   chartCampaignRows: CampaignAgg[];
+  unitsSoldRankings?: Array<{ title: string; units: number; names: string[] }>;
   chartRevenue?: number;
   chartUsers?: number | null;
   chartSessions?: number | null;
@@ -69,6 +70,7 @@ function GA4AdComparison({
   campaignBreakdownAgg,
   nativeRevenue,
   chartCampaignRows,
+  unitsSoldRankings = [],
   chartRevenue,
   chartUsers,
   chartSessions,
@@ -274,6 +276,26 @@ function GA4AdComparison({
                 </CardContent>
               </Card>
             );
+          })}
+        </div>
+      )}
+
+      {!chartBreakdownUnavailable && chartSummaryRows.length >= 2 && unitsSoldRankings.length === 2 && (
+        <div className="grid gap-4 md:grid-cols-2" data-testid="campaign-comparison-units">
+          {unitsSoldRankings.map((ranking, index) => {
+            const Icon = index === 0 ? Trophy : ArrowDown;
+            const label = ranking.names.join(", ") + (ranking.names.length > 1 ? " (tie)" : "");
+            return <Card key={ranking.title} data-testid="comparison-units-card">
+              <CardContent className="p-5">
+                <div className={"flex items-center gap-2 mb-2 " + (index === 0 ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300")}>
+                  <Icon className="w-5 h-5 shrink-0" />
+                  <span className="text-sm font-medium">{ranking.title}</span>
+                </div>
+                <div className="font-semibold text-foreground truncate" title={label}>{label}</div>
+                <div className="text-sm text-muted-foreground/70 mt-1">{formatNumber(ranking.units)} {ranking.units === 1 ? "unit sold" : "units sold"}</div>
+                <div className="text-xs text-muted-foreground/70 mt-1">GA4 items purchased · attributed by session campaign</div>
+              </CardContent>
+            </Card>;
           })}
         </div>
       )}

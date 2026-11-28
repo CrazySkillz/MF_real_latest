@@ -9368,3 +9368,126 @@ index 1367fa95..2b67bbd9 100644
                    ? `${formatReportingDateLabel(overviewGA4ReportingStartDate)} – ${formatReportingDateLabel(overviewGA4ReportingDate)}`
                    : "Not available yet"}</div>
                </CardContent>
+
+diff --git a/server/routes-oauth.ts b/server/routes-oauth.ts
+index a4b93695..990ff91b 100644
+--- a/server/routes-oauth.ts
++++ b/server/routes-oauth.ts
+@@ -13722,7 +13722,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+           startDate: snapshot.windowStart,
+           endDate: snapshot.windowEnd,
+           totals: result?.totals,
+-          rows: (Array.isArray(result?.rows) ? result.rows : []).slice(0, limit),
++          // Overview aggregates these raw rows; truncation here would lose conversion credits.
++          rows: overviewCampaignBreakdown ? (Array.isArray(result?.rows) ? result.rows : []) : (Array.isArray(result?.rows) ? result.rows : []).slice(0, limit),
+           revenueWindow: {
+             source: 'ga4',
+             startDate: snapshot.windowStart,
+
+diff --git a/server/analytics.ts b/server/analytics.ts
+index 1532febd..cf262799 100644
+--- a/server/analytics.ts
++++ b/server/analytics.ts
+@@ -281,7 +281,8 @@ export class GoogleAnalytics4Service {
+     limit: number = 50,
+     campaignFilter?: CampaignFilter,
+     endDate = 'yesterday',
+-    validationReadOnly = false
++    validationReadOnly = false,
++    expectedDailyConversions?: Record<string, number>,
+   ): Promise<{
+     propertyId: string;
+     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
+@@ -508,6 +509,14 @@ export class GoogleAnalytics4Service {
+ 
+     const supplementFromConversionFallback = async (accessToken: string, base: any) => {
+       if (!hasMissingConversionTrafficRows(base)) return base;
++      // Complete, independently verified daily credits can prove no supplement is needed.
++      // Keep the native full-period rows instead of shortening them for a redundant event query.
++      const expected = Object.entries(expectedDailyConversions || {});
++      const dayCount = (Date.parse(endDate) - Date.parse(dateRange)) / 86400000 + 1;
++      if (expected.length === dayCount && expected.every(([date, value]) =>
++        /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date &&
++        date >= dateRange && date <= endDate && typeof value === 'number' && Number.isFinite(value) && value >= 0
++      ) && conversionCreditsMatch(base.totals.conversions, expected.reduce((sum, [, value]) => sum + value, 0), Math.max(1, expected.length + base.rows.length))) return base;
+       let conversionRes;
+       try { conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions', true); }
+       catch (error: any) {
+
+diff --git a/server/ga4-daily-scheduler.ts b/server/ga4-daily-scheduler.ts
+index c3bc2707..76228567 100644
+--- a/server/ga4-daily-scheduler.ts
++++ b/server/ga4-daily-scheduler.ts
+@@ -480,6 +480,11 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
+ 
+           let overviewSnapshot: any = undefined;
+           if (hasCampaignFilter) {
++            const expectedDailyConversions = Object.fromEntries([
++              ...(Array.isArray(existingOverviewRows) ? existingOverviewRows : []).filter((row: any) => String(row.date) < storageStartDate),
++              ...completeRows,
++            ].filter((row: any) => String(row.date) >= overviewStartDate && String(row.date) <= reportingWindow.endDate)
++              .map((row: any) => [String(row.date), Number(row?.conversions || 0)]));
+             const [campaignBreakdown, landingPages] = await Promise.all([
+               withGA4DailyStage("overview_campaign_breakdown", provider.getAcquisitionBreakdown(
+                 currentCampaignId, providerStorage, overviewStartDate, propertyId, 10000, campaignFilter,
+@@ -487,7 +492,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
+                 { ...overviewDailyTraffic, campaignId: currentCampaignId, rollingUsersStartDate: overviewStartDate },
+               )),
+               withGA4DailyStage("overview_landing_pages", provider.getLandingPagesReport(
+-                currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
++                currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate, false, expectedDailyConversions,
+               )),
+             ]);
+             const distinctDaily = new Map(campaignBreakdown.meta.distinctUsers?.daily.map(row => [row.date, row.users]));
+@@ -510,9 +515,6 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
+               conversions: totals.conversions + Number(row?.conversions || 0),
+               revenue: totals.revenue + Number(row?.revenue || 0),
+             }), { sessions: 0, conversions: 0, revenue: 0 });
+-            const expectedDailyConversions = Object.fromEntries(overviewRows.map((row: any) => [
+-              String(row.date), Number(row?.conversions || 0),
+-            ]));
+             const conversionEvents = await withGA4DailyStage("overview_conversion_events", provider.getConversionEventsReport(
+               currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter,
+               reportingWindow.endDate, false, expectedDailyConversions,
+
+diff --git a/client/src/pages/ga4-metrics.tsx b/client/src/pages/ga4-metrics.tsx
+index 2b67bbd9..6f7e0e91 100644
+--- a/client/src/pages/ga4-metrics.tsx
++++ b/client/src/pages/ga4-metrics.tsx
+@@ -4064,7 +4064,7 @@ export default function GA4Metrics() {
+         ["Profit", financialSpendAvailable ? fC(rev - spend) : "Unavailable"],
+         ["ROAS", !financialSpendAvailable ? "Unavailable" : spend > 0 ? `${Number(financialROAS || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"],
+         ["ROI", !financialSpendAvailable ? "Unavailable" : spend > 0 ? fP(roi) : "—"],
+-        ["CPA", !financialSpendAvailable ? "Unavailable" : spend > 0 && convTot > 0 ? fC(cpa) : "—"],
++        ["CPA", !financialSpendAvailable ? "Unavailable" : spend >= 0 && convTot > 0 ? fC(cpa) : "—"],
+       ], 4);
+       y += 2;
+       }
+@@ -7275,11 +7275,11 @@ export default function GA4Metrics() {
+                               {renderFinancialValue(
+                                 financialDailySnapshotLoading,
+                                 overviewFinancialSpendAvailable && overviewFinancialConversionsAvailable,
+-                                overviewFinancialSpend > 0 && overviewFinancialConversions > 0 ? formatMoney(overviewFinancialCPA) : "—"
++                                overviewFinancialSpend >= 0 && overviewFinancialConversions > 0 ? formatMoney(overviewFinancialCPA) : "—"
+                               )}
+                             </p>
+                             <p className="text-xs text-muted-foreground/70 mt-1">
+-                              Spend ÷ Conversions{overviewFinancialSpend <= 0 ? " (needs spend)" : overviewFinancialConversions <= 0 ? " (needs conversions > 0)" : ""}
++                              Spend ÷ Conversions{!overviewFinancialSpendAvailable ? " (needs spend)" : overviewFinancialConversions <= 0 ? " (needs conversions > 0)" : ""}
+                             </p>
+                           </CardContent>
+                         </Card>
+
+diff --git a/server/ga4-scheduled-report-pdf.ts b/server/ga4-scheduled-report-pdf.ts
+index 963d5989..1a6d3b75 100644
+--- a/server/ga4-scheduled-report-pdf.ts
++++ b/server/ga4-scheduled-report-pdf.ts
+@@ -1524,7 +1524,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
+         ["Profit", payload.financialSpendAvailable ? formatMoney(payload.financialRevenue - payload.financialSpend) : "Unavailable"],
+         ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}x` : "—"],
+         ["ROI", payload.financialSpend > 0 ? formatPct(payload.financialROI) : "—"],
+-        ["CPA", payload.financialSpend > 0 && payload.financialConversions > 0 ? formatMoney(payload.financialCPA) : "—"],
++        ["CPA", payload.financialSpendAvailable && payload.financialSpend >= 0 && payload.financialConversions > 0 ? formatMoney(payload.financialCPA) : "—"],
+       ], 4);
+     }
+     if (includeCampaignBreakdown) {

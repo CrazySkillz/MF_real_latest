@@ -1,5 +1,5 @@
 {
-  "expectedCommit": "065110c17616ceec9a4cfdab3df9dcb0b8404682",
+  "expectedCommit": "99648fb64d0a144e92700baeb562211774d71ab3",
   "files": [
     {
       "path": "client/src/components/AddRevenueWizardModal.tsx",
@@ -44,12 +44,12 @@
     {
       "path": "client/src/pages/ga4-ad-comparison.tsx",
       "before": "d7ddacff87f5f2496891cb14dea26d42586d4a9597b855cf0be0690cb05a6159",
-      "after": "3a81029281f738dd85187bc84e6bfc7dfb944cf7a1d4ffc13e1de97880edd87c"
+      "after": "401316534cd6c1943f51f1492116087d4609a4782e2daf2a90a24ff22b1326f8"
     },
     {
       "path": "client/src/pages/ga4-metrics.tsx",
       "before": "88c671da80aee74bb37aeec5cec11a4280c1240bf4bb14dd644b691f37ada83f",
-      "after": "a7bcfb13c2d95616b0d62b4704338392e4109a96167a7fb5042cd72e6537e22b"
+      "after": "988b975db55cc526912c35efc6cb75ab81da40ebd0be2f57bb413849ce60045a"
     },
     {
       "path": "client/src/pages/reports.tsx",
@@ -64,7 +64,7 @@
     {
       "path": "server/analytics.ts",
       "before": "92c0c5732625799ca64d39e25bd4cb8b924035f1cce5fc5104880802d9b7bf8a",
-      "after": "755181d95bf5220a067d4f335121c416dcf55ce45088ddd09add973cb19eda85"
+      "after": "335f911cc7efbbf19146dbb1b97086635afc1ce081b3b7dd4a33713ee56efcb6"
     },
     {
       "path": "server/auto-refresh-scheduler.ts",
@@ -104,7 +104,7 @@
     {
       "path": "server/routes-oauth.ts",
       "before": "0e143baad7f24581a5fd9e6136f683bf558aae37a5dd0d6d6ef047ed6d6c520e",
-      "after": "83866eb4a56ae331b97f4ac8537b296032119c330756805fef37ae1d9e7f3ade"
+      "after": "10b016c84a33c8c1cd4ee1ebe6b83f7eb6a32ac85aa9c88d78d237393599c833"
     },
     {
       "path": "server/scheduler.ts",
@@ -199,7 +199,7 @@
     {
       "path": "shared/ga4-ad-comparison-cards.ts",
       "before": "58043214e1fdd1f134b7b4ba1027a80df096f3ac1b2ab10d2808903d916ccfbe",
-      "after": "2ff5edb53cf602fee42892234d52c4f1735cac0bd35c75aba95cb8c5693d727a"
+      "after": "58828b64f8167b9c7fba88403e7e75a5b9884b419c9cbdabc2db411e4f1323e5"
     },
     {
       "path": "shared/ga4-insights.ts",

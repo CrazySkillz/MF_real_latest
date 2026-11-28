@@ -12,13 +12,15 @@ const render = (metric: string, users: number | null, missingRows = false) => re
 })).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
 
 describe('Campaign Comparison distinct Users rendering', () => {
-  it('renders the combined native audience instead of adding campaign counts', () => {
-    expect(render('users', 3)).toContain('Total Users 3 Across all campaigns');
+  it('retains the Users chart without the removed total card', () => {
+    expect(render('users', 3)).toContain('Top Campaigns by Users');
+    expect(render('users', 3)).not.toContain('Total Users');
   });
   it('keeps missing Users unavailable and does not affect other metrics', () => {
-    expect(render('users', null)).toContain('Total Users Unavailable');
+    expect(render('users', null)).not.toContain('Total Users');
+    expect(render('users', null, true)).toContain('GA4 Overview Campaign Breakdown is unavailable.');
     expect(render('users', null, true)).not.toContain('NaN');
-    expect(render('sessions', null, true)).toContain('Total Sessions 6');
-    expect(render('conversions', null, true)).toContain('Total Conversions 2');
+    expect(render('sessions', null, true)).toContain('Top Campaigns by Sessions');
+    expect(render('conversions', null, true)).toContain('Top Campaigns by Conversions');
   });
 });
